@@ -1,0 +1,168 @@
+﻿@* TextBox.razor *@
+<div class="roovia-textbox @(IsValid ? "" : "roovia-textbox-invalid") @CssClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id" class="roovia-textbox-label">@Label</label>
+    }
+    <div class="roovia-textbox-wrapper">
+        @if (!string.IsNullOrEmpty(IconLeft))
+        {
+            <span class="roovia-textbox-icon-left">
+                <i class="@IconLeft"></i>
+            </span>
+        }
+        <input id="@Id"
+               type="@Type"
+               class="roovia-textbox-input"
+               placeholder="@Placeholder"
+               value="@Value"
+               @onchange="OnChangeHandler"
+               @oninput="OnInputHandler"
+               @onblur="OnBlurHandler"
+               @onfocus="OnFocusHandler"
+               disabled="@Disabled"
+               readonly="@ReadOnly" />
+        @if (!string.IsNullOrEmpty(IconRight))
+        {
+            <span class="roovia-textbox-icon-right">
+                <i class="@IconRight"></i>
+            </span>
+        }
+    </div>
+    @if (!IsValid && !string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="roovia-textbox-validation">@ValidationMessage</div>
+    }
+</div>
+
+<style>
+    /* Component-specific styles building on the core CSS variables */
+    .roovia-textbox {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-2);
+        margin-bottom: var(--spacing-4);
+    }
+
+    .roovia-textbox-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .roovia-textbox-wrapper {
+        position: relative;
+        display: flex;
+        width: 100%;
+    }
+
+    .roovia-textbox-input {
+        width: 100%;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-base);
+        transition: var(--hover-transition);
+    }
+
+    .roovia-textbox-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: var(--shadow-focus);
+    }
+
+    .roovia-textbox-icon-left,
+    .roovia-textbox-icon-right {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .roovia-textbox-icon-left {
+        left: var(--spacing-3);
+    }
+
+    .roovia-textbox-input:focus ~ .roovia-textbox-icon-left {
+        color: var(--primary);
+    }
+
+    .roovia-textbox-icon-right {
+        right: var(--spacing-3);
+    }
+
+    .roovia-textbox-wrapper:has(.roovia-textbox-icon-left) .roovia-textbox-input {
+        padding-left: calc(var(--spacing-3) * 2 + 1rem);
+    }
+
+    .roovia-textbox-wrapper:has(.roovia-textbox-icon-right) .roovia-textbox-input {
+        padding-right: calc(var(--spacing-3) * 2 + 1rem);
+    }
+
+    .roovia-textbox-invalid .roovia-textbox-input {
+        border-color: var(--danger);
+    }
+
+    .roovia-textbox-validation {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: var(--spacing-1);
+    }
+
+    .roovia-textbox-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--subtle-bg);
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string Placeholder { get; set; }
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string Value { get; set; }
+    [Parameter] public string IconLeft { get; set; }
+    [Parameter] public string IconRight { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public string ValidationMessage { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnInput { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+
+    private async Task OnChangeHandler(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(Value);
+        if (OnChange.HasDelegate)
+            await OnChange.InvokeAsync(e);
+    }
+
+    private async Task OnInputHandler(ChangeEventArgs e)
+    {
+        if (OnInput.HasDelegate)
+            await OnInput.InvokeAsync(e);
+    }
+
+    private async Task OnBlurHandler(FocusEventArgs e)
+    {
+        if (OnBlur.HasDelegate)
+            await OnBlur.InvokeAsync(e);
+    }
+
+    private async Task OnFocusHandler(FocusEventArgs e)
+    {
+        if (OnFocus.HasDelegate)
+            await OnFocus.InvokeAsync(e);
+    }
+}

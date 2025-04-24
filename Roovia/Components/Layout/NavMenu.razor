@@ -1,0 +1,107 @@
+﻿@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="roovia-nav-header">
+    <div class="roovia-nav-brand">
+        <img src="/images/roovia-logo.png" alt="Roovia" class="roovia-nav-logo" onerror="this.src='/images/roovia-logo.png'; this.onerror=null;" />
+    </div>
+    <button type="button" class="roovia-nav-toggle" title="Close menu" onclick="closeNavMenuMobile(event)">
+        <i class="fal fa-times"></i>
+    </button>
+</div>
+
+<div class="roovia-nav-menu" id="roovia-nav-menu">
+    <div class="roovia-nav-section">
+        <div class="roovia-nav-section-title">Management</div>
+        <div class="roovia-nav-links">
+            <NavLink class="roovia-nav-link" href="" Match="NavLinkMatch.All">
+                <i class="fal fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </NavLink>
+
+            <NavLink class="roovia-nav-link" href="tenants">
+                <i class="fal fa-people-roof"></i>
+                <span>Tenants</span>
+            </NavLink>
+
+            <NavLink class="roovia-nav-link" href="properties">
+                <i class="fal fa-house"></i>
+                <span>Properties</span>
+                <span class="roovia-nav-badge">12</span>
+            </NavLink>
+
+            <NavLink class="roovia-nav-link" href="beneficiaries">
+                <i class="fal fa-users"></i>
+                <span>Beneficiaries</span>
+            </NavLink>
+        </div>
+    </div>
+
+    <div class="roovia-nav-section">
+        <div class="roovia-nav-section-title">Administration</div>
+        <div class="roovia-nav-links">
+            <NavLink class="roovia-nav-link" href="team">
+                <i class="fal fa-people-group"></i>
+                <span>Team</span>
+            </NavLink>
+
+            <NavLink class="roovia-nav-link" href="settings">
+                <i class="fal fa-gear"></i>
+                <span>Settings</span>
+            </NavLink>
+        </div>
+    </div>
+
+    <div class="roovia-nav-section">
+        <div class="roovia-nav-section-title">User</div>
+        <div class="roovia-nav-links">
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink class="roovia-nav-link" href="Account/Manage">
+                        <i class="fal fa-user"></i>
+                        <span>@context.User.Identity?.Name</span>
+                    </NavLink>
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="roovia-nav-link w-100 text-left">
+                            <i class="fal fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink class="roovia-nav-link" href="Account/Register">
+                        <i class="fal fa-user-plus"></i>
+                        <span>Register</span>
+                    </NavLink>
+                    <NavLink class="roovia-nav-link" href="Account/Login">
+                        <i class="fal fa-sign-in-alt"></i>
+                        <span>Login</span>
+                    </NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

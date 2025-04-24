@@ -1,0 +1,589 @@
+﻿/* ====== Roovia Layout System ====== */
+/* Core layout structure, grid systems, and spacing utilities */
+
+/* ====== Page Structure ====== */
+/* Main container for the entire application */
+.roovia-container {
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-4);
+    padding-right: var(--spacing-4);
+}
+
+/* Page wrapper - sets the basic structure */
+.roovia-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Content area - the main part of the page */
+.roovia-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    background-color: var(--body-bg);
+    padding: var(--spacing-5) 0;
+}
+
+.roovia-content-narrow {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.roovia-content-wide {
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Section styles */
+.roovia-section {
+    margin-bottom: var(--spacing-8);
+}
+
+.roovia-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-5);
+}
+
+.roovia-section-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: relative;
+    display: inline-block;
+}
+
+    .roovia-section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: var(--primary-gradient);
+        border-radius: 3px;
+    }
+
+.roovia-section-subtitle {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-2);
+}
+
+/* ====== Grid Systems ====== */
+/* Advanced grid layouts for building complex UIs */
+
+/* Basic grid container */
+.roovia-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: var(--spacing-4);
+}
+
+/* Grid columns with responsive support */
+.roovia-col-1 {
+    grid-column: span 1;
+}
+
+.roovia-col-2 {
+    grid-column: span 2;
+}
+
+.roovia-col-3 {
+    grid-column: span 3;
+}
+
+.roovia-col-4 {
+    grid-column: span 4;
+}
+
+.roovia-col-5 {
+    grid-column: span 5;
+}
+
+.roovia-col-6 {
+    grid-column: span 6;
+}
+
+.roovia-col-7 {
+    grid-column: span 7;
+}
+
+.roovia-col-8 {
+    grid-column: span 8;
+}
+
+.roovia-col-9 {
+    grid-column: span 9;
+}
+
+.roovia-col-10 {
+    grid-column: span 10;
+}
+
+.roovia-col-11 {
+    grid-column: span 11;
+}
+
+.roovia-col-12 {
+    grid-column: span 12;
+}
+
+/* Auto-sizing grids */
+.roovia-grid-cols-1 {
+    grid-template-columns: repeat(1, 1fr);
+}
+
+.roovia-grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.roovia-grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.roovia-grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.roovia-grid-cols-5 {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.roovia-grid-cols-6 {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+/* Responsive auto-sizing grids using auto-fill */
+.roovia-grid-auto-sm {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-gap: var(--spacing-4);
+}
+
+.roovia-grid-auto-md {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-gap: var(--spacing-4);
+}
+
+.roovia-grid-auto-lg {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-gap: var(--spacing-4);
+}
+
+/* Flex layouts */
+.roovia-flex {
+    display: flex;
+}
+
+.roovia-flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.roovia-flex-wrap {
+    flex-wrap: wrap;
+}
+
+.roovia-flex-nowrap {
+    flex-wrap: nowrap;
+}
+
+/* Justify content */
+.roovia-justify-start {
+    justify-content: flex-start;
+}
+
+.roovia-justify-end {
+    justify-content: flex-end;
+}
+
+.roovia-justify-center {
+    justify-content: center;
+}
+
+.roovia-justify-between {
+    justify-content: space-between;
+}
+
+.roovia-justify-around {
+    justify-content: space-around;
+}
+
+.roovia-justify-evenly {
+    justify-content: space-evenly;
+}
+
+/* Align items */
+.roovia-items-start {
+    align-items: flex-start;
+}
+
+.roovia-items-end {
+    align-items: flex-end;
+}
+
+.roovia-items-center {
+    align-items: center;
+}
+
+.roovia-items-baseline {
+    align-items: baseline;
+}
+
+.roovia-items-stretch {
+    align-items: stretch;
+}
+
+/* Gap sizes */
+.roovia-gap-1 {
+    gap: var(--spacing-1);
+}
+
+.roovia-gap-2 {
+    gap: var(--spacing-2);
+}
+
+.roovia-gap-3 {
+    gap: var(--spacing-3);
+}
+
+.roovia-gap-4 {
+    gap: var(--spacing-4);
+}
+
+.roovia-gap-5 {
+    gap: var(--spacing-5);
+}
+
+.roovia-gap-6 {
+    gap: var(--spacing-6);
+}
+
+.roovia-gap-8 {
+    gap: var(--spacing-8);
+}
+
+.roovia-gap-10 {
+    gap: var(--spacing-10);
+}
+
+/* Card deck grid */
+.roovia-card-deck {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-gap: var(--spacing-5);
+    margin-bottom: var(--spacing-8);
+}
+
+/* Responsive media queries for grid columns */
+@media (max-width: 1200px) {
+    .roovia-grid-lg {
+        grid-template-columns: repeat(8, 1fr);
+    }
+
+    .roovia-lg-col-1 {
+        grid-column: span 1;
+    }
+
+    .roovia-lg-col-2 {
+        grid-column: span 2;
+    }
+
+    .roovia-lg-col-3 {
+        grid-column: span 3;
+    }
+
+    .roovia-lg-col-4 {
+        grid-column: span 4;
+    }
+
+    .roovia-lg-col-5 {
+        grid-column: span 5;
+    }
+
+    .roovia-lg-col-6 {
+        grid-column: span 6;
+    }
+
+    .roovia-lg-col-7 {
+        grid-column: span 7;
+    }
+
+    .roovia-lg-col-8 {
+        grid-column: span 8;
+    }
+
+    .roovia-card-deck {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .roovia-grid-md {
+        grid-template-columns: repeat(6, 1fr);
+    }
+
+    .roovia-md-col-1 {
+        grid-column: span 1;
+    }
+
+    .roovia-md-col-2 {
+        grid-column: span 2;
+    }
+
+    .roovia-md-col-3 {
+        grid-column: span 3;
+    }
+
+    .roovia-md-col-4 {
+        grid-column: span 4;
+    }
+
+    .roovia-md-col-5 {
+        grid-column: span 5;
+    }
+
+    .roovia-md-col-6 {
+        grid-column: span 6;
+    }
+
+    .roovia-card-deck {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .roovia-grid-sm {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .roovia-sm-col-1 {
+        grid-column: span 1;
+    }
+
+    .roovia-sm-col-2 {
+        grid-column: span 2;
+    }
+
+    .roovia-sm-col-3 {
+        grid-column: span 3;
+    }
+
+    .roovia-sm-col-4 {
+        grid-column: span 4;
+    }
+
+    .roovia-card-deck {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .roovia-grid-xs {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .roovia-xs-col-1 {
+        grid-column: span 1;
+    }
+
+    .roovia-xs-col-2 {
+        grid-column: span 2;
+    }
+
+    .roovia-container {
+        padding-left: var(--spacing-3);
+        padding-right: var(--spacing-3);
+    }
+}
+
+/* ====== Panel Layouts ====== */
+/* Standard panel structures */
+.roovia-panel {
+    background-color: var(--content-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: var(--card-transition);
+    margin-bottom: var(--spacing-5);
+    border: 1px solid var(--border-divider);
+}
+
+    .roovia-panel:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+.roovia-panel-header {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.roovia-panel-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.roovia-panel-body {
+    padding: var(--spacing-5);
+}
+
+.roovia-panel-footer {
+    padding: var(--spacing-4);
+    border-top: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+}
+
+/* ====== Divider and Separator Styles ====== */
+.roovia-divider {
+    height: 1px;
+    width: 100%;
+    background-color: var(--border-divider);
+    margin: var(--spacing-5) 0;
+}
+
+.roovia-divider-dashed {
+    border-top: 1px dashed var(--border-divider);
+    background-color: transparent;
+}
+
+.roovia-divider-light {
+    background-color: var(--border-light);
+}
+
+.roovia-divider-vertical {
+    width: 1px;
+    height: auto;
+    align-self: stretch;
+    margin: 0 var(--spacing-4);
+}
+
+.roovia-divider-with-text {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin: var(--spacing-5) 0;
+}
+
+    .roovia-divider-with-text::before,
+    .roovia-divider-with-text::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background-color: var(--border-divider);
+    }
+
+    .roovia-divider-with-text::before {
+        margin-right: var(--spacing-3);
+    }
+
+    .roovia-divider-with-text::after {
+        margin-left: var(--spacing-3);
+    }
+
+/* ====== Responsive Helpers ====== */
+.roovia-hide-xs,
+.roovia-hide-sm,
+.roovia-hide-md,
+.roovia-hide-lg,
+.roovia-hide-xl {
+    display: block;
+}
+
+.roovia-show-xs,
+.roovia-show-sm,
+.roovia-show-md,
+.roovia-show-lg,
+.roovia-show-xl {
+    display: none;
+}
+
+@media (max-width: 576px) {
+    .roovia-hide-xs {
+        display: none !important;
+    }
+
+    .roovia-show-xs {
+        display: block !important;
+    }
+
+    .roovia-flex.roovia-show-xs {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .roovia-hide-sm {
+        display: none !important;
+    }
+
+    .roovia-show-sm {
+        display: block !important;
+    }
+
+    .roovia-flex.roovia-show-sm {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .roovia-hide-md {
+        display: none !important;
+    }
+
+    .roovia-show-md {
+        display: block !important;
+    }
+
+    .roovia-flex.roovia-show-md {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .roovia-hide-lg {
+        display: none !important;
+    }
+
+    .roovia-show-lg {
+        display: block !important;
+    }
+
+    .roovia-flex.roovia-show-lg {
+        display: flex !important;
+    }
+}
+
+@media (min-width: 1201px) {
+    .roovia-hide-xl {
+        display: none !important;
+    }
+
+    .roovia-show-xl {
+        display: block !important;
+    }
+
+    .roovia-flex.roovia-show-xl {
+        display: flex !important;
+    }
+}

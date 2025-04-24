@@ -1,0 +1,361 @@
+﻿
+
+/* ====== Roovia Tabs Components ====== */
+/* Tab navigation system building on roovia.css variables */
+
+/* Base Tab Container */
+.roovia-tabs-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* Tab Navigation Styles */
+.roovia-tabs {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    margin-bottom: var(--spacing-4);
+    border-bottom: 1px solid var(--border-divider);
+}
+
+    .roovia-tabs::-webkit-scrollbar {
+        display: none; /* Chrome/Safari/Opera */
+    }
+
+.roovia-tab {
+    padding: var(--spacing-3) var(--spacing-4);
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-weight: 500;
+    position: relative;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: var(--hover-transition);
+    font-size: var(--font-size-base);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+    .roovia-tab:hover {
+        color: var(--primary);
+    }
+
+    .roovia-tab.active {
+        color: var(--primary);
+    }
+
+        .roovia-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+        }
+
+    .roovia-tab i {
+        font-size: 1.125rem;
+    }
+
+.roovia-tab-badge {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 18px;
+    height: 18px;
+    border-radius: var(--border-radius-pill);
+    background-color: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0 var(--spacing-1);
+    transition: var(--hover-transition);
+}
+
+.roovia-tab:hover .roovia-tab-badge,
+.roovia-tab.active .roovia-tab-badge {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Tab Content Styles */
+.roovia-tab-content {
+    position: relative;
+}
+
+.roovia-tab-panel {
+    display: none;
+    animation: roovia-fade-in 0.3s ease-in-out;
+}
+
+    .roovia-tab-panel.active {
+        display: block;
+    }
+
+@keyframes roovia-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tab Variations */
+
+/* 1. Underlined Tabs - Default */
+.roovia-tabs-underlined {
+    /* Default style above */
+}
+
+/* 2. Boxed Tabs */
+.roovia-tabs-boxed {
+    border: none;
+    gap: var(--spacing-2);
+}
+
+    .roovia-tabs-boxed .roovia-tab {
+        border-radius: var(--border-radius-lg);
+        border: 1px solid transparent;
+        padding: var(--spacing-2) var(--spacing-4);
+    }
+
+        .roovia-tabs-boxed .roovia-tab:hover {
+            background-color: var(--primary-light);
+        }
+
+        .roovia-tabs-boxed .roovia-tab.active {
+            background-color: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+            .roovia-tabs-boxed .roovia-tab.active::after {
+                content: none;
+            }
+
+/* 3. Button-Style Tabs */
+.roovia-tabs-buttons {
+    background-color: var(--subtle-bg);
+    padding: var(--spacing-2);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-divider);
+    gap: var(--spacing-2);
+}
+
+    .roovia-tabs-buttons .roovia-tab {
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+
+        .roovia-tabs-buttons .roovia-tab:hover {
+            background-color: var(--border-light);
+        }
+
+        .roovia-tabs-buttons .roovia-tab.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+            .roovia-tabs-buttons .roovia-tab.active::after {
+                content: none;
+            }
+
+            .roovia-tabs-buttons .roovia-tab.active .roovia-tab-badge {
+                background-color: white;
+                color: var(--primary);
+            }
+
+/* 4. Pills Tabs */
+.roovia-tabs-pills {
+    border: none;
+    gap: var(--spacing-2);
+}
+
+    .roovia-tabs-pills .roovia-tab {
+        border-radius: var(--border-radius-pill);
+        padding: var(--spacing-2) var(--spacing-4);
+    }
+
+        .roovia-tabs-pills .roovia-tab:hover {
+            background-color: var(--primary-light);
+        }
+
+        .roovia-tabs-pills .roovia-tab.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+            .roovia-tabs-pills .roovia-tab.active::after {
+                content: none;
+            }
+
+            .roovia-tabs-pills .roovia-tab.active .roovia-tab-badge {
+                background-color: white;
+                color: var(--primary);
+            }
+
+/* 5. Vertical Tabs */
+.roovia-tabs-container-vertical {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-4);
+}
+
+.roovia-tabs-vertical {
+    display: flex;
+    flex-direction: column;
+    border-bottom: none;
+    border-right: 1px solid var(--border-divider);
+    min-width: 200px;
+    margin-bottom: 0;
+}
+
+    .roovia-tabs-vertical .roovia-tab {
+        text-align: left;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-right: 2px solid transparent;
+    }
+
+        .roovia-tabs-vertical .roovia-tab.active::after {
+            content: none;
+        }
+
+        .roovia-tabs-vertical .roovia-tab.active {
+            border-right-color: var(--primary);
+        }
+
+.roovia-tabs-container-vertical .roovia-tab-content {
+    flex: 1;
+}
+
+/* 6. Icon Tabs */
+.roovia-tabs-icons {
+    justify-content: center;
+}
+
+    .roovia-tabs-icons .roovia-tab {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--spacing-1);
+        padding: var(--spacing-3) var(--spacing-4);
+    }
+
+        .roovia-tabs-icons .roovia-tab i {
+            font-size: 1.5rem;
+        }
+
+/* 7. Floating Tabs */
+.roovia-tabs-floating {
+    border: none;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-6);
+}
+
+    .roovia-tabs-floating .roovia-tab {
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-sm);
+        background-color: var(--content-bg);
+        border: 1px solid var(--border-divider);
+        padding: var(--spacing-3) var(--spacing-4);
+    }
+
+        .roovia-tabs-floating .roovia-tab:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .roovia-tabs-floating .roovia-tab.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+            .roovia-tabs-floating .roovia-tab.active::after {
+                content: none;
+            }
+
+/* Tab Sizes */
+.roovia-tabs-sm .roovia-tab {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+}
+
+    .roovia-tabs-sm .roovia-tab i {
+        font-size: 1rem;
+    }
+
+.roovia-tabs-lg .roovia-tab {
+    padding: var(--spacing-3) var(--spacing-5);
+    font-size: var(--font-size-lg);
+}
+
+    .roovia-tabs-lg .roovia-tab i {
+        font-size: 1.25rem;
+    }
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .roovia-tabs-container-vertical {
+        flex-direction: column;
+    }
+
+    .roovia-tabs-vertical {
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-divider);
+        min-width: 0;
+        margin-bottom: var(--spacing-4);
+    }
+
+        .roovia-tabs-vertical .roovia-tab {
+            border-right: none;
+        }
+
+            .roovia-tabs-vertical .roovia-tab.active {
+                border-right-color: transparent;
+            }
+
+                .roovia-tabs-vertical .roovia-tab.active::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -1px;
+                    left: 0;
+                    width: 100%;
+                    height: 2px;
+                    background-color: var(--primary);
+                }
+
+    .roovia-tabs-icons .roovia-tab {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+}
+
+@media (max-width: 576px) {
+    .roovia-tabs .roovia-tab {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+
+    .roovia-tabs-icons .roovia-tab i {
+        font-size: 1.25rem;
+    }
+
+    .roovia-tabs-buttons,
+    .roovia-tabs-pills,
+    .roovia-tabs-floating {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+}
