@@ -1,0 +1,134 @@
+﻿@page "/properties"
+
+<h3>Properties Detail</h3>
+
+<div class="search-container">
+    <input type="text" placeholder="Search properties..." @bind="searchTerm" class="search-input" />
+</div>
+
+<div class="properties-grid">
+    @foreach (var property in FilteredProperties)
+    {
+        <div class="property-card">
+            <img src="@property.ImageUrl" alt="Image of @property.Name" class="property-image" />
+            <div class="property-details">
+                <h4>@property.Name</h4>
+                <p class="property-address">@property.Address</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string searchTerm = "";
+
+    public class Property
+    {
+        public string Name { get; set; }
+        public string Address { get; set; }
+        public string Description { get; set; }
+        public string ImageUrl { get; set; }
+    }
+
+    List<Property> properties = new List<Property>
+    {
+        new Property
+        {
+            Name = "Greenwood Estate",
+            Address = "1234 Oak St, Springfield",
+            ImageUrl = "images/property1.jpg"
+        },
+        new Property
+        {
+            Name = "Riverfront Villa",
+            Address = "789 River Rd, Shelbyville",
+            ImageUrl = "images/property2.jpg"
+        }
+        // Add more properties as needed
+    };
+
+    IEnumerable<Property> FilteredProperties => string.IsNullOrWhiteSpace(searchTerm)
+        ? properties
+        : properties.Where(p =>
+            (!string.IsNullOrEmpty(p.Name) && p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrEmpty(p.Description) && p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrEmpty(p.Address) && p.Address.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        );
+}
+
+<style>
+    h3 {
+        text-align: center;
+        margin-top: 20px;
+        color: #333;
+    }
+
+    .search-container {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0;
+    }
+
+    .search-input {
+        width: 50%;
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 25px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+    .properties-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 0 20px 20px;
+    }
+
+    .property-card {
+        background-color: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .property-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+    .property-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+
+    .property-details {
+        padding: 15px;
+    }
+
+        .property-details h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+
+    .property-address,
+    .property-description {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #666;
+    }
+
+    .property-address {
+        margin-bottom: 8px;
+    }
+</style>

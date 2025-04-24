@@ -1,0 +1,97 @@
+﻿@page "/"
+
+<div class="container my-4">
+    <div class="text-center mb-4">
+        <img src="images/roovia-logo.png" alt="Roovia Logo" class="roovia-logo img-fluid" style="width:25%; display:block; margin:auto;" />
+    </div>
+
+    <div class="mb-4">
+        <input type="text" class="form-control" placeholder="Universal Search..." @bind="searchTerm" />
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    Beneficiaries
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill display-4"></i>
+                    <p class="mt-2">View Beneficiaries</p>
+                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToBeneficiaries">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    Properties
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-building display-4"></i>
+                    <p class="mt-2">View Properties</p>
+                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToProperties">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    Tenants
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-person-lines-fill display-4"></i>
+                    <p class="mt-2">View Tenants</p>
+                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToTenants">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    User Management
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-gear-fill display-4"></i>
+                    <p class="mt-2">Manage Users</p>
+                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToUserManagement">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string searchTerm = string.Empty;
+
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    private void NavigateToBeneficiaries()
+    {
+        NavigationManager.NavigateTo("/beneficiaries");
+    }
+
+    private void NavigateToProperties()
+    {
+        NavigationManager.NavigateTo("/properties");
+    }
+
+    private void NavigateToTenants()
+    {
+        NavigationManager.NavigateTo("/tenants");
+    }
+
+    private void NavigateToUserManagement()
+    {
+        NavigationManager.NavigateTo("/usermanagement");
+    }
+}

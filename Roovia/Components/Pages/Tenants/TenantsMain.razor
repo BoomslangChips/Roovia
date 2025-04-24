@@ -1,0 +1,104 @@
+﻿@page "/tenants"
+
+<h3>Tenants</h3>
+
+<div class="container my-4">
+   <div class="card shadow-sm">
+       <div class="card-header bg-primary text-white">
+           Tenants Overview
+       </div>
+       <div class="card-body">
+           <div class="mb-3">
+               <input type="text" placeholder="Search tenants..." class="form-control" @bind="searchTerm" />
+           </div>
+           @if (FilteredTenants.Any())
+           {
+               <div class="table-responsive">
+                   <table class="table table-striped">
+                       <thead>
+                           <tr>
+                               <th>Name</th>
+                               <th>Status</th>
+                               <th>Created On</th>
+                               <th>Actions</th>
+                           </tr>
+                       </thead>
+                       <tbody>
+                           @foreach(var tenant in FilteredTenants)
+                           {
+                               <tr>
+                                   <td>@tenant.Name</td>
+                                   <td>@tenant.Status</td>
+                                   <td>@tenant.CreatedOn.ToShortDateString()</td>
+                                   <td>
+                                       <button class="btn roovia-btn btn-sm me-2" @onclick="() => OpenTenant(tenant)">
+                                           <i class="bi bi-eye"></i> Open
+                                       </button>
+                                       <button class="btn roovia-btn btn-sm me-2" @onclick="() => EditTenant(tenant)">
+                                           <i class="bi bi-pencil"></i> Edit
+                                       </button>
+                                       <button class="btn roovia-btn btn-sm" @onclick="() => DeleteTenant(tenant)">
+                                           <i class="bi bi-trash"></i> Delete
+                                       </button>
+                                   </td>
+                               </tr>
+                           }
+                       </tbody>
+                   </table>
+               </div>
+           }
+           else
+           {
+               <div class="alert alert-info">
+                   No tenants available.
+               </div>
+           }
+       </div>
+   </div>
+</div>
+
+@code {
+   private string searchTerm = string.Empty;
+
+   public class Tenant
+   {
+       public string Name { get; set; }
+       public string Status { get; set; }
+       public DateTime CreatedOn { get; set; }
+   }
+
+   private List<Tenant> tenants = new List<Tenant>();
+
+   protected override void OnInitialized()
+   {
+       // Simulated tenants data
+       tenants = new List<Tenant>
+       {
+           new Tenant { Name = "Tenant A", Status = "Active", CreatedOn = DateTime.Now.AddDays(-30) },
+           new Tenant { Name = "Tenant B", Status = "Inactive", CreatedOn = DateTime.Now.AddDays(-60) },
+           new Tenant { Name = "Tenant C", Status = "Active", CreatedOn = DateTime.Now.AddDays(-15) }
+       };
+   }
+
+   private IEnumerable<Tenant> FilteredTenants =>
+       tenants.Where(t => string.IsNullOrEmpty(searchTerm) || t.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+   private void OpenTenant(Tenant tenant)
+   {
+       // Logic to open tenant details
+       Console.WriteLine($"Opening tenant: {tenant.Name}");
+   }
+
+   private void EditTenant(Tenant tenant)
+   {
+       // Logic to edit tenant
+       Console.WriteLine($"Editing tenant: {tenant.Name}");
+   }
+
+   private void DeleteTenant(Tenant tenant)
+   {
+       // Logic to delete tenant
+       tenants.Remove(tenant);
+       Console.WriteLine($"Deleted tenant: {tenant.Name}");
+   }
+}
