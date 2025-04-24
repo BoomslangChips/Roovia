@@ -3,6 +3,14 @@
 <div class="roovia-page" id="app-container">
     <div class="roovia-sidebar" id="sidebarContainer">
         <NavMenu />
+
+        <!-- New bottom sidebar toggle -->
+        <div class="roovia-sidebar-footer">
+            <button class="roovia-sidebar-bottom-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
+                <i class="fal fa-chevron-left" id="sidebar-toggle-icon"></i>
+                <span>Collapse Sidebar</span>
+            </button>
+        </div>
     </div>
 
     <main class="roovia-main">
@@ -34,11 +42,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Sidebar toggle button is now inside the content area for better positioning -->
-        <button class="roovia-sidebar-toggle" onclick="toggleSidebar(event)">
-            <i class="fal fa-chevron-left" id="sidebar-toggle-icon"></i>
-        </button>
 
         <div class="roovia-content">
             <div class="roovia-content-container">
@@ -120,6 +123,8 @@
 
         const sidebarContainer = document.getElementById('sidebarContainer');
         const icon = document.getElementById('sidebar-toggle-icon');
+        const textSpan = icon ? icon.nextElementSibling : null;
+
         if (!sidebarContainer) return;
 
         if (sidebarContainer.classList.contains('collapsed')) {
@@ -129,12 +134,18 @@
                 icon.classList.remove('fa-chevron-right');
                 icon.classList.add('fa-chevron-left');
             }
+            if (textSpan) {
+                textSpan.textContent = 'Collapse Sidebar';
+            }
         } else {
             sidebarContainer.classList.add('collapsed');
             localStorage.setItem('sidebar_state', 'collapsed');
             if (icon) {
                 icon.classList.remove('fa-chevron-left');
                 icon.classList.add('fa-chevron-right');
+            }
+            if (textSpan) {
+                textSpan.textContent = 'Expand';
             }
         }
     }
@@ -157,12 +168,16 @@
         const savedSidebarState = localStorage.getItem('sidebar_state');
         const sidebarContainer = document.getElementById('sidebarContainer');
         const sidebarIcon = document.getElementById('sidebar-toggle-icon');
+        const textSpan = sidebarIcon ? sidebarIcon.nextElementSibling : null;
 
         if (savedSidebarState === 'collapsed' && sidebarContainer) {
             sidebarContainer.classList.add('collapsed');
             if (sidebarIcon) {
                 sidebarIcon.classList.remove('fa-chevron-left');
                 sidebarIcon.classList.add('fa-chevron-right');
+            }
+            if (textSpan) {
+                textSpan.textContent = 'Expand';
             }
         }
 
