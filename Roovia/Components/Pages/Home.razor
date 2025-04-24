@@ -1,7 +1,111 @@
 ﻿@page "/"
+@using Roovia.Components.Elements
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Counter</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container py-4">
+    <!-- Page header with Roovia styling classes -->
+    <div class="card mb-4 animate-fade-in">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h1 class="text-primary mb-0">Counter</h1>
+            <span class="badge badge-primary">Roovia Example</span>
+        </div>
+        <div class="card-body">
+            <p role="status" class="text-secondary mb-3">Current count: <span class="text-primary font-weight-semibold">@currentCount</span></p>
 
-Welcome to your new app.
+            <!-- Using TextBox component -->
+            <Textbox Label="Increment Amount"
+                     Placeholder="Enter increment value"
+                     Type="number"
+                     IconLeft="fal fa-user"
+                     Value="@incrementAmount.ToString()"
+                     ValueChanged="HandleIncrementChange"
+                     CssClass="mb-4" />
+
+            <!-- Buttons with Roovia styling -->
+            <div class="d-flex gap-3">
+                <button class="roovia-btn roovia-btn-primary" @onclick="IncrementCount">
+                    <i class="ri-add-line"></i>
+                    Increment
+                </button>
+                <button class="roovia-btn roovia-btn-secondary" @onclick="ResetCount">
+                    <i class="ri-refresh-line"></i>
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History card using Roovia styling -->
+    @if (countHistory.Count > 0)
+    {
+        <div class="card animate-fade-in">
+            <div class="card-header">
+                <h3 class="mb-0">Count History</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Value</th>
+                                <th>Change</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (value, change, time, index) in countHistory.Select((h, i) => (h.value, h.change, h.time, i + 1)))
+                            {
+                                <tr>
+                                    <td>@index</td>
+                                    <td>@value</td>
+                                    <td>
+                                        @if (change > 0)
+                                        {
+                                            <span class="positive-value">+@change</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="negative-value">@change</span>
+                                        }
+                                    </td>
+                                    <td class="text-muted">@time.ToString("HH:mm:ss")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int currentCount = 0;
+    private int incrementAmount = 1;
+    private List<(int value, int change, DateTime time)> countHistory = new();
+
+    private void IncrementCount()
+    {
+        int previousCount = currentCount;
+        currentCount += incrementAmount;
+        countHistory.Insert(0, (currentCount, incrementAmount, DateTime.Now));
+    }
+
+    private void ResetCount()
+    {
+        int change = -currentCount;
+        currentCount = 0;
+        countHistory.Insert(0, (currentCount, change, DateTime.Now));
+    }
+
+    private void HandleIncrementChange(string value)
+    {
+        if (int.TryParse(value, out int result))
+        {
+            incrementAmount = result;
+        }
+    }
+}
