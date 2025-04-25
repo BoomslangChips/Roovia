@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
+using Roovia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
+
+
+
+builder.Services.AddScoped<ToastService>();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 

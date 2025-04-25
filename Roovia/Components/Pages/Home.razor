@@ -1,8 +1,10 @@
 ﻿@page "/"
 @using Roovia.Components.Elements
+@using Roovia.Services
 @rendermode InteractiveServer
 @inject IJSRuntime JSRuntime
-
+@inject ToastService ToastService
+<ToastContainer />
 <PageTitle>Roovia Components Demo</PageTitle>
 
 <div class="container py-4">
@@ -85,6 +87,41 @@
 
                             <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomModal">
                                 <i class="far fa-cog"></i> Custom Modal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Toast Card -->
+                <div class="roovia-card roovia-card-hover">
+                    <div class="roovia-card-header">
+                        <h3 class="roovia-card-title">
+                            <i class="far fa-bell"></i>
+                            Toast Notifications
+                        </h3>
+                    </div>
+                    <div class="roovia-card-body">
+                        <p class="mb-3">Display beautiful toast notifications to alert users about events or actions:</p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <button class="roovia-btn roovia-btn-success" @onclick="ShowSuccessToast">
+                                <i class="far fa-check-circle"></i> Success Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-danger" @onclick="ShowErrorToast">
+                                <i class="far fa-times-circle"></i> Error Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-warning" @onclick="ShowWarningToast">
+                                <i class="far fa-exclamation-triangle"></i> Warning Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-info" @onclick="ShowInfoToast">
+                                <i class="far fa-info-circle"></i> Info Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomToast">
+                                <i class="far fa-bell"></i> Custom Toast
                             </button>
                         </div>
                     </div>
@@ -188,7 +225,7 @@
             {
                 <div class="mt-4">
                     <h4>Fullscreen Content Example</h4>
-                    <div class="grid grid-cols-1 grid-cols-2 gap-4 mt-3">
+                    <div class="grid grid-cols-2 gap-4 mt-3">
                         <div class="roovia-card">
                             <div class="roovia-card-body">
                                 <h5>Column 1</h5>
@@ -276,6 +313,7 @@
     </FooterContent>
 </Modal>
 
+<!-- Toast container should be added to MainLayout.razor -->
 @code {
     // Counter variables
     private int currentCount = 0;
@@ -311,6 +349,9 @@
         int previousCount = currentCount;
         currentCount += incrementAmount;
         countHistory.Insert(0, (currentCount, incrementAmount, DateTime.Now));
+
+        // Show a success toast
+        ToastService.ShowSuccess($"Counter incremented by {incrementAmount}");
     }
 
     private void ResetCount()
@@ -318,6 +359,9 @@
         int change = -currentCount;
         currentCount = 0;
         countHistory.Insert(0, (currentCount, change, DateTime.Now));
+
+        // Show an info toast
+        ToastService.ShowInfo("Counter has been reset to zero");
     }
 
     private void HandleIncrementChange(string value)
@@ -334,11 +378,18 @@
         selectedDateTime = value;
         isDateTimeValid = true;
         dateTimeValidationMessage = "";
+
+        // Show a toast notification
+        if (value.HasValue)
+        {
+            ToastService.ShowInfo($"Date selected: {value.Value.ToString("dd/MM/yyyy HH:mm")}");
+        }
     }
 
     private void ClearDateTime()
     {
         selectedDateTime = null;
+        ToastService.Show("Date selection cleared", ToastType.Info);
     }
 
     private void ValidateDateTime()
@@ -347,16 +398,19 @@
         {
             isDateTimeValid = false;
             dateTimeValidationMessage = "Please select a date and time.";
+            ToastService.ShowError("Date validation failed: No date selected");
         }
         else if (selectedDateTime.Value < DateTime.Now)
         {
             isDateTimeValid = false;
             dateTimeValidationMessage = "Selected date cannot be in the past.";
+            ToastService.ShowWarning("Date validation warning: Date is in the past");
         }
         else
         {
             isDateTimeValid = true;
             dateTimeValidationMessage = "";
+            ToastService.ShowSuccess("Date validation passed!");
         }
     }
 
@@ -399,6 +453,9 @@
     {
         // Handle confirm action
         CloseModal();
+
+        // Show a success toast
+        ToastService.ShowSuccess("Modal action confirmed!");
     }
 
     private void ShowCustomModal()
@@ -410,5 +467,39 @@
     private void CloseCustomModal()
     {
         isCustomModalVisible = false;
+    }
+
+    // Toast methods
+    private void ShowSuccessToast()
+    {
+        ToastService.ShowSuccess("Operation completed successfully!", "Success");
+    }
+
+    private void ShowErrorToast()
+    {
+        ToastService.ShowError("An error occurred while processing your request.", "Error");
+    }
+
+    private void ShowWarningToast()
+    {
+        ToastService.ShowWarning("This action may have unintended consequences.", "Warning");
+    }
+
+    private void ShowInfoToast()
+    {
+        ToastService.ShowInfo("Here's some useful information for you.", "Information");
+    }
+
+    private void ShowCustomToast()
+    {
+        ToastService.ShowToast(
+            "Custom Notification",
+            "This is a custom toast with longer duration and no auto-hide.",
+            ToastType.Info,
+            10,
+            false,  // No auto-hide
+            true,   // Show progress
+            "far fa-bell"
+        );
     }
 }
