@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
+using Roovia.Interfaces;
+using Roovia.Models.Users;
 using Roovia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,10 +28,8 @@ builder.Services.AddAuthentication(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-options.UseSqlServer(connectionString, sqlOptions =>
-   {
-       sqlOptions.EnableRetryOnFailure();
-   }));
+options.UseSqlServer(connectionString));
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -37,6 +37,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+builder.Services.AddScoped<ITenant, TenantService>();
+builder.Services.AddScoped<IProperty, PropertyService>();
+builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
 
 
 builder.Services.AddScoped<ToastService>();
