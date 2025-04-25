@@ -1,0 +1,702 @@
+﻿@* DateTimePicker.razor *@
+<div class="roovia-datetime-picker @(IsValid ? "" : "roovia-datetime-picker-invalid") @CssClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id" class="roovia-datetime-picker-label">@Label</label>
+    }
+
+    <div class="roovia-datetime-picker-wrapper">
+        <div class="roovia-datetime-picker-input-wrapper">
+            @if (!string.IsNullOrEmpty(IconLeft))
+            {
+                <span class="roovia-datetime-picker-icon-left">
+                    <i class="@IconLeft"></i>
+                </span>
+            }
+            <input id="@Id"
+                   type="text"
+                   class="roovia-datetime-picker-input"
+                   placeholder="@Placeholder"
+                   value="@FormattedValue"
+                   @onclick="ToggleCalendar"
+                   @onblur="HandleInputBlur"
+                   @onfocus="OnFocusHandler"
+                   @onchange="OnInputChanged"
+                   readonly="@ReadOnly"
+                   disabled="@Disabled" />
+            <span class="roovia-datetime-picker-icon-right" @onclick="ToggleCalendar">
+                <i class="@(IconRight ?? "far fa-calendar-alt")"></i>
+            </span>
+        </div>
+
+        @if (IsCalendarOpen)
+        {
+            <div class="roovia-datetime-picker-calendar" @onmousedown:preventDefault @onmousedown:stopPropagation>
+                <div class="roovia-datetime-picker-calendar-header">
+                    <button type="button" class="roovia-datetime-picker-nav-btn" @onclick="PreviousMonth">
+                        <i class="far fa-chevron-left"></i>
+                    </button>
+                    <div class="roovia-datetime-picker-month-year">
+                        <select class="roovia-datetime-picker-month-select" @onchange="OnMonthChanged">
+                            @for (int i = 0; i < 12; i++)
+                            {
+                                <option value="@i" selected="@(i == CurrentMonth)">@(new DateTime(CurrentYear, i + 1, 1).ToString("MMMM"))</option>
+                            }
+                        </select>
+                        <select class="roovia-datetime-picker-year-select" @onchange="OnYearChanged">
+                            @for (int i = CurrentYear - 10; i <= CurrentYear + 10; i++)
+                            {
+                                <option value="@i" selected="@(i == CurrentYear)">@i</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="button" class="roovia-datetime-picker-nav-btn" @onclick="NextMonth">
+                        <i class="far fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="roovia-datetime-picker-calendar-body">
+                    <div class="roovia-datetime-picker-weekdays">
+                        <div class="roovia-datetime-picker-weekday">Su</div>
+                        <div class="roovia-datetime-picker-weekday">Mo</div>
+                        <div class="roovia-datetime-picker-weekday">Tu</div>
+                        <div class="roovia-datetime-picker-weekday">We</div>
+                        <div class="roovia-datetime-picker-weekday">Th</div>
+                        <div class="roovia-datetime-picker-weekday">Fr</div>
+                        <div class="roovia-datetime-picker-weekday">Sa</div>
+                    </div>
+                    <div class="roovia-datetime-picker-days">
+                        @foreach (var day in CalendarDays)
+                        {
+                            var isCurrentMonth = day.Month == CurrentMonth + 1;
+                            var isToday = day.Date == DateTime.Today;
+                            var isSelected = SelectedDate.HasValue && day.Date == SelectedDate.Value.Date;
+                            var dayClasses = $"roovia-datetime-picker-day {(isCurrentMonth ? "" : "other-month")} {(isToday ? "today" : "")} {(isSelected ? "selected" : "")}";
+
+                            <div class="@dayClasses" @onclick="() => SelectDate(day)">
+                                @day.Day
+                            </div>
+                        }
+                    </div>
+                </div>
+                @if (IncludeTime)
+                {
+                    <div class="roovia-datetime-picker-time">
+                        <div class="roovia-datetime-picker-time-header">
+                            <i class="far fa-clock"></i>
+                            <span>Time</span>
+                        </div>
+                        <div class="roovia-datetime-picker-time-inputs">
+                            <div class="roovia-datetime-picker-time-field">
+                                <button type="button" class="roovia-datetime-picker-time-btn" @onclick="IncrementHour">
+                                    <i class="far fa-chevron-up"></i>
+                                </button>
+                                <input type="text"
+                                       class="roovia-datetime-picker-time-input"
+                                       value="@CurrentHour.ToString("D2")"
+                                       @onchange="OnHourChanged" />
+                                <button type="button" class="roovia-datetime-picker-time-btn" @onclick="DecrementHour">
+                                    <i class="far fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div class="roovia-datetime-picker-time-separator">:</div>
+                            <div class="roovia-datetime-picker-time-field">
+                                <button type="button" class="roovia-datetime-picker-time-btn" @onclick="IncrementMinute">
+                                    <i class="far fa-chevron-up"></i>
+                                </button>
+                                <input type="text"
+                                       class="roovia-datetime-picker-time-input"
+                                       value="@CurrentMinute.ToString("D2")"
+                                       @onchange="OnMinuteChanged" />
+                                <button type="button" class="roovia-datetime-picker-time-btn" @onclick="DecrementMinute">
+                                    <i class="far fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div class="roovia-datetime-picker-buttons">
+                    <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-secondary" @onclick="Clear">Clear</button>
+                    <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-primary" @onclick="ApplySelection">Apply</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!IsValid && !string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="roovia-datetime-picker-validation">@ValidationMessage</div>
+    }
+</div>
+
+<style>
+    /* Component-specific styles building on the core CSS variables */
+    .roovia-datetime-picker {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-2);
+        margin-bottom: var(--spacing-4);
+    }
+
+    .roovia-datetime-picker-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .roovia-datetime-picker-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .roovia-datetime-picker-input-wrapper {
+        position: relative;
+        display: flex;
+        width: 100%;
+    }
+
+    .roovia-datetime-picker-input {
+        width: 100%;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-base);
+        transition: var(--hover-transition);
+        cursor: pointer;
+    }
+
+        .roovia-datetime-picker-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-focus);
+        }
+
+    .roovia-datetime-picker-icon-left,
+    .roovia-datetime-picker-icon-right {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .roovia-datetime-picker-icon-left {
+        left: var(--spacing-3);
+    }
+
+    .roovia-datetime-picker-input:focus ~ .roovia-datetime-picker-icon-left {
+        color: var(--primary);
+    }
+
+    .roovia-datetime-picker-icon-right {
+        right: var(--spacing-3);
+        pointer-events: auto;
+        cursor: pointer;
+    }
+
+        .roovia-datetime-picker-input:focus ~ .roovia-datetime-picker-icon-right,
+        .roovia-datetime-picker-icon-right:hover {
+            color: var(--primary);
+        }
+
+    .roovia-datetime-picker-input-wrapper:has(.roovia-datetime-picker-icon-left) .roovia-datetime-picker-input {
+        padding-left: calc(var(--spacing-3) * 2 + 1rem);
+    }
+
+    .roovia-datetime-picker-input-wrapper:has(.roovia-datetime-picker-icon-right) .roovia-datetime-picker-input {
+        padding-right: calc(var(--spacing-3) * 2 + 1rem);
+    }
+
+    .roovia-datetime-picker-invalid .roovia-datetime-picker-input {
+        border-color: var(--danger);
+    }
+
+    .roovia-datetime-picker-validation {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: var(--spacing-1);
+    }
+
+    .roovia-datetime-picker-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--subtle-bg);
+    }
+
+    /* Calendar styling */
+    .roovia-datetime-picker-calendar {
+        position: absolute;
+        top: calc(100% + 5px);
+        left: 0;
+        z-index: var(--z-dropdown);
+        width: 320px;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-divider);
+        overflow: hidden;
+        animation: fadeInDown 0.2s ease;
+    }
+
+    @@keyframes fadeInDown {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    .roovia-datetime-picker-calendar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-3);
+        background-color: var(--subtle-bg);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-datetime-picker-month-year {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-datetime-picker-month-select,
+    .roovia-datetime-picker-year-select {
+        padding: var(--spacing-1) var(--spacing-2);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        font-size: var(--font-size-sm);
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+        .roovia-datetime-picker-month-select:focus,
+        .roovia-datetime-picker-year-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+    .roovia-datetime-picker-nav-btn {
+        background: none;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--border-radius-sm);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--hover-transition);
+    }
+
+        .roovia-datetime-picker-nav-btn:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+    .roovia-datetime-picker-calendar-body {
+        padding: var(--spacing-3);
+    }
+
+    .roovia-datetime-picker-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-datetime-picker-weekday {
+        text-align: center;
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: var(--spacing-1);
+    }
+
+    .roovia-datetime-picker-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+    }
+
+    .roovia-datetime-picker-day {
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        transition: var(--hover-transition);
+    }
+
+        .roovia-datetime-picker-day:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .roovia-datetime-picker-day.other-month {
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .roovia-datetime-picker-day.today {
+            font-weight: 600;
+            border: 1px dashed var(--primary);
+        }
+
+        .roovia-datetime-picker-day.selected {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+    /* Time picker styling */
+    .roovia-datetime-picker-time {
+        padding: var(--spacing-3);
+        border-top: 1px solid var(--border-divider);
+    }
+
+    .roovia-datetime-picker-time-header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-datetime-picker-time-inputs {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-datetime-picker-time-field {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .roovia-datetime-picker-time-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: var(--spacing-1);
+        transition: var(--hover-transition);
+    }
+
+        .roovia-datetime-picker-time-btn:hover {
+            color: var(--primary);
+        }
+
+    .roovia-datetime-picker-time-input {
+        width: 40px;
+        text-align: center;
+        padding: var(--spacing-1);
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-sm);
+        font-size: var(--font-size-base);
+        color: var(--text-primary);
+    }
+
+        .roovia-datetime-picker-time-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+    .roovia-datetime-picker-time-separator {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    /* Action buttons */
+    .roovia-datetime-picker-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-2);
+        padding: var(--spacing-3);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select date/time...";
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public string IconLeft { get; set; }
+    [Parameter] public string IconRight { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public string ValidationMessage { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public bool IncludeTime { get; set; } = true;
+    [Parameter] public string Format { get; set; } = "MM/dd/yyyy HH:mm";
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+
+    private bool IsCalendarOpen { get; set; }
+    private DateTime? SelectedDate { get; set; }
+    private int CurrentYear { get; set; }
+    private int CurrentMonth { get; set; }
+    private int CurrentHour { get; set; }
+    private int CurrentMinute { get; set; }
+    private List<DateTime> CalendarDays { get; set; } = new List<DateTime>();
+
+    protected override void OnInitialized()
+    {
+        SelectedDate = Value;
+        SetCurrentDateValues();
+        GenerateCalendarDays();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Value != SelectedDate)
+        {
+            SelectedDate = Value;
+            SetCurrentDateValues();
+            GenerateCalendarDays();
+        }
+    }
+
+    private void SetCurrentDateValues()
+    {
+        var dateToUse = SelectedDate ?? DateTime.Now;
+
+        CurrentYear = dateToUse.Year;
+        CurrentMonth = dateToUse.Month - 1;
+        CurrentHour = dateToUse.Hour;
+        CurrentMinute = dateToUse.Minute;
+    }
+
+    private void GenerateCalendarDays()
+    {
+        CalendarDays = new List<DateTime>();
+
+        // First day of the month
+        var firstDayOfMonth = new DateTime(CurrentYear, CurrentMonth + 1, 1);
+
+        // Calculate days from previous month to show
+        int daysFromPrevMonth = ((int)firstDayOfMonth.DayOfWeek);
+        var startDate = firstDayOfMonth.AddDays(-daysFromPrevMonth);
+
+        // Generate 42 days (6 weeks) to ensure we have enough for any month
+        for (int i = 0; i < 42; i++)
+        {
+            CalendarDays.Add(startDate.AddDays(i));
+        }
+    }
+
+    private string FormattedValue => SelectedDate.HasValue ?
+        IncludeTime ? SelectedDate.Value.ToString(Format) : SelectedDate.Value.ToString("MM/dd/yyyy") :
+        string.Empty;
+
+    private void ToggleCalendar()
+    {
+        if (!Disabled && !ReadOnly)
+        {
+            IsCalendarOpen = !IsCalendarOpen;
+        }
+    }
+
+    private async Task HandleInputBlur(FocusEventArgs e)
+    {
+        // Small delay to allow for clicking calendar elements
+        await Task.Delay(200);
+
+        if (OnBlur.HasDelegate)
+            await OnBlur.InvokeAsync(e);
+    }
+
+    private async Task OnFocusHandler(FocusEventArgs e)
+    {
+        if (OnFocus.HasDelegate)
+            await OnFocus.InvokeAsync(e);
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        if (OnChange.HasDelegate)
+            await OnChange.InvokeAsync(e);
+    }
+
+    private void PreviousMonth()
+    {
+        if (CurrentMonth == 0)
+        {
+            CurrentMonth = 11;
+            CurrentYear--;
+        }
+        else
+        {
+            CurrentMonth--;
+        }
+
+        GenerateCalendarDays();
+    }
+
+    private void NextMonth()
+    {
+        if (CurrentMonth == 11)
+        {
+            CurrentMonth = 0;
+            CurrentYear++;
+        }
+        else
+        {
+            CurrentMonth++;
+        }
+
+        GenerateCalendarDays();
+    }
+
+    private void OnMonthChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int month))
+        {
+            CurrentMonth = month;
+            GenerateCalendarDays();
+        }
+    }
+
+    private void OnYearChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int year))
+        {
+            CurrentYear = year;
+            GenerateCalendarDays();
+        }
+    }
+
+    private void SelectDate(DateTime day)
+    {
+        // Keep the time portion if it's already set
+        if (SelectedDate.HasValue)
+        {
+            SelectedDate = new DateTime(
+                day.Year,
+                day.Month,
+                day.Day,
+                CurrentHour,
+                CurrentMinute,
+                0
+            );
+        }
+        else
+        {
+            SelectedDate = new DateTime(
+                day.Year,
+                day.Month,
+                day.Day,
+                DateTime.Now.Hour,
+                DateTime.Now.Minute,
+                0
+            );
+
+            CurrentHour = SelectedDate.Value.Hour;
+            CurrentMinute = SelectedDate.Value.Minute;
+        }
+
+        // If we don't include time, apply the selection immediately
+        if (!IncludeTime)
+        {
+            ApplySelection();
+        }
+    }
+
+    private void IncrementHour()
+    {
+        CurrentHour = (CurrentHour + 1) % 24;
+        UpdateSelectedDateTime();
+    }
+
+    private void DecrementHour()
+    {
+        CurrentHour = (CurrentHour - 1 + 24) % 24;
+        UpdateSelectedDateTime();
+    }
+
+    private void IncrementMinute()
+    {
+        CurrentMinute = (CurrentMinute + 1) % 60;
+        UpdateSelectedDateTime();
+    }
+
+    private void DecrementMinute()
+    {
+        CurrentMinute = (CurrentMinute - 1 + 60) % 60;
+        UpdateSelectedDateTime();
+    }
+
+    private void OnHourChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int hour) && hour >= 0 && hour < 24)
+        {
+            CurrentHour = hour;
+            UpdateSelectedDateTime();
+        }
+    }
+
+    private void OnMinuteChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int minute) && minute >= 0 && minute < 60)
+        {
+            CurrentMinute = minute;
+            UpdateSelectedDateTime();
+        }
+    }
+
+    private void UpdateSelectedDateTime()
+    {
+        if (SelectedDate.HasValue)
+        {
+            SelectedDate = new DateTime(
+                SelectedDate.Value.Year,
+                SelectedDate.Value.Month,
+                SelectedDate.Value.Day,
+                CurrentHour,
+                CurrentMinute,
+                0
+            );
+        }
+    }
+
+    private async Task ApplySelection()
+    {
+        IsCalendarOpen = false;
+
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(SelectedDate);
+    }
+
+    private async Task Clear()
+    {
+        SelectedDate = null;
+
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(null);
+
+        IsCalendarOpen = false;
+    }
+}
