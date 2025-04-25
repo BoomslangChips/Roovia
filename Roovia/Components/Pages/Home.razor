@@ -1,38 +1,162 @@
 ﻿@page "/temp"
 @using Roovia.Components.Elements
+@using Roovia.Services
 @rendermode InteractiveServer
-
-<PageTitle>Counter</PageTitle>
+@inject IJSRuntime JSRuntime
+@inject ToastService ToastService
+<ToastContainer />
+<PageTitle>Roovia Components Demo</PageTitle>
 
 <div class="container py-4">
     <!-- Page header with Roovia styling classes -->
-    <div class="card mb-4 animate-fade-in">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h1 class="text-primary mb-0">Counter</h1>
-            <span class="badge badge-primary">Roovia Example</span>
+    <div class="roovia-card roovia-card-primary mb-4 animate-fade-in">
+        <div class="roovia-card-header">
+            <h2 class="roovia-card-title"><i class="far fa-flask"></i> Roovia Components Demo</h2>
         </div>
-        <div class="card-body">
-            <p role="status" class="text-secondary mb-3">Current count: <span class="text-primary font-weight-semibold">@currentCount</span></p>
+        <div class="roovia-card-body">
+            <p class="text-secondary mb-3">Showcase of custom Roovia components for your oil processing application.</p>
 
-            <!-- Using TextBox component -->
-            <Textbox Label="Increment Amount"
-                     Placeholder="Enter increment value"
-                     Type="number"
-                     IconLeft="fal fa-user"
-                     Value="@incrementAmount.ToString()"
-                     ValueChanged="HandleIncrementChange"
-                     CssClass="mb-4" />
+            <div class="grid grid-cols-auto-fill-md gap-4 mb-4">
+                <!-- DateTimePicker Card -->
+                <div class="roovia-card roovia-card-hover">
+                    <div class="roovia-card-header">
+                        <h3 class="roovia-card-title">
+                            <i class="far fa-calendar-alt"></i>
+                            DateTime Picker
+                        </h3>
+                    </div>
+                    <div class="roovia-card-body">
+                        <p class="mb-3">A custom DateTime picker component with calendar and time selection:</p>
 
-            <!-- Buttons with Roovia styling -->
-            <div class="d-flex gap-3">
-                <button class="roovia-btn roovia-btn-primary" @onclick="IncrementCount">
-                    <i class="ri-add-line"></i>
-                    Increment
-                </button>
-                <button class="roovia-btn roovia-btn-secondary" @onclick="ResetCount">
-                    <i class="ri-refresh-line"></i>
-                    Reset
-                </button>
+                        <!-- DateTimePicker Component -->
+                        <DateTimePicker Label="Select Date and Time"
+                                        Placeholder="Choose date/time..."
+                                        IconLeft="far fa-calendar-alt"
+                                        Value="@selectedDateTime"
+                                        ValueChanged="@OnDateTimeChanged"
+                                        Format="dd/MM/yyyy HH:mm"
+                                        IncludeTime="true"
+                                        IsValid="@isDateTimeValid"
+                                        ValidationMessage="@dateTimeValidationMessage" />
+
+                        <!-- Show selected value -->
+                        <div class="mt-3">
+                            <p class="mb-1 text-muted">Selected Value:</p>
+                            <div class="p-3 bg-primary-light rounded-md">
+                                <code>@(selectedDateTime?.ToString("dd/MM/yyyy HH:mm") ?? "No date selected")</code>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="roovia-card-footer">
+                        <button class="roovia-btn roovia-btn-secondary" @onclick="ClearDateTime">
+                            <i class="far fa-trash-alt"></i> Clear
+                        </button>
+                        <button class="roovia-btn roovia-btn-primary" @onclick="ValidateDateTime">
+                            <i class="far fa-check-circle"></i> Validate
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Card -->
+                <div class="roovia-card roovia-card-hover">
+                    <div class="roovia-card-header">
+                        <h3 class="roovia-card-title">
+                            <i class="far fa-window-maximize"></i>
+                            Modal Dialog
+                        </h3>
+                    </div>
+                    <div class="roovia-card-body">
+                        <p class="mb-3">Display content in beautiful modal dialogs with various sizes and options:</p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Small)">
+                                <i class="far fa-window-restore"></i> Small Modal
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Medium)">
+                                <i class="far fa-window-maximize"></i> Medium Modal
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Large)">
+                                <i class="far fa-window-maximize"></i> Large Modal
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Fullscreen)">
+                                <i class="far fa-expand"></i> Fullscreen Modal
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomModal">
+                                <i class="far fa-cog"></i> Custom Modal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Toast Card -->
+                <div class="roovia-card roovia-card-hover">
+                    <div class="roovia-card-header">
+                        <h3 class="roovia-card-title">
+                            <i class="far fa-bell"></i>
+                            Toast Notifications
+                        </h3>
+                    </div>
+                    <div class="roovia-card-body">
+                        <p class="mb-3">Display beautiful toast notifications to alert users about events or actions:</p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <button class="roovia-btn roovia-btn-success" @onclick="ShowSuccessToast">
+                                <i class="far fa-check-circle"></i> Success Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-danger" @onclick="ShowErrorToast">
+                                <i class="far fa-times-circle"></i> Error Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-warning" @onclick="ShowWarningToast">
+                                <i class="far fa-exclamation-triangle"></i> Warning Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-info" @onclick="ShowInfoToast">
+                                <i class="far fa-info-circle"></i> Info Toast
+                            </button>
+
+                            <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomToast">
+                                <i class="far fa-bell"></i> Custom Toast
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Counter Card (original content) -->
+            <div class="roovia-card">
+                <div class="roovia-card-header">
+                    <h3 class="roovia-card-title"><i class="far fa-calculator"></i> Counter</h3>
+                </div>
+                <div class="roovia-card-body">
+                    <p role="status" class="text-secondary mb-3">Current count: <span class="text-primary font-weight-semibold">@currentCount</span></p>
+
+                    <!-- Using TextBox component -->
+                    <Textbox Label="Increment Amount"
+                             Placeholder="Enter increment value"
+                             Type="number"
+                             IconLeft="far fa-plus"
+                             Value="@incrementAmount.ToString()"
+                             ValueChanged="HandleIncrementChange"
+                             CssClass="mb-4" />
+
+                    <!-- Buttons with Roovia styling -->
+                    <div class="d-flex gap-3">
+                        <button class="roovia-btn roovia-btn-primary" @onclick="IncrementCount">
+                            <i class="far fa-plus"></i>
+                            Increment
+                        </button>
+                        <button class="roovia-btn roovia-btn-secondary" @onclick="ResetCount">
+                            <i class="far fa-redo"></i>
+                            Reset
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -40,11 +164,11 @@
     <!-- History card using Roovia styling -->
     @if (countHistory.Count > 0)
     {
-        <div class="card animate-fade-in">
-            <div class="card-header">
-                <h3 class="mb-0">Count History</h3>
+        <div class="roovia-card animate-fade-in">
+            <div class="roovia-card-header">
+                <h3 class="roovia-card-title"><i class="far fa-history"></i> Count History</h3>
             </div>
-            <div class="card-body">
+            <div class="roovia-card-body">
                 <div class="table-container">
                     <table class="table table-hover">
                         <thead>
@@ -82,16 +206,152 @@
     }
 </div>
 
+<!-- Modal Components -->
+<Modal Title="@modalTitle"
+       Icon="@modalIcon"
+       IsVisible="@isModalVisible"
+       ShowHeader="true"
+       ShowCloseButton="true"
+       Size="@currentModalSize"
+       OnClose="CloseModal"
+       OnConfirm="ConfirmModal"
+       OnCancel="CloseModal">
+
+    <ChildContent>
+        <div class="p-3">
+            <p>This is a @currentModalSize modal dialog example. You can use it to display important information or create interactive forms.</p>
+
+            @if (currentModalSize == "fullscreen")
+            {
+                <div class="mt-4">
+                    <h4>Fullscreen Content Example</h4>
+                    <div class="grid grid-cols-2 gap-4 mt-3">
+                        <div class="roovia-card">
+                            <div class="roovia-card-body">
+                                <h5>Column 1</h5>
+                                <p>Fullscreen modals are perfect for complex views that need more space.</p>
+                            </div>
+                        </div>
+                        <div class="roovia-card">
+                            <div class="roovia-card-body">
+                                <h5>Column 2</h5>
+                                <p>You can fit multiple sections of content in a fullscreen modal.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="mt-4">
+                <DateTimePicker Label="Schedule Date"
+                                Placeholder="Choose a date..."
+                                IconLeft="far fa-calendar-alt"
+                                Value="@modalDateTime"
+                                ValueChanged="@((value) => modalDateTime = value)"
+                                Format="dd/MM/yyyy HH:mm" />
+            </div>
+        </div>
+    </ChildContent>
+</Modal>
+
+<Modal Title="Custom Modal Example"
+       Icon="far fa-cogs"
+       IsVisible="@isCustomModalVisible"
+       ShowHeader="true"
+       ShowCloseButton="true"
+       DefaultFooter="false"
+       Size="lg"
+       OnClose="CloseCustomModal">
+
+    <ChildContent>
+        <div class="p-3">
+            <p>This custom modal uses a custom footer and content layout.</p>
+
+            <div class="roovia-form-group mt-4">
+                <label class="roovia-form-label">Sample Form Field</label>
+                <input type="text" class="roovia-input" placeholder="Enter some text..." />
+                <div class="roovia-form-helper">This is just a sample form field for demonstration.</div>
+            </div>
+
+            <div class="roovia-tabs-container mt-4">
+                <div class="roovia-tabs roovia-tabs-boxed">
+                    <button class="roovia-tab @(activeTab == 1 ? "active" : "")" @onclick="() => activeTab = 1">
+                        <i class="far fa-info-circle"></i> Tab 1
+                    </button>
+                    <button class="roovia-tab @(activeTab == 2 ? "active" : "")" @onclick="() => activeTab = 2">
+                        <i class="far fa-cog"></i> Tab 2
+                    </button>
+                    <button class="roovia-tab @(activeTab == 3 ? "active" : "")" @onclick="() => activeTab = 3">
+                        <i class="far fa-chart-bar"></i> Tab 3
+                    </button>
+                </div>
+                <div class="roovia-tab-content mt-3">
+                    <div class="roovia-tab-panel @(activeTab == 1 ? "active" : "")">
+                        <h4>Tab 1 Content</h4>
+                        <p>This is the content for the first tab.</p>
+                    </div>
+                    <div class="roovia-tab-panel @(activeTab == 2 ? "active" : "")">
+                        <h4>Tab 2 Content</h4>
+                        <p>This is the content for the second tab.</p>
+                    </div>
+                    <div class="roovia-tab-panel @(activeTab == 3 ? "active" : "")">
+                        <h4>Tab 3 Content</h4>
+                        <p>This is the content for the third tab.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+
+    <FooterContent>
+        <button class="roovia-btn roovia-btn-success" @onclick="CloseCustomModal">
+            <i class="far fa-check"></i> Custom Action
+        </button>
+        <button class="roovia-btn roovia-btn-secondary" @onclick="CloseCustomModal">
+            <i class="far fa-times"></i> Close
+        </button>
+    </FooterContent>
+</Modal>
+
+<!-- Toast container should be added to MainLayout.razor -->
 @code {
+    // Counter variables
     private int currentCount = 0;
     private int incrementAmount = 1;
     private List<(int value, int change, DateTime time)> countHistory = new();
 
+    // DateTime Picker variables
+    private DateTime? selectedDateTime = DateTime.Now;
+    private bool isDateTimeValid = true;
+    private string dateTimeValidationMessage = "";
+
+    // Modal variables
+    private bool isModalVisible = false;
+    private bool isCustomModalVisible = false;
+    private string currentModalSize = "md";
+    private string modalTitle = "Modal Dialog";
+    private string modalIcon = "far fa-window-maximize";
+    private DateTime? modalDateTime = DateTime.Now;
+    private int activeTab = 1;
+
+    // Modal size enum for type safety
+    private enum ModalSize
+    {
+        Small,
+        Medium,
+        Large,
+        Fullscreen
+    }
+
+    // Counter methods
     private void IncrementCount()
     {
         int previousCount = currentCount;
         currentCount += incrementAmount;
         countHistory.Insert(0, (currentCount, incrementAmount, DateTime.Now));
+
+        // Show a success toast
+        ToastService.ShowSuccess($"Counter incremented by {incrementAmount}");
     }
 
     private void ResetCount()
@@ -99,6 +359,9 @@
         int change = -currentCount;
         currentCount = 0;
         countHistory.Insert(0, (currentCount, change, DateTime.Now));
+
+        // Show an info toast
+        ToastService.ShowInfo("Counter has been reset to zero");
     }
 
     private void HandleIncrementChange(string value)
@@ -107,5 +370,136 @@
         {
             incrementAmount = result;
         }
+    }
+
+    // DateTime Picker methods
+    private void OnDateTimeChanged(DateTime? value)
+    {
+        selectedDateTime = value;
+        isDateTimeValid = true;
+        dateTimeValidationMessage = "";
+
+        // Show a toast notification
+        if (value.HasValue)
+        {
+            ToastService.ShowInfo($"Date selected: {value.Value.ToString("dd/MM/yyyy HH:mm")}");
+        }
+    }
+
+    private void ClearDateTime()
+    {
+        selectedDateTime = null;
+        ToastService.Show("Date selection cleared", ToastType.Info);
+    }
+
+    private void ValidateDateTime()
+    {
+        if (!selectedDateTime.HasValue)
+        {
+            isDateTimeValid = false;
+            dateTimeValidationMessage = "Please select a date and time.";
+            ToastService.ShowError("Date validation failed: No date selected");
+        }
+        else if (selectedDateTime.Value < DateTime.Now)
+        {
+            isDateTimeValid = false;
+            dateTimeValidationMessage = "Selected date cannot be in the past.";
+            ToastService.ShowWarning("Date validation warning: Date is in the past");
+        }
+        else
+        {
+            isDateTimeValid = true;
+            dateTimeValidationMessage = "";
+            ToastService.ShowSuccess("Date validation passed!");
+        }
+    }
+
+    // Modal methods
+    private void ShowModal(ModalSize size)
+    {
+        switch (size)
+        {
+            case ModalSize.Small:
+                currentModalSize = "sm";
+                modalTitle = "Small Modal";
+                modalIcon = "far fa-window-restore";
+                break;
+            case ModalSize.Medium:
+                currentModalSize = "md";
+                modalTitle = "Medium Modal";
+                modalIcon = "far fa-window-maximize";
+                break;
+            case ModalSize.Large:
+                currentModalSize = "lg";
+                modalTitle = "Large Modal";
+                modalIcon = "far fa-window-maximize";
+                break;
+            case ModalSize.Fullscreen:
+                currentModalSize = "fullscreen";
+                modalTitle = "Fullscreen Modal";
+                modalIcon = "far fa-expand";
+                break;
+        }
+
+        isModalVisible = true;
+    }
+
+    private void CloseModal()
+    {
+        isModalVisible = false;
+    }
+
+    private void ConfirmModal()
+    {
+        // Handle confirm action
+        CloseModal();
+
+        // Show a success toast
+        ToastService.ShowSuccess("Modal action confirmed!");
+    }
+
+    private void ShowCustomModal()
+    {
+        isCustomModalVisible = true;
+        activeTab = 1;
+    }
+
+    private void CloseCustomModal()
+    {
+        isCustomModalVisible = false;
+    }
+
+    // Toast methods
+    private void ShowSuccessToast()
+    {
+        ToastService.ShowSuccess("Operation completed successfully!", "Success");
+    }
+
+    private void ShowErrorToast()
+    {
+        ToastService.ShowError("An error occurred while processing your request.", "Error");
+    }
+
+    private void ShowWarningToast()
+    {
+        ToastService.ShowWarning("This action may have unintended consequences.", "Warning");
+    }
+
+    private void ShowInfoToast()
+    {
+        ToastService.ShowInfo("Here's some useful information for you.", "Information");
+    }
+
+    private void ShowCustomToast()
+    {
+        ToastService.ShowToast(
+            "Custom Notification",
+            "This is a custom toast with longer duration and no auto-hide.",
+            ToastType.Info,
+            10,
+            false,  // No auto-hide
+            true,   // Show progress
+            "far fa-bell"
+        );
     }
 }

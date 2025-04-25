@@ -1,0 +1,312 @@
+﻿@* Modal.razor *@
+@if (IsVisible)
+{
+    <div class="roovia-modal-backdrop" @onclick="CloseOnBackdropClick"></div>
+
+    <div class="roovia-modal @SizeClass @(IsVisible ? "roovia-modal-visible" : "") @CssClass" @onclick:stopPropagation>
+        <div class="roovia-modal-content">
+            @if (ShowHeader)
+            {
+                <div class="roovia-modal-header">
+                    <div class="roovia-modal-title">
+                        @if (!string.IsNullOrEmpty(Icon))
+                        {
+                            <i class="@Icon roovia-modal-icon"></i>
+                        }
+                        <h3 class="mb-0">@Title</h3>
+                    </div>
+                    @if (ShowCloseButton)
+                    {
+                        <button type="button" class="roovia-modal-close" @onclick="Close">
+                            <i class="far fa-times"></i>
+                        </button>
+                    }
+                </div>
+            }
+            <div class="roovia-modal-body">
+                @ChildContent
+            </div>
+            @if (FooterContent != null)
+            {
+                <div class="roovia-modal-footer">
+                    @FooterContent
+                </div>
+            }
+            else if (DefaultFooter)
+            {
+                <div class="roovia-modal-footer">
+                    <button type="button" class="roovia-btn roovia-btn-secondary" @onclick="Cancel">
+                        @CancelText
+                    </button>
+                    <button type="button" class="roovia-btn roovia-btn-primary" @onclick="Confirm">
+                        @ConfirmText
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    /* Modal Styles */
+    .roovia-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay-bg);
+    backdrop-filter: blur(2px);
+    z-index: var(--z-modal-backdrop);
+    animation: fadeIn 0.2s ease-in-out forwards;
+    }
+
+    .roovia-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    z-index: var(--z-modal);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--modal-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .roovia-modal-visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    }
+
+    .roovia-modal-sm {
+    max-width: 400px;
+    }
+
+    .roovia-modal-lg {
+    max-width: 800px;
+    }
+
+    .roovia-modal-xl {
+    max-width: 1000px;
+    }
+
+    .roovia-modal-fullscreen {
+    width: 95%;
+    max-width: 95%;
+    height: 95%;
+    max-height: 95%;
+    }
+
+    .roovia-modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    }
+
+    .roovia-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
+    }
+
+    .roovia-modal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    color: var(--text-primary);
+    }
+
+    .roovia-modal-icon {
+    color: var(--primary);
+    font-size: 1.25rem;
+    }
+
+    .roovia-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--hover-transition);
+    }
+
+    .roovia-modal-close:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    transform: rotate(90deg);
+    }
+
+    .roovia-modal-body {
+    padding: var(--spacing-5);
+    overflow-y: auto;
+    flex: 1;
+    }
+
+    .roovia-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4);
+    border-top: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
+    }
+
+    /* Modal animations */
+    @@keyframes fadeIn {
+    from
+
+    {
+    opacity: 0;
+    }
+
+    to {
+    opacity: 1;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+    .roovia-modal
+
+    {
+    width: 95%;
+    max-width: none;
+    max-height: 95vh;
+    }
+
+    .roovia-modal-header {
+    padding: var(--spacing-3);
+    }
+
+    .roovia-modal-body {
+    padding: var(--spacing-3);
+    }
+
+    .roovia-modal-footer {
+    padding: var(--spacing-3);
+    flex-direction: column;
+    width: 100%;
+    }
+
+    .roovia-modal-footer .roovia-btn {
+    width: 100%;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Modal Title";
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    [Parameter] public bool DefaultFooter { get; set; } = true;
+    [Parameter] public bool CloseOnEsc { get; set; } = true;
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Inject]
+    protected IJSRuntime JSRuntime { get; set; }
+    private string SizeClass => $"roovia-modal-{Size.ToLowerInvariant()}";
+
+    protected override void OnInitialized()
+    {
+        // Register ESC key handler when component is initialized
+        if (CloseOnEsc)
+        {
+            JSRuntime.InvokeVoidAsync("document.addEventListener", "keydown", DotNetObjectReference.Create(this));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && CloseOnEsc)
+        {
+            await JSRuntime.InvokeVoidAsync("window.addModalKeyListener", DotNetObjectReference.Create(this));
+        }
+    }
+
+    public async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    public async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+
+    public async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task CloseOnBackdropClick()
+    {
+        if (CloseOnBackdrop)
+        {
+            await Close();
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleKeyDown(string key)
+    {
+        if (key == "Escape" && CloseOnEsc && IsVisible)
+        {
+            await Close();
+        }
+    }
+
+    public void Dispose()
+    {
+        // Remove event listener when component is disposed
+        if (CloseOnEsc)
+        {
+            JSRuntime.InvokeVoidAsync("window.removeModalKeyListener");
+        }
+    }
+
+    // Note: This component requires the following JavaScript to be added to your _Host.cshtml or app.js:
+    /*
+    window.addModalKeyListener = (dotnetRef) => {
+            window.modalKeyListener = (e) => {
+                if (e.key === 'Escape') {
+                    dotnetRef.invokeMethodAsync('HandleKeyDown', 'Escape');
+                }
+            };
+            document.addEventListener('keydown', window.modalKeyListener);
+        };
+
+        window.removeModalKeyListener = () => {
+            if (window.modalKeyListener) {
+    document.removeEventListener('keydown', window.modalKeyListener);
+    }
+        };
+        */
+}

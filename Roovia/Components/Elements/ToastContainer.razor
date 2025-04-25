@@ -1,0 +1,326 @@
+﻿@* Toast.razor *@
+@using Roovia.Services
+@implements IDisposable
+
+<div class="roovia-toast-container @PositionClass">
+    @foreach (var toast in _toasts)
+    {
+        <div class="roovia-toast @toast.GetCssClass() @(toast.IsVisible ? "roovia-toast-visible" : "roovia-toast-hiding")"
+        @key="toast.Id">
+            @if (toast.ShowProgress && toast.AutoHide)
+            {
+                <div class="roovia-toast-progress">
+                    <div class="roovia-toast-progress-bar" style="animation-duration: @(toast.DurationSeconds)s"></div>
+                </div>
+            }
+            <div class="roovia-toast-header">
+                <div class="roovia-toast-icon">
+                    <i class="@toast.GetIcon()"></i>
+                </div>
+                <div class="roovia-toast-title">@toast.Title</div>
+                <button type="button" class="roovia-toast-close" @onclick="() => HideToast(toast.Id)">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="roovia-toast-body">
+                @toast.Message
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /* Toast Styles */
+    .roovia-toast-container {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    z-index: var(--z-toast);
+    padding: var(--spacing-4);
+    width: 380px;
+    max-width: 95vw;
+    }
+
+    /* Position variations */
+    .roovia-toast-top-left {
+    top: 0;
+    left: 0;
+    }
+
+    .roovia-toast-top-center {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    }
+
+    .roovia-toast-top-right {
+    top: 0;
+    right: 0;
+    }
+
+    .roovia-toast-bottom-left {
+    bottom: 0;
+    left: 0;
+    }
+
+    .roovia-toast-bottom-center {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    }
+
+    .roovia-toast-bottom-right {
+    bottom: 0;
+    right: 0;
+    }
+
+    /* Toast element */
+    .roovia-toast {
+    background-color: var(--content-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    border-left: 4px solid transparent;
+    overflow: hidden;
+    position: relative;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    width: 100%;
+    }
+
+    .roovia-toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+    }
+
+    .roovia-toast-hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    }
+
+    /* Toast types */
+    .roovia-toast-success {
+    border-left-color: var(--success);
+    }
+
+    .roovia-toast-error {
+    border-left-color: var(--danger);
+    }
+
+    .roovia-toast-warning {
+    border-left-color: var(--warning);
+    }
+
+    .roovia-toast-info {
+    border-left-color: var(--info);
+    }
+
+    /* Toast header */
+    .roovia-toast-header {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-3) var(--spacing-4);
+    background-color: var(--subtle-bg);
+    border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-toast-icon {
+    margin-right: var(--spacing-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    }
+
+    .roovia-toast-success .roovia-toast-icon {
+    color: var(--success);
+    }
+
+    .roovia-toast-error .roovia-toast-icon {
+    color: var(--danger);
+    }
+
+    .roovia-toast-warning .roovia-toast-icon {
+    color: var(--warning);
+    }
+
+    .roovia-toast-info .roovia-toast-icon {
+    color: var(--info);
+    }
+
+    .roovia-toast-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    }
+
+    .roovia-toast-close {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--hover-transition);
+    }
+
+    .roovia-toast-close:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    transform: rotate(90deg);
+    }
+
+    /* Toast body */
+    .roovia-toast-body {
+    padding: var(--spacing-3) var(--spacing-4);
+    color: var(--text-secondary);
+    }
+
+    /* Progress bar */
+    .roovia-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: rgba(var(--text-secondary-rgb), 0.1);
+    z-index: 1;
+    }
+
+    .roovia-toast-progress-bar {
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    animation: roovia-toast-progress-animation linear forwards;
+    }
+
+    .roovia-toast-success .roovia-toast-progress-bar {
+    background-color: var(--success);
+    }
+
+    .roovia-toast-error .roovia-toast-progress-bar {
+    background-color: var(--danger);
+    }
+
+    .roovia-toast-warning .roovia-toast-progress-bar {
+    background-color: var(--warning);
+    }
+
+    .roovia-toast-info .roovia-toast-progress-bar {
+    background-color: var(--info);
+    }
+
+    @@keyframes roovia-toast-progress-animation {
+    from
+
+    {
+    transform: scaleX(1);
+    }
+
+    to {
+    transform: scaleX(0);
+    }
+
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 576px) {
+    .roovia-toast-container
+
+    {
+    width: 100%;
+    max-width: 100%;
+    padding: var(--spacing-2);
+    }
+
+    .roovia-toast-top-center,
+    .roovia-toast-bottom-center {
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Position { get; set; } = "bottom-right";
+    [Parameter] public int MaxDisplayedToasts { get; set; } = 6;
+    [Inject] private ToastService ToastService { get; set; }
+
+    private List<ToastMessage> _toasts = new List<ToastMessage>();
+    private string PositionClass => $"roovia-toast-{Position}";
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+        ToastService.OnHide += HideToast;
+        ToastService.OnClearAll += ClearAll;
+    }
+
+    private void ShowToast(ToastMessage toast)
+    {
+        // Add the new toast to the list
+        _toasts.Add(toast);
+
+        // Ensure we don't exceed max displayed toasts
+        if (_toasts.Count > MaxDisplayedToasts)
+        {
+            var oldestToast = _toasts.FirstOrDefault();
+            if (oldestToast != null)
+            {
+                _toasts.Remove(oldestToast);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async void HideToast(Guid id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            // First mark as hiding to trigger animation
+            toast.IsVisible = false;
+            await InvokeAsync(() => StateHasChanged());
+
+            // Wait for animation to complete
+            await Task.Delay(300);
+
+            // Then remove from list
+            _toasts.Remove(toast);
+            await InvokeAsync(() => StateHasChanged());
+        }
+    }
+
+    private void ClearAll()
+    {
+        _toasts.Clear();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (ToastService != null)
+        {
+            ToastService.OnShow -= ShowToast;
+            ToastService.OnHide -= HideToast;
+            ToastService.OnClearAll -= ClearAll;
+        }
+    }
+}
