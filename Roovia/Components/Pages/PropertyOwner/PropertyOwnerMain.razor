@@ -1,0 +1,147 @@
+﻿@page "/beneficiaries"
+
+@rendermode InteractiveServer
+
+<div class="container my-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span>Owners Overview</span>
+            <button class="btn roovia-btn" @onclick="AddPropertyOwner">
+                <i class="fas fa-plus"></i> Add Owner
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <input type="text" placeholder="Search property owners..." class="form-control" @bind="searchTerm" />
+            </div>
+            @if (FilteredPropertyOwners.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Contact Number</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Date Added</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var owner in FilteredPropertyOwners)
+                            {
+                                <tr>
+                                    <td>@owner.FirstName</td>
+                                    <td>@owner.LastName</td>
+                                    <td>@owner.ContactNumber</td>
+                                    <td>@owner.EmailAddress</td>
+                                    <td>@(owner.IsActive ? "Active" : "Inactive")</td>
+                                    <td>@owner.DateAdded.ToShortDateString()</td>
+                                    <td>
+                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => ViewPropertyOwner(owner)">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => EditPropertyOwner(owner)">
+                                            <i class="fas fa-pencil-alt"></i> Edit
+                                        </button>
+                                        <button class="btn roovia-btn btn-sm" @onclick="() => DeletePropertyOwner(owner)">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    No property owners available.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (showPropertyOwnerModal)
+{
+    <PropertyOwnerModal></PropertyOwnerModal>
+}
+
+
+@code {
+    private string searchTerm = string.Empty;
+
+    bool showPropertyOwnerModal = false;
+
+    public class PropertyOwner
+    {
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string ContactNumber { get; set; }
+        public string EmailAddress { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime DateAdded { get; set; }
+    }
+
+    private List<PropertyOwner> propertyOwners = new List<PropertyOwner>();
+
+    protected override void OnInitialized()
+    {
+        // Simulated property owners data
+        propertyOwners = new List<PropertyOwner>
+       {
+           new PropertyOwner
+           {
+               FirstName = "Alice",
+               LastName = "Johnson",
+               ContactNumber = "555-123-4567",
+               EmailAddress = "alice.johnson@example.com",
+               IsActive = true,
+               DateAdded = DateTime.Now.AddDays(-15)
+           },
+           new PropertyOwner
+           {
+               FirstName = "Bob",
+               LastName = "Williams",
+               ContactNumber = "555-987-6543",
+               EmailAddress = "bob.williams@example.com",
+               IsActive = false,
+               DateAdded = DateTime.Now.AddDays(-30)
+           }
+       };
+    }
+
+    private IEnumerable<PropertyOwner> FilteredPropertyOwners =>
+        propertyOwners.Where(o => string.IsNullOrEmpty(searchTerm) ||
+                                  o.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                  o.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    private void ViewPropertyOwner(PropertyOwner owner)
+    {
+        // Logic to view property owner details
+        Console.WriteLine($"Viewing property owner: {owner.FirstName} {owner.LastName}");
+    }
+
+    private void EditPropertyOwner(PropertyOwner owner)
+    {
+        // Logic to edit property owner
+        Console.WriteLine($"Editing property owner: {owner.FirstName} {owner.LastName}");
+    }
+
+    private void DeletePropertyOwner(PropertyOwner owner)
+    {
+        // Logic to delete property owner
+        propertyOwners.Remove(owner);
+        Console.WriteLine($"Deleted property owner: {owner.FirstName} {owner.LastName}");
+    }
+
+    private async Task AddPropertyOwner()
+    {
+        showPropertyOwnerModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
+    }
+}

@@ -21,6 +21,9 @@ namespace Roovia.Services
         public async Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner)
         {
             ResponseModel response = new();
+
+            propertyOwner.CreatedOn = DateTime.Now;
+            propertyOwner.UpdatedDate = DateTime.Now;
             string sql = @"
                    INSERT INTO PropertyOwners 
                    (
@@ -87,8 +90,8 @@ namespace Roovia.Services
                         AccountNumber = propertyOwner.BankAccount.AccountNumber,
                         AccountType = propertyOwner.BankAccount.AccountType,
                         BranchCode = propertyOwner.BankAccount.BranchCode,
-                        propertyOwner.CreatedOn,
-                        propertyOwner.CreatedBy
+                        propertyOwner.CreatedOn ,
+                        propertyOwner.CreatedBy,
                     });
 
                     response.ResponseInfo.Success = true;

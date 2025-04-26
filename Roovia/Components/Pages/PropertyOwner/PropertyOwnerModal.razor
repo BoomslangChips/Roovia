@@ -1,0 +1,87 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper  
+@using Roovia.Models.Properties  
+@using Roovia.Models.PropertyOwner  
+@using Roovia.Services
+
+@inject IPropertyOwner PropertyOwnerService
+@inject ToastService ToastService
+
+@rendermode InteractiveServer
+
+<Roovia.Components.Elements.Modal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible">
+    <ChildContent>  
+        <h3>Property Owner</h3>  
+        <Roovia.Components.Elements.Textbox Label="First Name" Value="@Owner.FirstName"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Last Name" Value="@Owner.LastName"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="ID Number" Value="@Owner.IdNumber"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="VAT Number" Value="@Owner.VatNumber"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Email Address" Value="@Owner.EmailAddress"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Mobile Number" Value="@Owner.MobileNumber"></Roovia.Components.Elements.Textbox>  
+        @* 
+        <h4>Bank Account</h4>  
+        <Roovia.Components.Elements.Textbox Label="Account Type" Value="@Owner.BankAccount.AccountType"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode"></Roovia.Components.Elements.Textbox>  
+
+        <h4>Address</h4>  
+        <Roovia.Components.Elements.Textbox Label="Street" Value="@Owner.Address.Street"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="City" Value="@Owner.Address.City"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Province" Value="@Owner.Address.Province"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Postal Code" Value="@Owner.Address.PostalCode"></Roovia.Components.Elements.Textbox>  
+        <Roovia.Components.Elements.Textbox Label="Country" Value="@Owner.Address.Country"></Roovia.Components.Elements.Textbox>  *@ 
+    </ChildContent>  
+    <FooterContent>
+        <button class="btn roovia-btn-primary" @onclick="SavePropertyOwner">Save</button>  
+        <button class="btn roovia-btn-secondary" @onclick="() => IsVisible = false">Cancel</button>
+    </FooterContent>
+</Roovia.Components.Elements.Modal>  
+
+@code {
+    [Parameter]  
+    public PropertyOwner Owner { get; set; } = new();
+
+    bool IsVisible = true;
+
+    protected override async Task OnParametersSetAsync()  
+    {  
+        Owner.FirstName = "DefaultFirstName";  
+        Owner.LastName = "DefaultLastName";  
+        Owner.IdNumber = "0000000000000";  
+        Owner.VatNumber = "0000000000";  
+        Owner.EmailAddress = "default@example.com";  
+        Owner.MobileNumber = "0000000000";  
+        Owner.IsEmailNotificationsEnabled = "false";  
+        Owner.IsSmsNotificationsEnabled = "false";  
+        Owner.BankAccount = new BankAccount  
+       {  
+           AccountType = "DefaultType",  
+           AccountNumber = "0000000000",  
+           BankName = new BankName(),  
+           BranchCode = "0000"  
+       };  
+        Owner.Address = new Address  
+       {  
+           Street = "Default Street",  
+           City = "Default City",  
+           Province = "Default Province",  
+           PostalCode = "0000",  
+           Country = "Default Country"  
+       };  
+        Owner.Properties = new List<Property>();  
+    }  
+
+    private async Task SavePropertyOwner()
+    {
+        var response = await PropertyOwnerService.CreatePropertyOwner(Owner);
+        if(response.ResponseInfo.Success == false)
+        {
+            ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+        }
+        else
+        {
+            ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+            IsVisible = false;
+        }
+    }  
+}

@@ -5,62 +5,66 @@
 @using Microsoft.AspNetCore.Identity
 @using Roovia.Data
 @using Roovia.Models.Users
+@using Roovia.Components.Layout
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@layout BlankLayout
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
-<div class="row">
-    <div class="col-lg-6">
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo-container">
+            <img src="/images/roovia-logo.png" alt="Roovia Logo">
+        </div>
+        <div class="login-header">
+            <h2 class="fw-bold">Log in</h2>
+        </div>
         <section>
             <StatusMessage Message="@errorMessage" />
             <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
                 <DataAnnotationsValidator />
-                <h2>Use a local account to log in.</h2>
-                <hr />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                <ValidationSummary class="text-danger mb-3" role="alert" />
+
+                <div class="mb-3">
                     <label for="Input.Email" class="form-label">Email</label>
+                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                     <ValidationMessage For="() => Input.Email" class="text-danger" />
                 </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+
+                <div class="mb-3">
                     <label for="Input.Password" class="form-label">Password</label>
+                    <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
                     <ValidationMessage For="() => Input.Password" class="text-danger" />
                 </div>
-                <div class="checkbox mb-3">
-                    <label class="form-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                        Remember me
-                    </label>
+
+                <div class="form-check mb-3">
+                    <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">Remember me</label>
                 </div>
-                <div>
-                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+
+                <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-primary">Log in</button>
                 </div>
-                <div>
-                    <p>
+
+                <div class="text-center">
+                    <p class="mb-1">
                         <a href="Account/ForgotPassword">Forgot your password?</a>
                     </p>
-                    <p>
-                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a>
+                    <p class="mb-1">
+                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                            Register as a new user
+                        </a>
                     </p>
                     <p>
                         <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
                     </p>
                 </div>
             </EditForm>
-        </section>
-    </div>
-    <div class="col-lg-4 col-lg-offset-2">
-        <section>
-            <h3>Use another service to log in.</h3>
-            <hr />
-            <ExternalLoginPicker />
         </section>
     </div>
 </div>
@@ -81,15 +85,12 @@
     {
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
-            // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
     }
 
     public async Task LoginUser()
     {
-        // This doesn't count login failures towards account lockout
-        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
         var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
@@ -127,3 +128,77 @@
         public bool RememberMe { get; set; }
     }
 }
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: url('/images/login-bg.png') no-repeat center center;
+        background-size: cover;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .login-card {
+        background-color: #ffffffbf;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 100%;
+        padding: 2rem;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .logo-container {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+        .logo-container img {
+            max-width: 120px;
+            display: inline-block;
+        }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+        .login-header h2 {
+            font-weight: 600;
+            color: #333;
+        }
+
+    .form-label {
+        font-weight: 500;
+        color: #555;
+    }
+
+    .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: .75rem;
+    }
+
+    .form-check-label {
+        color: #555;
+    }
+
+    .btn-primary {  
+           background-color: var(--primary);  
+           border: none;  
+           padding: 0.75rem;  
+           border-radius: 4px;  
+           font-weight: 600;  
+       }
+    }
+
+    a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+        a:hover {
+            text-decoration: underline;
+        }
+</style>

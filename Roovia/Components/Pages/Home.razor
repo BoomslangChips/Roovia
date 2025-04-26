@@ -1,4 +1,5 @@
 ﻿@page "/temp"
+@using Microsoft.AspNetCore.Authorization
 @using Roovia.Components.Elements
 @using Roovia.Services
 @rendermode InteractiveServer
@@ -6,6 +7,8 @@
 @inject ToastService ToastService
 <ToastContainer />
 <PageTitle>Roovia Components Demo</PageTitle>
+
+@attribute [Authorize]
 
 <div class="container py-4">
     <!-- Page header with Roovia styling classes -->
