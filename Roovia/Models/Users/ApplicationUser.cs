@@ -7,6 +7,9 @@ namespace Roovia.Models.Users
     {
         public Guid? CompanyId { get; set; }
 
+        public string FirstName { get; set; }
+
+        public string LastName { get; set; }
         public bool IsActive { get; set; }
     }
 

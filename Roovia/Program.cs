@@ -40,6 +40,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 builder.Services.AddScoped<ITenant, TenantService>();
 builder.Services.AddScoped<IProperty, PropertyService>();
 builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
+builder.Services.AddScoped<IUser, UserService>();
 
 
 builder.Services.AddScoped<ToastService>();

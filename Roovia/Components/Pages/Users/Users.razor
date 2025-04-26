@@ -1,0 +1,185 @@
+﻿@page "/Users"
+@using Roovia.Models.Users
+
+@rendermode InteractiveServer
+
+<div class="roovia-container roovia-my-4">
+    <div class="col-12 d-flex justify-content-between">
+        <h3 class="roovia-text-center" style="color: var(--primary);">
+            <i class="fas fa-users"></i> Company User Directory
+        </h3>
+
+        <div class="roovia-text-right roovia-my-3">
+            <button class="roovia-btn" style="background-color: var(--primary); color: #fff;" @onclick="AddCompany">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
+
+    @foreach (var company in Companies)
+    {
+        <div class="roovia-card my-3 roovia-shadow">
+            <div class="roovia-card-header roovia-bg-primary roovia-text-white roovia-flex roovia-justify-between roovia-align-center">
+                <span><i class="fas fa-building"></i> @company.Name</span>
+                <button class="roovia-btn roovia-btn-small" style="background-color: var(--primary); color: #fff;" @onclick="() => AddUser(company.Id)">
+                    <i class="fas fa-user-plus"></i> 
+                </button>
+            </div>
+            <div class="roovia-card-body">
+                @if (company.Users.Any())
+                {
+                    <ul class="roovia-list-group roovia-list-group-flush">
+                        @foreach (var user in company.Users)
+                        {
+                            <li class="my-2 roovia-list-group-item roovia-flex roovia-justify-between roovia-align-center align-items-center">
+                                <div>
+                                    <strong>@user.FirstName @user.LastName</strong><br />
+                                    <small class="roovia-text-muted">@user.Email</small>
+                                </div>
+                                <button class="roovia-btn roovia-btn-small" style="background-color: var(--secondary); color: #fff;">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <div class="roovia-alert roovia-alert-info my-2">
+                        No users available for this company.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (companyAddDialogVisible)
+{
+    <CompanyDialog></CompanyDialog>
+}
+
+@code {
+    private string searchTerm = string.Empty;
+    private bool sortAscending = true;
+
+    private List<Company> Companies;
+
+    bool userAddDialogVisible = false;
+    bool companyAddDialogVisible = false;
+
+    protected override void OnInitialized()
+    {
+        Companies = new List<Company>
+       {
+           new Company
+           {
+               Id = Guid.NewGuid(),
+               Name = "Contoso Ltd",
+               Users = new List<ApplicationUser>
+               {
+                   new ApplicationUser
+                   {
+                       Id = Guid.NewGuid().ToString(),
+                       CompanyId = Guid.NewGuid(),
+                       FirstName = "John",
+                       LastName = "Doe",
+                       Email = "john.doe@contoso.com"
+                   },
+                   new ApplicationUser
+                   {
+                       Id = Guid.NewGuid().ToString(),
+                       CompanyId = Guid.NewGuid(),
+                       FirstName = "Jane",
+                       LastName = "Doe",
+                       Email = "jane.doe@contoso.com"
+                   }
+               }
+           },
+           new Company
+           {
+               Id = Guid.NewGuid(),
+               Name = "Fabrikam Inc",
+               Users = new List<ApplicationUser>
+               {
+                   new ApplicationUser
+                   {
+                       Id = Guid.NewGuid().ToString(),
+                       CompanyId = Guid.NewGuid(),
+                       FirstName = "Alice",
+                       LastName = "Smith",
+                       Email = "alice.smith@fabrikam.com"
+                   },
+                   new ApplicationUser
+                   {
+                       Id = Guid.NewGuid().ToString(),
+                       CompanyId = Guid.NewGuid(),
+                       FirstName = "Bob",
+                       LastName = "Smith",
+                       Email = "bob.smith@fabrikam.com"
+                   },
+                   new ApplicationUser
+                   {
+                       Id = Guid.NewGuid().ToString(),
+                       CompanyId = Guid.NewGuid(),
+                       FirstName = "Carl",
+                       LastName = "Johnson",
+                       Email = "carl.johnson@fabrikam.com"
+                   }
+               }
+           },
+           new Company
+           {
+               Id = Guid.NewGuid(),
+               Name = "Third Company",
+               Users = new List<ApplicationUser>() // No users available
+           }
+       };
+    }
+
+    private void AddCompany()
+    {
+        companyAddDialogVisible = true;
+    }
+
+   private void AddUser(Guid companyId)
+   {
+       // Logic to add a new user to the specified company
+   }
+}
+
+
+<style>
+    .card-header {
+        background-color: var(--primary) !important;
+    }
+
+    .btn {
+        border: none;
+    }
+
+    @@media (max-width: 576px) {
+        .card {
+            margin-left: 0;
+            margin-right: 0;
+        }
+    }
+
+    .roovia-list-group-item {
+        padding: 0.7em;
+        border-radius: 15px;
+        background-color: #f4f8f8;
+    }
+
+    .roovia-alert {
+        padding: 0.7em;
+        border-radius: 15px;
+        background-color: #f4f8f8;
+    }
+
+    .roovia-btn-small {
+        width: 5em;
+        height: 2em;
+    }
+</style>
