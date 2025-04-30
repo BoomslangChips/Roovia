@@ -1,0 +1,484 @@
+﻿@* RVCard.razor - Designed to match Roovia design system *@
+<div class="roovia-card @GetCardTypeClass() @GetSizeClass() @GetHoverClass() @CssClass">
+    @if (ShowHeader)
+    {
+        <div class="roovia-card-header">
+            <div class="roovia-card-title">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="@Icon roovia-card-icon"></i>
+                }
+                <h3 class="roovia-card-heading">@Title</h3>
+            </div>
+            @if (HeaderActions != null)
+            {
+                <div class="roovia-card-actions">
+                    @HeaderActions
+                </div>
+            }
+        </div>
+    }
+
+    <div class="roovia-card-body @(Padded ? "" : "roovia-card-body-no-padding")">
+        @ChildContent
+    </div>
+
+    @if (FooterContent != null)
+    {
+        <div class="roovia-card-footer">
+            @FooterContent
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(BadgeText))
+    {
+        <div class="roovia-card-badge">
+            <span class="@BadgeType">@BadgeText</span>
+        </div>
+    }
+</div>
+
+<style>
+    /* Card component styles utilizing Roovia color system */
+    .roovia-card {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-divider);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-4);
+        transition: var(--card-transition);
+        position: relative;
+        isolation: isolate; /* Creates a new stacking context */
+        overflow: visible; /* Critical: Ensures popups aren't clipped */
+    }
+
+    /* Card header styling */
+    .roovia-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        border-top-left-radius: calc(var(--border-radius-lg) - 1px);
+        border-top-right-radius: calc(var(--border-radius-lg) - 1px);
+        background-color: var(--subtle-bg);
+    }
+
+    /* Card title styling */
+    .roovia-card-title {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-card-heading {
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    /* Card icon styling */
+    .roovia-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        font-size: 1.125rem;
+    }
+
+    /* Card actions container */
+    .roovia-card-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    /* Card body */
+    .roovia-card-body {
+        padding: var(--spacing-4);
+        flex: 1 1 auto;
+    }
+
+    .roovia-card-body-no-padding {
+        padding: 0;
+    }
+
+    /* Card footer */
+    .roovia-card-footer {
+        padding: var(--spacing-3) var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        border-bottom-left-radius: calc(var(--border-radius-lg) - 1px);
+        border-bottom-right-radius: calc(var(--border-radius-lg) - 1px);
+    }
+
+    /* Badge positioning */
+    .roovia-card-badge {
+        position: absolute;
+        top: var(--spacing-3);
+        right: var(--spacing-3);
+        z-index: 2;
+    }
+
+    /* Card Sizes */
+    .roovia-card-sm .roovia-card-header {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+
+    .roovia-card-sm .roovia-card-body {
+        padding: var(--spacing-3);
+    }
+
+    .roovia-card-sm .roovia-card-heading {
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-card-sm .roovia-card-icon {
+        font-size: 1rem;
+    }
+
+    .roovia-card-sm .roovia-card-footer {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+
+    .roovia-card-lg .roovia-card-header {
+        padding: var(--spacing-4) var(--spacing-5);
+    }
+
+    .roovia-card-lg .roovia-card-body {
+        padding: var(--spacing-5);
+    }
+
+    .roovia-card-lg .roovia-card-heading {
+        font-size: var(--font-size-lg);
+    }
+
+    .roovia-card-lg .roovia-card-icon {
+        font-size: 1.25rem;
+    }
+
+    .roovia-card-lg .roovia-card-footer {
+        padding: var(--spacing-4) var(--spacing-5);
+    }
+
+    .roovia-card-compact {
+        margin-bottom: var(--spacing-3);
+    }
+
+        .roovia-card-compact .roovia-card-header,
+        .roovia-card-compact .roovia-card-body,
+        .roovia-card-compact .roovia-card-footer {
+            padding: var(--spacing-2);
+        }
+
+    /* Card types */
+    /* Left border types */
+    .roovia-card-border-primary {
+        border-left: 4px solid var(--primary);
+    }
+
+    .roovia-card-border-secondary {
+        border-left: 4px solid var(--secondary);
+    }
+
+    .roovia-card-border-success {
+        border-left: 4px solid var(--success);
+    }
+
+    .roovia-card-border-warning {
+        border-left: 4px solid var(--warning);
+    }
+
+    .roovia-card-border-danger {
+        border-left: 4px solid var(--danger);
+    }
+
+    .roovia-card-border-info {
+        border-left: 4px solid var(--info);
+    }
+
+    /* Top border types */
+    .roovia-card-top-primary {
+        border-top: 4px solid var(--primary);
+    }
+
+    .roovia-card-top-secondary {
+        border-top: 4px solid var(--secondary);
+    }
+
+    .roovia-card-top-success {
+        border-top: 4px solid var(--success);
+    }
+
+    .roovia-card-top-warning {
+        border-top: 4px solid var(--warning);
+    }
+
+    .roovia-card-top-danger {
+        border-top: 4px solid var(--danger);
+    }
+
+    .roovia-card-top-info {
+        border-top: 4px solid var(--info);
+    }
+
+    /* Solid background cards */
+    .roovia-card-solid-primary {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-solid-secondary {
+        background-color: var(--secondary);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-solid-success {
+        background-color: var(--success);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-solid-warning {
+        background-color: var(--warning);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-solid-danger {
+        background-color: var(--danger);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-solid-info {
+        background-color: var(--info);
+        color: white;
+        border: none;
+    }
+
+        /* Solid card elements styling */
+        .roovia-card-solid-primary .roovia-card-header,
+        .roovia-card-solid-secondary .roovia-card-header,
+        .roovia-card-solid-success .roovia-card-header,
+        .roovia-card-solid-warning .roovia-card-header,
+        .roovia-card-solid-danger .roovia-card-header,
+        .roovia-card-solid-info .roovia-card-header {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .roovia-card-solid-primary .roovia-card-footer,
+        .roovia-card-solid-secondary .roovia-card-footer,
+        .roovia-card-solid-success .roovia-card-footer,
+        .roovia-card-solid-warning .roovia-card-footer,
+        .roovia-card-solid-danger .roovia-card-footer,
+        .roovia-card-solid-info .roovia-card-footer {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-top-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .roovia-card-solid-primary .roovia-card-heading,
+        .roovia-card-solid-secondary .roovia-card-heading,
+        .roovia-card-solid-success .roovia-card-heading,
+        .roovia-card-solid-warning .roovia-card-heading,
+        .roovia-card-solid-danger .roovia-card-heading,
+        .roovia-card-solid-info .roovia-card-heading,
+        .roovia-card-solid-primary .roovia-card-icon,
+        .roovia-card-solid-secondary .roovia-card-icon,
+        .roovia-card-solid-success .roovia-card-icon,
+        .roovia-card-solid-warning .roovia-card-icon,
+        .roovia-card-solid-danger .roovia-card-icon,
+        .roovia-card-solid-info .roovia-card-icon {
+            color: white;
+        }
+
+    /* Soft background cards */
+    .roovia-card-soft-primary {
+        background-color: var(--primary-lighter);
+        border-color: var(--primary-light);
+    }
+
+    .roovia-card-soft-secondary {
+        background-color: var(--secondary-light);
+        border-color: rgba(var(--secondary-rgb), 0.2);
+    }
+
+    .roovia-card-soft-success {
+        background-color: var(--success-light);
+        border-color: var(--success-border-light);
+    }
+
+    .roovia-card-soft-warning {
+        background-color: var(--warning-light);
+        border-color: rgba(var(--warning-rgb), 0.2);
+    }
+
+    .roovia-card-soft-danger {
+        background-color: var(--danger-light);
+        border-color: var(--danger-border-light);
+    }
+
+    .roovia-card-soft-info {
+        background-color: var(--info-light);
+        border-color: rgba(var(--info-rgb), 0.2);
+    }
+
+    /* Gradient card styles */
+    .roovia-card-gradient-primary {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-gradient-secondary {
+        background: var(--secondary-gradient);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-gradient-success {
+        background: var(--success-gradient);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-gradient-warning {
+        background: var(--warning-gradient);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-gradient-danger {
+        background: var(--danger-gradient);
+        color: white;
+        border: none;
+    }
+
+    .roovia-card-gradient-info {
+        background: var(--info-gradient);
+        color: white;
+        border: none;
+    }
+
+    /* Enhanced hover effects */
+    .roovia-card-hover-enhanced {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .roovia-card-hover-enhanced:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+    /* Floating card style */
+    .roovia-card-floating {
+        box-shadow: var(--shadow-md);
+        border: none;
+    }
+
+        .roovia-card-floating:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+    /* Responsive card adjustments */
+    @@media (max-width: 768px) {
+        .roovia-card-body
+
+    {
+        padding: var(--spacing-3);
+    }
+
+    .roovia-card-header,
+    .roovia-card-footer {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool Padded { get; set; } = true;
+    [Parameter] public string Type { get; set; } = "default";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool Hover { get; set; } = true;
+    [Parameter] public bool Floating { get; set; } = false;
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string BadgeText { get; set; } = "";
+    [Parameter] public string BadgeType { get; set; } = "badge badge-primary";
+
+    private string GetCardTypeClass()
+    {
+        if (string.IsNullOrEmpty(Type) || Type.ToLower() == "default")
+            return "";
+
+        var typeClass = "";
+
+        if (Type.StartsWith("border-"))
+        {
+            typeClass = $"roovia-card-border-{Type.Substring(7)}";
+        }
+        else if (Type.StartsWith("top-"))
+        {
+            typeClass = $"roovia-card-top-{Type.Substring(4)}";
+        }
+        else if (Type.StartsWith("solid-"))
+        {
+            typeClass = $"roovia-card-solid-{Type.Substring(6)}";
+        }
+        else if (Type.StartsWith("soft-"))
+        {
+            typeClass = $"roovia-card-soft-{Type.Substring(5)}";
+        }
+        else if (Type.StartsWith("gradient-"))
+        {
+            typeClass = $"roovia-card-gradient-{Type.Substring(9)}";
+        }
+        else
+        {
+            typeClass = $"roovia-card-{Type}";
+        }
+
+        return typeClass;
+    }
+
+    private string GetSizeClass()
+    {
+        return Size.ToLower() switch
+        {
+            "sm" => "roovia-card-sm",
+            "lg" => "roovia-card-lg",
+            "compact" => "roovia-card-compact",
+            _ => ""
+        };
+    }
+
+    private string GetHoverClass()
+    {
+        var classes = "";
+
+        if (Hover)
+        {
+            classes += " roovia-card-hover-enhanced";
+        }
+
+        if (Floating)
+        {
+            classes += " roovia-card-floating";
+        }
+
+        return classes;
+    }
+}

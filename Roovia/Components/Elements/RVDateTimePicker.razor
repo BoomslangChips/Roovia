@@ -1,5 +1,5 @@
 ﻿@* DateTimePicker.razor *@
-<div class="roovia-datetime-picker @(IsValid ? "" : "roovia-datetime-picker-invalid") @CssClass">
+<div class="roovia-datetime-picker @(IsValid ? "" : "roovia-datetime-picker-invalid") @SizeClass @CssClass">
     @if (!string.IsNullOrEmpty(Label))
     {
         <label for="@Id" class="roovia-datetime-picker-label">@Label</label>
@@ -31,6 +31,8 @@
 
         @if (IsCalendarOpen)
         {
+            <div class="roovia-datetime-picker-overlay" @onclick="ApplyAndClose"></div>
+
             <div class="roovia-datetime-picker-dropdown">
                 <div class="roovia-datetime-picker-calendar">
                     <div class="roovia-datetime-picker-calendar-header">
@@ -135,14 +137,15 @@
     .roovia-datetime-picker {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-2);
-        margin-bottom: var(--spacing-4);
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-3);
     }
 
     .roovia-datetime-picker-label {
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-xs);
         font-weight: 500;
         color: var(--text-primary);
+        margin-bottom: 0;
     }
 
     .roovia-datetime-picker-wrapper {
@@ -158,21 +161,32 @@
 
     .roovia-datetime-picker-input {
         width: 100%;
-        padding: var(--spacing-3) var(--spacing-4);
+        padding: var(--spacing-2) var(--spacing-3);
         border-radius: var(--border-radius-md);
         border: 1px solid var(--border-divider);
         background-color: var(--input-bg);
         color: var(--text-primary);
-        font-size: var(--font-size-base);
+        font-size: var(--font-size-sm);
         transition: var(--hover-transition);
         cursor: pointer;
     }
 
-        .roovia-datetime-picker-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: var(--shadow-focus);
-        }
+    /* Size variations */
+    .roovia-datetime-picker.size-sm .roovia-datetime-picker-input {
+        padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-datetime-picker.size-lg .roovia-datetime-picker-input {
+        padding: var(--spacing-3) var(--spacing-4);
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-datetime-picker-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: var(--shadow-focus);
+    }
 
     .roovia-datetime-picker-icon-left,
     .roovia-datetime-picker-icon-right {
@@ -181,11 +195,21 @@
         transform: translateY(-50%);
         color: var(--text-muted);
         z-index: 2;
-        pointer-events: none;
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-datetime-picker.size-sm .roovia-datetime-picker-icon-left,
+    .roovia-datetime-picker.size-sm .roovia-datetime-picker-icon-right {
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-datetime-picker.size-lg .roovia-datetime-picker-icon-left,
+    .roovia-datetime-picker.size-lg .roovia-datetime-picker-icon-right {
+        font-size: var(--font-size-base);
     }
 
     .roovia-datetime-picker-icon-left {
-        left: var(--spacing-3);
+        left: var(--spacing-2);
     }
 
     .roovia-datetime-picker-input:focus ~ .roovia-datetime-picker-icon-left {
@@ -198,17 +222,21 @@
         cursor: pointer;
     }
 
-        .roovia-datetime-picker-input:focus ~ .roovia-datetime-picker-icon-right,
-        .roovia-datetime-picker-icon-right:hover {
-            color: var(--primary);
-        }
+    .roovia-datetime-picker.size-sm .roovia-datetime-picker-icon-right {
+        right: var(--spacing-2);
+    }
+
+    .roovia-datetime-picker-input:focus ~ .roovia-datetime-picker-icon-right,
+    .roovia-datetime-picker-icon-right:hover {
+        color: var(--primary);
+    }
 
     .roovia-datetime-picker-input-wrapper:has(.roovia-datetime-picker-icon-left) .roovia-datetime-picker-input {
-        padding-left: calc(var(--spacing-3) * 2 + 1rem);
+        padding-left: calc(var(--spacing-2) * 2 + 1rem);
     }
 
     .roovia-datetime-picker-input-wrapper:has(.roovia-datetime-picker-icon-right) .roovia-datetime-picker-input {
-        padding-right: calc(var(--spacing-3) * 2 + 1rem);
+        padding-right: calc(var(--spacing-2) * 2 + 1rem);
     }
 
     .roovia-datetime-picker-invalid .roovia-datetime-picker-input {
@@ -218,7 +246,7 @@
     .roovia-datetime-picker-validation {
         font-size: var(--font-size-xs);
         color: var(--danger);
-        margin-top: var(--spacing-1);
+        margin-top: 0;
     }
 
     .roovia-datetime-picker-input:disabled {
@@ -228,46 +256,51 @@
     }
 
     /* Dropdown container */
+    .roovia-datetime-picker-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: var(--z-dropdown, 1000);
+    }
+
     .roovia-datetime-picker-dropdown {
         position: absolute;
-        top: calc(100% + 5px);
+        top: 100%;
         left: 0;
-        z-index: var(--z-dropdown);
-        min-width: 320px;
-        background-color: var(--content-bg);
+        z-index: calc(var(--z-dropdown, 1000) + 10);
+        min-width: 280px;
+        background-color: var(--content-bg, white);
         border-radius: var(--border-radius-lg);
         box-shadow: var(--shadow-lg);
         border: 1px solid var(--border-divider);
         animation: fadeInDown 0.2s ease;
     }
 
-    /* Calendar container */
+    @@keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     .roovia-datetime-picker-calendar {
         display: flex;
         flex-direction: column;
         width: 100%;
     }
 
-    @@keyframes fadeInDown {
-        from
-
-    {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    }
-
     .roovia-datetime-picker-calendar-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--spacing-3);
+        padding: var(--spacing-2);
         background-color: var(--subtle-bg);
         border-bottom: 1px solid var(--border-divider);
     }
@@ -283,7 +316,7 @@
         padding: var(--spacing-1) var(--spacing-2);
         border-radius: var(--border-radius-md);
         border: 1px solid var(--border-divider);
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-xs);
         background-color: var(--content-bg);
         color: var(--text-primary);
         cursor: pointer;
@@ -298,8 +331,8 @@
     .roovia-datetime-picker-nav-btn {
         background: none;
         border: none;
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         border-radius: var(--border-radius-sm);
         color: var(--text-primary);
         display: flex;
@@ -307,6 +340,7 @@
         justify-content: center;
         cursor: pointer;
         transition: var(--hover-transition);
+        font-size: var(--font-size-xs);
     }
 
         .roovia-datetime-picker-nav-btn:hover {
@@ -315,13 +349,13 @@
         }
 
     .roovia-datetime-picker-calendar-body {
-        padding: var(--spacing-3);
+        padding: var(--spacing-2);
     }
 
     .roovia-datetime-picker-weekdays {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        margin-bottom: var(--spacing-2);
+        margin-bottom: var(--spacing-1);
     }
 
     .roovia-datetime-picker-weekday {
@@ -340,11 +374,11 @@
     }
 
     .roovia-datetime-picker-day {
-        height: 32px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-xs);
         color: var(--text-primary);
         border-radius: var(--border-radius-sm);
         cursor: pointer;
@@ -374,7 +408,7 @@
 
     /* Time picker styling */
     .roovia-datetime-picker-time {
-        padding: var(--spacing-3);
+        padding: var(--spacing-2);
         border-top: 1px solid var(--border-divider);
     }
 
@@ -383,7 +417,7 @@
         align-items: center;
         gap: var(--spacing-2);
         color: var(--text-muted);
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-xs);
         margin-bottom: var(--spacing-2);
     }
 
@@ -407,6 +441,7 @@
         cursor: pointer;
         padding: var(--spacing-1);
         transition: var(--hover-transition);
+        font-size: var(--font-size-xs);
     }
 
         .roovia-datetime-picker-time-btn:hover {
@@ -414,12 +449,12 @@
         }
 
     .roovia-datetime-picker-time-input {
-        width: 40px;
+        width: 36px;
         text-align: center;
         padding: var(--spacing-1);
         border: 1px solid var(--border-divider);
         border-radius: var(--border-radius-sm);
-        font-size: var(--font-size-base);
+        font-size: var(--font-size-sm);
         color: var(--text-primary);
     }
 
@@ -429,7 +464,7 @@
         }
 
     .roovia-datetime-picker-time-separator {
-        font-size: var(--font-size-lg);
+        font-size: var(--font-size-base);
         font-weight: 600;
         color: var(--text-muted);
     }
@@ -439,27 +474,24 @@
         display: flex;
         justify-content: flex-end;
         gap: var(--spacing-2);
-        padding: var(--spacing-3);
+        padding: var(--spacing-2);
         border-top: 1px solid var(--border-divider);
         background-color: var(--subtle-bg);
     }
 
     /* Responsive adjustments */
     @@media (max-width: 480px) {
-        .roovia-datetime-picker-dropdown
-
-    {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%;
-        max-width: 320px;
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-xl);
-        z-index: var(--z-modal);
-    }
-
+        .roovia-datetime-picker-dropdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 320px;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            z-index: calc(var(--z-modal, 1100) + 10);
+        }
     }
 </style>
 
@@ -470,6 +502,7 @@
     [Parameter] public DateTime? Value { get; set; }
     [Parameter] public string IconLeft { get; set; }
     [Parameter] public string IconRight { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     [Parameter] public bool IsValid { get; set; } = true;
@@ -477,6 +510,7 @@
     [Parameter] public string CssClass { get; set; }
     [Parameter] public bool IncludeTime { get; set; } = true;
     [Parameter] public string Format { get; set; } = "MM/dd/yyyy HH:mm";
+    [Parameter] public bool CloseOnDateSelect { get; set; } = false;
     [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
     [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
     [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
@@ -489,6 +523,10 @@
     private int CurrentHour { get; set; }
     private int CurrentMinute { get; set; }
     private List<DateTime> CalendarDays { get; set; } = new List<DateTime>();
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    // Flag to prevent immediate closing when clicking in the calendar
+    private bool IgnoreNextBlur { get; set; } = false;
 
     protected override void OnInitialized()
     {
@@ -544,13 +582,32 @@
         if (!Disabled && !ReadOnly)
         {
             IsCalendarOpen = !IsCalendarOpen;
+            if (IsCalendarOpen)
+            {
+                // Ensure we have up-to-date values when opening
+                SetCurrentDateValues();
+                GenerateCalendarDays();
+            }
         }
     }
 
     private async Task HandleInputBlur(FocusEventArgs e)
     {
-        // Small delay to allow for clicking calendar elements
+        if (IgnoreNextBlur)
+        {
+            IgnoreNextBlur = false;
+            return;
+        }
+
+        // Small delay to allow for clicking calendar elements before handling blur
         await Task.Delay(200);
+
+        // If calendar is still open, we're interacting with it
+        if (IsCalendarOpen)
+        {
+            // Keep it open but we've handled this blur event
+            return;
+        }
 
         if (OnBlur.HasDelegate)
             await OnBlur.InvokeAsync(e);
@@ -591,6 +648,8 @@
         }
 
         GenerateCalendarDays();
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private void NextMonth()
@@ -606,6 +665,8 @@
         }
 
         GenerateCalendarDays();
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private void OnMonthChanged(ChangeEventArgs e)
@@ -614,6 +675,8 @@
         {
             CurrentMonth = month;
             GenerateCalendarDays();
+            // Set the flag to prevent blur from closing the calendar
+            IgnoreNextBlur = true;
         }
     }
 
@@ -623,6 +686,8 @@
         {
             CurrentYear = year;
             GenerateCalendarDays();
+            // Set the flag to prevent blur from closing the calendar
+            IgnoreNextBlur = true;
         }
     }
 
@@ -655,8 +720,11 @@
             CurrentMinute = SelectedDate.Value.Minute;
         }
 
-        // If we don't include time, apply the selection immediately
-        if (!IncludeTime)
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
+
+        // If we don't include time or CloseOnDateSelect is true, apply the selection immediately
+        if (!IncludeTime || CloseOnDateSelect)
         {
             await ApplySelection();
         }
@@ -666,44 +734,32 @@
     {
         CurrentHour = (CurrentHour + 1) % 24;
         UpdateSelectedDateTime();
-        // Update Value when time changes directly
-        if (!IncludeTime)
-        {
-            await UpdateValueAsync();
-        }
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private async Task DecrementHour()
     {
         CurrentHour = (CurrentHour - 1 + 24) % 24;
         UpdateSelectedDateTime();
-        // Update Value when time changes directly
-        if (!IncludeTime)
-        {
-            await UpdateValueAsync();
-        }
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private async Task IncrementMinute()
     {
         CurrentMinute = (CurrentMinute + 1) % 60;
         UpdateSelectedDateTime();
-        // Update Value when time changes directly
-        if (!IncludeTime)
-        {
-            await UpdateValueAsync();
-        }
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private async Task DecrementMinute()
     {
         CurrentMinute = (CurrentMinute - 1 + 60) % 60;
         UpdateSelectedDateTime();
-        // Update Value when time changes directly
-        if (!IncludeTime)
-        {
-            await UpdateValueAsync();
-        }
+        // Set the flag to prevent blur from closing the calendar
+        IgnoreNextBlur = true;
     }
 
     private async Task OnHourChanged(ChangeEventArgs e)
@@ -712,11 +768,8 @@
         {
             CurrentHour = hour;
             UpdateSelectedDateTime();
-            // Update Value when time changes directly
-            if (!IncludeTime)
-            {
-                await UpdateValueAsync();
-            }
+            // Set the flag to prevent blur from closing the calendar
+            IgnoreNextBlur = true;
         }
     }
 
@@ -726,11 +779,8 @@
         {
             CurrentMinute = minute;
             UpdateSelectedDateTime();
-            // Update Value when time changes directly
-            if (!IncludeTime)
-            {
-                await UpdateValueAsync();
-            }
+            // Set the flag to prevent blur from closing the calendar
+            IgnoreNextBlur = true;
         }
     }
 
@@ -753,6 +803,15 @@
     {
         IsCalendarOpen = false;
         await UpdateValueAsync();
+    }
+
+    private async Task ApplyAndClose()
+    {
+        if (SelectedDate.HasValue)
+        {
+            await UpdateValueAsync();
+        }
+        IsCalendarOpen = false;
     }
 
     private async Task Clear()

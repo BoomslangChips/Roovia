@@ -1,0 +1,270 @@
+﻿@* RVCheckbox.razor *@
+<div class="roovia-checkbox-container @(Disabled ? "disabled" : "") @SizeClass @CssClass">
+    <label class="roovia-checkbox-wrapper">
+        <div class="roovia-checkbox">
+            <input type="checkbox"
+                   id="@Id"
+                   checked="@Value"
+                   @onchange="OnChangeHandler"
+                   disabled="@Disabled" />
+            <span class="roovia-checkbox-control"></span>
+        </div>
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <span class="roovia-checkbox-label">@Label</span>
+        }
+        else
+        {
+            <span class="roovia-checkbox-label">@ChildContent</span>
+        }
+    </label>
+    @if (!string.IsNullOrEmpty(HelperText))
+    {
+        <div class="roovia-checkbox-helper-text">@HelperText</div>
+    }
+</div>
+
+<style>
+    /* Checkbox component styles */
+    .roovia-checkbox-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-checkbox-wrapper {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-2);
+        cursor: pointer;
+        padding: var(--spacing-1) 0;
+    }
+
+    .roovia-checkbox {
+        position: relative;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+        .roovia-checkbox input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .roovia-checkbox-control {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 16px;
+        height: 16px;
+        background-color: var(--input-bg);
+        border: 1.5px solid var(--border-divider);
+        border-radius: var(--border-radius-sm);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .roovia-checkbox input:checked ~ .roovia-checkbox-control {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        box-shadow: 0 1px 2px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .roovia-checkbox-control::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg) scale(0);
+        opacity: 0;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .roovia-checkbox input:checked ~ .roovia-checkbox-control::after {
+        transform: rotate(45deg) scale(1);
+        opacity: 1;
+    }
+
+    .roovia-checkbox input:focus ~ .roovia-checkbox-control {
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.25);
+    }
+
+    .roovia-checkbox input:hover:not(:disabled) ~ .roovia-checkbox-control {
+        border-color: var(--primary);
+        background-color: var(--primary-lighter);
+    }
+
+    /* Fix for hover on checked state */
+    .roovia-checkbox input:checked:hover:not(:disabled) ~ .roovia-checkbox-control {
+        background-color: var(--primary-dark, var(--primary));
+        border-color: var(--primary);
+    }
+
+    .roovia-checkbox-label {
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+        padding-top: 1px;
+        user-select: none;
+    }
+
+    .roovia-checkbox-helper-text {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin-top: var(--spacing-1);
+        margin-left: calc(16px + var(--spacing-2));
+    }
+
+    /* Size variations */
+    .roovia-checkbox-container.size-sm .roovia-checkbox {
+        width: 14px;
+        height: 14px;
+    }
+
+    .roovia-checkbox-container.size-sm .roovia-checkbox-control {
+        width: 14px;
+        height: 14px;
+    }
+
+        .roovia-checkbox-container.size-sm .roovia-checkbox-control::after {
+            left: 4px;
+            top: 2px;
+            width: 3px;
+            height: 7px;
+            border-width: 0 1.5px 1.5px 0;
+        }
+
+    .roovia-checkbox-container.size-sm .roovia-checkbox-label {
+        font-size: calc(var(--font-size-xs) - 1px);
+    }
+
+    .roovia-checkbox-container.size-sm .roovia-checkbox-helper-text {
+        font-size: calc(var(--font-size-xs) - 1px);
+        margin-left: calc(14px + var(--spacing-2));
+    }
+
+    .roovia-checkbox-container.size-lg .roovia-checkbox {
+        width: 18px;
+        height: 18px;
+    }
+
+    .roovia-checkbox-container.size-lg .roovia-checkbox-control {
+        width: 18px;
+        height: 18px;
+    }
+
+        .roovia-checkbox-container.size-lg .roovia-checkbox-control::after {
+            left: 5px;
+            top: 2px;
+            width: 5px;
+            height: 9px;
+        }
+
+    .roovia-checkbox-container.size-lg .roovia-checkbox-label {
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-checkbox-container.size-lg .roovia-checkbox-helper-text {
+        margin-left: calc(18px + var(--spacing-2));
+    }
+
+    /* Indeterminate state */
+    .roovia-checkbox.indeterminate .roovia-checkbox-control {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+        .roovia-checkbox.indeterminate .roovia-checkbox-control::after {
+            transform: none;
+            border: none;
+            left: 3px;
+            top: 7px;
+            width: 10px;
+            height: 2px;
+            background-color: white;
+            opacity: 1;
+        }
+
+    /* Disabled state */
+    .roovia-checkbox-container.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+        .roovia-checkbox-container.disabled .roovia-checkbox-wrapper {
+            cursor: not-allowed;
+        }
+
+    .roovia-checkbox input:disabled ~ .roovia-checkbox-control {
+        background-color: var(--subtle-bg);
+        border-color: var(--border-divider);
+    }
+
+    .roovia-checkbox input:disabled ~ .roovia-checkbox-label {
+        color: var(--text-muted);
+    }
+
+    /* Animation for check mark */
+    .roovia-checkbox input:checked ~ .roovia-checkbox-control::after {
+        animation: checkbox-check 0.2s cubic-bezier(0.4, 0, 0.23, 1);
+    }
+
+    @@keyframes checkbox-check {
+        0% {
+            transform: rotate(45deg) scale(0);
+            opacity: 0;
+        }
+
+        50% {
+            transform: rotate(45deg) scale(1.2);
+            opacity: 1;
+        }
+
+        100% {
+            transform: rotate(45deg) scale(1);
+            opacity: 1;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; }
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Indeterminate { get; set; }
+    [Parameter] public string HelperText { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    private async Task OnChangeHandler(ChangeEventArgs e)
+    {
+        Value = (bool)e.Value;
+
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(Value);
+
+        if (OnChange.HasDelegate)
+            await OnChange.InvokeAsync(e);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Indeterminate)
+        {
+            // Set indeterminate state via JS interop if needed
+            // This would require a JS function to set the indeterminate property
+            // await JSRuntime.InvokeVoidAsync("setIndeterminate", Id, true);
+        }
+    }
+}

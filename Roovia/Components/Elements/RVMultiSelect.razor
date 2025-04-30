@@ -1,0 +1,679 @@
+﻿@* RVMultiSelect.razor *@
+<div class="roovia-multiselect @(IsValid ? "" : "roovia-multiselect-invalid") @(FullWidth ? "roovia-multiselect-full" : "") @SizeClass @(Disabled ? "roovia-multiselect-disabled" : "") @CssClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="roovia-multiselect-label">@Label</label>
+    }
+
+    <div class="roovia-multiselect-container">
+        <div class="roovia-multiselect-wrapper" @onclick="ToggleDropdown">
+            @if (!string.IsNullOrEmpty(IconLeft))
+            {
+                <span class="roovia-multiselect-icon-left">
+                    <i class="@IconLeft"></i>
+                </span>
+            }
+
+            <div class="roovia-multiselect-content">
+                @if (SelectedValues.Any())
+                {
+                    <div class="roovia-multiselect-chips">
+                        @foreach (var value in SelectedValues)
+                        {
+                            var item = Items.FirstOrDefault(i => i.Value == value);
+                            if (item != null)
+                            {
+                                <div class="roovia-multiselect-chip">
+                                    <span>@item.Text</span>
+                                    <button type="button" class="roovia-multiselect-chip-remove" @onclick:stopPropagation="true" @onclick="() => RemoveItem(value)">
+                                        <i class="far fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="roovia-multiselect-placeholder">@Placeholder</div>
+                }
+            </div>
+
+            <span class="roovia-multiselect-icon-right">
+                <i class="far fa-chevron-down @(IsOpen ? "open" : "")"></i>
+            </span>
+        </div>
+
+        @if (IsOpen)
+        {
+            <div class="roovia-multiselect-overlay" @onclick="CloseAndApply"></div>
+            <div class="roovia-multiselect-dropdown">
+                @if (ShowSearch)
+                {
+                    <div class="roovia-multiselect-search">
+                        <input type="text"
+                               class="roovia-multiselect-search-input"
+                               placeholder="@SearchPlaceholder"
+                               @bind-value="SearchText"
+                               @bind-value:event="oninput"
+                        @onclick:stopPropagation />
+                        <i class="far fa-search roovia-multiselect-search-icon"></i>
+                    </div>
+                }
+
+                @if (ShowSelectAll)
+                {
+                    <div class="roovia-multiselect-actions">
+                        <button type="button" class="roovia-multiselect-action-btn" @onclick="SelectAll" @onclick:stopPropagation>
+                            <i class="far fa-check-square"></i>
+                            <span>Select All</span>
+                        </button>
+                        <button type="button" class="roovia-multiselect-action-btn" @onclick="ClearAll" @onclick:stopPropagation>
+                            <i class="far fa-square"></i>
+                            <span>Clear All</span>
+                        </button>
+                    </div>
+                }
+
+                <div class="roovia-multiselect-items">
+                    @foreach (var item in FilteredItems)
+                    {
+                        <div class="roovia-multiselect-item @(SelectedValues.Contains(item.Value) ? "selected" : "")"
+                             @onclick="() => ToggleItem(item.Value)"
+                        @onclick:stopPropagation>
+                            <div class="roovia-multiselect-checkbox">
+                                <i class="@(SelectedValues.Contains(item.Value) ? "fas fa-check-square" : "far fa-square")"></i>
+                            </div>
+                            <div class="roovia-multiselect-item-content">
+                                @if (!string.IsNullOrEmpty(item.Icon))
+                                {
+                                    <i class="@item.Icon roovia-multiselect-item-icon"></i>
+                                }
+                                <span>@item.Text</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!FilteredItems.Any())
+                    {
+                        <div class="roovia-multiselect-empty">
+                            No matches found
+                        </div>
+                    }
+                </div>
+
+                @if (ShowApplyButton)
+                {
+                    <div class="roovia-multiselect-footer">
+                        <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-secondary" @onclick="Close" @onclick:stopPropagation>
+                            Cancel
+                        </button>
+                        <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-primary" @onclick="ApplySelection" @onclick:stopPropagation>
+                            Apply
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (!IsValid && !string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="roovia-multiselect-validation">@ValidationMessage</div>
+    }
+</div>
+
+<style>
+    /* MultiSelect Styles */
+    .roovia-multiselect {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-3);
+    }
+
+    .roovia-multiselect-label {
+        font-size: var(--font-size-xs);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0;
+    }
+
+    .roovia-multiselect-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .roovia-multiselect-wrapper {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-2) var(--spacing-2);
+        min-height: 36px;
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--input-bg);
+        cursor: pointer;
+        transition: var(--hover-transition);
+        position: relative;
+        font-size: var(--font-size-sm);
+    }
+
+    /* Size variations */
+    .roovia-multiselect.size-sm .roovia-multiselect-wrapper {
+        padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+        min-height: 30px;
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-multiselect.size-lg .roovia-multiselect-wrapper {
+        padding: var(--spacing-3) var(--spacing-3);
+        min-height: 42px;
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-multiselect-wrapper:hover {
+        border-color: var(--primary);
+    }
+
+    .roovia-multiselect-content {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-1);
+        flex: 1;
+        min-width: 0;
+    }
+
+    .roovia-multiselect-placeholder {
+        color: var(--placeholder-color);
+        padding: var(--spacing-1) 0;
+        font-size: inherit;
+    }
+
+    .roovia-multiselect-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-1);
+    }
+
+    .roovia-multiselect-chip {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        padding: 0 var(--spacing-2);
+        height: 22px;
+        border-radius: var(--border-radius-pill);
+        background-color: var(--primary-light);
+        color: var(--primary);
+        font-size: var(--font-size-xs);
+        font-weight: 500;
+    }
+
+    .roovia-multiselect.size-sm .roovia-multiselect-chip {
+        height: 18px;
+        padding: 0 var(--spacing-1);
+        font-size: calc(var(--font-size-xs) - 1px);
+    }
+
+    .roovia-multiselect.size-lg .roovia-multiselect-chip {
+        height: 26px;
+        padding: 0 var(--spacing-2);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-multiselect-chip-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: none;
+        color: var(--primary);
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.75rem;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        transition: var(--hover-transition);
+    }
+
+    .roovia-multiselect.size-sm .roovia-multiselect-chip-remove {
+        width: 14px;
+        height: 14px;
+        font-size: 0.625rem;
+    }
+
+    .roovia-multiselect-chip-remove:hover {
+        background-color: rgba(var(--primary-rgb), 0.2);
+        transform: scale(1.1);
+    }
+
+    .roovia-multiselect-icon-left,
+    .roovia-multiselect-icon-right {
+        display: flex;
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-multiselect.size-sm .roovia-multiselect-icon-left,
+    .roovia-multiselect.size-sm .roovia-multiselect-icon-right {
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-multiselect.size-lg .roovia-multiselect-icon-left,
+    .roovia-multiselect.size-lg .roovia-multiselect-icon-right {
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-multiselect-icon-left {
+        margin-right: var(--spacing-2);
+    }
+
+    .roovia-multiselect-icon-right {
+        margin-left: var(--spacing-2);
+    }
+
+        .roovia-multiselect-icon-right i {
+            transition: transform 0.2s ease;
+        }
+
+            .roovia-multiselect-icon-right i.open {
+                transform: rotate(180deg);
+            }
+
+    .roovia-multiselect-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: var(--z-dropdown, 1000);
+    }
+
+    .roovia-multiselect-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        margin-top: 4px;
+        background-color: var(--dropdown-bg, white);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-divider);
+        z-index: calc(var(--z-dropdown, 1000) + 1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: multiselect-fade-in 0.2s ease;
+    }
+
+    @@keyframes multiselect-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .roovia-multiselect-search {
+        position: relative;
+        padding: var(--spacing-2);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-multiselect-search-input {
+        width: 100%;
+        padding: var(--spacing-1) var(--spacing-2);
+        padding-left: calc(var(--spacing-2) + 1rem);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-xs);
+        transition: var(--hover-transition);
+    }
+
+        .roovia-multiselect-search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-focus);
+        }
+
+    .roovia-multiselect-search-icon {
+        position: absolute;
+        left: calc(var(--spacing-2) + var(--spacing-1));
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        pointer-events: none;
+    }
+
+    .roovia-multiselect-actions {
+        display: flex;
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-multiselect-action-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-1);
+        padding: var(--spacing-1) var(--spacing-2);
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: var(--font-size-xs);
+        cursor: pointer;
+        transition: var(--hover-transition);
+    }
+
+        .roovia-multiselect-action-btn:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .roovia-multiselect-action-btn:first-child {
+            border-right: 1px solid var(--border-divider);
+        }
+
+    .roovia-multiselect-items {
+        max-height: 200px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--scroll-thumb) transparent;
+    }
+
+        .roovia-multiselect-items::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .roovia-multiselect-items::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .roovia-multiselect-items::-webkit-scrollbar-thumb {
+            background-color: var(--scroll-thumb);
+            border-radius: 4px;
+        }
+
+    .roovia-multiselect-item {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-1) var(--spacing-2);
+        cursor: pointer;
+        transition: var(--hover-transition);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-multiselect.size-sm .roovia-multiselect-item {
+        padding: calc(var(--spacing-1) / 2) var(--spacing-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-multiselect.size-lg .roovia-multiselect-item {
+        padding: var(--spacing-2) var(--spacing-3);
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-multiselect-item:hover {
+        background-color: var(--primary-light);
+    }
+
+    .roovia-multiselect-item.selected {
+        background-color: var(--primary-lighter);
+    }
+
+    .roovia-multiselect-checkbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: var(--spacing-2);
+        color: var(--text-secondary);
+    }
+
+    .roovia-multiselect-item.selected .roovia-multiselect-checkbox {
+        color: var(--primary);
+    }
+
+    .roovia-multiselect-item-content {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        flex: 1;
+    }
+
+    .roovia-multiselect-item-icon {
+        color: var(--text-muted);
+    }
+
+    .roovia-multiselect-empty {
+        padding: var(--spacing-3);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-multiselect-footer {
+        padding: var(--spacing-2);
+        border-top: 1px solid var(--border-divider);
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-multiselect-validation {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: 0;
+    }
+
+    .roovia-multiselect-invalid .roovia-multiselect-wrapper {
+        border-color: var(--danger);
+    }
+
+    /* Full width style */
+    .roovia-multiselect-full {
+        width: 100%;
+    }
+
+    /* Disabled state */
+    .roovia-multiselect-disabled .roovia-multiselect-wrapper {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--subtle-bg);
+    }
+
+    /* Responsive adaptations */
+    @@media (max-width: 576px) {
+        .roovia-multiselect-dropdown {
+            position: fixed;
+            top: auto;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin-top: 0;
+            border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+            max-height: 80vh;
+            animation: slide-up 0.3s ease;
+            z-index: calc(var(--z-modal, 1100) + 10);
+        }
+
+        @@keyframes slide-up {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select items...";
+    [Parameter] public string IconLeft { get; set; }
+    [Parameter] public List<MultiSelectItem> Items { get; set; } = new List<MultiSelectItem>();
+    [Parameter] public List<string> Value { get; set; } = new List<string>();
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool ShowSelectAll { get; set; } = true;
+    [Parameter] public bool ShowApplyButton { get; set; }
+    [Parameter] public bool CloseOnSelect { get; set; } = true;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public string ValidationMessage { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
+    [Parameter] public EventCallback<List<string>> OnSelectionChange { get; set; }
+
+    private bool IsOpen { get; set; }
+    private string SearchText { get; set; } = "";
+    private List<string> SelectedValues { get; set; } = new List<string>();
+    private List<string> TempSelectedValues { get; set; } = new List<string>();
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    protected override void OnInitialized()
+    {
+        if (Value != null)
+        {
+            SelectedValues = new List<string>(Value);
+            TempSelectedValues = new List<string>(Value);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Value != null && !Value.SequenceEqual(SelectedValues))
+        {
+            SelectedValues = new List<string>(Value);
+            TempSelectedValues = new List<string>(Value);
+        }
+    }
+
+    private IEnumerable<MultiSelectItem> FilteredItems => string.IsNullOrWhiteSpace(SearchText)
+        ? Items
+        : Items.Where(i => i.Text.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleDropdown()
+    {
+        if (!Disabled)
+        {
+            IsOpen = !IsOpen;
+            if (IsOpen)
+            {
+                // Always store current selection in temporary selection
+                TempSelectedValues = new List<string>(SelectedValues);
+            }
+        }
+    }
+
+    private void Close()
+    {
+        IsOpen = false;
+    }
+
+    private async Task CloseAndApply()
+    {
+        if (!ShowApplyButton)
+        {
+            // If no apply button, the current selection is the final selection
+            SelectedValues = new List<string>(TempSelectedValues);
+            await UpdateSelectedValues();
+        }
+        IsOpen = false;
+    }
+
+    private async Task ToggleItem(string value)
+    {
+        if (TempSelectedValues.Contains(value))
+        {
+            TempSelectedValues.Remove(value);
+        }
+        else
+        {
+            TempSelectedValues.Add(value);
+        }
+
+        if (!ShowApplyButton)
+        {
+            // If no apply button, update immediately
+            SelectedValues = new List<string>(TempSelectedValues);
+            await UpdateSelectedValues();
+
+            // If CloseOnSelect is true, close after selection
+            if (CloseOnSelect && !ShowApplyButton)
+            {
+                IsOpen = false;
+            }
+        }
+    }
+
+    private async Task RemoveItem(string value)
+    {
+        SelectedValues.Remove(value);
+        TempSelectedValues.Remove(value);
+        await UpdateSelectedValues();
+    }
+
+    private async Task SelectAll()
+    {
+        var values = Items.Select(i => i.Value).ToList();
+        TempSelectedValues = values;
+
+        if (!ShowApplyButton)
+        {
+            SelectedValues = values;
+            await UpdateSelectedValues();
+        }
+    }
+
+    private async Task ClearAll()
+    {
+        TempSelectedValues.Clear();
+
+        if (!ShowApplyButton)
+        {
+            SelectedValues.Clear();
+            await UpdateSelectedValues();
+        }
+    }
+
+    private async Task ApplySelection()
+    {
+        SelectedValues = new List<string>(TempSelectedValues);
+        await UpdateSelectedValues();
+        IsOpen = false;
+    }
+
+    private async Task UpdateSelectedValues()
+    {
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(SelectedValues);
+        }
+
+        if (OnSelectionChange.HasDelegate)
+        {
+            await OnSelectionChange.InvokeAsync(SelectedValues);
+        }
+    }
+
+    public class MultiSelectItem
+    {
+        public string Text { get; set; }
+        public string Value { get; set; }
+        public string Icon { get; set; }
+        public bool Disabled { get; set; }
+    }
+}

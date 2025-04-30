@@ -1,0 +1,422 @@
+﻿@* RVDropdown.razor *@
+<div class="roovia-dropdown @(IsOpen ? "roovia-dropdown-open" : "") @CssClass">
+    <div class="roovia-dropdown-trigger" @onclick="ToggleDropdown">
+        @if (!string.IsNullOrEmpty(TriggerText))
+        {
+            <button type="button"
+                    class="roovia-dropdown-btn @GetTriggerButtonClass() @SizeClass"
+                    disabled="@Disabled">
+                @if (!string.IsNullOrEmpty(TriggerIcon))
+                {
+                    <i class="@TriggerIcon"></i>
+                }
+                <span>@TriggerText</span>
+                <i class="far fa-chevron-down roovia-dropdown-arrow @(IsOpen ? "open" : "")"></i>
+            </button>
+        }
+        else
+        {
+            @TriggerContent
+        }
+    </div>
+
+    @if (IsOpen)
+    {
+        <div class="roovia-dropdown-overlay" @onclick="CloseDropdown"></div>
+
+        <div class="roovia-dropdown-menu @PositionClass">
+            @if (ShowSearch)
+            {
+                <div class="roovia-dropdown-search">
+                    <input type="text"
+                           class="roovia-dropdown-search-input"
+                           placeholder="@SearchPlaceholder"
+                           @bind-value="SearchText"
+                           @bind-value:event="oninput"
+                    @onclick:stopPropagation />
+                    <i class="far fa-search roovia-dropdown-search-icon"></i>
+                </div>
+            }
+
+            <div class="roovia-dropdown-items">
+                @if (Items?.Any() == true)
+                {
+                    @foreach (var item in FilteredItems)
+                    {
+                        <button type="button"
+                                class="roovia-dropdown-item @(item.Value == SelectedValue ? "active" : "") @SizeClass"
+                                @onclick="() => SelectItem(item.Value)"
+                        @onclick:stopPropagation
+                                disabled="@item.Disabled">
+                            @if (!string.IsNullOrEmpty(item.Icon))
+                            {
+                                <i class="@item.Icon"></i>
+                            }
+                            <span>@item.Text</span>
+                        </button>
+                    }
+                }
+                else
+                {
+                    @ChildContent
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /* Dropdown styles */
+    .roovia-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .roovia-dropdown-trigger {
+        cursor: pointer;
+        display: inline-flex;
+    }
+
+    .roovia-dropdown-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-2) var(--spacing-3);
+        background-color: var(--content-bg);
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--hover-transition);
+        min-width: 120px;
+        justify-content: space-between;
+    }
+
+        .roovia-dropdown-btn.size-sm {
+            padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+            font-size: var(--font-size-xs);
+            min-width: 100px;
+        }
+
+        .roovia-dropdown-btn.size-lg {
+            padding: var(--spacing-3) var(--spacing-4);
+            font-size: var(--font-size-base);
+            min-width: 150px;
+        }
+
+        .roovia-dropdown-btn:hover {
+            border-color: var(--primary);
+        }
+
+    .roovia-dropdown-arrow {
+        font-size: 0.75rem;
+        transition: transform 0.2s ease;
+        margin-left: auto;
+    }
+
+        .roovia-dropdown-arrow.open {
+            transform: rotate(180deg);
+        }
+
+    .roovia-dropdown-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: var(--z-dropdown);
+        cursor: default;
+    }
+
+    .roovia-dropdown-menu {
+        position: absolute;
+        min-width: 200px;
+        background-color: var(--dropdown-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-divider);
+        z-index: calc(var(--z-dropdown) + 1);
+        overflow: hidden;
+        animation: dropdown-fade-in 0.2s ease;
+        max-height: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @@keyframes dropdown-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Dropdown positions */
+    .roovia-dropdown-bottom-left {
+        top: 100%;
+        left: 0;
+        margin-top: 4px;
+    }
+
+    .roovia-dropdown-bottom-right {
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+    }
+
+    .roovia-dropdown-top-left {
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 4px;
+    }
+
+    .roovia-dropdown-top-right {
+        bottom: 100%;
+        right: 0;
+        margin-bottom: 4px;
+    }
+
+    /* Items container */
+    .roovia-dropdown-items {
+        overflow-y: auto;
+        max-height: 250px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--scroll-thumb) transparent;
+    }
+
+        .roovia-dropdown-items::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .roovia-dropdown-items::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .roovia-dropdown-items::-webkit-scrollbar-thumb {
+            background-color: var(--scroll-thumb);
+            border-radius: 4px;
+        }
+
+    /* Dropdown item */
+    .roovia-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-2) var(--spacing-3);
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        transition: var(--hover-transition);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+    }
+
+        .roovia-dropdown-item.size-sm {
+            padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+            font-size: var(--font-size-xs);
+        }
+
+        .roovia-dropdown-item.size-lg {
+            padding: var(--spacing-3) var(--spacing-4);
+            font-size: var(--font-size-base);
+        }
+
+        .roovia-dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .roovia-dropdown-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .roovia-dropdown-item i {
+            font-size: 1rem;
+        }
+
+        .roovia-dropdown-item.size-sm i {
+            font-size: 0.75rem;
+        }
+
+        .roovia-dropdown-item:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: transparent !important;
+            color: var(--text-muted) !important;
+        }
+
+    /* Search */
+    .roovia-dropdown-search {
+        position: relative;
+        padding: var(--spacing-2);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-dropdown-search-input {
+        width: 100%;
+        padding: var(--spacing-1) var(--spacing-2);
+        padding-left: calc(var(--spacing-2) + 1rem);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-xs);
+        transition: var(--hover-transition);
+    }
+
+        .roovia-dropdown-search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-focus);
+        }
+
+    .roovia-dropdown-search-icon {
+        position: absolute;
+        left: calc(var(--spacing-2) + var(--spacing-1));
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        pointer-events: none;
+    }
+
+    /* Button variations */
+    .roovia-dropdown-btn-primary {
+        background: var(--primary-gradient);
+        color: var(--text-on-primary);
+        border-color: transparent;
+    }
+
+        .roovia-dropdown-btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+    .roovia-dropdown-btn-outline {
+        background-color: transparent;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+    }
+
+        .roovia-dropdown-btn-outline:hover {
+            background-color: var(--primary-light);
+        }
+
+    .roovia-dropdown-btn-ghost {
+        background: transparent;
+        border-color: transparent;
+    }
+
+        .roovia-dropdown-btn-ghost:hover {
+            background-color: var(--primary-light);
+        }
+
+    /* Disabled state */
+    .roovia-dropdown-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    /* Full width style */
+    .roovia-dropdown-full {
+        width: 100%;
+    }
+
+        .roovia-dropdown-full .roovia-dropdown-trigger {
+            width: 100%;
+        }
+
+        .roovia-dropdown-full .roovia-dropdown-btn {
+            width: 100%;
+        }
+
+        .roovia-dropdown-full .roovia-dropdown-menu {
+            width: 100%;
+        }
+</style>
+
+@code {
+    [Parameter] public List<DropdownItem> Items { get; set; }
+    [Parameter] public string TriggerText { get; set; }
+    [Parameter] public string TriggerIcon { get; set; }
+    [Parameter] public RenderFragment TriggerContent { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string Position { get; set; } = "bottom-left";
+    [Parameter] public string ButtonType { get; set; } = "default";
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
+    [Parameter] public bool ShowSearch { get; set; }
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public string SelectedValue { get; set; }
+    [Parameter] public EventCallback<string> SelectedValueChanged { get; set; } // Added for two-way binding
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<string> OnSelect { get; set; }
+    [Parameter] public EventCallback<bool> OnVisibleChange { get; set; }
+
+    private bool IsOpen { get; set; }
+    private string SearchText { get; set; } = "";
+
+    private string PositionClass => $"roovia-dropdown-{Position.ToLowerInvariant()}";
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    private IEnumerable<DropdownItem> FilteredItems => string.IsNullOrWhiteSpace(SearchText)
+        ? Items
+        : Items.Where(i => i.Text.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+    private string GetTriggerButtonClass()
+    {
+        var buttonClass = ButtonType.ToLowerInvariant() == "default"
+            ? ""
+            : $"roovia-dropdown-btn-{ButtonType.ToLowerInvariant()}";
+
+        return $"{buttonClass} {(FullWidth ? "roovia-dropdown-full" : "")}";
+    }
+
+    private async Task ToggleDropdown()
+    {
+        if (!Disabled)
+        {
+            IsOpen = !IsOpen;
+            await OnVisibleChange.InvokeAsync(IsOpen);
+        }
+    }
+
+    private async Task CloseDropdown()
+    {
+        IsOpen = false;
+        await OnVisibleChange.InvokeAsync(false);
+    }
+
+    private async Task SelectItem(string value)
+    {
+        SelectedValue = value;
+
+        // Support two-way binding
+        if (SelectedValueChanged.HasDelegate)
+            await SelectedValueChanged.InvokeAsync(value);
+
+        // Support OnSelect callback
+        if (OnSelect.HasDelegate)
+            await OnSelect.InvokeAsync(value);
+
+        await CloseDropdown();
+    }
+
+    public class DropdownItem
+    {
+        public string Text { get; set; }
+        public string Value { get; set; }
+        public string Icon { get; set; }
+        public bool Disabled { get; set; }
+    }
+}

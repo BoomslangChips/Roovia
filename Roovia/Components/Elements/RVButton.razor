@@ -1,0 +1,422 @@
+﻿@* RVButton.razor - CSS-Only Enhanced Design with Modern Effects *@
+<button id="@Id"
+        type="@Type"
+        class="roovia-btn @ButtonClass @SizeClass @CssClass"
+        @onclick="OnClickHandler"
+        disabled="@(Disabled || Loading)">
+    <span class="roovia-btn-content">
+        @if (Loading)
+        {
+            <div class="roovia-btn-spinner"></div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(IconLeft))
+            {
+                <i class="@IconLeft icon-left"></i>
+            }
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                <span>@Text</span>
+            }
+            else
+            {
+                @ChildContent
+            }
+            @if (!string.IsNullOrEmpty(IconRight))
+            {
+                <i class="@IconRight icon-right"></i>
+            }
+        }
+    </span>
+</button>
+
+<style>
+    /* Enhanced clean, minimal button styles with CSS-only effects */
+    .roovia-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-2);
+        padding: 0.5rem 1.25rem;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        letter-spacing: 0.01rem;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid transparent;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        background-color: transparent;
+        box-shadow: none;
+        line-height: 1.2;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+        transform: translateZ(0);
+        will-change: transform, box-shadow;
+    }
+
+        /* CSS-only ripple effect using ::before pseudo-element */
+        .roovia-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 70%);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            opacity: 0;
+            transition: width 0s, height 0s, opacity 0.5s;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Trigger ripple on active state */
+        .roovia-btn:active::before {
+            width: 300%;
+            height: 300%;
+            opacity: 1;
+            transition: width 0.6s, height 0.6s, opacity 0s;
+        }
+
+    /* Use a different ripple color for light background buttons */
+    .roovia-btn-secondary::before,
+    .roovia-btn-outline::before,
+    .roovia-btn-ghost::before,
+    .roovia-btn-link::before {
+        background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 70%);
+    }
+
+    .roovia-btn:focus-visible {
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .roovia-btn-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-2);
+        z-index: 2;
+        position: relative;
+    }
+
+    .roovia-btn i {
+        font-size: 0.875rem;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .roovia-btn:hover i.icon-right {
+        transform: translateX(2px);
+    }
+
+    .roovia-btn:hover i.icon-left {
+        transform: translateX(-2px);
+    }
+
+    /* Primary Button - Enhanced with CSS-only effects */
+    .roovia-btn-primary {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+
+        .roovia-btn-primary:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-primary:active {
+            background-color: var(--primary-hover);
+            box-shadow: 0 2px 4px rgba(var(--primary-rgb), 0.1);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Secondary Button - Enhanced with CSS-only effects */
+    .roovia-btn-secondary {
+        background-color: var(--subtle-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--border-divider);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+
+        .roovia-btn-secondary:hover {
+            background-color: var(--content-bg);
+            border-color: var(--border-color);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-secondary:active {
+            background-color: var(--subtle-bg);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Outline Button - Enhanced with CSS-only effects */
+    .roovia-btn-outline {
+        background-color: transparent;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+    }
+
+        .roovia-btn-outline:hover {
+            background-color: rgba(var(--primary-rgb), 0.04);
+            box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-outline:active {
+            background-color: rgba(var(--primary-rgb), 0.08);
+            box-shadow: 0 1px 2px rgba(var(--primary-rgb), 0.05);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Ghost Button - Enhanced with CSS-only effects */
+    .roovia-btn-ghost {
+        background: transparent;
+        color: var(--text-primary);
+        border: none;
+    }
+
+        .roovia-btn-ghost:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-ghost:active {
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Danger Button - Enhanced with CSS-only effects */
+    .roovia-btn-danger {
+        background-color: var(--danger);
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+
+        .roovia-btn-danger:hover {
+            background-color: var(--danger-hover);
+            box-shadow: 0 4px 12px rgba(var(--danger-rgb, 220, 38, 38), 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-danger:active {
+            background-color: var(--danger-hover);
+            box-shadow: 0 2px 4px rgba(var(--danger-rgb, 220, 38, 38), 0.1);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Success Button - Enhanced with CSS-only effects */
+    .roovia-btn-success {
+        background-color: var(--success);
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+
+        .roovia-btn-success:hover {
+            background-color: var(--success-hover);
+            box-shadow: 0 4px 12px rgba(var(--success-rgb, 34, 197, 94), 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-success:active {
+            background-color: var(--success-hover);
+            box-shadow: 0 2px 4px rgba(var(--success-rgb, 34, 197, 94), 0.1);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Warning Button - Enhanced with CSS-only effects */
+    .roovia-btn-warning {
+        background-color: var(--warning);
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+
+        .roovia-btn-warning:hover {
+            background-color: var(--warning-hover);
+            box-shadow: 0 4px 12px rgba(var(--warning-rgb, 245, 158, 11), 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-warning:active {
+            background-color: var(--warning-hover);
+            box-shadow: 0 2px 4px rgba(var(--warning-rgb, 245, 158, 11), 0.1);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Info Button - Enhanced with CSS-only effects */
+    .roovia-btn-info {
+        background-color: var(--info);
+        color: white;
+        border: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+
+        .roovia-btn-info:hover {
+            background-color: var(--info-hover);
+            box-shadow: 0 4px 12px rgba(var(--info-rgb, 6, 182, 212), 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .roovia-btn-info:active {
+            background-color: var(--info-hover);
+            box-shadow: 0 2px 4px rgba(var(--info-rgb, 6, 182, 212), 0.1);
+            transform: translateY(0) scale(0.98);
+            transition-duration: 0.1s;
+        }
+
+    /* Link Button - Enhanced with CSS-only effects */
+    .roovia-btn-link {
+        background-color: transparent;
+        color: var(--primary);
+        padding: 0.25rem 0.5rem;
+        border: none;
+        position: relative;
+    }
+
+        .roovia-btn-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 1px;
+            bottom: 0;
+            left: 0.5rem;
+            background-color: var(--primary);
+            transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .roovia-btn-link:hover:after {
+            width: calc(100% - 1rem);
+        }
+
+        .roovia-btn-link:active {
+            color: var(--primary-hover);
+            transform: scale(0.98);
+        }
+
+    /* Button Sizes - Enhanced proportions */
+    .roovia-btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
+
+        .roovia-btn-sm i {
+            font-size: 0.75rem;
+        }
+
+    .roovia-btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+
+        .roovia-btn-lg i {
+            font-size: 1rem;
+        }
+
+    /* Enhanced loading spinner - CSS-only */
+    .roovia-btn-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    }
+
+    .roovia-btn-secondary .roovia-btn-spinner,
+    .roovia-btn-outline .roovia-btn-spinner,
+    .roovia-btn-link .roovia-btn-spinner,
+    .roovia-btn-ghost .roovia-btn-spinner {
+        border: 2px solid rgba(var(--primary-rgb), 0.2);
+        border-top-color: var(--primary);
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* Block button - Enhanced */
+    .roovia-btn-block {
+        width: 100%;
+        display: flex;
+    }
+
+    /* Disabled state - Enhanced */
+    .roovia-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Responsive adjustments - Enhanced */
+    @@media (max-width: 400px) {
+        .roovia-btn
+
+    {
+        padding: 0.4375rem 1rem;
+    }
+
+    .roovia-btn-sm {
+        padding: 0.25rem 0.625rem;
+        font-size: 0.75rem;
+    }
+
+    .roovia-btn-lg {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Text { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string ButtonType { get; set; } = "primary";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string IconLeft { get; set; }
+    [Parameter] public string IconRight { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool Block { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private string ButtonClass => $"roovia-btn-{ButtonType.ToLowerInvariant()} {(Block ? "roovia-btn-block" : "")}";
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"roovia-btn-{Size.ToLowerInvariant()}";
+
+    private async Task OnClickHandler(MouseEventArgs args)
+    {
+        if (!Disabled && !Loading && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(args);
+        }
+    }
+}

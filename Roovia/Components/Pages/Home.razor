@@ -1,224 +1,921 @@
-﻿@page "/temp"
+﻿@page "/components"
 @using Microsoft.AspNetCore.Authorization
 @using Roovia.Components.Elements
 @using Roovia.Services
 @rendermode InteractiveServer
 @inject IJSRuntime JSRuntime
 @inject ToastService ToastService
-<ToastContainer />
-<PageTitle>Roovia Components Demo</PageTitle>
+<RVToastContainer Position="bottom-right" />
+<PageTitle>Roovia Component Library</PageTitle>
 
 @attribute [Authorize]
 
-<div class="container py-4">
-    <!-- Page header with Roovia styling classes -->
-    <div class="roovia-card roovia-card-primary mb-4 animate-fade-in">
-        <div class="roovia-card-header">
-            <h2 class="roovia-card-title"><i class="far fa-flask"></i> Roovia Components Demo</h2>
-        </div>
-        <div class="roovia-card-body">
-            <p class="text-secondary mb-3">Showcase of custom Roovia components for your oil processing application.</p>
+<div class="container-fluid py-4">
+    <RVCard Title="Roovia Component Library"
+            Icon="fa-thin fa-layer-group"
+            Type="top-primary"
+            CssClass="animate-fade-in mb-4">
+        <ChildContent>
+            <p class="text-secondary mb-4">Complete showcase of custom Roovia components for your oil processing application.</p>
 
-            <div class="grid grid-cols-auto-fill-md gap-4 mb-4">
-                <!-- DateTimePicker Card -->
-                <div class="roovia-card roovia-card-hover">
-                    <div class="roovia-card-header">
-                        <h3 class="roovia-card-title">
-                            <i class="far fa-calendar-alt"></i>
-                            DateTime Picker
-                        </h3>
-                    </div>
-                    <div class="roovia-card-body">
-                        <p class="mb-3">A custom DateTime picker component with calendar and time selection:</p>
+            <!-- Main Tabs Navigation -->
+            <RVTab Tabs="mainTabs" OnTabChange="HandleMainTabChange">
+                <!-- Form Components Tab -->
+                <RVTabPanel TabId="form" IsActive='activeMainTab == "form"'>
+                    <h2 class="mb-4">Form Components</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                        <!-- TextBox Component -->
+                        <RVCard Title="TextBox" Icon="fa-thin fa-keyboard" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic TextBox</h4>
+                                    <RVTextbox Label="Basic TextBox"
+                                               Placeholder="Enter some text..."
+                                               Value="@textValue"
+                                               ValueChanged="@((val) => textValue = val)" />
+
+                                    @if (!string.IsNullOrEmpty(textValue))
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            You entered: @textValue
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Icons</h4>
+                                    <RVTextbox Label="Email Address"
+                                               Placeholder="Enter your email"
+                                               IconLeft="fa-thin fa-envelope"
+                                               Type="email" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Validation States</h4>
+                                    <RVTextbox Label="Invalid Example"
+                                               Placeholder="This field has an error"
+                                               IconLeft="fa-thin fa-circle-exclamation"
+                                               IsValid="false"
+                                               ValidationMessage="This field is required." />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Disabled State</h4>
+                                    <RVTextbox Label="Disabled TextBox"
+                                               Placeholder="This field is disabled"
+                                               IconLeft="fa-thin fa-lock"
+                                               Disabled="true"
+                                               Value="Disabled value" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Numeric Input</h4>
+                                    <RVTextbox Label="Quantity"
+                                               Placeholder="Enter number"
+                                               IconLeft="fa-thin fa-hashtag"
+                                               IconRight="fa-thin fa-scale"
+                                               Type="number" />
+                                </div>
+                            </ChildContent>
+                        </RVCard>
 
                         <!-- DateTimePicker Component -->
-                        <DateTimePicker Label="Select Date and Time"
-                                        Placeholder="Choose date/time..."
-                                        IconLeft="far fa-calendar-alt"
-                                        Value="@selectedDateTime"
-                                        ValueChanged="@OnDateTimeChanged"
-                                        Format="dd/MM/yyyy HH:mm"
-                                        IncludeTime="true"
-                                        IsValid="@isDateTimeValid"
-                                        ValidationMessage="@dateTimeValidationMessage" />
+                        <RVCard Title="DateTimePicker" Icon="fa-thin fa-calendar" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic DateTimePicker</h4>
+                                    <RVDateTimePicker Label="Select Date and Time"
+                                                      Placeholder="Choose date/time..."
+                                                      IconLeft="fa-thin fa-calendar"
+                                                      Value="@selectedDateTime"
+                                                      ValueChanged="@OnDateTimeChanged"
+                                                      Format="dd/MM/yyyy HH:mm"
+                                                      IncludeTime="true" />
 
-                        <!-- Show selected value -->
-                        <div class="mt-3">
-                            <p class="mb-1 text-muted">Selected Value:</p>
-                            <div class="p-3 bg-primary-light rounded-md">
-                                <code>@(selectedDateTime?.ToString("dd/MM/yyyy HH:mm") ?? "No date selected")</code>
+                                    @if (selectedDateTime.HasValue)
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Selected: @selectedDateTime.Value.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Date Only</h4>
+                                    <RVDateTimePicker Label="Select Date Only"
+                                                      Placeholder="Choose date..."
+                                                      IconLeft="fa-thin fa-calendar-days"
+                                                      Format="dd/MM/yyyy"
+                                                      IncludeTime="false" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Validation</h4>
+                                    <RVDateTimePicker Label="Required Date"
+                                                      Placeholder="Choose date/time..."
+                                                      IconLeft="fa-thin fa-calendar-check"
+                                                      IsValid="@isDateTimeValid"
+                                                      ValidationMessage="@dateTimeValidationMessage" />
+
+                                    <div class="mt-2">
+                                        <button class="roovia-btn roovia-btn-secondary roovia-btn-sm" @onclick="ValidateDateTime">
+                                            <i class="fa-thin fa-check-circle"></i> Validate
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Disabled State</h4>
+                                    <RVDateTimePicker Label="Disabled Date Picker"
+                                                      Placeholder="Not selectable..."
+                                                      IconLeft="fa-thin fa-calendar-xmark"
+                                                      Disabled="true"
+                                                      Value="@DateTime.Now" />
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Checkbox Component -->
+                        <RVCard Title="Checkbox" Icon="fa-thin fa-square-check" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic Checkbox</h4>
+                                    <RVCheckbox Label="I agree to the terms and conditions"
+                                                Value="@checkboxValue"
+                                                ValueChanged="@((val) => checkboxValue = val)" />
+
+                                    @if (checkboxValue)
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Checkbox is checked!
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Helper Text</h4>
+                                    <RVCheckbox Label="Subscribe to newsletter"
+                                                HelperText="You'll receive weekly updates about our products"
+                                                Value="@subscribeNewsletter"
+                                                ValueChanged="@((val) => subscribeNewsletter = val)" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Disabled State</h4>
+                                    <RVCheckbox Label="Disabled checkbox"
+                                                Disabled="true"
+                                                Value="true" />
+
+                                    <RVCheckbox Label="Disabled unchecked"
+                                                Disabled="true"
+                                                Value="false"
+                                                CssClass="mt-2" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Checkbox Group</h4>
+                                    <div class="d-flex flex-column gap-2">
+                                        @foreach (var option in checkboxOptions)
+                                        {
+                                            <RVCheckbox Label="@option.Label"
+                                                        Value="@option.IsSelected"
+                                                        ValueChanged="@((val) => { option.IsSelected = val; StateHasChanged(); })" />
+                                        }
+                                    </div>
+
+                                    @if (checkboxOptions.Any(o => o.IsSelected))
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Selected options: @string.Join(", ", checkboxOptions.Where(o => o.IsSelected).Select(o => o.Label))
+                                        </div>
+                                    }
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Switch Component -->
+                        <RVCard Title="Switch" Icon="fa-thin fa-toggle-on" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic Switch</h4>
+                                    <RVSwitch Label="Enable notifications"
+                                              Value="@switchValue"
+                                              ValueChanged="@((val) => switchValue = val)" />
+
+                                    @if (switchValue)
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Notifications are enabled!
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Helper Text</h4>
+                                    <RVSwitch Label="Dark mode"
+                                              HelperText="Switch between light and dark theme"
+                                              Value="@darkModeEnabled"
+                                              ValueChanged="@((val) => darkModeEnabled = val)" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Disabled State</h4>
+                                    <RVSwitch Label="Disabled switch"
+                                              Disabled="true"
+                                              Value="true" />
+
+                                    <RVSwitch Label="Disabled inactive"
+                                              Disabled="true"
+                                              Value="false"
+                                              CssClass="mt-2" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Switch Group</h4>
+                                    <div class="d-flex flex-column gap-2">
+                                        <RVSwitch Label="Email notifications"
+                                                  Value="@emailNotifications"
+                                                  ValueChanged="@((val) => emailNotifications = val)" />
+
+                                        <RVSwitch Label="SMS notifications"
+                                                  Value="@smsNotifications"
+                                                  ValueChanged="@((val) => smsNotifications = val)" />
+
+                                        <RVSwitch Label="Push notifications"
+                                                  Value="@pushNotifications"
+                                                  ValueChanged="@((val) => pushNotifications = val)" />
+                                    </div>
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Dropdown Component -->
+                        <RVCard Title="Dropdown" Icon="fa-thin fa-chevron-down" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic Dropdown</h4>
+                                    <RVDropdown TriggerText="Select an option"
+                                                Items="countryItems"
+                                                OnSelect="HandleDropdownSelection"
+                                                SelectedValue="@selectedDropdownValue" />
+
+                                    @if (!string.IsNullOrEmpty(selectedDropdownValue))
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Selected: @selectedDropdownValue
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Search</h4>
+                                    <RVDropdown TriggerText="Search Countries"
+                                                Items="countryItems"
+                                                ShowSearch="true"
+                                                SearchPlaceholder="Find a country..." />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Button Styles</h4>
+                                    <div class="d-flex flex-wrap gap-3 mb-2">
+                                        <RVDropdown TriggerText="Primary"
+                                                    ButtonType="primary"
+                                                    Items="dropdownOptions" />
+
+                                        <RVDropdown TriggerText="Outline"
+                                                    ButtonType="outline"
+                                                    Items="dropdownOptions" />
+
+                                        <RVDropdown TriggerText="Ghost"
+                                                    ButtonType="ghost"
+                                                    TriggerIcon="fa-thin fa-filter"
+                                                    Items="dropdownOptions" />
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Full Width</h4>
+                                    <RVDropdown TriggerText="Full Width Dropdown"
+                                                FullWidth="true"
+                                                Items="dropdownOptions" />
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- MultiSelect Component -->
+                        <RVCard Title="MultiSelect" Icon="fa-thin fa-check-square" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic MultiSelect</h4>
+                                    <RVMultiSelect Label="Select Multiple Options"
+                                                   Placeholder="Choose options..."
+                                                   Items="multiSelectItems"
+                                                   Value="@selectedMultiValues"
+                                                   OnSelectionChange="HandleMultiSelection" />
+
+                                    @if (selectedMultiValues?.Any() == true)
+                                    {
+                                        <div class="mt-2 text-primary font-weight-medium">
+                                            Selected: @string.Join(", ", selectedMultiValues)
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Icons</h4>
+                                    <RVMultiSelect Label="Oil Types"
+                                                   Placeholder="Select oil types..."
+                                                   IconLeft="fa-thin fa-oil-can"
+                                                   Items="oilItems" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Apply Button</h4>
+                                    <RVMultiSelect Label="Processing Methods"
+                                                   Placeholder="Select methods..."
+                                                   Items="processingItems"
+                                                   ShowApplyButton="true" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Validation State</h4>
+                                    <RVMultiSelect Label="Required Selection"
+                                                   Placeholder="Select at least one..."
+                                                   Items="multiSelectItems"
+                                                   IsValid="false"
+                                                   ValidationMessage="Please select at least one option." />
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Chips Component -->
+                        <RVCard Title="Chips" Icon="fa-thin fa-tags" Size="compact">
+                            <ChildContent>
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Basic Chips</h4>
+                                    <RVChips Label="Categories"
+                                             Chips="@basicChips"
+                                             ChipsChanged="@((chips) => basicChips = chips)" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Input Chips</h4>
+                                    <RVChips Label="Tags"
+                                             IsInputChip="true"
+                                             Placeholder="Add tag..."
+                                             Chips="@inputChips"
+                                             OnChipAdded="HandleChipAdded"
+                                             OnChipRemoved="HandleChipRemoved"
+                                             ChipsChanged="@((chips) => inputChips = chips)" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Chip Types</h4>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @foreach (var chipType in chipTypes)
+                                        {
+                                            <RVChips Chips="@(GetChipsForType(chipType))"
+                                                     ChipsChanged="@((chips) => UpdateChipsForType(chipType, chips))" />
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">With Icons</h4>
+                                    <RVChips Label="Platforms"
+                                             Chips="@iconChips"
+                                             ChipsChanged="@((chips) => iconChips = chips)" />
+                                </div>
+
+                                <div class="mb-4">
+                                    <h4 class="mb-3">Selectable Chips</h4>
+                                    <RVChips Label="Filter Options"
+                                             Chips="@selectableChips"
+                                             OnChipSelected="HandleChipSelected"
+                                             ChipsChanged="@((chips) => selectableChips = chips)" />
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Card Component -->
+                        <RVCard Title="Card Variations" Icon="fa-thin fa-square" Size="compact">
+                            <ChildContent>
+                                <h4 class="mb-3">Card Types</h4>
+                                <div class="grid grid-cols-2 gap-2 mb-4">
+                                    <RVCard Title="Default Card" Size="sm">
+                                        <ChildContent>
+                                            <p>Basic card style</p>
+                                        </ChildContent>
+                                    </RVCard>
+
+                                    <RVCard Title="Border Card" Type="border-primary" Size="sm">
+                                        <ChildContent>
+                                            <p>Left border style</p>
+                                        </ChildContent>
+                                    </RVCard>
+
+                                    <RVCard Title="Top Card" Type="top-success" Size="sm">
+                                        <ChildContent>
+                                            <p>Top border style</p>
+                                        </ChildContent>
+                                    </RVCard>
+
+                                    <RVCard Title="Soft Card" Type="soft-info" Size="sm">
+                                        <ChildContent>
+                                            <p>Soft background</p>
+                                        </ChildContent>
+                                    </RVCard>
+                                </div>
+
+                                <h4 class="mb-3">Card Features</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <RVCard Title="With Badge" BadgeText="New" BadgeType="badge-primary" Size="sm">
+                                        <ChildContent>
+                                            <p>Card with badge</p>
+                                        </ChildContent>
+                                    </RVCard>
+
+                                    <RVCard Title="Floating" Size="sm" Floating="true">
+                                        <ChildContent>
+                                            <p>Elevated card</p>
+                                        </ChildContent>
+                                    </RVCard>
+
+                                    <RVCard Title="With Footer" Size="sm">
+                                        <ChildContent>
+                                            <p>Card with footer</p>
+                                        </ChildContent>
+                                        <FooterContent>
+                                            <div class="d-flex justify-content-end">
+                                                <button class="roovia-btn roovia-btn-sm roovia-btn-primary">
+                                                    <i class="fa-thin fa-check"></i> Action
+                                                </button>
+                                            </div>
+                                        </FooterContent>
+                                    </RVCard>
+
+                                    <RVCard Title="With Actions" Size="sm">
+                                        <HeaderActions>
+                                            <button class="roovia-btn roovia-btn-sm roovia-btn-ghost">
+                                                <i class="fa-thin fa-ellipsis-vertical"></i>
+                                            </button>
+                                        </HeaderActions>
+                                        <ChildContent>
+                                            <p>Card with header actions</p>
+                                        </ChildContent>
+                                    </RVCard>
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+                    </div>
+                </RVTabPanel>
+
+                <!-- Buttons Tab -->
+                <RVTabPanel TabId="buttons" IsActive='activeMainTab == "buttons"'>
+                    <h2 class="mb-4">Buttons & Actions</h2>
+
+                    <RVCard Title="Buttons" Icon="fa-thin fa-square" CssClass="mb-4">
+                        <ChildContent>
+                            <div class="mb-5">
+                                <h4 class="mb-3">Button Types</h4>
+                                <div class="d-flex flex-wrap gap-3 mb-4">
+                                    <RVButton Text="Primary" ButtonType="primary" />
+                                    <RVButton Text="Secondary" ButtonType="secondary" />
+                                    <RVButton Text="Outline" ButtonType="outline" />
+                                    <RVButton Text="Ghost" ButtonType="ghost" />
+                                </div>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <RVButton Text="Success" ButtonType="success" />
+                                    <RVButton Text="Warning" ButtonType="warning" />
+                                    <RVButton Text="Danger" ButtonType="danger" />
+                                    <RVButton Text="Info" ButtonType="info" />
+                                    <RVButton Text="Link" ButtonType="link" />
+                                </div>
                             </div>
-                        </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Button Sizes</h4>
+                                <div class="d-flex flex-wrap gap-3 align-items-center">
+                                    <RVButton Text="Small" ButtonType="primary" Size="sm" />
+                                    <RVButton Text="Medium (Default)" ButtonType="primary" />
+                                    <RVButton Text="Large" ButtonType="primary" Size="lg" />
+                                </div>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">With Icons</h4>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <RVButton Text="Left Icon" ButtonType="primary" IconLeft="fa-thin fa-star" />
+                                    <RVButton Text="Right Icon" ButtonType="primary" IconRight="fa-thin fa-arrow-right" />
+                                    <RVButton Text="Both Icons" ButtonType="primary" IconLeft="fa-thin fa-check" IconRight="fa-thin fa-arrow-right" />
+                                    <RVButton ButtonType="primary" IconLeft="fa-thin fa-gear" />
+                                </div>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">States</h4>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <RVButton Text="Normal" ButtonType="primary" />
+                                    <RVButton Text="Disabled" ButtonType="primary" Disabled="true" />
+                                    <RVButton Text="Loading" ButtonType="primary" Loading="true" />
+                                </div>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Block Buttons</h4>
+                                <div class="mb-2">
+                                    <RVButton Text="Block Primary" ButtonType="primary" Block="true" />
+                                </div>
+                                <div class="mb-2">
+                                    <RVButton Text="Block Secondary" ButtonType="secondary" Block="true" />
+                                </div>
+                                <div>
+                                    <RVButton Text="Block with Icons" ButtonType="outline" Block="true" IconLeft="fa-thin fa-save" IconRight="fa-thin fa-arrow-right" />
+                                </div>
+                            </div>
+                        </ChildContent>
+                    </RVCard>
+                </RVTabPanel>
+
+                <!-- Tabs & Navigation Tab -->
+                <RVTabPanel TabId="tabs" IsActive='activeMainTab == "tabs"'>
+                    <h2 class="mb-4">Tabs & Navigation</h2>
+
+                    <RVCard Title="Tabs" Icon="fa-thin fa-folder" CssClass="mb-4">
+                        <ChildContent>
+                            <div class="mb-5">
+                                <h4 class="mb-3">Default Tabs (Underlined)</h4>
+                                <RVTab Tabs="defaultTabItems" OnTabChange="HandleTabStyleChange">
+                                    <RVTabPanel TabId="tab1" IsActive='activeTabStyle == "tab1"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Tab 1 Content</h5>
+                                            <p>This is the content for the first tab. Default underlined style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="tab2" IsActive='activeTabStyle == "tab2"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Tab 2 Content</h5>
+                                            <p>This is the content for the second tab. Default underlined style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="tab3" IsActive='activeTabStyle == "tab3"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Tab 3 Content</h5>
+                                            <p>This is the content for the third tab. Default underlined style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                </RVTab>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Boxed Tabs</h4>
+                                <RVTab Tabs="boxedTabItems" Style="boxed" OnTabChange="HandleBoxedTabChange">
+                                    <RVTabPanel TabId="boxed1" IsActive='activeBoxedTab == "boxed1"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Boxed Tab 1</h5>
+                                            <p>This is the content for the first tab using boxed style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="boxed2" IsActive='activeBoxedTab == "boxed2"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Boxed Tab 2</h5>
+                                            <p>This is the content for the second tab using boxed style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="boxed3" IsActive='activeBoxedTab == "boxed3"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Boxed Tab 3</h5>
+                                            <p>This is the content for the third tab using boxed style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                </RVTab>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Button Tabs</h4>
+                                <RVTab Tabs="buttonTabItems" Style="buttons" OnTabChange="HandleButtonTabChange">
+                                    <RVTabPanel TabId="btn1" IsActive='activeButtonTab == "btn1"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Button Tab 1</h5>
+                                            <p>This is the content for the first tab using button style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="btn2" IsActive='activeButtonTab == "btn2"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Button Tab 2</h5>
+                                            <p>This is the content for the second tab using button style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="btn3" IsActive='activeButtonTab == "btn3"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Button Tab 3</h5>
+                                            <p>This is the content for the third tab using button style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                </RVTab>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Pills Tabs</h4>
+                                <RVTab Tabs="pillsTabItems" Style="pills" OnTabChange="HandlePillsTabChange">
+                                    <RVTabPanel TabId="pill1" IsActive='activePillsTab == "pill1"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Pill Tab 1</h5>
+                                            <p>This is the content for the first tab using pills style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="pill2" IsActive='activePillsTab == "pill2"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Pill Tab 2</h5>
+                                            <p>This is the content for the second tab using pills style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="pill3" IsActive='activePillsTab == "pill3"'>
+                                        <div class="p-4 bg-primary-light rounded-lg mt-3">
+                                            <h5>Pill Tab 3</h5>
+                                            <p>This is the content for the third tab using pills style.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                </RVTab>
+                            </div>
+
+                            <div class="mb-5">
+                                <h4 class="mb-3">Vertical Tabs</h4>
+                                <RVTab Tabs="verticalTabItems" IsVertical="true" Style="underlined" OnTabChange="HandleVerticalTabChange">
+                                    <RVTabPanel TabId="vert1" IsActive='activeVerticalTab == "vert1"'>
+                                        <div class="p-4 bg-primary-light rounded-lg">
+                                            <h5>Vertical Tab 1</h5>
+                                            <p>This is the content for the first tab using vertical layout.</p>
+                                            <p>Vertical tabs are useful for complex forms or when you need more horizontal space.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="vert2" IsActive='activeVerticalTab == "vert2"'>
+                                        <div class="p-4 bg-primary-light rounded-lg">
+                                            <h5>Vertical Tab 2</h5>
+                                            <p>This is the content for the second tab using vertical layout.</p>
+                                            <p>You can display more content in each tab section with this layout.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                    <RVTabPanel TabId="vert3" IsActive='activeVerticalTab == "vert3"'>
+                                        <div class="p-4 bg-primary-light rounded-lg">
+                                            <h5>Vertical Tab 3</h5>
+                                            <p>This is the content for the third tab using vertical layout.</p>
+                                            <p>Vertical tabs automatically become horizontal on mobile devices.</p>
+                                        </div>
+                                    </RVTabPanel>
+                                </RVTab>
+                            </div>
+                        </ChildContent>
+                    </RVCard>
+                </RVTabPanel>
+
+                <!-- Modals & Toasts Tab -->
+                <RVTabPanel TabId="feedback" IsActive='activeMainTab == "feedback"'>
+                    <h2 class="mb-4">Feedback Components</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                        <!-- Modal Component -->
+                        <RVCard Title="Modal Dialogs" Icon="fa-thin fa-window-maximize">
+                            <ChildContent>
+                                <p class="mb-3">Display content in modal dialogs with various sizes and options:</p>
+
+                                <div class="d-flex flex-column gap-2">
+                                    <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Small)">
+                                        <i class="fa-thin fa-window-restore"></i> Small Modal
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Medium)">
+                                        <i class="fa-thin fa-window-maximize"></i> Medium Modal
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Large)">
+                                        <i class="fa-thin fa-window-maximize"></i> Large Modal
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Fullscreen)">
+                                        <i class="fa-thin fa-expand"></i> Fullscreen Modal
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomModal">
+                                        <i class="fa-thin fa-gear"></i> Custom Modal
+                                    </button>
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Toast Notifications -->
+                        <RVCard Title="Toast Notifications" Icon="fa-thin fa-bell">
+                            <ChildContent>
+                                <p class="mb-3">Display toast notifications to alert users about events or actions:</p>
+
+                                <div class="d-flex flex-column gap-2">
+                                    <button class="roovia-btn roovia-btn-success" @onclick="ShowSuccessToast">
+                                        <i class="fa-thin fa-circle-check"></i> Success Toast
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-danger" @onclick="ShowErrorToast">
+                                        <i class="fa-thin fa-circle-xmark"></i> Error Toast
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-warning" @onclick="ShowWarningToast">
+                                        <i class="fa-thin fa-triangle-exclamation"></i> Warning Toast
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-info" @onclick="ShowInfoToast">
+                                        <i class="fa-thin fa-circle-info"></i> Info Toast
+                                    </button>
+
+                                    <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomToast">
+                                        <i class="fa-thin fa-bell"></i> Custom Toast
+                                    </button>
+                                </div>
+                            </ChildContent>
+                        </RVCard>
                     </div>
-                    <div class="roovia-card-footer">
-                        <button class="roovia-btn roovia-btn-secondary" @onclick="ClearDateTime">
-                            <i class="far fa-trash-alt"></i> Clear
-                        </button>
-                        <button class="roovia-btn roovia-btn-primary" @onclick="ValidateDateTime">
-                            <i class="far fa-check-circle"></i> Validate
-                        </button>
+                </RVTabPanel>
+
+                <!-- Demo Application Tab -->
+                <RVTabPanel TabId="demo" IsActive='activeMainTab == "demo"'>
+                    <h2 class="mb-4">Demo Application</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                        <!-- Oil Processing Form Demo -->
+                        <RVCard Title="Oil Processing Form" Icon="fa-thin fa-oil-can" Type="border-primary">
+                            <ChildContent>
+                                <p class="mb-4">This is a sample application demonstrating components working together:</p>
+
+                                <div class="roovia-form">
+                                    <div class="roovia-form-group">
+                                        <RVTextbox Label="Batch Number"
+                                                   Placeholder="Enter batch number"
+                                                   IconLeft="fa-thin fa-hashtag"
+                                                   Value="@demoForm.BatchNumber"
+                                                   ValueChanged="@((val) => demoForm.BatchNumber = val)" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <RVDropdown TriggerText="@(string.IsNullOrEmpty(demoForm.OilType) ? "Select Oil Type" : demoForm.OilType)"
+                                                    Items="oilTypeItems"
+                                                    FullWidth="true"
+                                                    OnSelect="HandleOilTypeSelection" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <RVMultiSelect Label="Processing Methods"
+                                                       Placeholder="Select processing methods..."
+                                                       Items="processingItems"
+                                                       Value="@demoForm.ProcessingMethods"
+                                                       OnSelectionChange="HandleProcessingMethodsSelection" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <RVDateTimePicker Label="Processing Date"
+                                                          Placeholder="Select processing date..."
+                                                          IconLeft="fa-thin fa-calendar"
+                                                          Value="@demoForm.ProcessingDate"
+                                                          ValueChanged="@((val) => demoForm.ProcessingDate = val)"
+                                                          Format="dd/MM/yyyy HH:mm" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <RVTextbox Label="Quantity (Liters)"
+                                                   Placeholder="Enter quantity"
+                                                   Type="number"
+                                                   IconLeft="fa-thin fa-gauge"
+                                                   Value="@demoForm.Quantity"
+                                                   ValueChanged="@((val) => demoForm.Quantity = val)" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <RVSwitch Label="Quality Control Passed"
+                                                  Value="@demoForm.QualityPassed"
+                                                  ValueChanged="@((val) => demoForm.QualityPassed = val)" />
+                                    </div>
+
+                                    <div class="d-flex justify-content-end mt-4">
+                                        <RVButton Text="Reset" ButtonType="secondary" IconLeft="fa-thin fa-arrow-rotate-left" OnClick="ResetDemoForm" />
+                                        <RVButton Text="Submit" ButtonType="primary" IconLeft="fa-thin fa-check" OnClick="SubmitDemoForm" CssClass="ms-2" />
+                                    </div>
+                                </div>
+                            </ChildContent>
+                        </RVCard>
+
+                        <!-- Demo Result Preview -->
+                        <RVCard Title="Form Preview" Icon="fa-thin fa-eye" Type="soft-primary">
+                            <ChildContent>
+                                @if (isFormSubmitted)
+                                {
+                                    <div class="p-4 bg-primary-light rounded-lg">
+                                        <h4 class="mb-3 text-primary">Oil Processing Details</h4>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Batch Number:</span>
+                                            <span>@demoForm.BatchNumber</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Oil Type:</span>
+                                            <span>@demoForm.OilType</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Processing Methods:</span>
+                                            <span>@(demoForm.ProcessingMethods.Any() ? string.Join(", ", demoForm.ProcessingMethods) : "None")</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Processing Date:</span>
+                                            <span>@(demoForm.ProcessingDate?.ToString("dd/MM/yyyy HH:mm") ?? "Not specified")</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Quantity:</span>
+                                            <span>@demoForm.Quantity Liters</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <span class="font-weight-medium">Quality Control:</span>
+                                            <span class="@(demoForm.QualityPassed ? "text-success" : "text-danger")">
+                                                @(demoForm.QualityPassed ? "Passed" : "Not Passed")
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-4">
+                                            <RVButton Text="Print Report" ButtonType="outline" IconLeft="fa-thin fa-print" OnClick="ShowPrintDialog" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-state">
+                                        <div class="empty-illustration">
+                                            <i class="fa-thin fa-file-lines"></i>
+                                        </div>
+                                        <h3>No Data Yet</h3>
+                                        <p>Fill out and submit the form to see the preview.</p>
+                                    </div>
+                                }
+
+                                <div class="mt-4">
+                                    <h4 class="mb-3">Processing History</h4>
+
+                                    @if (processingHistory.Count > 0)
+                                    {
+                                        <div class="table-container">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Batch</th>
+                                                        <th>Type</th>
+                                                        <th>Quantity</th>
+                                                        <th>Date</th>
+                                                        <th>Quality</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var item in processingHistory)
+                                                    {
+                                                        <tr>
+                                                            <td>@item.BatchNumber</td>
+                                                            <td>@item.OilType</td>
+                                                            <td>@item.Quantity</td>
+                                                            <td>@(item.ProcessingDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                                            <td>
+                                                                <span class="@(item.QualityPassed ? "text-success" : "text-danger")">
+                                                                    <i class="@(item.QualityPassed ? "fa-thin fa-circle-check" : "fa-thin fa-circle-xmark")"></i>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">No processing history available.</p>
+                                    }
+                                </div>
+                            </ChildContent>
+                        </RVCard>
                     </div>
-                </div>
-
-                <!-- Modal Card -->
-                <div class="roovia-card roovia-card-hover">
-                    <div class="roovia-card-header">
-                        <h3 class="roovia-card-title">
-                            <i class="far fa-window-maximize"></i>
-                            Modal Dialog
-                        </h3>
-                    </div>
-                    <div class="roovia-card-body">
-                        <p class="mb-3">Display content in beautiful modal dialogs with various sizes and options:</p>
-
-                        <div class="d-flex flex-column gap-2">
-                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Small)">
-                                <i class="far fa-window-restore"></i> Small Modal
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Medium)">
-                                <i class="far fa-window-maximize"></i> Medium Modal
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Large)">
-                                <i class="far fa-window-maximize"></i> Large Modal
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-primary" @onclick="() => ShowModal(ModalSize.Fullscreen)">
-                                <i class="far fa-expand"></i> Fullscreen Modal
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomModal">
-                                <i class="far fa-cog"></i> Custom Modal
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Toast Card -->
-                <div class="roovia-card roovia-card-hover">
-                    <div class="roovia-card-header">
-                        <h3 class="roovia-card-title">
-                            <i class="far fa-bell"></i>
-                            Toast Notifications
-                        </h3>
-                    </div>
-                    <div class="roovia-card-body">
-                        <p class="mb-3">Display beautiful toast notifications to alert users about events or actions:</p>
-
-                        <div class="d-flex flex-column gap-2">
-                            <button class="roovia-btn roovia-btn-success" @onclick="ShowSuccessToast">
-                                <i class="far fa-check-circle"></i> Success Toast
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-danger" @onclick="ShowErrorToast">
-                                <i class="far fa-times-circle"></i> Error Toast
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-warning" @onclick="ShowWarningToast">
-                                <i class="far fa-exclamation-triangle"></i> Warning Toast
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-info" @onclick="ShowInfoToast">
-                                <i class="far fa-info-circle"></i> Info Toast
-                            </button>
-
-                            <button class="roovia-btn roovia-btn-secondary" @onclick="ShowCustomToast">
-                                <i class="far fa-bell"></i> Custom Toast
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Counter Card (original content) -->
-            <div class="roovia-card">
-                <div class="roovia-card-header">
-                    <h3 class="roovia-card-title"><i class="far fa-calculator"></i> Counter</h3>
-                </div>
-                <div class="roovia-card-body">
-                    <p role="status" class="text-secondary mb-3">Current count: <span class="text-primary font-weight-semibold">@currentCount</span></p>
-
-                    <!-- Using TextBox component -->
-                    <Textbox Label="Increment Amount"
-                             Placeholder="Enter increment value"
-                             Type="number"
-                             IconLeft="far fa-plus"
-                             Value="@incrementAmount.ToString()"
-                             ValueChanged="HandleIncrementChange"
-                             CssClass="mb-4" />
-
-                    <!-- Buttons with Roovia styling -->
-                    <div class="d-flex gap-3">
-                        <button class="roovia-btn roovia-btn-primary" @onclick="IncrementCount">
-                            <i class="far fa-plus"></i>
-                            Increment
-                        </button>
-                        <button class="roovia-btn roovia-btn-secondary" @onclick="ResetCount">
-                            <i class="far fa-redo"></i>
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- History card using Roovia styling -->
-    @if (countHistory.Count > 0)
-    {
-        <div class="roovia-card animate-fade-in">
-            <div class="roovia-card-header">
-                <h3 class="roovia-card-title"><i class="far fa-history"></i> Count History</h3>
-            </div>
-            <div class="roovia-card-body">
-                <div class="table-container">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Value</th>
-                                <th>Change</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var (value, change, time, index) in countHistory.Select((h, i) => (h.value, h.change, h.time, i + 1)))
-                            {
-                                <tr>
-                                    <td>@index</td>
-                                    <td>@value</td>
-                                    <td>
-                                        @if (change > 0)
-                                        {
-                                            <span class="positive-value">+@change</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="negative-value">@change</span>
-                                        }
-                                    </td>
-                                    <td class="text-muted">@time.ToString("HH:mm:ss")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    }
+                </RVTabPanel>
+            </RVTab>
+        </ChildContent>
+    </RVCard>
 </div>
 
 <!-- Modal Components -->
-<Modal Title="@modalTitle"
-       Icon="@modalIcon"
-       IsVisible="@isModalVisible"
-       ShowHeader="true"
-       ShowCloseButton="true"
-       Size="@currentModalSize"
-       OnClose="CloseModal"
-       OnConfirm="ConfirmModal"
-       OnCancel="CloseModal">
+<RVModal Title="@modalTitle"
+         Icon="@modalIcon"
+         IsVisible="@isModalVisible"
+         ShowHeader="true"
+         ShowCloseButton="true"
+         Size="@currentModalSize"
+         OnClose="CloseModal"
+         OnConfirm="ConfirmModal"
+         OnCancel="CloseModal">
 
     <ChildContent>
         <div class="p-3">
@@ -229,42 +926,40 @@
                 <div class="mt-4">
                     <h4>Fullscreen Content Example</h4>
                     <div class="grid grid-cols-2 gap-4 mt-3">
-                        <div class="roovia-card">
-                            <div class="roovia-card-body">
-                                <h5>Column 1</h5>
+                        <RVCard Title="Column 1" Size="sm">
+                            <ChildContent>
                                 <p>Fullscreen modals are perfect for complex views that need more space.</p>
-                            </div>
-                        </div>
-                        <div class="roovia-card">
-                            <div class="roovia-card-body">
-                                <h5>Column 2</h5>
+                            </ChildContent>
+                        </RVCard>
+                        <RVCard Title="Column 2" Size="sm">
+                            <ChildContent>
                                 <p>You can fit multiple sections of content in a fullscreen modal.</p>
-                            </div>
-                        </div>
+                            </ChildContent>
+                        </RVCard>
                     </div>
                 </div>
             }
 
             <div class="mt-4">
-                <DateTimePicker Label="Schedule Date"
-                                Placeholder="Choose a date..."
-                                IconLeft="far fa-calendar-alt"
-                                Value="@modalDateTime"
-                                ValueChanged="@((value) => modalDateTime = value)"
-                                Format="dd/MM/yyyy HH:mm" />
+                <RVDateTimePicker Label="Schedule Date"
+                                  Placeholder="Choose a date..."
+                                  IconLeft="fa-thin fa-calendar"
+                                  Value="@modalDateTime"
+                                  ValueChanged="@((value) => modalDateTime = value)"
+                                  Format="dd/MM/yyyy HH:mm" />
             </div>
         </div>
     </ChildContent>
-</Modal>
+</RVModal>
 
-<Modal Title="Custom Modal Example"
-       Icon="far fa-cogs"
-       IsVisible="@isCustomModalVisible"
-       ShowHeader="true"
-       ShowCloseButton="true"
-       DefaultFooter="false"
-       Size="lg"
-       OnClose="CloseCustomModal">
+<RVModal Title="Custom Modal Example"
+         Icon="fa-thin fa-gears"
+         IsVisible="@isCustomModalVisible"
+         ShowHeader="true"
+         ShowCloseButton="true"
+         DefaultFooter="false"
+         Size="lg"
+         OnClose="CloseCustomModal">
 
     <ChildContent>
         <div class="p-3">
@@ -279,13 +974,13 @@
             <div class="roovia-tabs-container mt-4">
                 <div class="roovia-tabs roovia-tabs-boxed">
                     <button class="roovia-tab @(activeTab == 1 ? "active" : "")" @onclick="() => activeTab = 1">
-                        <i class="far fa-info-circle"></i> Tab 1
+                        <i class="fa-thin fa-circle-info"></i> Tab 1
                     </button>
                     <button class="roovia-tab @(activeTab == 2 ? "active" : "")" @onclick="() => activeTab = 2">
-                        <i class="far fa-cog"></i> Tab 2
+                        <i class="fa-thin fa-gear"></i> Tab 2
                     </button>
                     <button class="roovia-tab @(activeTab == 3 ? "active" : "")" @onclick="() => activeTab = 3">
-                        <i class="far fa-chart-bar"></i> Tab 3
+                        <i class="fa-thin fa-chart-simple"></i> Tab 3
                     </button>
                 </div>
                 <div class="roovia-tab-content mt-3">
@@ -308,34 +1003,271 @@
 
     <FooterContent>
         <button class="roovia-btn roovia-btn-success" @onclick="CloseCustomModal">
-            <i class="far fa-check"></i> Custom Action
+            <i class="fa-thin fa-check"></i> Custom Action
         </button>
         <button class="roovia-btn roovia-btn-secondary" @onclick="CloseCustomModal">
-            <i class="far fa-times"></i> Close
+            <i class="fa-thin fa-xmark"></i> Close
         </button>
     </FooterContent>
-</Modal>
+</RVModal>
 
-<!-- Toast container should be added to MainLayout.razor -->
+<!-- Print Dialog Modal -->
+<RVModal Title="Print Processing Report"
+         Icon="fa-thin fa-print"
+         IsVisible="@isPrintDialogVisible"
+         ShowHeader="true"
+         ShowCloseButton="true"
+         Size="md"
+         OnClose="ClosePrintDialog"
+         ConfirmText="Print"
+         OnConfirm="HandlePrint">
+
+    <ChildContent>
+        <div class="p-3">
+            <p>You are about to print the processing report for batch <strong>@demoForm.BatchNumber</strong>.</p>
+
+            <div class="roovia-form-group mt-4">
+                <RVCheckbox Label="Include processing history" Value="includePrintHistory" ValueChanged="@((val) => includePrintHistory = val)" />
+            </div>
+
+            <div class="roovia-form-group">
+                <RVCheckbox Label="Include quality metrics" Value="includePrintQuality" ValueChanged="@((val) => includePrintQuality = val)" />
+            </div>
+
+            <div class="roovia-form-group">
+                <RVDropdown TriggerText="@printFormat"
+                            FullWidth="true"
+                            Items="printFormatItems"
+                            OnSelect="HandlePrintFormatSelection" />
+            </div>
+
+            <div class="mt-4 p-3 bg-primary-lighter rounded-lg">
+                <p class="text-muted mb-0"><i class="fa-thin fa-circle-info"></i> The report will be generated as a PDF and sent to the printer.</p>
+            </div>
+        </div>
+    </ChildContent>
+</RVModal>
+
 @code {
-    // Counter variables
-    private int currentCount = 0;
-    private int incrementAmount = 1;
-    private List<(int value, int change, DateTime time)> countHistory = new();
+    // Main tab navigation
+    private List<RVTab.RVTabItem> mainTabs = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "form", Title = "Form Components", Icon = "fa-thin fa-keyboard", IsActive = true },
+        new RVTab.RVTabItem { Id = "buttons", Title = "Buttons", Icon = "fa-thin fa-square" },
+        new RVTab.RVTabItem { Id = "tabs", Title = "Tabs & Navigation", Icon = "fa-thin fa-folder" },
+        new RVTab.RVTabItem { Id = "feedback", Title = "Feedback", Icon = "fa-thin fa-bell" },
+        new RVTab.RVTabItem { Id = "demo", Title = "Demo Application", Icon = "fa-thin fa-computer", BadgeCount = 1 }
+    };
+    private string activeMainTab = "form";
+
+    // Textbox example
+    private string textValue = "";
 
     // DateTime Picker variables
     private DateTime? selectedDateTime = DateTime.Now;
     private bool isDateTimeValid = true;
     private string dateTimeValidationMessage = "";
 
+    // Checkbox examples
+    private bool checkboxValue = false;
+    private bool subscribeNewsletter = true;
+    private List<CheckboxOption> checkboxOptions = new List<CheckboxOption>
+    {
+        new CheckboxOption { Label = "Option 1", IsSelected = false },
+        new CheckboxOption { Label = "Option 2", IsSelected = true },
+        new CheckboxOption { Label = "Option 3", IsSelected = false }
+    };
+
+    // Switch examples
+    private bool switchValue = false;
+    private bool darkModeEnabled = false;
+    private bool emailNotifications = true;
+    private bool smsNotifications = false;
+    private bool pushNotifications = true;
+
+    // Dropdown data
+    private List<RVDropdown.DropdownItem> countryItems = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Text = "South Africa", Value = "ZA", Icon = "fa-thin fa-flag" },
+        new RVDropdown.DropdownItem { Text = "United States", Value = "US", Icon = "fa-thin fa-flag" },
+        new RVDropdown.DropdownItem { Text = "United Kingdom", Value = "UK", Icon = "fa-thin fa-flag" },
+        new RVDropdown.DropdownItem { Text = "Canada", Value = "CA", Icon = "fa-thin fa-flag" },
+        new RVDropdown.DropdownItem { Text = "Australia", Value = "AU", Icon = "fa-thin fa-flag" }
+    };
+    private string selectedDropdownValue = "";
+
+    private List<RVDropdown.DropdownItem> dropdownOptions = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Text = "Option 1", Value = "option1", Icon = "fa-thin fa-check" },
+        new RVDropdown.DropdownItem { Text = "Option 2", Value = "option2", Icon = "fa-thin fa-check" },
+        new RVDropdown.DropdownItem { Text = "Option 3", Value = "option3", Icon = "fa-thin fa-check" }
+    };
+
+    private List<RVDropdown.DropdownItem> positionOptions = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Text = "Position 1", Value = "pos1" },
+        new RVDropdown.DropdownItem { Text = "Position 2", Value = "pos2" },
+        new RVDropdown.DropdownItem { Text = "Position 3", Value = "pos3" }
+    };
+
+    // MultiSelect data
+    private List<RVMultiSelect.MultiSelectItem> multiSelectItems = new List<RVMultiSelect.MultiSelectItem>
+    {
+        new RVMultiSelect.MultiSelectItem { Text = "Option 1", Value = "option1" },
+        new RVMultiSelect.MultiSelectItem { Text = "Option 2", Value = "option2" },
+        new RVMultiSelect.MultiSelectItem { Text = "Option 3", Value = "option3" },
+        new RVMultiSelect.MultiSelectItem { Text = "Option 4", Value = "option4" }
+    };
+    private List<string> selectedMultiValues = new List<string>();
+
+    private List<RVMultiSelect.MultiSelectItem> oilItems = new List<RVMultiSelect.MultiSelectItem>
+    {
+        new RVMultiSelect.MultiSelectItem { Text = "Soya Oil", Value = "soya", Icon = "fa-thin fa-seedling" },
+        new RVMultiSelect.MultiSelectItem { Text = "Canola Oil", Value = "canola", Icon = "fa-thin fa-seedling" },
+        new RVMultiSelect.MultiSelectItem { Text = "Sunflower Oil", Value = "sunflower", Icon = "fa-thin fa-sun" },
+        new RVMultiSelect.MultiSelectItem { Text = "Maize Germ Oil", Value = "maize", Icon = "fa-thin fa-wheat" }
+    };
+
+    private List<RVMultiSelect.MultiSelectItem> processingItems = new List<RVMultiSelect.MultiSelectItem>
+    {
+        new RVMultiSelect.MultiSelectItem { Text = "Cold Press", Value = "cold", Icon = "fa-thin fa-snowflake" },
+        new RVMultiSelect.MultiSelectItem { Text = "Hot Press", Value = "hot", Icon = "fa-thin fa-fire" },
+        new RVMultiSelect.MultiSelectItem { Text = "Solvent Extraction", Value = "solvent", Icon = "fa-thin fa-flask" },
+        new RVMultiSelect.MultiSelectItem { Text = "Hydraulic Press", Value = "hydraulic", Icon = "fa-thin fa-gears" },
+        new RVMultiSelect.MultiSelectItem { Text = "Centrifugal", Value = "centrifugal", Icon = "fa-thin fa-spinner" }
+    };
+
+    // Chips data
+    private List<RVChips.ChipItem> basicChips = new List<RVChips.ChipItem>
+    {
+        new RVChips.ChipItem { Label = "Cooking Oil", Type = "primary" },
+        new RVChips.ChipItem { Label = "Biofuel", Type = "secondary" },
+        new RVChips.ChipItem { Label = "Cosmetic", Type = "info" }
+    };
+
+    private List<RVChips.ChipItem> inputChips = new List<RVChips.ChipItem>
+    {
+        new RVChips.ChipItem { Label = "Organic", Type = "success" },
+        new RVChips.ChipItem { Label = "GMO-Free", Type = "primary" }
+    };
+
+    private List<string> chipTypes = new List<string> { "primary", "success", "warning", "danger", "info" };
+
+    private Dictionary<string, List<RVChips.ChipItem>> typedChips = new Dictionary<string, List<RVChips.ChipItem>>
+    {
+        { "primary", new List<RVChips.ChipItem> { new RVChips.ChipItem { Label = "Primary", Type = "primary" } } },
+        { "success", new List<RVChips.ChipItem> { new RVChips.ChipItem { Label = "Success", Type = "success" } } },
+        { "warning", new List<RVChips.ChipItem> { new RVChips.ChipItem { Label = "Warning", Type = "warning" } } },
+        { "danger", new List<RVChips.ChipItem> { new RVChips.ChipItem { Label = "Danger", Type = "danger" } } },
+        { "info", new List<RVChips.ChipItem> { new RVChips.ChipItem { Label = "Info", Type = "info" } } }
+    };
+
+    private List<RVChips.ChipItem> iconChips = new List<RVChips.ChipItem>
+    {
+        new RVChips.ChipItem { Label = "Windows", Type = "primary", Icon = "fa-thin fa-windows" },
+        new RVChips.ChipItem { Label = "Apple", Type = "secondary", Icon = "fa-thin fa-apple" },
+        new RVChips.ChipItem { Label = "Linux", Type = "success", Icon = "fa-thin fa-linux" }
+    };
+
+    private List<RVChips.ChipItem> selectableChips = new List<RVChips.ChipItem>
+    {
+        new RVChips.ChipItem { Label = "Low Price", Type = "primary", IsActive = false },
+        new RVChips.ChipItem { Label = "High Quality", Type = "success", IsActive = true },
+        new RVChips.ChipItem { Label = "Fast Delivery", Type = "info", IsActive = false }
+    };
+
+    // Tabs data
+    private List<RVTab.RVTabItem> defaultTabItems = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "tab1", Title = "General", Icon = "fa-thin fa-circle-info", IsActive = true },
+        new RVTab.RVTabItem { Id = "tab2", Title = "Details", Icon = "fa-thin fa-list" },
+        new RVTab.RVTabItem { Id = "tab3", Title = "Settings", Icon = "fa-thin fa-gear" }
+    };
+    private string activeTabStyle = "tab1";
+
+    private List<RVTab.RVTabItem> boxedTabItems = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "boxed1", Title = "Products", Icon = "fa-thin fa-box", IsActive = true },
+        new RVTab.RVTabItem { Id = "boxed2", Title = "Inventory", Icon = "fa-thin fa-warehouse" },
+        new RVTab.RVTabItem { Id = "boxed3", Title = "Reports", Icon = "fa-thin fa-chart-line" }
+    };
+    private string activeBoxedTab = "boxed1";
+
+    private List<RVTab.RVTabItem> buttonTabItems = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "btn1", Title = "Dashboard", Icon = "fa-thin fa-gauge", IsActive = true },
+        new RVTab.RVTabItem { Id = "btn2", Title = "Analytics", Icon = "fa-thin fa-chart-simple" },
+        new RVTab.RVTabItem { Id = "btn3", Title = "Settings", Icon = "fa-thin fa-gear" }
+    };
+    private string activeButtonTab = "btn1";
+
+    private List<RVTab.RVTabItem> pillsTabItems = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "pill1", Title = "Day", Icon = "fa-thin fa-sun", IsActive = true },
+        new RVTab.RVTabItem { Id = "pill2", Title = "Week", Icon = "fa-thin fa-calendar-week" },
+        new RVTab.RVTabItem { Id = "pill3", Title = "Month", Icon = "fa-thin fa-calendar" }
+    };
+    private string activePillsTab = "pill1";
+
+    private List<RVTab.RVTabItem> verticalTabItems = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "vert1", Title = "Profile", Icon = "fa-thin fa-user", IsActive = true },
+        new RVTab.RVTabItem { Id = "vert2", Title = "Preferences", Icon = "fa-thin fa-sliders" },
+        new RVTab.RVTabItem { Id = "vert3", Title = "Notifications", Icon = "fa-thin fa-bell" }
+    };
+    private string activeVerticalTab = "vert1";
+
     // Modal variables
     private bool isModalVisible = false;
     private bool isCustomModalVisible = false;
     private string currentModalSize = "md";
     private string modalTitle = "Modal Dialog";
-    private string modalIcon = "far fa-window-maximize";
+    private string modalIcon = "fa-thin fa-window-maximize";
     private DateTime? modalDateTime = DateTime.Now;
     private int activeTab = 1;
+
+    // Demo application data
+    private class ProcessingFormData
+    {
+        public string BatchNumber { get; set; } = "";
+        public string OilType { get; set; } = "";
+        public List<string> ProcessingMethods { get; set; } = new List<string>();
+        public DateTime? ProcessingDate { get; set; } = DateTime.Now;
+        public string Quantity { get; set; } = "0";
+        public bool QualityPassed { get; set; } = true;
+    }
+
+    private ProcessingFormData demoForm = new ProcessingFormData();
+    private bool isFormSubmitted = false;
+    private List<ProcessingFormData> processingHistory = new List<ProcessingFormData>();
+
+    private List<RVDropdown.DropdownItem> oilTypeItems = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Text = "Soya Oil", Value = "Soya Oil", Icon = "fa-thin fa-seedling" },
+        new RVDropdown.DropdownItem { Text = "Canola Oil", Value = "Canola Oil", Icon = "fa-thin fa-seedling" },
+        new RVDropdown.DropdownItem { Text = "Sunflower Oil", Value = "Sunflower Oil", Icon = "fa-thin fa-sun" },
+        new RVDropdown.DropdownItem { Text = "Maize Germ Oil", Value = "Maize Germ Oil", Icon = "fa-thin fa-wheat" }
+    };
+
+    // Print dialog
+    private bool isPrintDialogVisible = false;
+    private bool includePrintHistory = true;
+    private bool includePrintQuality = false;
+    private string printFormat = "PDF Document";
+
+    private List<RVDropdown.DropdownItem> printFormatItems = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Text = "PDF Document", Value = "PDF Document", Icon = "fa-thin fa-file-pdf" },
+        new RVDropdown.DropdownItem { Text = "Excel Spreadsheet", Value = "Excel Spreadsheet", Icon = "fa-thin fa-file-excel" },
+        new RVDropdown.DropdownItem { Text = "HTML Report", Value = "HTML Report", Icon = "fa-thin fa-file-code" }
+    };
+
+    // Checkbox Option class
+    private class CheckboxOption
+    {
+        public string Label { get; set; }
+        public bool IsSelected { get; set; }
+    }
 
     // Modal size enum for type safety
     private enum ModalSize
@@ -346,32 +1278,78 @@
         Fullscreen
     }
 
-    // Counter methods
-    private void IncrementCount()
+    // Event handlers
+    private void HandleMainTabChange(string tabId)
     {
-        int previousCount = currentCount;
-        currentCount += incrementAmount;
-        countHistory.Insert(0, (currentCount, incrementAmount, DateTime.Now));
-
-        // Show a success toast
-        ToastService.ShowSuccess($"Counter incremented by {incrementAmount}");
+        activeMainTab = tabId;
     }
 
-    private void ResetCount()
+    private void HandleTabStyleChange(string tabId)
     {
-        int change = -currentCount;
-        currentCount = 0;
-        countHistory.Insert(0, (currentCount, change, DateTime.Now));
-
-        // Show an info toast
-        ToastService.ShowInfo("Counter has been reset to zero");
+        activeTabStyle = tabId;
     }
 
-    private void HandleIncrementChange(string value)
+    private void HandleBoxedTabChange(string tabId)
     {
-        if (int.TryParse(value, out int result))
+        activeBoxedTab = tabId;
+    }
+
+    private void HandleButtonTabChange(string tabId)
+    {
+        activeButtonTab = tabId;
+    }
+
+    private void HandlePillsTabChange(string tabId)
+    {
+        activePillsTab = tabId;
+    }
+
+    private void HandleVerticalTabChange(string tabId)
+    {
+        activeVerticalTab = tabId;
+    }
+
+    private void HandleDropdownSelection(string value)
+    {
+        selectedDropdownValue = value;
+        ToastService.ShowInfo($"Selected: {value}");
+    }
+
+    private void HandleMultiSelection(List<string> values)
+    {
+        selectedMultiValues = values;
+    }
+
+    // Chips methods
+    private void HandleChipAdded(string chipId)
+    {
+        ToastService.ShowInfo("Chip added: " + inputChips.FirstOrDefault(c => c.Id == chipId)?.Label);
+    }
+
+    private void HandleChipRemoved(string chipId)
+    {
+        ToastService.ShowInfo("Chip removed");
+    }
+
+    private void HandleChipSelected(string chipId)
+    {
+        var chip = selectableChips.FirstOrDefault(c => c.Id == chipId);
+        if (chip != null)
         {
-            incrementAmount = result;
+            ToastService.ShowInfo($"Selected: {chip.Label}");
+        }
+    }
+
+    private List<RVChips.ChipItem> GetChipsForType(string type)
+    {
+        return typedChips.ContainsKey(type) ? typedChips[type] : new List<RVChips.ChipItem>();
+    }
+
+    private void UpdateChipsForType(string type, List<RVChips.ChipItem> chips)
+    {
+        if (typedChips.ContainsKey(type))
+        {
+            typedChips[type] = chips;
         }
     }
 
@@ -382,17 +1360,10 @@
         isDateTimeValid = true;
         dateTimeValidationMessage = "";
 
-        // Show a toast notification
         if (value.HasValue)
         {
             ToastService.ShowInfo($"Date selected: {value.Value.ToString("dd/MM/yyyy HH:mm")}");
         }
-    }
-
-    private void ClearDateTime()
-    {
-        selectedDateTime = null;
-        ToastService.Show("Date selection cleared", ToastType.Info);
     }
 
     private void ValidateDateTime()
@@ -425,22 +1396,22 @@
             case ModalSize.Small:
                 currentModalSize = "sm";
                 modalTitle = "Small Modal";
-                modalIcon = "far fa-window-restore";
+                modalIcon = "fa-thin fa-window-restore";
                 break;
             case ModalSize.Medium:
                 currentModalSize = "md";
                 modalTitle = "Medium Modal";
-                modalIcon = "far fa-window-maximize";
+                modalIcon = "fa-thin fa-window-maximize";
                 break;
             case ModalSize.Large:
                 currentModalSize = "lg";
                 modalTitle = "Large Modal";
-                modalIcon = "far fa-window-maximize";
+                modalIcon = "fa-thin fa-window-maximize";
                 break;
             case ModalSize.Fullscreen:
                 currentModalSize = "fullscreen";
                 modalTitle = "Fullscreen Modal";
-                modalIcon = "far fa-expand";
+                modalIcon = "fa-thin fa-expand";
                 break;
         }
 
@@ -454,10 +1425,7 @@
 
     private void ConfirmModal()
     {
-        // Handle confirm action
         CloseModal();
-
-        // Show a success toast
         ToastService.ShowSuccess("Modal action confirmed!");
     }
 
@@ -502,7 +1470,91 @@
             10,
             false,  // No auto-hide
             true,   // Show progress
-            "far fa-bell"
+            "fa-thin fa-bell"
         );
+    }
+
+    // Demo application methods
+    private void HandleOilTypeSelection(string value)
+    {
+        demoForm.OilType = value;
+    }
+
+    private void HandleProcessingMethodsSelection(List<string> values)
+    {
+        demoForm.ProcessingMethods = values;
+    }
+
+    private void ResetDemoForm()
+    {
+        demoForm = new ProcessingFormData();
+        isFormSubmitted = false;
+        ToastService.ShowInfo("Form has been reset");
+    }
+
+    private void SubmitDemoForm()
+    {
+        // Basic validation
+        if (string.IsNullOrEmpty(demoForm.BatchNumber))
+        {
+            ToastService.ShowError("Batch number is required");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(demoForm.OilType))
+        {
+            ToastService.ShowError("Please select an oil type");
+            return;
+        }
+
+        if (!demoForm.ProcessingDate.HasValue)
+        {
+            ToastService.ShowError("Processing date is required");
+            return;
+        }
+
+        // Save the form
+        isFormSubmitted = true;
+
+        // Add to history
+        processingHistory.Insert(0, new ProcessingFormData
+            {
+                BatchNumber = demoForm.BatchNumber,
+                OilType = demoForm.OilType,
+                ProcessingMethods = new List<string>(demoForm.ProcessingMethods),
+                ProcessingDate = demoForm.ProcessingDate,
+                Quantity = demoForm.Quantity,
+                QualityPassed = demoForm.QualityPassed
+            });
+
+        // Limit history to 5 items
+        if (processingHistory.Count > 5)
+        {
+            processingHistory.RemoveAt(processingHistory.Count - 1);
+        }
+
+        ToastService.ShowSuccess("Processing batch submitted successfully!");
+    }
+
+    // Print dialog methods
+    private void ShowPrintDialog()
+    {
+        isPrintDialogVisible = true;
+    }
+
+    private void ClosePrintDialog()
+    {
+        isPrintDialogVisible = false;
+    }
+
+    private void HandlePrintFormatSelection(string value)
+    {
+        printFormat = value;
+    }
+
+    private void HandlePrint()
+    {
+        ToastService.ShowSuccess($"Report sent to printer in {printFormat} format!");
+        ClosePrintDialog();
     }
 }

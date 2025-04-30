@@ -1,0 +1,437 @@
+﻿@* RVChips.razor *@
+@if (IsInputChip)
+{
+    <div class="roovia-chips-container @CssClass">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <label class="roovia-chips-label">@Label</label>
+        }
+
+        <div class="roovia-chips-input-wrapper @(Disabled ? "disabled" : "")">
+            <div class="roovia-chips-list">
+                @foreach (var chip in Chips)
+                {
+                    <div class="roovia-chip @(chip.IsActive ? "active" : "") @(chip.Type)">
+                        @if (!string.IsNullOrEmpty(chip.Icon))
+                        {
+                            <i class="@chip.Icon roovia-chip-icon"></i>
+                        }
+                        @if (!string.IsNullOrEmpty(chip.Avatar))
+                        {
+                            <div class="roovia-chip-avatar" style="background-image: url('@chip.Avatar')"></div>
+                        }
+                        <span class="roovia-chip-text">@chip.Label</span>
+                        @if (chip.IsDeletable && !Disabled)
+                        {
+                            <button type="button" class="roovia-chip-delete" @onclick="() => RemoveChip(chip.Id)">
+                                <i class="far fa-times"></i>
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (!Disabled)
+                {
+                    <input class="roovia-chips-input"
+                           type="text"
+                           placeholder="@Placeholder"
+                           value="@InputValue"
+                           @oninput="OnInputChange"
+                           @onkeydown="OnKeyDown" />
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(HelperText))
+            {
+                <div class="roovia-chips-helper-text">@HelperText</div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="roovia-chips-container @CssClass">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <label class="roovia-chips-label">@Label</label>
+        }
+
+        <div class="roovia-chips-list">
+            @foreach (var chip in Chips)
+            {
+                <div class="roovia-chip @(chip.IsActive ? "active" : "") @(chip.Type)" @onclick="() => SelectChip(chip.Id)">
+                    @if (!string.IsNullOrEmpty(chip.Icon))
+                    {
+                        <i class="@chip.Icon roovia-chip-icon"></i>
+                    }
+                    @if (!string.IsNullOrEmpty(chip.Avatar))
+                    {
+                        <div class="roovia-chip-avatar" style="background-image: url('@chip.Avatar')"></div>
+                    }
+                    <span class="roovia-chip-text">@chip.Label</span>
+                    @if (chip.IsDeletable && !Disabled)
+                    {
+                        <button type="button" class="roovia-chip-delete" @onclick:stopPropagation="true" @onclick="() => RemoveChip(chip.Id)">
+                            <i class="far fa-times"></i>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(HelperText))
+        {
+            <div class="roovia-chips-helper-text">@HelperText</div>
+        }
+    </div>
+}
+
+<style>
+    /* Chips component styles */
+    .roovia-chips-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: var(--spacing-4);
+    }
+
+    .roovia-chips-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-chips-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+        align-items: center;
+    }
+
+    .roovia-chips-input-wrapper {
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-2);
+        background-color: var(--input-bg);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+        .roovia-chips-input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+        }
+
+    .roovia-chips-input {
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        padding: var(--spacing-1);
+        min-width: 60px;
+        flex-grow: 1;
+    }
+
+        .roovia-chips-input::placeholder {
+            color: var(--placeholder-color);
+        }
+
+    .roovia-chips-helper-text {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin-top: var(--spacing-2);
+    }
+
+    /* Chip styles */
+    .roovia-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        padding: 0 var(--spacing-2);
+        height: 28px;
+        border-radius: var(--border-radius-pill);
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+        font-size: var(--font-size-xs);
+        font-weight: 500;
+        user-select: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+        .roovia-chip:hover {
+            background-color: var(--primary-light);
+        }
+
+        .roovia-chip.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+    .roovia-chip-icon {
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .roovia-chip-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .roovia-chip-text {
+        padding: 0 var(--spacing-1);
+        line-height: 1.5;
+    }
+
+    .roovia-chip-delete {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: none;
+        background: none;
+        padding: 0;
+        margin: 0;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+        .roovia-chip-delete:hover {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.1);
+            transform: scale(1.1);
+        }
+
+    .roovia-chip.active .roovia-chip-delete:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Chip color variations */
+    .roovia-chip.primary {
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+    }
+
+        .roovia-chip.primary:hover {
+            background-color: var(--primary-light);
+        }
+
+        .roovia-chip.primary.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+    .roovia-chip.secondary {
+        background-color: var(--subtle-bg);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-divider);
+    }
+
+        .roovia-chip.secondary:hover {
+            background-color: var(--border-light);
+        }
+
+        .roovia-chip.secondary.active {
+            background-color: var(--secondary);
+            color: white;
+            border-color: transparent;
+        }
+
+    .roovia-chip.success {
+        background-color: var(--success-light);
+        color: var(--success);
+    }
+
+        .roovia-chip.success:hover {
+            background-color: rgba(var(--success-rgb), 0.2);
+        }
+
+        .roovia-chip.success.active {
+            background-color: var(--success);
+            color: white;
+        }
+
+    .roovia-chip.warning {
+        background-color: var(--warning-light);
+        color: var(--warning);
+    }
+
+        .roovia-chip.warning:hover {
+            background-color: rgba(var(--warning-rgb), 0.2);
+        }
+
+        .roovia-chip.warning.active {
+            background-color: var(--warning);
+            color: white;
+        }
+
+    .roovia-chip.danger {
+        background-color: var(--danger-light);
+        color: var(--danger);
+    }
+
+        .roovia-chip.danger:hover {
+            background-color: rgba(var(--danger-rgb), 0.2);
+        }
+
+        .roovia-chip.danger.active {
+            background-color: var(--danger);
+            color: white;
+        }
+
+    .roovia-chip.info {
+        background-color: var(--info-light);
+        color: var(--info);
+    }
+
+        .roovia-chip.info:hover {
+            background-color: rgba(var(--info-rgb), 0.2);
+        }
+
+        .roovia-chip.info.active {
+            background-color: var(--info);
+            color: white;
+        }
+
+    /* Disabled state */
+    .roovia-chips-input-wrapper.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--subtle-bg);
+    }
+
+        .roovia-chips-input-wrapper.disabled .roovia-chip {
+            cursor: not-allowed;
+        }
+
+    /* Animations */
+    .roovia-chip {
+        animation: chip-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @@keyframes chip-appear {
+        from
+
+    {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; }
+    [Parameter] public List<ChipItem> Chips { get; set; } = new List<ChipItem>();
+    [Parameter] public bool IsInputChip { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Add...";
+    [Parameter] public string HelperText { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<List<ChipItem>> ChipsChanged { get; set; }
+    [Parameter] public EventCallback<string> OnChipAdded { get; set; }
+    [Parameter] public EventCallback<string> OnChipRemoved { get; set; }
+    [Parameter] public EventCallback<string> OnChipSelected { get; set; }
+
+    private string InputValue { get; set; } = "";
+
+    public class ChipItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Label { get; set; }
+        public string Type { get; set; } = "primary";
+        public string Icon { get; set; }
+        public string Avatar { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsDeletable { get; set; } = true;
+    }
+
+    private void OnInputChange(ChangeEventArgs e)
+    {
+        InputValue = e.Value?.ToString() ?? "";
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(InputValue))
+        {
+            await AddChip(InputValue);
+            InputValue = "";
+        }
+        else if (e.Key == "Backspace" && string.IsNullOrEmpty(InputValue) && Chips.Any())
+        {
+            var lastChip = Chips.LastOrDefault();
+            if (lastChip != null)
+            {
+                await RemoveChip(lastChip.Id);
+            }
+        }
+    }
+
+    private async Task AddChip(string label)
+    {
+        var chip = new ChipItem
+            {
+                Label = label,
+                Type = "primary",
+                IsDeletable = true
+            };
+
+        Chips.Add(chip);
+        await NotifyChipsChanged();
+
+        if (OnChipAdded.HasDelegate)
+            await OnChipAdded.InvokeAsync(chip.Id);
+    }
+
+    private async Task RemoveChip(string id)
+    {
+        var chip = Chips.FirstOrDefault(c => c.Id == id);
+        if (chip != null)
+        {
+            Chips.Remove(chip);
+            await NotifyChipsChanged();
+
+            if (OnChipRemoved.HasDelegate)
+                await OnChipRemoved.InvokeAsync(id);
+        }
+    }
+
+    private async Task SelectChip(string id)
+    {
+        if (Disabled)
+            return;
+
+        var chip = Chips.FirstOrDefault(c => c.Id == id);
+        if (chip != null)
+        {
+            chip.IsActive = !chip.IsActive;
+            await NotifyChipsChanged();
+
+            if (OnChipSelected.HasDelegate)
+                await OnChipSelected.InvokeAsync(id);
+        }
+    }
+
+    private async Task NotifyChipsChanged()
+    {
+        if (ChipsChanged.HasDelegate)
+            await ChipsChanged.InvokeAsync(Chips);
+    }
+}

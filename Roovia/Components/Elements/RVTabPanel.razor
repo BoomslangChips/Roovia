@@ -1,0 +1,11 @@
+﻿@* RVTabPanel.razor *@
+<div class="roovia-tab-panel @(IsActive ? "active" : "") @CssClass">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string TabId { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public string CssClass { get; set; }
+}

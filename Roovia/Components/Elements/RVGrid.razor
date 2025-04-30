@@ -1,0 +1,2004 @@
+﻿@typeparam TItem
+@using System.Linq.Expressions
+@using System.Reflection
+
+<div class="roovia-grid-container @(IsLoading ? "roovia-grid-loading" : "") @CssClass">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="roovia-grid-header">
+            <div class="roovia-grid-title">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="@Icon roovia-grid-icon"></i>
+                }
+                <h3 class="roovia-grid-heading">@Title</h3>
+            </div>
+            <div class="roovia-grid-actions">
+                @if (EnableSearch)
+                {
+                    <div class="roovia-grid-search">
+                        <i class="fa-thin fa-magnifying-glass roovia-grid-search-icon"></i>
+                        <input type="text"
+                               class="roovia-grid-search-input"
+                               placeholder="@SearchPlaceholder"
+                               value="@searchText"
+                               @oninput="OnSearchInput" />
+                        @if (!string.IsNullOrEmpty(searchText))
+                        {
+                            <button class="roovia-grid-search-clear" @onclick="ClearSearch">
+                                <i class="fa-thin fa-times"></i>
+                            </button>
+                        }
+                    </div>
+                }
+                
+                @if (EnableColumnFilter)
+                {
+                    <button class="roovia-btn roovia-btn-ghost" @onclick="ToggleColumnsPanel" title="Column Settings">
+                        <i class="fa-thin fa-table-columns"></i>
+                    </button>
+                }
+                
+                @if (EnableExport)
+                {
+                    <div class="roovia-dropdown">
+                        <button class="roovia-btn roovia-btn-ghost" @onclick="ToggleExportDropdown" title="Export Data">
+                            <i class="fa-thin fa-download"></i>
+                        </button>
+                        @if (showExportDropdown)
+                        {
+                            <div class="roovia-grid-dropdown-menu">
+                                <button class="roovia-grid-dropdown-item" @onclick='() => ExportData("excel")'>
+                                    <i class="fa-thin fa-file-excel"></i>
+                                    <span>Export to Excel</span>
+                                </button>
+                                <button class="roovia-grid-dropdown-item" @onclick='() => ExportData("csv")'>
+                                    <i class="fa-thin fa-file-csv"></i>
+                                    <span>Export to CSV</span>
+                                </button>
+                                <button class="roovia-grid-dropdown-item" @onclick='() => ExportData("pdf")'>
+                                    <i class="fa-thin fa-file-pdf"></i>
+                                    <span>Export to PDF</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                
+                @if (EnableRefresh)
+                {
+                    <button class="roovia-btn roovia-btn-ghost" @onclick="RefreshData" title="Refresh Data">
+                        <i class="fa-thin fa-arrows-rotate @(IsLoading ? "roovia-spin" : "")"></i>
+                    </button>
+                }
+                
+                @if (HeaderActions != null)
+                {
+                    <div class="roovia-grid-custom-actions">
+                        @HeaderActions
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    
+    <div class="roovia-grid-toolbar" @onclick:stopPropagation>
+        @if (EnableBulkActions && SelectedItems.Any() && BulkActions != null)
+        {
+            <div class="roovia-grid-bulk-actions">
+                <span class="roovia-grid-selected-count">
+                    <i class="fa-thin fa-check-square"></i> @SelectedItems.Count selected
+                </span>
+                @BulkActions
+            </div>
+        }
+        
+        @if (EnableFiltering)
+        {
+            <div class="roovia-grid-filters">
+                @foreach (var filter in activeFilters)
+                {
+                    <div class="roovia-grid-filter-tag">
+                        <span>@filter.DisplayText</span>
+                        <button class="roovia-grid-filter-remove" @onclick="() => RemoveFilter(filter)">
+                            <i class="fa-thin fa-times"></i>
+                        </button>
+                    </div>
+                }
+                
+                @if (activeFilters.Any())
+                {
+                    <button class="roovia-grid-clear-filters" @onclick="ClearAllFilters">
+                        Clear all
+                    </button>
+                }
+                else if (EnableFiltering && FilterTemplate != null)
+                {
+                    <button class="roovia-btn roovia-btn-ghost roovia-btn-sm" @onclick="ToggleFilterPanel">
+                        <i class="fa-thin fa-filter"></i> Filter
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    
+    <div class="roovia-grid-table-container">
+        <table class="roovia-grid-table @(EnableHover ? "roovia-grid-table-hover" : "") @(EnableStriped ? "roovia-grid-table-striped" : "")">
+            <thead>
+                <tr>
+                    @if (EnableSelection)
+                    {
+                        <th class="roovia-grid-selection-cell">
+                            <div class="roovia-checkbox">
+                                <input type="checkbox" 
+                                       id="select-all-@Id" 
+                                       checked="@(SelectedItems.Count == FilteredItems.Count() && FilteredItems.Any())" 
+                                       @onchange="SelectAllChanged" />
+                                <span class="roovia-checkbox-control"></span>
+                            </div>
+                        </th>
+                    }
+                    
+                    @foreach (var column in VisibleColumns)
+                    {
+                        <th style="@(column.Width != null ? $"width: {column.Width};" : "")" 
+                            class="@(column.Sortable && SortField == column.Field ? "roovia-grid-sorted" : "") @(column.Align != null ? $"roovia-grid-align-{column.Align}" : "")"
+                            @onclick="() => column.Sortable ? SortByColumn(column) : Task.CompletedTask">
+                            <div class="roovia-grid-column-header">
+                                <span class="roovia-grid-column-title">@column.Title</span>
+                                @if (column.Sortable)
+                                {
+                                    <span class="roovia-grid-sort-icon @(SortField == column.Field ? (SortDirectionMain == SortDirection.Ascending ? "ascending" : "descending") : "")">
+                                        <i class="fa-thin @(SortField == column.Field ? (SortDirectionMain == SortDirection.Ascending ? "fa-arrow-up" : "fa-arrow-down") : "fa-arrows-up-down")"></i>
+                                    </span>
+                                }
+                                
+                                @if (column.Filterable)
+                                {
+                                    <button class="roovia-grid-column-filter-btn" @onclick:stopPropagation="true" @onclick="() => OpenColumnFilter(column)">
+                                        <i class="fa-thin fa-filter @(HasColumnFilter(column.Field) ? "active" : "")"></i>
+                                    </button>
+                                }
+                            </div>
+                        </th>
+                    }
+                    
+                    @if (RowActions != null)
+                    {
+                        <th class="roovia-grid-actions-cell">Actions</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (FilteredItems.Any())
+                {
+                    @foreach (var item in PagedItems)
+                    {
+                        <tr class="@(IsItemSelected(item) ? "roovia-grid-selected-row" : "") @(RowClass != null ? RowClass(item) : "")">
+                            @if (EnableSelection)
+                            {
+                                <td class="roovia-grid-selection-cell">
+                                    <div class="roovia-checkbox">
+                                        <input type="checkbox" 
+                                               id="select-@Id-@GetItemId(item)" 
+                                               checked="@IsItemSelected(item)" 
+                                               @onchange="(e) => SelectionChanged(item, e)" />
+                                        <span class="roovia-checkbox-control"></span>
+                                    </div>
+                                </td>
+                            }
+                            
+                            @foreach (var column in VisibleColumns)
+                            {
+                                <td class="@(column.Align != null ? $"roovia-grid-align-{column.Align}" : "")">
+                                    @if (column.Template != null)
+                                    {
+                                        @column.Template(item)
+                                    }
+                                    else
+                                    {
+                                        @GetFormattedValue(item, column)
+                                    }
+                                </td>
+                            }
+                            
+                            @if (RowActions != null)
+                            {
+                                <td class="roovia-grid-actions-cell">
+                                    @RowActions(item)
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr class="roovia-grid-empty-row">
+                        <td colspan="@GetColspan()">
+                            @if (IsLoading)
+                            {
+                                <div class="roovia-grid-loading-state">
+                                    <div class="roovia-loading-spinner"></div>
+                                    <span>Loading data...</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="roovia-grid-empty-state">
+                                    <i class="@(EmptyStateIcon ?? "fa-thin fa-table-list") roovia-grid-empty-icon"></i>
+                                    <h4 class="roovia-grid-empty-title">@(EmptyStateTitle ?? "No data found")</h4>
+                                    <p class="roovia-grid-empty-message">@(EmptyStateMessage ?? "Try adjusting your filters or search criteria.")</p>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    
+    @if (EnablePagination && TotalPages > 1)
+    {
+        <div class="roovia-grid-pagination">
+            <div class="roovia-grid-page-size">
+                <span class="roovia-grid-page-size-label">Items per page:</span>
+                <select class="roovia-grid-page-size-select" value="@PageSize" @onchange="OnPageSizeChanged">
+                    @foreach (var size in PageSizeOptions)
+                    {
+                        <option value="@size">@size</option>
+                    }
+                </select>
+            </div>
+            
+            <div class="roovia-grid-page-info">
+                <span>Showing @(((CurrentPage - 1) * PageSize) + 1) to @Math.Min(CurrentPage * PageSize, TotalItemCount) of @TotalItemCount items</span>
+            </div>
+            
+            <div class="roovia-grid-page-navigation">
+                <button class="roovia-grid-page-btn" 
+                        disabled="@(CurrentPage <= 1)" 
+                        @onclick="() => GoToPage(1)" 
+                        title="First Page">
+                    <i class="fa-thin fa-angles-left"></i>
+                </button>
+                <button class="roovia-grid-page-btn" 
+                        disabled="@(CurrentPage <= 1)" 
+                        @onclick="() => GoToPage(CurrentPage - 1)" 
+                        title="Previous Page">
+                    <i class="fa-thin fa-angle-left"></i>
+                </button>
+                
+                @foreach (var page in GetVisiblePageNumbers())
+                {
+                    if (page == -1)
+                    {
+                        <span class="roovia-grid-page-ellipsis">...</span>
+                    }
+                    else
+                    {
+                        <button class="roovia-grid-page-btn @(page == CurrentPage ? "active" : "")" 
+                                @onclick="() => GoToPage(page)">
+                            @(page)
+                        </button>
+                    }
+                }
+                
+                <button class="roovia-grid-page-btn" 
+                        disabled="@(CurrentPage >= TotalPages)" 
+                        @onclick="() => GoToPage(CurrentPage + 1)" 
+                        title="Next Page">
+                    <i class="fa-thin fa-angle-right"></i>
+                </button>
+                <button class="roovia-grid-page-btn" 
+                        disabled="@(CurrentPage >= TotalPages)" 
+                        @onclick="() => GoToPage(TotalPages)" 
+                        title="Last Page">
+                    <i class="fa-thin fa-angles-right"></i>
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (IsColumnsPanelVisible)
+    {
+        <div class="roovia-grid-columns-panel">
+            <div class="roovia-grid-columns-panel-header">
+                <h4>Column Settings</h4>
+                <button class="roovia-grid-columns-panel-close" @onclick="ToggleColumnsPanel">
+                    <i class="fa-thin fa-times"></i>
+                </button>
+            </div>
+            <div class="roovia-grid-columns-panel-content">
+                @foreach (var column in AllColumns)
+                {
+                    <div class="roovia-grid-column-toggle">
+                        <div class="roovia-checkbox">
+                            <input type="checkbox" 
+                                   id="column-toggle-@Id-@column.Field" 
+                                   checked="@column.Visible" 
+                                   @onchange="(e) => ToggleColumn(column, e)" />
+                            <span class="roovia-checkbox-control"></span>
+                        </div>
+                        <label for="column-toggle-@Id-@column.Field">@column.Title</label>
+                    </div>
+                }
+            </div>
+            <div class="roovia-grid-columns-panel-footer">
+                <button class="roovia-btn roovia-btn-secondary roovia-btn-sm" @onclick="ResetColumns">
+                    Reset to Default
+                </button>
+                <button class="roovia-btn roovia-btn-primary roovia-btn-sm" @onclick="ToggleColumnsPanel">
+                    Apply
+                </button>
+            </div>
+        </div>
+    }
+    
+    @if (showColumnFilter && currentFilterColumn != null)
+    {
+        <div class="roovia-grid-column-filter-panel">
+            <div class="roovia-grid-column-filter-header">
+                <h4>Filter: @currentFilterColumn.Title</h4>
+                <button class="roovia-grid-column-filter-close" @onclick="CloseColumnFilter">
+                    <i class="fa-thin fa-times"></i>
+                </button>
+            </div>
+            <div class="roovia-grid-column-filter-content">
+                @if (currentFilterColumn.FilterTemplate != null)
+                {
+                    @currentFilterColumn.FilterTemplate((currentFilterColumn, (field, op, val) => ApplyColumnFilter(field, op, val)))
+                }
+                else
+                {
+                    <div class="roovia-grid-column-filter-default">
+                        <select class="roovia-grid-column-filter-operator" value="@currentFilterOperator" @onchange="OnFilterOperatorChanged">
+                            <option value="contains">Contains</option>
+                            <option value="equals">Equals</option>
+                            <option value="startswith">Starts with</option>
+                            <option value="endswith">Ends with</option>
+                            <option value="greater">Greater than</option>
+                            <option value="less">Less than</option>
+                            <option value="isnull">Is empty</option>
+                            <option value="isnotnull">Is not empty</option>
+                        </select>
+                        
+                        @if (currentFilterOperator != "isnull" && currentFilterOperator != "isnotnull")
+                        {
+                            <input type="text" 
+                                   class="roovia-grid-column-filter-value" 
+                                   placeholder="Filter value..." 
+                                   value="@currentFilterValue" 
+                                   @oninput="OnFilterValueChanged" />
+                        }
+                    </div>
+                }
+            </div>
+            <div class="roovia-grid-column-filter-footer">
+                <button class="roovia-btn roovia-btn-secondary roovia-btn-sm" @onclick="() => ClearColumnFilter()">
+                    Clear
+                </button>
+                <button class="roovia-btn roovia-btn-primary roovia-btn-sm" @onclick="ApplyColumnFilterFromUI">
+                    Apply
+                </button>
+            </div>
+        </div>
+    }
+    
+    @if (showFilterPanel && FilterTemplate != null)
+    {
+        <div class="roovia-grid-filter-panel">
+            <div class="roovia-grid-filter-panel-header">
+                <h4>Advanced Filter</h4>
+                <button class="roovia-grid-filter-panel-close" @onclick="ToggleFilterPanel">
+                    <i class="fa-thin fa-times"></i>
+                </button>
+            </div>
+            <div class="roovia-grid-filter-panel-content">
+                @FilterTemplate((filters) => ApplyFilters(filters))
+            </div>
+        </div>
+    }
+    
+    @if (showExportDropdown || IsColumnsPanelVisible || showColumnFilter || showFilterPanel)
+    {
+        <div class="roovia-grid-backdrop" @onclick="CloseAllPopups"></div>
+    }
+</div>
+
+<style>
+    /* Grid Component Styles */
+    .roovia-grid-container {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        position: relative;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-divider);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-5);
+        overflow: visible;
+    }
+
+    /* Grid Header */
+    .roovia-grid-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        border-top-left-radius: var(--border-radius-lg);
+        border-top-right-radius: var(--border-radius-lg);
+    }
+
+    .roovia-grid-title {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-grid-icon {
+        color: var(--primary);
+        font-size: 1.25rem;
+    }
+
+    .roovia-grid-heading {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .roovia-grid-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    /* Grid Search */
+    .roovia-grid-search {
+        position: relative;
+        width: 240px;
+    }
+
+    .roovia-grid-search-icon {
+        position: absolute;
+        left: var(--spacing-3);
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+        pointer-events: none;
+    }
+
+    .roovia-grid-search-input {
+        width: 100%;
+        padding: var(--spacing-2) var(--spacing-2) var(--spacing-2) calc(var(--spacing-3) * 2 + 1rem);
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .roovia-grid-search-clear {
+        position: absolute;
+        right: var(--spacing-2);
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: var(--font-size-sm);
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .roovia-grid-search-clear:hover {
+        background-color: rgba(var(--text-secondary-rgb), 0.1);
+        color: var(--text-primary);
+    }
+
+    /* Grid Toolbar */
+    .roovia-grid-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--content-bg);
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    /* Bulk Actions */
+    .roovia-grid-bulk-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+        padding: var(--spacing-2) var(--spacing-3);
+        background-color: var(--primary-lighter);
+        border-radius: var(--border-radius-md);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .roovia-grid-selected-count {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        color: var(--primary);
+        font-weight: 500;
+        font-size: var(--font-size-sm);
+    }
+
+    /* Filters */
+    .roovia-grid-filters {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-grid-filter-tag {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        padding: 0.25rem 0.5rem;
+        background-color: var(--primary-lighter);
+        border-radius: var(--border-radius-pill);
+        color: var(--primary);
+        font-size: var(--font-size-xs);
+        font-weight: 500;
+    }
+
+    .roovia-grid-filter-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--primary);
+        cursor: pointer;
+        padding: 0;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-grid-filter-remove:hover {
+        background-color: rgba(var(--primary-rgb), 0.15);
+    }
+
+    .roovia-grid-clear-filters {
+        background: none;
+        border: none;
+        color: var(--primary);
+        font-size: var(--font-size-xs);
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    /* Table Container */
+    .roovia-grid-table-container {
+        width: 100%;
+        overflow-x: auto;
+        position: relative;
+    }
+
+    /* Grid Table */
+    .roovia-grid-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+    }
+
+    .roovia-grid-table th {
+        background-color: var(--subtle-bg);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+        text-align: left;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-table th.roovia-grid-sortable {
+        cursor: pointer;
+    }
+
+    .roovia-grid-table th.roovia-grid-sortable:hover {
+        background-color: var(--primary-light);
+    }
+
+    .roovia-grid-table th.roovia-grid-sorted {
+        background-color: var(--primary-lighter);
+    }
+
+    .roovia-grid-table td {
+        padding: var(--spacing-3) var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        vertical-align: middle;
+    }
+
+    .roovia-grid-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Column Header */
+    .roovia-grid-column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-grid-column-title {
+        flex: 1;
+    }
+
+    .roovia-grid-sort-icon {
+        flex-shrink: 0;
+        opacity: 0.5;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-sort-icon.ascending,
+    .roovia-grid-sort-icon.descending {
+        opacity: 1;
+        color: var(--primary);
+    }
+
+    .roovia-grid-column-filter-btn {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-column-filter-btn:hover,
+    .roovia-grid-column-filter-btn i.active {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .roovia-grid-column-filter-btn i.active {
+        opacity: 1;
+    }
+
+    /* Cell Alignment */
+    .roovia-grid-align-left {
+        text-align: left;
+    }
+
+    .roovia-grid-align-center {
+        text-align: center;
+    }
+
+    .roovia-grid-align-right {
+        text-align: right;
+    }
+
+    /* Row Styles */
+    .roovia-grid-table-hover tr:hover td {
+        background-color: var(--primary-lighter);
+    }
+
+    .roovia-grid-table-striped tr:nth-child(even) td {
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-grid-selected-row td {
+        background-color: var(--primary-lighter) !important;
+    }
+
+    /* Selection Cell */
+    .roovia-grid-selection-cell {
+        width: 48px;
+        text-align: center;
+    }
+
+    /* Actions Cell */
+    .roovia-grid-actions-cell {
+        width: 1%;
+        white-space: nowrap;
+        text-align: right;
+    }
+
+    /* Empty & Loading States */
+    .roovia-grid-empty-row td {
+        padding: var(--spacing-8) var(--spacing-4);
+        text-align: center;
+    }
+
+    .roovia-grid-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-6) 0;
+        color: var(--text-muted);
+    }
+
+    .roovia-grid-empty-icon {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-4);
+        opacity: 0.5;
+    }
+
+    .roovia-grid-empty-title {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        margin: 0 0 var(--spacing-2) 0;
+        color: var(--text-primary);
+    }
+
+    .roovia-grid-empty-message {
+        font-size: var(--font-size-sm);
+        max-width: 300px;
+        margin: 0;
+    }
+
+    .roovia-grid-loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-6) 0;
+        color: var(--text-muted);
+    }
+
+    .roovia-loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(var(--primary-rgb), 0.2);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: var(--spacing-4);
+    }
+
+    .roovia-spin {
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Pagination */
+    .roovia-grid-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        font-size: var(--font-size-sm);
+        flex-wrap: wrap;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-grid-page-size {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-grid-page-size-label {
+        color: var(--text-secondary);
+    }
+
+    .roovia-grid-page-size-select {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-grid-page-info {
+        color: var(--text-secondary);
+    }
+
+    .roovia-grid-page-navigation {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+    }
+
+    .roovia-grid-page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-page-btn:hover:not(:disabled) {
+        border-color: var(--primary);
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+    }
+
+    .roovia-grid-page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .roovia-grid-page-btn.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        font-weight: 600;
+    }
+
+    .roovia-grid-page-ellipsis {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: var(--text-secondary);
+    }
+
+    /* Columns Panel */
+    .roovia-grid-columns-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 100%;
+        background-color: var(--content-bg);
+        border-left: 1px solid var(--border-divider);
+        box-shadow: var(--shadow-lg);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        animation: slideInRight 0.3s ease;
+        border-top-right-radius: var(--border-radius-lg);
+        border-bottom-right-radius: var(--border-radius-lg);
+    }
+
+    .roovia-grid-columns-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-grid-columns-panel-header h4 {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .roovia-grid-columns-panel-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-columns-panel-close:hover {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .roovia-grid-columns-panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--spacing-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-grid-column-toggle {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-grid-columns-panel-footer {
+        padding: var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+    }
+
+    /* Column Filter Panel */
+    .roovia-grid-column-filter-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 350px;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .roovia-grid-column-filter-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-grid-column-filter-header h4 {
+        margin: 0;
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .roovia-grid-column-filter-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .roovia-grid-column-filter-close:hover {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .roovia-grid-column-filter-content {
+        padding: var(--spacing-4);
+    }
+
+    .roovia-grid-column-filter-default {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-grid-column-filter-operator,
+    .roovia-grid-column-filter-value {
+        padding: 0.5rem;
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-grid-column-filter-operator:focus,
+    .roovia-grid-column-filter-value:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .roovia-grid-column-filter-footer {
+        padding: var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+    }
+
+    /* Filter Panel */
+    .roovia-grid-filter-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 350px;
+        height: 100%;
+        background-color: var(--content-bg);
+        border-left: 1px solid var(--border-divider);
+        box-shadow: var(--shadow-lg);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        animation: slideInRight 0.3s ease;
+        border-top-right-radius: var(--border-radius-lg);
+        border-bottom-right-radius: var(--border-radius-lg);
+    }
+
+    .roovia-grid-filter-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-grid-filter-panel-header h4 {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .roovia-grid-filter-panel-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .roovia-grid-filter-panel-close:hover {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .roovia-grid-filter-panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--spacing-4);
+    }
+
+    /* Dropdown Menu */
+    .roovia-grid-dropdown-menu {
+        position: absolute;
+        top: 50px !important;
+        right: 0px;
+        margin-top: 0.5rem;
+        min-width: 200px;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-divider);
+        z-index: 10;
+        overflow: hidden;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .roovia-grid-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-2) var(--spacing-3);
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .roovia-grid-dropdown-item:hover {
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+    }
+
+    /* Backdrop */
+    .roovia-grid-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: transparent;
+        z-index: 5;
+        animation: fadeIn 0.2s ease;
+    }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideInRight {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 768px) {
+        .roovia-grid-header,
+        .roovia-grid-toolbar,
+        .roovia-grid-pagination {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .roovia-grid-actions,
+        .roovia-grid-page-navigation {
+            margin-top: var(--spacing-2);
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .roovia-grid-search {
+            width: 100%;
+        }
+
+        .roovia-grid-columns-panel,
+        .roovia-grid-filter-panel {
+            width: 100%;
+        }
+
+        .roovia-grid-column-filter-panel {
+            width: 90%;
+            max-width: 350px;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public List<TItem> Items { get; set; } = new List<TItem>();
+    [Parameter] public List<GridColumn<TItem>> Columns { get; set; } = new List<GridColumn<TItem>>();
+    [Parameter] public RenderFragment<TItem> RowActions { get; set; }
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    [Parameter] public RenderFragment BulkActions { get; set; }
+    [Parameter] public RenderFragment<Action<List<GridFilter>>> FilterTemplate { get; set; }
+    [Parameter] public Func<TItem, string> RowClass { get; set; }
+    [Parameter] public bool EnableSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool EnableSelection { get; set; } = false;
+    [Parameter] public bool EnableBulkActions { get; set; } = false;
+    [Parameter] public bool EnableSorting { get; set; } = true;
+    [Parameter] public bool EnableFiltering { get; set; } = true;
+    [Parameter] public bool EnableColumnFilter { get; set; } = true;
+    [Parameter] public bool EnablePagination { get; set; } = true;
+    [Parameter] public bool EnableHover { get; set; } = true;
+    [Parameter] public bool EnableStriped { get; set; } = false;
+    [Parameter] public bool EnableExport { get; set; } = true;
+    [Parameter] public bool EnableRefresh { get; set; } = true;
+    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public List<int> PageSizeOptions { get; set; } = new List<int> { 5, 10, 25, 50, 100 };
+    [Parameter] public string EmptyStateIcon { get; set; }
+    [Parameter] public string EmptyStateTitle { get; set; }
+    [Parameter] public string EmptyStateMessage { get; set; }
+    [Parameter] public string DefaultSortField { get; set; }
+    [Parameter] public SortDirection DefaultSortDirection { get; set; } = SortDirection.Ascending;
+    [Parameter] public Func<TItem, string> KeyField { get; set; }
+    [Parameter] public EventCallback<List<TItem>> OnSelectionChanged { get; set; }
+    [Parameter] public EventCallback<GridSortEventArgs> OnSortChanged { get; set; }
+    [Parameter] public EventCallback<List<GridFilter>> OnFiltersChanged { get; set; }
+    [Parameter] public EventCallback<GridPageEventArgs> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+    [Parameter] public EventCallback<string> OnExport { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public string CssClass { get; set; }
+
+    private string searchText = "";
+    private int CurrentPage { get; set; } = 1;
+    private string SortField { get; set; }
+    private SortDirection SortDirectionMain { get; set; }
+    private List<GridFilter> activeFilters = new List<GridFilter>();
+    private List<TItem> SelectedItems { get; set; } = new List<TItem>();
+    private bool IsColumnsPanelVisible { get; set; } = false;
+    private bool showFilterPanel { get; set; } = false;
+    private bool showExportDropdown { get; set; } = false;
+    private bool showColumnFilter { get; set; } = false;
+    private GridColumn<TItem> currentFilterColumn { get; set; }
+    private string currentFilterOperator { get; set; } = "contains";
+    private string currentFilterValue { get; set; } = "";
+    private List<GridColumn<TItem>> AllColumns = new List<GridColumn<TItem>>();
+    private List<GridColumn<TItem>> VisibleColumns => AllColumns.Where(c => c.Visible).ToList();
+
+    protected override void OnInitialized()
+    {
+        // Initialize sorting
+        SortField = DefaultSortField;
+        SortDirectionMain = DefaultSortDirection;
+
+        // Initialize columns if provided
+        if (Columns != null && Columns.Any())
+        {
+            AllColumns = Columns;
+        }
+        else
+        {
+            // Auto-generate columns if none provided
+            AllColumns = GenerateColumns();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Update columns if they've changed
+        if (Columns != null && Columns.Any() && !AreColumnsEqual(AllColumns, Columns))
+        {
+            AllColumns = Columns;
+        }
+    }
+
+    private List<GridColumn<TItem>> GenerateColumns()
+    {
+        var columns = new List<GridColumn<TItem>>();
+        
+        // Sample data to inspect properties
+        if (Items != null && Items.Any())
+        {
+            var sampleItem = Items.First();
+            var properties = sampleItem.GetType().GetProperties();
+            
+            foreach (var prop in properties)
+            {
+                columns.Add(new GridColumn<TItem>
+                {
+                    Field = prop.Name,
+                    Title = FormatColumnTitle(prop.Name),
+                    Sortable = true,
+                    Filterable = true,
+                    Visible = true
+                });
+            }
+        }
+        
+        return columns;
+    }
+
+    private string FormatColumnTitle(string propertyName)
+    {
+        // Convert camelCase or PascalCase to Title Case with spaces
+        if (string.IsNullOrEmpty(propertyName))
+            return string.Empty;
+            
+        var words = new List<string>();
+        var currentWord = propertyName[0].ToString();
+        
+        for (int i = 1; i < propertyName.Length; i++)
+        {
+            if (char.IsUpper(propertyName[i]))
+            {
+                words.Add(currentWord);
+                currentWord = propertyName[i].ToString();
+            }
+            else
+            {
+                currentWord += propertyName[i];
+            }
+        }
+        
+        words.Add(currentWord);
+        
+        return string.Join(" ", words.Select(w => char.ToUpper(w[0]) + w.Substring(1)));
+    }
+
+    private bool AreColumnsEqual(List<GridColumn<TItem>> a, List<GridColumn<TItem>> b)
+    {
+        if (a.Count != b.Count)
+            return false;
+        
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i].Field != b[i].Field)
+                return false;
+        }
+        
+        return true;
+    }
+
+    private IEnumerable<TItem> FilteredItems
+    {
+        get
+        {
+            IEnumerable<TItem> result = Items;
+            
+            // Apply search filter
+            if (!string.IsNullOrEmpty(searchText) && Items != null)
+            {
+                result = result.Where(item => IsItemMatchingSearch(item, searchText));
+            }
+            
+            // Apply active filters
+            if (activeFilters.Any())
+            {
+                result = result.Where(item => IsItemMatchingFilters(item, activeFilters));
+            }
+            
+            // Apply sorting
+            if (!string.IsNullOrEmpty(SortField))
+            {
+                result = ApplySorting(result, SortField, SortDirectionMain);
+            }
+            
+            return result;
+        }
+    }
+
+    private bool IsItemMatchingSearch(TItem item, string search)
+    {
+        if (string.IsNullOrEmpty(search))
+            return true;
+            
+        var normalizedSearch = search.ToLowerInvariant();
+        var properties = typeof(TItem).GetProperties();
+        
+        foreach (var prop in properties)
+        {
+            var value = prop.GetValue(item)?.ToString();
+            if (!string.IsNullOrEmpty(value) && 
+                value.ToLowerInvariant().Contains(normalizedSearch))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    private bool IsItemMatchingFilters(TItem item, List<GridFilter> filters)
+    {
+        foreach (var filter in filters)
+        {
+            var property = typeof(TItem).GetProperty(filter.Field);
+            if (property == null)
+                continue;
+                
+            var value = property.GetValue(item)?.ToString();
+            
+            if (!EvaluateFilter(value, filter.Operator, filter.Value))
+                return false;
+        }
+        
+        return true;
+    }
+
+    private bool EvaluateFilter(string value, string filterOperator, string filterValue)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            // Handle null/empty value cases
+            return filterOperator == "isnull" || 
+                   (filterOperator == "isnotnull" ? false : filterValue == "");
+        }
+        
+        switch (filterOperator)
+        {
+            case "contains":
+                return value.ToLowerInvariant().Contains(filterValue.ToLowerInvariant());
+            case "equals":
+                return value.Equals(filterValue, StringComparison.OrdinalIgnoreCase);
+            case "startswith":
+                return value.ToLowerInvariant().StartsWith(filterValue.ToLowerInvariant());
+            case "endswith":
+                return value.ToLowerInvariant().EndsWith(filterValue.ToLowerInvariant());
+            case "greater":
+                return double.TryParse(value, out double numValue) && 
+                       double.TryParse(filterValue, out double compareValue) && 
+                       numValue > compareValue;
+            case "less":
+                return double.TryParse(value, out double numVal) && 
+                       double.TryParse(filterValue, out double compVal) && 
+                       numVal < compVal;
+            case "isnull":
+                return string.IsNullOrEmpty(value);
+            case "isnotnull":
+                return !string.IsNullOrEmpty(value);
+            default:
+                return false;
+        }
+    }
+
+    private IEnumerable<TItem> ApplySorting(IEnumerable<TItem> items, string field, SortDirection direction)
+    {
+        var property = typeof(TItem).GetProperty(field);
+        if (property == null)
+            return items;
+            
+        if (direction == SortDirection.Ascending)
+        {
+            return items.OrderBy(x => GetPropertyValue(x, property));
+        }
+        else
+        {
+            return items.OrderByDescending(x => GetPropertyValue(x, property));
+        }
+    }
+
+    private object GetPropertyValue(TItem item, PropertyInfo property)
+    {
+        var value = property.GetValue(item);
+        
+        // Handle null values for proper sorting
+        if (value == null)
+        {
+            if (property.PropertyType == typeof(string))
+                return string.Empty;
+            else if (property.PropertyType == typeof(int) || property.PropertyType == typeof(int?))
+                return int.MinValue;
+            else if (property.PropertyType == typeof(double) || property.PropertyType == typeof(double?))
+                return double.MinValue;
+            else if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?))
+                return DateTime.MinValue;
+            else
+                return value;
+        }
+        
+        return value;
+    }
+
+    private IEnumerable<TItem> PagedItems
+    {
+        get
+        {
+            if (!EnablePagination)
+                return FilteredItems;
+                
+            return FilteredItems
+                .Skip((CurrentPage - 1) * PageSize)
+                .Take(PageSize);
+        }
+    }
+
+    private int TotalItemCount => FilteredItems.Count();
+    
+    private int TotalPages => (int)Math.Ceiling((double)TotalItemCount / PageSize);
+
+    private string GetFormattedValue(TItem item, GridColumn<TItem> column)
+    {
+        var property = typeof(TItem).GetProperty(column.Field);
+        if (property == null)
+            return string.Empty;
+            
+        var value = property.GetValue(item);
+        if (value == null)
+            return string.Empty;
+            
+        // Apply custom formatting if specified
+        if (column.Format != null)
+        {
+            return column.Format(value);
+        }
+        
+        // Handle common types with default formatting
+        if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?))
+        {
+            return ((DateTime)value).ToString("g");
+        }
+        else if (property.PropertyType == typeof(decimal) || 
+                 property.PropertyType == typeof(double) || 
+                 property.PropertyType == typeof(float))
+        {
+            return ((IFormattable)value).ToString("N2", null);
+        }
+        
+        return value.ToString();
+    }
+
+    private List<int> GetVisiblePageNumbers()
+    {
+        var visiblePages = new List<int>();
+        int totalButtons = 5; // Total page buttons to show
+        
+        if (TotalPages <= totalButtons)
+        {
+            // Show all pages
+            for (int i = 1; i <= TotalPages; i++)
+            {
+                visiblePages.Add(i);
+            }
+            return visiblePages;
+        }
+        
+        // Always show first page
+        visiblePages.Add(1);
+        
+        // Calculate middle range
+        int middleStart = Math.Max(2, CurrentPage - 1);
+        int middleEnd = Math.Min(TotalPages - 1, CurrentPage + 1);
+        
+        // Add ellipsis after first page if needed
+        if (middleStart > 2)
+        {
+            visiblePages.Add(-1); // -1 represents ellipsis
+        }
+        
+        // Add middle range
+        for (int i = middleStart; i <= middleEnd; i++)
+        {
+            visiblePages.Add(i);
+        }
+        
+        // Add ellipsis before last page if needed
+        if (middleEnd < TotalPages - 1)
+        {
+            visiblePages.Add(-1); // -1 represents ellipsis
+        }
+        
+        // Always show last page
+        if (TotalPages > 1)
+        {
+            visiblePages.Add(TotalPages);
+        }
+        
+        return visiblePages;
+    }
+
+    private bool IsItemSelected(TItem item)
+    {
+        var key = GetItemId(item);
+        return SelectedItems.Any(i => GetItemId(i) == key);
+    }
+
+    private string GetItemId(TItem item)
+    {
+        if (KeyField != null)
+            return KeyField(item);
+            
+        // Try to use a common key property
+        var idProperty = typeof(TItem).GetProperty("Id") ?? 
+                        typeof(TItem).GetProperty("ID") ?? 
+                        typeof(TItem).GetProperty("Key");
+                        
+        if (idProperty != null)
+            return idProperty.GetValue(item)?.ToString() ?? item.GetHashCode().ToString();
+            
+        // Fallback to using object hash
+        return item.GetHashCode().ToString();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? "";
+        CurrentPage = 1; // Reset to first page on search
+        
+        if (OnSearchChanged.HasDelegate)
+        {
+            await OnSearchChanged.InvokeAsync(searchText);
+        }
+        
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchText = "";
+        StateHasChanged();
+    }
+
+    private async Task SelectAllChanged(ChangeEventArgs e)
+    {
+        var isChecked = (bool)e.Value;
+        
+        if (isChecked)
+        {
+            SelectedItems = FilteredItems.ToList();
+        }
+        else
+        {
+            SelectedItems.Clear();
+        }
+        
+        if (OnSelectionChanged.HasDelegate)
+        {
+            await OnSelectionChanged.InvokeAsync(SelectedItems);
+        }
+    }
+
+    private async Task SelectionChanged(TItem item, ChangeEventArgs e)
+    {
+        var isChecked = (bool)e.Value;
+        
+        if (isChecked && !IsItemSelected(item))
+        {
+            SelectedItems.Add(item);
+        }
+        else if (!isChecked && IsItemSelected(item))
+        {
+            var key = GetItemId(item);
+            SelectedItems.RemoveAll(i => GetItemId(i) == key);
+        }
+        
+        if (OnSelectionChanged.HasDelegate)
+        {
+            await OnSelectionChanged.InvokeAsync(SelectedItems);
+        }
+    }
+
+    private async Task SortByColumn(GridColumn<TItem> column)
+    {
+        if (!column.Sortable)
+            return;
+            
+        if (SortField == column.Field)
+        {
+            // Toggle sort direction
+            SortDirectionMain = SortDirectionMain == SortDirection.Ascending ?
+                            SortDirection.Descending : SortDirection.Ascending;
+        }
+        else
+        {
+            SortField = column.Field;
+            SortDirectionMain = SortDirection.Ascending;
+        }
+        
+        if (OnSortChanged.HasDelegate)
+        {
+            await OnSortChanged.InvokeAsync(new GridSortEventArgs
+            {
+                Field = SortField,
+                    Direction = SortDirectionMain
+            });
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            PageSize = newSize;
+            CurrentPage = 1; // Reset to first page
+            
+            if (OnPageChanged.HasDelegate)
+            {
+                await OnPageChanged.InvokeAsync(new GridPageEventArgs
+                {
+                    Page = CurrentPage,
+                    PageSize = PageSize
+                });
+            }
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages)
+            return;
+            
+        CurrentPage = page;
+        
+        if (OnPageChanged.HasDelegate)
+        {
+            await OnPageChanged.InvokeAsync(new GridPageEventArgs
+            {
+                Page = CurrentPage,
+                PageSize = PageSize
+            });
+        }
+    }
+
+    private void ToggleColumnsPanel()
+    {
+        IsColumnsPanelVisible = !IsColumnsPanelVisible;
+        
+        // Close other panels
+        showFilterPanel = false;
+        showExportDropdown = false;
+        showColumnFilter = false;
+    }
+
+    private void ToggleColumn(GridColumn<TItem> column, ChangeEventArgs e)
+    {
+        column.Visible = (bool)e.Value;
+    }
+
+    private void ResetColumns()
+    {
+        foreach (var column in AllColumns)
+        {
+            column.Visible = true;
+        }
+    }
+
+    private void ToggleFilterPanel()
+    {
+        showFilterPanel = !showFilterPanel;
+        
+        // Close other panels
+        IsColumnsPanelVisible = false;
+        showExportDropdown = false;
+        showColumnFilter = false;
+    }
+
+    private void ToggleExportDropdown()
+    {
+        showExportDropdown = !showExportDropdown;
+        
+        // Close other panels
+        IsColumnsPanelVisible = false;
+        showFilterPanel = false;
+        showColumnFilter = false;
+    }
+
+    private void OpenColumnFilter(GridColumn<TItem> column)
+    {
+        currentFilterColumn = column;
+        showColumnFilter = true;
+        
+        // Initialize with existing filter if present
+        var existingFilter = activeFilters.FirstOrDefault(f => f.Field == column.Field);
+        if (existingFilter != null)
+        {
+            currentFilterOperator = existingFilter.Operator;
+            currentFilterValue = existingFilter.Value;
+        }
+        else
+        {
+            currentFilterOperator = "contains";
+            currentFilterValue = "";
+        }
+        
+        // Close other panels
+        IsColumnsPanelVisible = false;
+        showFilterPanel = false;
+        showExportDropdown = false;
+    }
+
+    private void CloseColumnFilter()
+    {
+        showColumnFilter = false;
+        currentFilterColumn = null;
+    }
+    
+    private void ClearColumnFilter()
+    {
+        if (currentFilterColumn != null)
+        {
+            // Remove existing filter for this field if present
+            activeFilters.RemoveAll(f => f.Field == currentFilterColumn.Field);
+            
+            // Reset filter values
+            currentFilterOperator = "contains";
+            currentFilterValue = "";
+            
+            // Reset to first page
+            CurrentPage = 1;
+            
+            if (OnFiltersChanged.HasDelegate)
+            {
+                OnFiltersChanged.InvokeAsync(activeFilters);
+            }
+        }
+    }
+
+    private void OnFilterOperatorChanged(ChangeEventArgs e)
+    {
+        currentFilterOperator = e.Value?.ToString() ?? "contains";
+    }
+
+    private void OnFilterValueChanged(ChangeEventArgs e)
+    {
+        currentFilterValue = e.Value?.ToString() ?? "";
+    }
+
+    private bool HasColumnFilter(string field)
+    {
+        return activeFilters.Any(f => f.Field == field);
+    }
+
+    private async Task ApplyColumnFilterFromUI()
+    {
+        if (currentFilterColumn == null)
+            return;
+
+        await ApplyColumnFilter(currentFilterColumn.Field, currentFilterOperator, currentFilterValue);
+        CloseColumnFilter();
+    }
+
+    private async Task ApplyColumnFilter(string field, string filterOperator, string value)
+    {
+        // Remove existing filter for this field if present
+        activeFilters.RemoveAll(f => f.Field == field);
+        
+        // Add new filter if it has a value or is a null/not null operator
+        if (!string.IsNullOrEmpty(value) || 
+            filterOperator == "isnull" || 
+            filterOperator == "isnotnull")
+        {
+            var column = AllColumns.FirstOrDefault(c => c.Field == field);
+            string displayText = $"{column?.Title ?? field} {GetOperatorText(filterOperator)} {(string.IsNullOrEmpty(value) ? "" : value)}";
+            
+            activeFilters.Add(new GridFilter
+            {
+                Field = field,
+                Operator = filterOperator,
+                Value = value,
+                DisplayText = displayText
+            });
+        }
+        
+        // Reset to first page
+        CurrentPage = 1;
+        
+        if (OnFiltersChanged.HasDelegate)
+        {
+            await OnFiltersChanged.InvokeAsync(activeFilters);
+        }
+    }
+
+    private string GetOperatorText(string filterOperator)
+    {
+        return filterOperator switch
+        {
+            "contains" => "contains",
+            "equals" => "equals",
+            "startswith" => "starts with",
+            "endswith" => "ends with",
+            "greater" => "greater than",
+            "less" => "less than",
+            "isnull" => "is empty",
+            "isnotnull" => "is not empty",
+            _ => filterOperator
+        };
+    }
+
+    private async Task RemoveFilter(GridFilter filter)
+    {
+        activeFilters.Remove(filter);
+        
+        if (OnFiltersChanged.HasDelegate)
+        {
+            await OnFiltersChanged.InvokeAsync(activeFilters);
+        }
+    }
+
+    private async Task ClearAllFilters()
+    {
+        activeFilters.Clear();
+        
+        if (OnFiltersChanged.HasDelegate)
+        {
+            await OnFiltersChanged.InvokeAsync(activeFilters);
+        }
+    }
+
+    private void ApplyFilters(List<GridFilter> filters)
+    {
+        activeFilters = filters;
+        showFilterPanel = false;
+        CurrentPage = 1;
+        
+        if (OnFiltersChanged.HasDelegate)
+        {
+            OnFiltersChanged.InvokeAsync(activeFilters);
+        }
+    }
+
+    private async Task ExportData(string format)
+    {
+        if (OnExport.HasDelegate)
+        {
+            await OnExport.InvokeAsync(format);
+        }
+        
+        showExportDropdown = false;
+    }
+
+    private async Task RefreshData()
+    {
+        if (OnRefresh.HasDelegate)
+        {
+            await OnRefresh.InvokeAsync();
+        }
+    }
+
+    private void CloseAllPopups()
+    {
+        IsColumnsPanelVisible = false;
+        showFilterPanel = false;
+        showExportDropdown = false;
+        showColumnFilter = false;
+    }
+
+    private int GetColspan()
+    {
+        int count = VisibleColumns.Count;
+        if (EnableSelection) count++;
+        if (RowActions != null) count++;
+        return count;
+    }
+
+    public class GridColumn<T>
+    {
+        public string Field { get; set; }
+        public string Title { get; set; }
+        public bool Sortable { get; set; } = true;
+        public bool Filterable { get; set; } = true;
+        public bool Visible { get; set; } = true;
+        public string Width { get; set; }
+        public string Align { get; set; } // left, center, right
+        public RenderFragment<T> Template { get; set; }
+        public RenderFragment<(GridColumn<T>, Action<string, string, string>)> FilterTemplate { get; set; }
+        public Func<object, string> Format { get; set; }
+    }
+
+    public class GridFilter
+    {
+        public string Field { get; set; }
+        public string Operator { get; set; }
+        public string Value { get; set; }
+        public string DisplayText { get; set; }
+    }
+
+    public class GridSortEventArgs
+    {
+        public string Field { get; set; }
+        public SortDirection Direction { get; set; }
+    }
+
+    public class GridPageEventArgs
+    {
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+    }
+
+    public enum SortDirection
+    {
+        Ascending,
+        Descending
+    }
+}

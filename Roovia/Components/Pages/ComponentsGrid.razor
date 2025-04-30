@@ -1,0 +1,1444 @@
+﻿@page "/components-grid"
+@using Microsoft.AspNetCore.Authorization
+@using Roovia.Components.Elements
+@using Roovia.Services
+@using System.Text.Json
+@rendermode InteractiveServer
+@inject ToastService ToastService
+<RVToastContainer Position="bottom-right" />
+<PageTitle>Roovia Grid Component</PageTitle>
+
+@attribute [Authorize]
+
+<div class="container-fluid py-4">
+    <RVCard Title="Roovia Grid Component"
+            Icon="fa-thin fa-table-list"
+            Type="top-primary"
+            CssClass="animate-fade-in mb-4">
+        <ChildContent>
+            <p class="text-secondary mb-4">Advanced data grid with filtering, sorting, pagination, and other data management capabilities.</p>
+
+            <!-- Main Tabs Navigation -->
+            <RVTab Tabs="gridTabs" OnTabChange="HandleGridTabChange">
+                <!-- Basic Grid Tab -->
+                <RVTabPanel TabId="basic" IsActive='activeGridTab == "basic"'>
+                    <h2 class="mb-4">Basic Grid</h2>
+                    <p class="mb-3">A simple data grid with basic functionality.</p>
+
+                    <RVGrid TItem="Product"
+                            Title="Products"
+                            Icon="fa-thin fa-box"
+                            Items="products"
+                            EnableSelection="false"
+                            EnableBulkActions="false"
+                            EnableColumnFilter="false"
+                            EnableFiltering="false"
+                            EnableExport="false"
+                            EnableRefresh="false">
+                    </RVGrid>
+                </RVTabPanel>
+
+                <!-- Advanced Grid Tab -->
+                <RVTabPanel TabId="advanced" IsActive='activeGridTab == "advanced"'>
+                    <h2 class="mb-4">Advanced Grid</h2>
+                    <p class="mb-3">Feature-rich data grid with all available options enabled.</p>
+
+                    <RVGrid TItem="Product"
+                            Title="Products Inventory"
+                            Icon="fa-thin fa-warehouse"
+                            Items="products"
+                            Columns="productColumns"
+                            EnableSelection="true"
+                            EnableBulkActions="true"
+                            RowClass="GetRowClass"
+                            OnSelectionChanged="HandleSelectionChanged"
+                            OnSortChanged="HandleSortChanged"
+                            OnFiltersChanged="HandleFiltersChanged"
+                            OnPageChanged="HandlePageChanged"
+                            OnSearchChanged="HandleSearchChanged"
+                            OnExport="HandleExport"
+                            OnRefresh="HandleRefreshData">
+                        <HeaderActions>
+                            <button class="roovia-btn roovia-btn-primary roovia-btn-sm" @onclick="AddNewProduct">
+                                <i class="fa-thin fa-plus"></i> Add Product
+                            </button>
+                        </HeaderActions>
+                        <BulkActions>
+                            <button class="roovia-btn roovia-btn-sm roovia-btn-danger" @onclick="BulkDelete">
+                                <i class="fa-thin fa-trash"></i> Delete Selected
+                            </button>
+                            <button class="roovia-btn roovia-btn-sm roovia-btn-secondary" @onclick="BulkUpdateStock">
+                                <i class="fa-thin fa-pen"></i> Update Stock
+                            </button>
+                        </BulkActions>
+                        <RowActions Context="product">
+                            <div class="d-flex gap-1">
+                                <button class="roovia-btn roovia-btn-sm roovia-btn-ghost" @onclick="() => EditProduct(product)">
+                                    <i class="fa-thin fa-pen"></i>
+                                </button>
+                                <button class="roovia-btn roovia-btn-sm roovia-btn-ghost" @onclick="() => DeleteProduct(product)">
+                                    <i class="fa-thin fa-trash"></i>
+                                </button>
+                            </div>
+                        </RowActions>
+                    </RVGrid>
+                </RVTabPanel>
+
+                <!-- Customization Tab -->
+                <RVTabPanel TabId="custom" IsActive='activeGridTab == "custom"'>
+                    <h2 class="mb-4">Custom Grid Layouts</h2>
+                    <p class="mb-3">Customize grid appearance and behavior with templates.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <RVCard Title="Custom Templates" Icon="fa-thin fa-columns" Size="compact">
+                            <ChildContent>
+                                <RVGrid TItem="Order"
+                                        Title="Recent Orders"
+                                        Icon="fa-thin fa-bag-shopping"
+                                        Items="orders"
+                                        Columns="orderColumns"
+                                        EnableStriped="true"
+                                        EnablePagination="true"
+                                        PageSize="5">
+                                </RVGrid>
+                            </ChildContent>
+                        </RVCard>
+
+                        <RVCard Title="Loading & Empty States" Icon="fa-thin fa-spinner" Size="compact">
+                            <ChildContent>
+                                <div class="mb-3">
+                                    <RVButton Text="Toggle Loading State" ButtonType="primary" OnClick="ToggleLoading" />
+                                    <RVButton Text="Toggle Empty State" ButtonType="secondary" OnClick="ToggleEmptyState" CssClass="ms-2" />
+                                </div>
+
+                                <RVGrid TItem="Product"
+                                        Title="Products"
+                                        Icon="fa-thin fa-box"
+                                        Items="emptyStateToggle ? new List<Product>() : products"
+                                        IsLoading="isLoadingDemo"
+                                        EmptyStateIcon="fa-thin fa-box-open"
+                                        EmptyStateTitle="No products found"
+                                        EmptyStateMessage="There are no products in the inventory. Add a new product to get started."
+                                        EnablePagination="true"
+                                        PageSize="5">
+                                </RVGrid>
+                            </ChildContent>
+                        </RVCard>
+                    </div>
+
+                    <RVCard Title="Oil Processing Data" Icon="fa-thin fa-oil-can" Type="border-primary">
+                        <ChildContent>
+                            <RVGrid TItem="OilBatch"
+                                    Title="Oil Processing Batches"
+                                    Icon="fa-thin fa-flask"
+                                    Items="oilBatches"
+                                    Columns="oilBatchColumns"
+                                    EnableSelection="true"
+                                    EnableHover="true"
+                                    EnableStriped="true"
+                                    OnExport="HandleOilBatchExport">
+                                <RowActions Context="batch">
+                                    <div class="d-flex gap-1">
+                                        <button class="roovia-btn roovia-btn-sm roovia-btn-ghost" @onclick="() => ViewBatchDetails(batch)">
+                                            <i class="fa-thin fa-eye"></i>
+                                        </button>
+                                        <button class="roovia-btn roovia-btn-sm roovia-btn-ghost">
+                                            <i class="fa-thin fa-pen"></i>
+                                        </button>
+                                    </div>
+                                </RowActions>
+                            </RVGrid>
+                        </ChildContent>
+                    </RVCard>
+                </RVTabPanel>
+
+                <!-- Integration Tab -->
+                <RVTabPanel TabId="integration" IsActive='activeGridTab == "integration"'>
+                    <h2 class="mb-4">Integration Examples</h2>
+                    <p class="mb-3">Examples of integrating the grid with other components.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <RVGrid TItem="Employee"
+                                    Title="Staff Directory"
+                                    Icon="fa-thin fa-users"
+                                    Items="employees"
+                                    Columns="employeeColumns"
+                                    EnableSelection="true"
+                                    EnableHover="true"
+                                    OnSelectionChanged="HandleEmployeeSelection"
+                                    OnExport="HandleEmployeeExport">
+                            </RVGrid>
+                        </div>
+
+                        <RVCard Title="Selected Employee Details" Icon="fa-thin fa-user" Type="soft-primary">
+                            <ChildContent>
+                                @if (selectedEmployee != null)
+                                {
+                                    <div class="p-4">
+                                        <div class="d-flex align-items-center mb-4">
+                                            <div class="roovia-profile-image me-3" style="background-image: url('@selectedEmployee.AvatarUrl')"></div>
+                                            <div>
+                                                <h3 class="mb-1">@selectedEmployee.FirstName @selectedEmployee.LastName</h3>
+                                                <p class="text-muted mb-0">@selectedEmployee.Position</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="roovia-detail-item">
+                                            <span class="roovia-detail-label">ID:</span>
+                                            <span class="roovia-detail-value">@selectedEmployee.Id</span>
+                                        </div>
+                                        <div class="roovia-detail-item">
+                                            <span class="roovia-detail-label">Email:</span>
+                                            <span class="roovia-detail-value">@selectedEmployee.Email</span>
+                                        </div>
+                                        <div class="roovia-detail-item">
+                                            <span class="roovia-detail-label">Department:</span>
+                                            <span class="roovia-detail-value">@selectedEmployee.Department</span>
+                                        </div>
+                                        <div class="roovia-detail-item">
+                                            <span class="roovia-detail-label">Hire Date:</span>
+                                            <span class="roovia-detail-value">@selectedEmployee.HireDate.ToString("d")</span>
+                                        </div>
+                                        <div class="roovia-detail-item">
+                                            <span class="roovia-detail-label">Status:</span>
+                                            <span class="roovia-detail-value @(selectedEmployee.IsActive ? "text-success" : "text-danger")">
+                                                @(selectedEmployee.IsActive ? "Active" : "Inactive")
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-4">
+                                            <RVButton Text="Edit Profile" ButtonType="primary" IconLeft="fa-thin fa-pen" />
+                                            <RVButton Text="Send Message" ButtonType="outline" IconLeft="fa-thin fa-envelope" CssClass="ms-2" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-state">
+                                        <div class="empty-illustration">
+                                            <i class="fa-thin fa-user"></i>
+                                        </div>
+                                        <h3>No Employee Selected</h3>
+                                        <p>Select an employee from the grid to view their details.</p>
+                                    </div>
+                                }
+                            </ChildContent>
+                        </RVCard>
+                    </div>
+
+                    <RVCard Title="Dashboard Integration" Icon="fa-thin fa-gauge" Type="border-primary">
+                        <ChildContent>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div class="roovia-stat-card">
+                                    <div class="roovia-stat-icon bg-primary-light">
+                                        <i class="fa-thin fa-oil-can text-primary"></i>
+                                    </div>
+                                    <div class="roovia-stat-content">
+                                        <h4 class="roovia-stat-value">@oilBatches.Count</h4>
+                                        <p class="roovia-stat-label">Total Batches</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-stat-card">
+                                    <div class="roovia-stat-icon bg-success-light">
+                                        <i class="fa-thin fa-check text-success"></i>
+                                    </div>
+                                    <div class="roovia-stat-content">
+                                        <h4 class="roovia-stat-value">@oilBatches.Count(b => b.QualityControl == "Passed")</h4>
+                                        <p class="roovia-stat-label">Quality Passed</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-stat-card">
+                                    <div class="roovia-stat-icon bg-warning-light">
+                                        <i class="fa-thin fa-flask text-warning"></i>
+                                    </div>
+                                    <div class="roovia-stat-content">
+                                        <h4 class="roovia-stat-value">@oilBatches.Sum(b => b.Volume).ToString("N0")</h4>
+                                        <p class="roovia-stat-label">Total Volume (L)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <RVGrid TItem="OilBatch"
+                                    Title="Oil Production"
+                                    Icon="fa-thin fa-oil-can"
+                                    Items="oilBatches.OrderByDescending(b => b.Date).Take(5).ToList()"
+                                    EnablePagination="false"
+                                    EnableColumnFilter="false"
+                                    EnableExport="true"
+                                    EnableRefresh="true"
+                                    OnRefresh="RefreshOilData"
+                                    OnExport="HandleOilBatchExport">
+                                <HeaderActions>
+                                    <button class="roovia-btn roovia-btn-primary roovia-btn-sm" @onclick="ViewAllBatches">
+                                        View All
+                                    </button>
+                                </HeaderActions>
+                            </RVGrid>
+                        </ChildContent>
+                    </RVCard>
+                </RVTabPanel>
+
+                <!-- Documentation Tab -->
+                <RVTabPanel TabId="docs" IsActive='activeGridTab == "docs"'>
+                    <h2 class="mb-4">Grid Documentation</h2>
+
+                    <RVCard Title="Usage Guide" Icon="fa-thin fa-book">
+                        <ChildContent>
+                            <h3 class="mb-3">Basic Usage</h3>
+                            <p>To use the RVGrid component, you need to specify the type of items it will display and provide a collection of those items:</p>
+
+                            <pre class="code-block"><code>
+&lt;RVGrid TItem="Product"
+       Title="Products"
+       Items="products"&gt;
+&lt;/RVGrid&gt;
+                            </code></pre>
+
+                            <h3 class="mt-4 mb-3">Custom Columns</h3>
+                            <p>You can customize columns to control their appearance and behavior:</p>
+
+                            <h3 class="mt-4 mb-3">Row Actions</h3>
+                            <p>Add action buttons to each row:</p>
+
+                            <pre class="code-block"><code>
+&lt;RVGrid TItem="Product" Items="products"&gt;
+    &lt;RowActions Context="product"&gt;
+        &lt;div class="d-flex gap-1"&gt;
+            &lt;button class="roovia-btn roovia-btn-sm roovia-btn-ghost" 
+                                    @("@onclick")="() => EditProduct(product)"&gt;
+                &lt;i class="fa-thin fa-pen"&gt;&lt;/i&gt;
+            &lt;/button&gt;
+            &lt;button class="roovia-btn roovia-btn-sm roovia-btn-ghost" 
+                                    @("@onclick")="() => DeleteProduct(product)"&gt;
+                &lt;i class="fa-thin fa-trash"&gt;&lt;/i&gt;
+            &lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/RowActions&gt;
+&lt;/RVGrid&gt;
+                            </code></pre>
+
+                            <h3 class="mt-4 mb-3">Events</h3>
+                            <p>The grid provides various events to handle user interactions:</p>
+
+                            <div class="roovia-table-container mt-3">
+                                <table class="roovia-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Event</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>OnSelectionChanged</code></td>
+                                            <td>Triggered when row selection changes</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnSortChanged</code></td>
+                                            <td>Triggered when sorting is changed</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnFiltersChanged</code></td>
+                                            <td>Triggered when filters are applied or removed</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnPageChanged</code></td>
+                                            <td>Triggered when page is changed</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnSearchChanged</code></td>
+                                            <td>Triggered when search text changes</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnExport</code></td>
+                                            <td>Triggered when export is requested</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>OnRefresh</code></td>
+                                            <td>Triggered when refresh is requested</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3 class="mt-4 mb-3">Key Parameters</h3>
+
+                            <div class="roovia-table-container mt-3">
+                                <table class="roovia-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>Items</code></td>
+                                            <td><code>List&lt;TItem&gt;</code></td>
+                                            <td>Data collection to display in the grid</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Columns</code></td>
+                                            <td><code>List&lt;GridColumn&lt;TItem&gt;&gt;</code></td>
+                                            <td>Column definitions (optional, will auto-generate if not provided)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Title</code></td>
+                                            <td><code>string</code></td>
+                                            <td>Grid title displayed in header</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>EnableSearch</code></td>
+                                            <td><code>bool</code></td>
+                                            <td>Enable global search functionality</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>EnableSelection</code></td>
+                                            <td><code>bool</code></td>
+                                            <td>Enable row selection with checkboxes</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>EnablePagination</code></td>
+                                            <td><code>bool</code></td>
+                                            <td>Enable pagination controls</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>PageSize</code></td>
+                                            <td><code>int</code></td>
+                                            <td>Number of items per page</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>IsLoading</code></td>
+                                            <td><code>bool</code></td>
+                                            <td>Show loading state</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>RowClass</code></td>
+                                            <td><code>Func&lt;TItem, string&gt;</code></td>
+                                            <td>Function to apply custom CSS classes to rows</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </ChildContent>
+                    </RVCard>
+                </RVTabPanel>
+            </RVTab>
+        </ChildContent>
+    </RVCard>
+</div>
+
+<!-- Product Detail Modal -->
+<RVModal Title="@(editingProduct?.Id > 0 ? "Edit Product" : "Add New Product")"
+         Icon="fa-thin fa-box"
+         IsVisible="@isProductModalVisible"
+         ShowHeader="true"
+         ShowCloseButton="true"
+         Size="md"
+         OnClose="CloseProductModal"
+         OnConfirm="SaveProduct"
+         ConfirmText="@(editingProduct?.Id > 0 ? "Update" : "Save")">
+
+    <ChildContent>
+        <div class="p-3">
+            <div class="roovia-form-group">
+                <RVTextbox Label="Product Name"
+                           Placeholder="Enter product name"
+                           Value="@editingProduct.Name"
+                           ValueChanged="@((val) => editingProduct.Name = val)" />
+            </div>
+
+            <div class="roovia-form-group">
+                <RVTextbox Label="Category"
+                           Placeholder="Enter category"
+                           Value="@editingProduct.Category"
+                           ValueChanged="@((val) => editingProduct.Category = val)" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="roovia-form-group">
+                    <RVTextbox Label="Price"
+                               Placeholder="Enter price"
+                               Type="number"
+                               Value="@editingProduct.Price.ToString("0.00")"
+                               ValueChanged="@((val) => editingProduct.Price = decimal.TryParse(val, out var price) ? price : 0)" />
+                </div>
+
+                <div class="roovia-form-group">
+                    <RVTextbox Label="Stock Level"
+                               Placeholder="Enter stock level"
+                               Type="number"
+                               Value="@editingProduct.StockLevel.ToString()"
+                               ValueChanged="@((val) => editingProduct.StockLevel = int.TryParse(val, out var stock) ? stock : 0)" />
+                </div>
+            </div>
+
+            <div class="roovia-form-group">
+                <RVDateTimePicker Label="Date Added"
+                                  Placeholder="Select date"
+                                  Value="@editingProduct.DateAdded"
+                                  ValueChanged="@((val) => editingProduct.DateAdded = val.GetValueOrDefault())" />
+            </div>
+
+            <div class="roovia-form-group">
+                <RVSwitch Label="Available"
+                          Value="@editingProduct.IsAvailable"
+                          ValueChanged="@((val) => editingProduct.IsAvailable = val)" />
+            </div>
+        </div>
+    </ChildContent>
+</RVModal>
+
+<!-- Batch View Modal -->
+<RVModal Title="Oil Batch Details"
+         Icon="fa-thin fa-oil-can"
+         IsVisible="@isBatchModalVisible"
+         ShowHeader="true"
+         ShowCloseButton="true"
+         Size="lg"
+         OnClose="CloseBatchModal">
+
+    <ChildContent>
+        @if (selectedBatch != null)
+        {
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <RVCard Title="Batch Information" Size="sm">
+                        <ChildContent>
+                            <div class="roovia-detail-list">
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Batch Number:</span>
+                                    <span class="roovia-detail-value">@selectedBatch.BatchNumber</span>
+                                </div>
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Oil Type:</span>
+                                    <span class="roovia-detail-value">@selectedBatch.OilType</span>
+                                </div>
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Date:</span>
+                                    <span class="roovia-detail-value">@selectedBatch.Date.ToString("d")</span>
+                                </div>
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Processing Method:</span>
+                                    <span class="roovia-detail-value">@selectedBatch.ProcessingMethod</span>
+                                </div>
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Volume:</span>
+                                    <span class="roovia-detail-value">@selectedBatch.Volume.ToString("N0") L</span>
+                                </div>
+                                <div class="roovia-detail-item">
+                                    <span class="roovia-detail-label">Quality Control:</span>
+                                    <span class="roovia-detail-value @GetQualityClass(selectedBatch.QualityControl)">
+                                        @selectedBatch.QualityControl
+                                    </span>
+                                </div>
+                            </div>
+                        </ChildContent>
+                    </RVCard>
+
+                    <RVCard Title="Quality Metrics" Size="sm">
+                        <ChildContent>
+                            <div class="roovia-metrics">
+                                <div class="roovia-metric">
+                                    <span class="roovia-metric-label">Acid Value:</span>
+                                    <div class="roovia-progress">
+                                        <div class="roovia-progress-bar @GetProgressClass(selectedBatch.AcidValue, 0.6, 0.3)"
+                                             style="width: @(selectedBatch.AcidValue * 100)%">
+                                        </div>
+                                    </div>
+                                    <span class="roovia-metric-value">@(selectedBatch.AcidValue * 100)%</span>
+                                </div>
+                                <div class="roovia-metric">
+                                    <span class="roovia-metric-label">Peroxide Value:</span>
+                                    <div class="roovia-progress">
+                                        <div class="roovia-progress-bar @GetProgressClass(selectedBatch.PeroxideValue, 0.7, 0.4)"
+                                             style="width: @(selectedBatch.PeroxideValue * 100)%">
+                                        </div>
+                                    </div>
+                                    <span class="roovia-metric-value">@(selectedBatch.PeroxideValue * 100)%</span>
+                                </div>
+                                <div class="roovia-metric">
+                                    <span class="roovia-metric-label">Moisture Content:</span>
+                                    <div class="roovia-progress">
+                                        <div class="roovia-progress-bar @GetProgressClass(selectedBatch.MoistureContent, 0.5, 0.2)"
+                                             style="width: @(selectedBatch.MoistureContent * 100)%">
+                                        </div>
+                                    </div>
+                                    <span class="roovia-metric-value">@(selectedBatch.MoistureContent * 100)%</span>
+                                </div>
+                            </div>
+                        </ChildContent>
+                    </RVCard>
+                </div>
+
+                <RVCard Title="Processing Notes" Size="sm">
+                    <ChildContent>
+                        <p>@selectedBatch.Notes</p>
+                    </ChildContent>
+                </RVCard>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <RVButton Text="Print Report" ButtonType="secondary" IconLeft="fa-thin fa-print" OnClick="CloseBatchModal" />
+                    <RVButton Text="Edit Batch" ButtonType="primary" IconLeft="fa-thin fa-pen" OnClick="CloseBatchModal" CssClass="ms-2" />
+                </div>
+            </div>
+        }
+    </ChildContent>
+</RVModal>
+
+<style>
+    /* Additional styles for the grid demo page */
+    .code-block {
+        background-color: var(--subtle-bg);
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-4);
+        overflow-x: auto;
+        margin: var(--spacing-3) 0;
+        border: 1px solid var(--border-divider);
+        font-family: var(--font-mono);
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+    }
+
+    .roovia-stat-card {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-4);
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-divider);
+        padding: var(--spacing-4);
+        box-shadow: var(--shadow-sm);
+        transition: var(--card-transition);
+    }
+
+        .roovia-stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+    .roovia-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--border-radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .roovia-stat-content {
+        flex: 1;
+    }
+
+    .roovia-stat-value {
+        font-size: var(--font-size-2xl);
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .roovia-stat-label {
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        margin: 0;
+    }
+
+    .roovia-profile-image {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-size: cover;
+        background-position: center;
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-divider);
+    }
+
+    .roovia-detail-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-detail-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-detail-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        width: 150px;
+        flex-shrink: 0;
+    }
+
+    .roovia-detail-value {
+        color: var(--text-secondary);
+    }
+
+    .roovia-metrics {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-4);
+    }
+
+    .roovia-metric {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+    }
+
+    .roovia-metric-label {
+        width: 140px;
+        flex-shrink: 0;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .roovia-progress {
+        flex: 1;
+        height: 8px;
+        background-color: var(--subtle-bg);
+        border-radius: var(--border-radius-pill);
+        overflow: hidden;
+    }
+
+    .roovia-progress-bar {
+        height: 100%;
+        background-color: var(--primary);
+        border-radius: var(--border-radius-pill);
+    }
+
+        .roovia-progress-bar.good {
+            background-color: var(--success);
+        }
+
+        .roovia-progress-bar.warning {
+            background-color: var(--warning);
+        }
+
+        .roovia-progress-bar.danger {
+            background-color: var(--danger);
+        }
+
+    .roovia-metric-value {
+        width: 50px;
+        text-align: right;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .text-success {
+        color: var(--success) !important;
+    }
+
+    .text-warning {
+        color: var(--warning) !important;
+    }
+
+    .text-danger {
+        color: var(--danger) !important;
+    }
+
+    /* Custom badge for stock level */
+    .stock-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--border-radius-pill);
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        line-height: 1;
+    }
+
+        .stock-badge.high {
+            background-color: var(--success-light);
+            color: var(--success);
+        }
+
+        .stock-badge.medium {
+            background-color: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .stock-badge.low {
+            background-color: var(--danger-light);
+            color: var(--danger);
+        }
+
+    /* Status indicator */
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-1);
+    }
+
+    .status-indicator-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+        .status-indicator-dot.active {
+            background-color: var(--success);
+        }
+
+        .status-indicator-dot.inactive {
+            background-color: var(--danger);
+        }
+
+    /* CSS-only loading spinner */
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(var(--primary-rgb), 0.3);
+        border-radius: 50%;
+        border-top: 4px solid var(--primary);
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        0%
+
+    {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+
+    }
+</style>
+
+@code {
+    // Grid navigation tabs
+    private List<RVTab.RVTabItem> gridTabs = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "basic", Title = "Basic Grid", Icon = "fa-thin fa-table", IsActive = true },
+        new RVTab.RVTabItem { Id = "advanced", Title = "Advanced Grid", Icon = "fa-thin fa-table-list" },
+        new RVTab.RVTabItem { Id = "custom", Title = "Customization", Icon = "fa-thin fa-table-columns" },
+        new RVTab.RVTabItem { Id = "integration", Title = "Integration", Icon = "fa-thin fa-plug" },
+        new RVTab.RVTabItem { Id = "docs", Title = "Documentation", Icon = "fa-thin fa-book" }
+    };
+    private string activeGridTab = "basic";
+
+    // Demo data
+    private List<Product> products = new List<Product>();
+    private List<Order> orders = new List<Order>();
+    private List<Employee> employees = new List<Employee>();
+    private List<OilBatch> oilBatches = new List<OilBatch>();
+
+    // Empty state and loading demo
+    private bool isLoadingDemo = false;
+    private bool emptyStateToggle = false;
+
+    // Selected items
+    private Employee selectedEmployee = null;
+    private OilBatch selectedBatch = null;
+
+    // Modal state
+    private bool isProductModalVisible = false;
+    private bool isBatchModalVisible = false;
+    private Product editingProduct = new Product();
+
+    // Grid configurations
+    private List<RVGrid<Product>.GridColumn<Product>> productColumns = new List<RVGrid<Product>.GridColumn<Product>>();
+    private List<RVGrid<Order>.GridColumn<Order>> orderColumns = new List<RVGrid<Order>.GridColumn<Order>>();
+    private List<RVGrid<Employee>.GridColumn<Employee>> employeeColumns = new List<RVGrid<Employee>.GridColumn<Employee>>();
+    private List<RVGrid<OilBatch>.GridColumn<OilBatch>> oilBatchColumns = new List<RVGrid<OilBatch>.GridColumn<OilBatch>>();
+
+    protected override void OnInitialized()
+    {
+        // Initialize demo data and columns immediately
+        GenerateDemoData();
+        SetupGridColumns();
+
+        // Initialize empty object for product modal
+        editingProduct = new Product
+            {
+                DateAdded = DateTime.Now,
+                IsAvailable = true
+            };
+    }
+
+    private void HandleGridTabChange(string tabId)
+    {
+        activeGridTab = tabId;
+    }
+
+    #region Data Generation
+
+    private void GenerateDemoData()
+    {
+        // Generate products
+        products = new List<Product>
+        {
+            new Product { Id = 1, Name = "Premium Canola Oil", Category = "Canola", Price = 24.99m, StockLevel = 45, DateAdded = DateTime.Now.AddDays(-30), IsAvailable = true },
+            new Product { Id = 2, Name = "Cold-Pressed Sunflower Oil", Category = "Sunflower", Price = 19.99m, StockLevel = 32, DateAdded = DateTime.Now.AddDays(-21), IsAvailable = true },
+            new Product { Id = 3, Name = "Organic Soya Oil", Category = "Soya", Price = 29.99m, StockLevel = 12, DateAdded = DateTime.Now.AddDays(-14), IsAvailable = true },
+            new Product { Id = 4, Name = "Maize Germ Oil", Category = "Maize", Price = 18.50m, StockLevel = 8, DateAdded = DateTime.Now.AddDays(-7), IsAvailable = true },
+            new Product { Id = 5, Name = "Extra Virgin Olive Oil", Category = "Olive", Price = 34.99m, StockLevel = 0, DateAdded = DateTime.Now.AddDays(-5), IsAvailable = false },
+            new Product { Id = 6, Name = "High-Oleic Sunflower Oil", Category = "Sunflower", Price = 22.99m, StockLevel = 27, DateAdded = DateTime.Now.AddDays(-4), IsAvailable = true },
+            new Product { Id = 7, Name = "Refined Canola Oil", Category = "Canola", Price = 17.99m, StockLevel = 64, DateAdded = DateTime.Now.AddDays(-3), IsAvailable = true },
+            new Product { Id = 8, Name = "Cold-Filtered Soya Oil", Category = "Soya", Price = 26.50m, StockLevel = 18, DateAdded = DateTime.Now.AddDays(-2), IsAvailable = true },
+            new Product { Id = 9, Name = "Unrefined Maize Oil", Category = "Maize", Price = 15.99m, StockLevel = 3, DateAdded = DateTime.Now.AddDays(-1), IsAvailable = true },
+            new Product { Id = 10, Name = "Bulk Cooking Oil", Category = "Mixed", Price = 49.99m, StockLevel = 22, DateAdded = DateTime.Now, IsAvailable = true }
+        };
+
+        // Generate orders
+        orders = new List<Order>
+        {
+            new Order { Id = 1, OrderNumber = "ORD-2023-001", CustomerName = "FoodCo Industries", OrderDate = DateTime.Now.AddDays(-5), Total = 2499.50m, Status = "Completed", PaymentMethod = "Bank Transfer" },
+            new Order { Id = 2, OrderNumber = "ORD-2023-002", CustomerName = "Sunshine Bakeries", OrderDate = DateTime.Now.AddDays(-4), Total = 1249.75m, Status = "Shipped", PaymentMethod = "Credit Card" },
+            new Order { Id = 3, OrderNumber = "ORD-2023-003", CustomerName = "Organic Foods Ltd", OrderDate = DateTime.Now.AddDays(-3), Total = 3752.25m, Status = "Processing", PaymentMethod = "Bank Transfer" },
+            new Order { Id = 4, OrderNumber = "ORD-2023-004", CustomerName = "Natural Stores", OrderDate = DateTime.Now.AddDays(-2), Total = 899.99m, Status = "Pending", PaymentMethod = "Credit Card" },
+            new Order { Id = 5, OrderNumber = "ORD-2023-005", CustomerName = "Green Earth Co-op", OrderDate = DateTime.Now.AddDays(-1), Total = 1875.50m, Status = "Pending", PaymentMethod = "Bank Transfer" },
+            new Order { Id = 6, OrderNumber = "ORD-2023-006", CustomerName = "Whole Foods Market", OrderDate = DateTime.Now, Total = 4250.75m, Status = "Processing", PaymentMethod = "Credit Card" }
+        };
+
+        // Generate employees
+        employees = new List<Employee>
+        {
+            new Employee { Id = 1, FirstName = "John", LastName = "Smith", Email = "john.smith@roovia.com", Department = "Production", Position = "Plant Manager", HireDate = DateTime.Now.AddYears(-5), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 2, FirstName = "Sarah", LastName = "Johnson", Email = "sarah.johnson@roovia.com", Department = "Quality Control", Position = "Lab Technician", HireDate = DateTime.Now.AddYears(-3), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 3, FirstName = "Michael", LastName = "Williams", Email = "michael.williams@roovia.com", Department = "Logistics", Position = "Warehouse Supervisor", HireDate = DateTime.Now.AddYears(-2), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 4, FirstName = "Emily", LastName = "Brown", Email = "emily.brown@roovia.com", Department = "Administration", Position = "HR Manager", HireDate = DateTime.Now.AddYears(-4), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 5, FirstName = "David", LastName = "Jones", Email = "david.jones@roovia.com", Department = "Sales", Position = "Sales Representative", HireDate = DateTime.Now.AddYears(-1), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 6, FirstName = "Lisa", LastName = "Davis", Email = "lisa.davis@roovia.com", Department = "Production", Position = "Production Supervisor", HireDate = DateTime.Now.AddYears(-3).AddMonths(-6), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 7, FirstName = "Robert", LastName = "Miller", Email = "robert.miller@roovia.com", Department = "Maintenance", Position = "Maintenance Technician", HireDate = DateTime.Now.AddYears(-1).AddMonths(-3), IsActive = true, AvatarUrl = "/api/placeholder/80/80" },
+            new Employee { Id = 8, FirstName = "Jennifer", LastName = "Wilson", Email = "jennifer.wilson@roovia.com", Department = "Quality Control", Position = "Quality Assurance Specialist", HireDate = DateTime.Now.AddYears(-2).AddMonths(-7), IsActive = false, AvatarUrl = "/api/placeholder/80/80" }
+        };
+
+        // Generate oil batches
+        oilBatches = new List<OilBatch>
+        {
+            new OilBatch { Id = 1, BatchNumber = "B2023-001", OilType = "Canola", ProcessingMethod = "Cold Press", Date = DateTime.Now.AddDays(-20), Volume = 2500, QualityControl = "Passed", AcidValue = 0.3, PeroxideValue = 0.4, MoistureContent = 0.1, Notes = "Standard batch processing completed with optimal pressure and temperature." },
+            new OilBatch { Id = 2, BatchNumber = "B2023-002", OilType = "Sunflower", ProcessingMethod = "Hot Press", Date = DateTime.Now.AddDays(-18), Volume = 3200, QualityControl = "Passed", AcidValue = 0.25, PeroxideValue = 0.35, MoistureContent = 0.12, Notes = "High yield with excellent clarity and color." },
+            new OilBatch { Id = 3, BatchNumber = "B2023-003", OilType = "Soya", ProcessingMethod = "Solvent Extraction", Date = DateTime.Now.AddDays(-15), Volume = 4800, QualityControl = "Failed", AcidValue = 0.7, PeroxideValue = 0.8, MoistureContent = 0.25, Notes = "Higher than acceptable acid value. Batch quarantined for further processing." },
+            new OilBatch { Id = 4, BatchNumber = "B2023-004", OilType = "Maize Germ", ProcessingMethod = "Cold Press", Date = DateTime.Now.AddDays(-10), Volume = 1800, QualityControl = "Passed", AcidValue = 0.28, PeroxideValue = 0.33, MoistureContent = 0.09, Notes = "Excellent quality oil with high vitamin E content." },
+            new OilBatch { Id = 5, BatchNumber = "B2023-005", OilType = "Canola", ProcessingMethod = "Centrifugal", Date = DateTime.Now.AddDays(-8), Volume = 3500, QualityControl = "Passed", AcidValue = 0.32, PeroxideValue = 0.38, MoistureContent = 0.11, Notes = "Implemented new centrifugal technique with improved separation." },
+            new OilBatch { Id = 6, BatchNumber = "B2023-006", OilType = "Sunflower", ProcessingMethod = "Hydraulic Press", Date = DateTime.Now.AddDays(-5), Volume = 2800, QualityControl = "Pending", AcidValue = 0.34, PeroxideValue = 0.42, MoistureContent = 0.14, Notes = "Awaiting final laboratory results for certification." },
+            new OilBatch { Id = 7, BatchNumber = "B2023-007", OilType = "Soya", ProcessingMethod = "Cold Press", Date = DateTime.Now.AddDays(-3), Volume = 2200, QualityControl = "Passed", AcidValue = 0.29, PeroxideValue = 0.36, MoistureContent = 0.10, Notes = "Premium grade for food industry with low phospholipid content." }
+        };
+    }
+
+    private void SetupGridColumns()
+    {
+        // Setup product columns
+        productColumns = new List<RVGrid<Product>.GridColumn<Product>>
+        {
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "Id",
+                Title = "ID",
+                Width = "80px",
+                Align = "center"
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "Name",
+                Title = "Product Name",
+                Sortable = true,
+                Filterable = true
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "Category",
+                Title = "Category",
+                Sortable = true,
+                Filterable = true
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "Price",
+                Title = "Price",
+                Sortable = true,
+                Align = "right",
+                Format = (value) => ((decimal)value).ToString("C2")
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "StockLevel",
+                Title = "Stock",
+                Sortable = true,
+                Align = "center",
+                Template = (product) =>
+    @<div>
+        <span class="stock-badge @(product.StockLevel <= 0 ? "low" : (product.StockLevel < 10 ? "medium" : "high"))">
+            @product.StockLevel
+        </span>
+    </div>
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "DateAdded",
+                Title = "Date Added",
+                Sortable = true,
+                Format = (value) => ((DateTime)value).ToString("d")
+            },
+            new RVGrid<Product>.GridColumn<Product>
+            {
+                Field = "IsAvailable",
+                Title = "Status",
+                Sortable = true,
+                Template = (product) =>
+    @<div class="status-indicator">
+        <span class="status-indicator-dot @(product.IsAvailable ? "active" : "inactive")"></span>
+        <span>@(product.IsAvailable ? "Available" : "Unavailable")</span>
+    </div>
+            }
+        };
+
+        // Setup order columns
+        orderColumns = new List<RVGrid<Order>.GridColumn<Order>>
+        {
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "OrderNumber",
+                Title = "Order #",
+                Sortable = true
+            },
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "CustomerName",
+                Title = "Customer",
+                Sortable = true
+            },
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "OrderDate",
+                Title = "Date",
+                Sortable = true,
+                Format = (value) => ((DateTime)value).ToString("d")
+            },
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "Total",
+                Title = "Total",
+                Sortable = true,
+                Align = "right",
+                Format = (value) => ((decimal)value).ToString("C2")
+            },
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "Status",
+                Title = "Status",
+                Sortable = true,
+                Template = (order) =>
+    @<div>
+        <span class="badge @GetOrderStatusClass(order.Status)">
+            @order.Status
+        </span>
+    </div>
+            },
+            new RVGrid<Order>.GridColumn<Order>
+            {
+                Field = "PaymentMethod",
+                Title = "Payment",
+                Sortable = true
+            }
+        };
+
+        // Setup employee columns
+        employeeColumns = new List<RVGrid<Employee>.GridColumn<Employee>>
+        {
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "Id",
+                Title = "ID",
+                Width = "60px",
+                Align = "center"
+            },
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "FullName",
+                Title = "Name",
+                Sortable = true,
+                Template = (employee) =>
+    @<div class="d-flex align-items-center gap-2">
+        <div class="roovia-profile-image" style="width: 32px; height: 32px; background-image: url('@employee.AvatarUrl')"></div>
+        <span>@employee.FirstName @employee.LastName</span>
+    </div>
+            },
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "Department",
+                Title = "Department",
+                Sortable = true
+            },
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "Position",
+                Title = "Position",
+                Sortable = true
+            },
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "HireDate",
+                Title = "Hire Date",
+                Sortable = true,
+                Format = (value) => ((DateTime)value).ToString("d")
+            },
+            new RVGrid<Employee>.GridColumn<Employee>
+            {
+                Field = "IsActive",
+                Title = "Status",
+                Sortable = true,
+                Template = (employee) =>
+    @<div class="status-indicator">
+        <span class="status-indicator-dot @(employee.IsActive ? "active" : "inactive")"></span>
+        <span>@(employee.IsActive ? "Active" : "Inactive")</span>
+    </div>
+            }
+        };
+
+        // Setup oil batch columns
+        oilBatchColumns = new List<RVGrid<OilBatch>.GridColumn<OilBatch>>
+        {
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "BatchNumber",
+                Title = "Batch #",
+                Sortable = true
+            },
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "OilType",
+                Title = "Oil Type",
+                Sortable = true
+            },
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "ProcessingMethod",
+                Title = "Method",
+                Sortable = true
+            },
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "Date",
+                Title = "Date",
+                Sortable = true,
+                Format = (value) => ((DateTime)value).ToString("d")
+            },
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "Volume",
+                Title = "Volume (L)",
+                Sortable = true,
+                Align = "right",
+                Format = (value) => ((int)value).ToString("N0")
+            },
+            new RVGrid<OilBatch>.GridColumn<OilBatch>
+            {
+                Field = "QualityControl",
+                Title = "Quality",
+                Sortable = true,
+                Template = (batch) =>
+    @<div>
+        <span class="badge @GetQualityClass(batch.QualityControl)">
+            @batch.QualityControl
+        </span>
+    </div>
+            }
+        };
+    }
+
+    #endregion
+
+    #region UI Helper Methods
+
+    private string GetRowClass(Product product)
+    {
+        if (!product.IsAvailable)
+            return "roovia-grid-row-disabled";
+        if (product.StockLevel <= 0)
+            return "roovia-grid-row-alert";
+        return "";
+    }
+
+    private string GetOrderStatusClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "badge-success",
+            "Shipped" => "badge-info",
+            "Processing" => "badge-primary",
+            "Pending" => "badge-warning",
+            _ => "badge-secondary"
+        };
+    }
+
+    private string GetQualityClass(string quality)
+    {
+        return quality switch
+        {
+            "Passed" => "badge-success",
+            "Failed" => "badge-danger",
+            "Pending" => "badge-warning",
+            _ => "badge-secondary"
+        };
+    }
+
+    private string GetProgressClass(double value, double goodThreshold, double warningThreshold)
+    {
+        if (value <= goodThreshold) return "good";
+        if (value <= warningThreshold) return "warning";
+        return "danger";
+    }
+
+    #endregion
+
+    #region Event Handlers
+
+    private void HandleSelectionChanged(List<Product> selectedProducts)
+    {
+        ToastService.ShowInfo($"Selected {selectedProducts.Count} products.");
+    }
+
+    private void HandleSortChanged(RVGrid<Product>.GridSortEventArgs args)
+    {
+        ToastService.ShowInfo($"Sorted by {args.Field} ({args.Direction})");
+    }
+
+    private void HandleFiltersChanged(List<RVGrid<Product>.GridFilter> filters)
+    {
+        ToastService.ShowInfo($"Applied {filters.Count} filters");
+    }
+
+    private void HandlePageChanged(RVGrid<Product>.GridPageEventArgs args)
+    {
+        ToastService.ShowInfo($"Page changed to {args.Page} with {args.PageSize} items per page");
+    }
+
+    private void HandleSearchChanged(string search)
+    {
+        if (!string.IsNullOrEmpty(search))
+            ToastService.ShowInfo($"Searching for: \"{search}\"");
+    }
+
+    private Task HandleExport(string format)
+    {
+        ToastService.ShowInfo($"Export to {format.ToUpper()} would be implemented here with C# code.");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleOilBatchExport(string format)
+    {
+        ToastService.ShowInfo($"Oil Batch export to {format.ToUpper()} would be implemented here with C# code.");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleEmployeeExport(string format)
+    {
+        ToastService.ShowInfo($"Employee export to {format.ToUpper()} would be implemented here with C# code.");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleRefreshData()
+    {
+        ToastService.ShowInfo("Refreshing data...");
+        GenerateDemoData(); // Regenerate data
+        ToastService.ShowSuccess("Data refreshed successfully");
+        return Task.CompletedTask;
+    }
+
+    private void HandleEmployeeSelection(List<Employee> selected)
+    {
+        selectedEmployee = selected.FirstOrDefault();
+    }
+
+    #endregion
+
+    #region Modal Operations
+
+    private void AddNewProduct()
+    {
+        editingProduct = new Product
+            {
+                Id = 0,
+                DateAdded = DateTime.Now,
+                IsAvailable = true
+            };
+        isProductModalVisible = true;
+    }
+
+    private void EditProduct(Product product)
+    {
+        editingProduct = new Product
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Category = product.Category,
+                Price = product.Price,
+                StockLevel = product.StockLevel,
+                DateAdded = product.DateAdded,
+                IsAvailable = product.IsAvailable
+            };
+        isProductModalVisible = true;
+    }
+
+    private void DeleteProduct(Product product)
+    {
+        products.Remove(product);
+        ToastService.ShowSuccess($"Product \"{product.Name}\" deleted successfully");
+    }
+
+    private void SaveProduct()
+    {
+        if (editingProduct.Id > 0)
+        {
+            // Update existing product
+            var index = products.FindIndex(p => p.Id == editingProduct.Id);
+            if (index >= 0)
+            {
+                products[index] = editingProduct;
+                ToastService.ShowSuccess($"Product \"{editingProduct.Name}\" updated successfully");
+            }
+        }
+        else
+        {
+            // Add new product
+            editingProduct.Id = products.Count > 0 ? products.Max(p => p.Id) + 1 : 1;
+            products.Add(editingProduct);
+            ToastService.ShowSuccess($"Product \"{editingProduct.Name}\" added successfully");
+        }
+
+        CloseProductModal();
+    }
+
+    private void CloseProductModal()
+    {
+        isProductModalVisible = false;
+    }
+
+    private void ViewBatchDetails(OilBatch batch)
+    {
+        selectedBatch = batch;
+        isBatchModalVisible = true;
+    }
+
+    private void CloseBatchModal()
+    {
+        isBatchModalVisible = false;
+    }
+
+    private void BulkDelete()
+    {
+        ToastService.ShowSuccess("Bulk delete operation would be performed here");
+    }
+
+    private void BulkUpdateStock()
+    {
+        ToastService.ShowSuccess("Bulk stock update operation would be performed here");
+    }
+
+    #endregion
+
+    #region Demo Controls
+
+    private void ToggleLoading()
+    {
+        isLoadingDemo = !isLoadingDemo;
+    }
+
+    private void ToggleEmptyState()
+    {
+        emptyStateToggle = !emptyStateToggle;
+    }
+
+    private void ViewAllBatches()
+    {
+        activeGridTab = "custom";
+        ToastService.ShowInfo("Navigated to full Oil Batches grid");
+    }
+
+    private Task RefreshOilData()
+    {
+        ToastService.ShowInfo("Refreshing oil batch data...");
+
+        // Add a new batch
+        var lastBatch = oilBatches.OrderByDescending(b => b.Id).FirstOrDefault();
+        int newId = lastBatch != null ? lastBatch.Id + 1 : 1;
+
+        oilBatches.Add(new OilBatch
+            {
+                Id = newId,
+                BatchNumber = $"B2023-{(newId + 7):D3}",
+                OilType = "Canola",
+                ProcessingMethod = "Cold Press",
+                Date = DateTime.Now,
+                Volume = 2800,
+                QualityControl = "Pending",
+                AcidValue = 0.31,
+                PeroxideValue = 0.37,
+                MoistureContent = 0.12,
+                Notes = "Fresh batch currently in quality assessment."
+            });
+
+        ToastService.ShowSuccess("Oil batch data refreshed successfully");
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Model Classes
+
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public decimal Price { get; set; }
+        public int StockLevel { get; set; }
+        public DateTime DateAdded { get; set; }
+        public bool IsAvailable { get; set; }
+    }
+
+    public class Order
+    {
+        public int Id { get; set; }
+        public string OrderNumber { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public DateTime OrderDate { get; set; }
+        public decimal Total { get; set; }
+        public string Status { get; set; } = "";
+        public string PaymentMethod { get; set; } = "";
+    }
+
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Position { get; set; } = "";
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+        public string AvatarUrl { get; set; } = "";
+    }
+
+    public class OilBatch
+    {
+        public int Id { get; set; }
+        public string BatchNumber { get; set; } = "";
+        public string OilType { get; set; } = "";
+        public string ProcessingMethod { get; set; } = "";
+        public DateTime Date { get; set; }
+        public int Volume { get; set; }
+        public string QualityControl { get; set; } = "";
+        public double AcidValue { get; set; }
+        public double PeroxideValue { get; set; }
+        public double MoistureContent { get; set; }
+        public string Notes { get; set; } = "";
+    }
+
+    #endregion
+}

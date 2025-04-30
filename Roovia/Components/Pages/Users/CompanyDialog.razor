@@ -1,23 +1,23 @@
 ﻿@using Roovia.Models.Helper
 @using Roovia.Models.Users
-<Roovia.Components.Elements.Modal IsVisible=true Title="Company">
+<RVModal IsVisible=true Title="Company">
     <ChildContent>
         <div class="modal-header">
             <h5 class="modal-title">Add New Company</h5>
         </div>
         <div class="modal-body">
             <EditForm Model="NewCompany" OnValidSubmit="HandleValidSubmit">
-                <Roovia.Components.Elements.Textbox Label="Company Name" Id="companyName" Value="@NewCompany.Name"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Registration Number" Id="registrationNumber" Value="@NewCompany.RegistrationNumber"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Contact Number" Id="contactNumber" Value="@NewCompany.ContactNumber"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Email" Id="email" Value="@NewCompany.Email"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Website" Id="website" Value="@NewCompany.Website"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="VAT Number" Id="vatNumber" Value="@NewCompany.VatNumber"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Street" Id="addressStreet" Value="@NewCompany.Address.Street"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="City" Id="addressCity" Value="@NewCompany.Address.City"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Province" Id="addressProvince" Value="@NewCompany.Address.Province"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Postal Code" Id="addressPostalCode" Value="@NewCompany.Address.PostalCode"></Roovia.Components.Elements.Textbox>
-                <Roovia.Components.Elements.Textbox Label="Country" Id="addressCountry" Value="@NewCompany.Address.Country"></Roovia.Components.Elements.Textbox>
+                <RVTextbox Label="Company Name" Id="companyName" Value="@NewCompany.Name"></RVTextbox>
+                <RVTextbox Label="Registration Number" Id="registrationNumber" Value="@NewCompany.RegistrationNumber"></RVTextbox>
+                <RVTextbox Label="Contact Number" Id="contactNumber" Value="@NewCompany.ContactNumber"></RVTextbox>
+                <RVTextbox Label="Email" Id="email" Value="@NewCompany.Email"></RVTextbox>
+                <RVTextbox Label="Website" Id="website" Value="@NewCompany.Website"></RVTextbox>
+                <RVTextbox Label="VAT Number" Id="vatNumber" Value="@NewCompany.VatNumber"></RVTextbox>
+                <RVTextbox Label="Street" Id="addressStreet" Value="@NewCompany.Address.Street"></RVTextbox>
+                <RVTextbox Label="City" Id="addressCity" Value="@NewCompany.Address.City"></RVTextbox>
+                <RVTextbox Label="Province" Id="addressProvince" Value="@NewCompany.Address.Province"></RVTextbox>
+                <RVTextbox Label="Postal Code" Id="addressPostalCode" Value="@NewCompany.Address.PostalCode"></RVTextbox>
+                <RVTextbox Label="Country" Id="addressCountry" Value="@NewCompany.Address.Country"></RVTextbox>
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">Save</button>
                     <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
@@ -25,7 +25,7 @@
             </EditForm>
         </div>
     </ChildContent>
-</Roovia.Components.Elements.Modal>
+</RVModal>
 
 @code {
     bool isVisible = true;

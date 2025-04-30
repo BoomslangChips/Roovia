@@ -13,7 +13,7 @@
         }
         <input id="@Id"
                type="@Type"
-               class="roovia-textbox-input"
+               class="roovia-textbox-input @SizeClass"
                placeholder="@Placeholder"
                value="@Value"
                @onchange="OnChangeHandler"
@@ -40,14 +40,15 @@
     .roovia-textbox {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-2);
-        margin-bottom: var(--spacing-4);
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-3);
     }
 
     .roovia-textbox-label {
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-xs);
         font-weight: 500;
         color: var(--text-primary);
+        margin-bottom: 0;
     }
 
     .roovia-textbox-wrapper {
@@ -58,20 +59,30 @@
 
     .roovia-textbox-input {
         width: 100%;
-        padding: var(--spacing-3) var(--spacing-4);
+        padding: var(--spacing-2) var(--spacing-3);
         border-radius: var(--border-radius-md);
         border: 1px solid var(--border-divider);
         background-color: var(--input-bg);
         color: var(--text-primary);
-        font-size: var(--font-size-base);
+        font-size: var(--font-size-sm);
         transition: var(--hover-transition);
     }
 
-    .roovia-textbox-input:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: var(--shadow-focus);
-    }
+        .roovia-textbox-input.size-sm {
+            padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+            font-size: var(--font-size-xs);
+        }
+
+        .roovia-textbox-input.size-lg {
+            padding: var(--spacing-3) var(--spacing-4);
+            font-size: var(--font-size-base);
+        }
+
+        .roovia-textbox-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-focus);
+        }
 
     .roovia-textbox-icon-left,
     .roovia-textbox-icon-right {
@@ -81,10 +92,11 @@
         color: var(--text-muted);
         z-index: 2;
         pointer-events: none;
+        font-size: var(--font-size-sm);
     }
 
     .roovia-textbox-icon-left {
-        left: var(--spacing-3);
+        left: var(--spacing-2);
     }
 
     .roovia-textbox-input:focus ~ .roovia-textbox-icon-left {
@@ -92,15 +104,15 @@
     }
 
     .roovia-textbox-icon-right {
-        right: var(--spacing-3);
+        right: var(--spacing-2);
     }
 
     .roovia-textbox-wrapper:has(.roovia-textbox-icon-left) .roovia-textbox-input {
-        padding-left: calc(var(--spacing-3) * 2 + 1rem);
+        padding-left: calc(var(--spacing-2) * 2 + 0.875rem);
     }
 
     .roovia-textbox-wrapper:has(.roovia-textbox-icon-right) .roovia-textbox-input {
-        padding-right: calc(var(--spacing-3) * 2 + 1rem);
+        padding-right: calc(var(--spacing-2) * 2 + 0.875rem);
     }
 
     .roovia-textbox-invalid .roovia-textbox-input {
@@ -110,13 +122,24 @@
     .roovia-textbox-validation {
         font-size: var(--font-size-xs);
         color: var(--danger);
-        margin-top: var(--spacing-1);
+        margin-top: 0;
     }
 
     .roovia-textbox-input:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         background-color: var(--subtle-bg);
+    }
+
+    /* Size-specific icon adjustments */
+    .roovia-textbox-input.size-sm ~ .roovia-textbox-icon-left,
+    .roovia-textbox-input.size-sm ~ .roovia-textbox-icon-right {
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-textbox-input.size-lg ~ .roovia-textbox-icon-left,
+    .roovia-textbox-input.size-lg ~ .roovia-textbox-icon-right {
+        font-size: var(--font-size-base);
     }
 </style>
 
@@ -133,11 +156,14 @@
     [Parameter] public bool IsValid { get; set; } = true;
     [Parameter] public string ValidationMessage { get; set; }
     [Parameter] public string CssClass { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
     [Parameter] public EventCallback<ChangeEventArgs> OnInput { get; set; }
     [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
     [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
 
     private async Task OnChangeHandler(ChangeEventArgs e)
     {

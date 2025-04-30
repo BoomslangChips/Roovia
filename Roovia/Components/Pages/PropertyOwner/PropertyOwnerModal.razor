@@ -9,33 +9,33 @@
 
 @rendermode InteractiveServer
 
-<Roovia.Components.Elements.Modal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible">
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible">
     <ChildContent>  
         <h3>Property Owner</h3>  
-        <Roovia.Components.Elements.Textbox Label="First Name" Value="@Owner.FirstName"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Last Name" Value="@Owner.LastName"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="ID Number" Value="@Owner.IdNumber"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="VAT Number" Value="@Owner.VatNumber"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Email Address" Value="@Owner.EmailAddress"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Mobile Number" Value="@Owner.MobileNumber"></Roovia.Components.Elements.Textbox>  
+        <RVTextbox Label="First Name" Value="@Owner.FirstName"></RVTextbox>  
+        <RVTextbox Label="Last Name" Value="@Owner.LastName"></RVTextbox>  
+        <RVTextbox Label="ID Number" Value="@Owner.IdNumber"></RVTextbox>  
+        <RVTextbox Label="VAT Number" Value="@Owner.VatNumber"></RVTextbox>  
+        <RVTextbox Label="Email Address" Value="@Owner.EmailAddress"></RVTextbox>  
+        <RVTextbox Label="Mobile Number" Value="@Owner.MobileNumber"></RVTextbox>  
         @* 
         <h4>Bank Account</h4>  
-        <Roovia.Components.Elements.Textbox Label="Account Type" Value="@Owner.BankAccount.AccountType"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode"></Roovia.Components.Elements.Textbox>  
+        <RVTextbox Label="Account Type" Value="@Owner.BankAccount.AccountType"></RVTextbox>  
+        <RVTextbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber"></RVTextbox>  
+        <RVTextbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode"></RVTextbox>  
 
         <h4>Address</h4>  
-        <Roovia.Components.Elements.Textbox Label="Street" Value="@Owner.Address.Street"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="City" Value="@Owner.Address.City"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Province" Value="@Owner.Address.Province"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Postal Code" Value="@Owner.Address.PostalCode"></Roovia.Components.Elements.Textbox>  
-        <Roovia.Components.Elements.Textbox Label="Country" Value="@Owner.Address.Country"></Roovia.Components.Elements.Textbox>  *@ 
+        <RVTextbox Label="Street" Value="@Owner.Address.Street"></RVTextbox>  
+        <RVTextbox Label="City" Value="@Owner.Address.City"></RVTextbox>  
+        <RVTextbox Label="Province" Value="@Owner.Address.Province"></RVTextbox>  
+        <RVTextbox Label="Postal Code" Value="@Owner.Address.PostalCode"></RVTextbox>  
+        <RVTextbox Label="Country" Value="@Owner.Address.Country"></RVTextbox>  *@ 
     </ChildContent>  
     <FooterContent>
         <button class="btn roovia-btn-primary" @onclick="SavePropertyOwner">Save</button>  
         <button class="btn roovia-btn-secondary" @onclick="() => IsVisible = false">Cancel</button>
     </FooterContent>
-</Roovia.Components.Elements.Modal>  
+</RVModal>  
 
 @code {
     [Parameter]  
