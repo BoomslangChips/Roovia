@@ -1,4 +1,4 @@
-﻿@* RVFormField.razor - Field container with validation support *@
+﻿@* RVFormField.razor - Field container with improved validation support *@
 @using Roovia.Forms
 @typeparam TValue
 @using System.Linq.Expressions
@@ -27,6 +27,10 @@
                 <div class="roovia-form-field-validation-message">@message</div>
             }
         </div>
+    }
+    else
+    {
+        <div class="roovia-form-field-validation" style="display: none;"></div>
     }
 
     @if (!string.IsNullOrEmpty(HelperText))
@@ -186,18 +190,42 @@
         }
     }
 
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && FormContext?.EditContext != null && FieldIdentifier.Model != null)
+        {
+            // Force validation to ensure messages are displayed
+            if (Required)
+            {
+                FormContext.EditContext.NotifyFieldChanged(FieldIdentifier);
+                UpdateValidationMessages();
+                StateHasChanged();
+            }
+        }
+    }
+
     private void UpdateValidationMessages()
     {
-        if (FormContext.EditContext != null && FieldIdentifier.Model != null)
+        if (FormContext?.EditContext != null && FieldIdentifier.Model != null)
         {
             ValidationMessages = FormContext.EditContext.GetValidationMessages(FieldIdentifier).ToList();
+
+            // Debug validation messages
+            if (ValidationMessages.Any())
+            {
+                Console.WriteLine($"Field {FieldName} has {ValidationMessages.Count} validation errors:");
+                foreach (var msg in ValidationMessages)
+                {
+                    Console.WriteLine($"  - {msg}");
+                }
+            }
         }
     }
 
     // Method to be called from child components to trigger field-level validation
     public void Validate()
     {
-        if (FormContext.EditContext != null && FieldIdentifier.Model != null)
+        if (FormContext?.EditContext != null && FieldIdentifier.Model != null)
         {
             FormContext.EditContext.NotifyFieldChanged(FieldIdentifier);
             UpdateValidationMessages();

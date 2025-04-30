@@ -1,50 +1,150 @@
 ﻿@using Roovia.Models.Helper
 @using Roovia.Models.Users
-<RVModal IsVisible=true Title="Company">
+@using Roovia.Services
+
+<RVModal IsVisible="@IsVisible"
+         Title="@(IsEdit ? "Edit Company" : "Add New Company")"
+         OnClose="CloseModal"
+         OnConfirm="HandleValidSubmit"
+         ConfirmText="Save"
+         CancelText="Cancel"
+         Size="md">
     <ChildContent>
-        <div class="modal-header">
-            <h5 class="modal-title">Add New Company</h5>
-        </div>
-        <div class="modal-body">
-            <EditForm Model="NewCompany" OnValidSubmit="HandleValidSubmit">
-                <RVTextbox Label="Company Name" Id="companyName" Value="@NewCompany.Name"></RVTextbox>
-                <RVTextbox Label="Registration Number" Id="registrationNumber" Value="@NewCompany.RegistrationNumber"></RVTextbox>
-                <RVTextbox Label="Contact Number" Id="contactNumber" Value="@NewCompany.ContactNumber"></RVTextbox>
-                <RVTextbox Label="Email" Id="email" Value="@NewCompany.Email"></RVTextbox>
-                <RVTextbox Label="Website" Id="website" Value="@NewCompany.Website"></RVTextbox>
-                <RVTextbox Label="VAT Number" Id="vatNumber" Value="@NewCompany.VatNumber"></RVTextbox>
-                <RVTextbox Label="Street" Id="addressStreet" Value="@NewCompany.Address.Street"></RVTextbox>
-                <RVTextbox Label="City" Id="addressCity" Value="@NewCompany.Address.City"></RVTextbox>
-                <RVTextbox Label="Province" Id="addressProvince" Value="@NewCompany.Address.Province"></RVTextbox>
-                <RVTextbox Label="Postal Code" Id="addressPostalCode" Value="@NewCompany.Address.PostalCode"></RVTextbox>
-                <RVTextbox Label="Country" Id="addressCountry" Value="@NewCompany.Address.Country"></RVTextbox>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+        <EditForm Model="CompanyModel" OnValidSubmit="HandleValidSubmit">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <RVTextbox Label="Company Name"
+                               Id="companyName"
+                               Value="@CompanyModel.Name"
+                               ValueChanged="@((string val) => CompanyModel.Name = val)"
+                               IsValid="@(!string.IsNullOrEmpty(CompanyModel.Name))"
+                               ValidationMessage="Company name is required"
+                               IconLeft="far fa-building" />
                 </div>
-            </EditForm>
-        </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Registration Number"
+                               Id="registrationNumber"
+                               Value="@CompanyModel.RegistrationNumber"
+                               ValueChanged="@((string val) => CompanyModel.RegistrationNumber = val)"
+                               IconLeft="far fa-id-card" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="VAT Number"
+                               Id="vatNumber"
+                               Value="@CompanyModel.VatNumber"
+                               ValueChanged="@((string val) => CompanyModel.VatNumber = val)"
+                               IconLeft="far fa-file-invoice" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Contact Number"
+                               Id="contactNumber"
+                               Value="@CompanyModel.ContactNumber"
+                               ValueChanged="@((string val) => CompanyModel.ContactNumber = val)"
+                               IconLeft="far fa-phone" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Email"
+                               Id="email"
+                               Type="email"
+                               Value="@CompanyModel.Email"
+                               ValueChanged="@((string val) => CompanyModel.Email = val)"
+                               IconLeft="far fa-envelope" />
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Website"
+                               Id="website"
+                               Value="@CompanyModel.Website"
+                               ValueChanged="@((string val) => CompanyModel.Website = val)"
+                               IconLeft="far fa-globe" />
+                </div>
+
+                <div class="col-span-2">
+                    <h5 class="text-primary font-weight-semibold mb-2">Company Address</h5>
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Street"
+                               Id="addressStreet"
+                               Value="@CompanyModel.Address.Street"
+                               ValueChanged="@((string val) => CompanyModel.Address.Street = val)"
+                               IconLeft="far fa-map-marker-alt" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="City"
+                               Id="addressCity"
+                               Value="@CompanyModel.Address.City"
+                               ValueChanged="@((string val) => CompanyModel.Address.City = val)"
+                               IconLeft="far fa-city" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Province"
+                               Id="addressProvince"
+                               Value="@CompanyModel.Address.Province"
+                               ValueChanged="@((string val) => CompanyModel.Address.Province = val)"
+                               IconLeft="far fa-map" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Postal Code"
+                               Id="addressPostalCode"
+                               Value="@CompanyModel.Address.PostalCode"
+                               ValueChanged="@((string val) => CompanyModel.Address.PostalCode = val)"
+                               IconLeft="far fa-mailbox" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Country"
+                               Id="addressCountry"
+                               Value="@CompanyModel.Address.Country"
+                               ValueChanged="@((string val) => CompanyModel.Address.Country = val)"
+                               IconLeft="far fa-globe" />
+                </div>
+            </div>
+        </EditForm>
     </ChildContent>
 </RVModal>
 
 @code {
-    bool isVisible = true;
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public Company CompanyModel { get; set; } = new Company();
+    [Parameter] public EventCallback<Company> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
 
-    private Company NewCompany { get; set; } = new Company
-        {
-            Address = new Address()
-        };
+    [Inject] private ToastService ToastService { get; set; }
 
-    private void HandleValidSubmit()
+    protected override void OnInitialized()
     {
-        // Logic to save the new company details
-        Console.WriteLine($"Company Saved: {NewCompany.Name}");
+        if (!IsEdit)
+        {
+            CompanyModel = new Company
+                {
+                    Address = new Address()
+                };
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(CompanyModel.Name))
+        {
+            ToastService.ShowError("Company name is required", "Validation Error");
+            return;
+        }
+
+        await OnSave.InvokeAsync(CompanyModel);
         CloseModal();
     }
 
     private void CloseModal()
     {
-        // Logic to close the modal
-        Console.WriteLine("Modal Closed");
+        OnCancel.InvokeAsync();
     }
 }

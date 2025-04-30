@@ -1,0 +1,128 @@
+﻿@using Roovia.Models.Helper
+@using Roovia.Models.Users
+@using Roovia.Services
+
+<RVModal IsVisible="@IsVisible"
+         Title="@(IsEdit ? "Edit Branch" : "Add New Branch")"
+         OnClose="CloseModal"
+         OnConfirm="HandleValidSubmit"
+         ConfirmText="Save"
+         CancelText="Cancel"
+         Size="md">
+    <ChildContent>
+        <EditForm Model="BranchModel" OnValidSubmit="HandleValidSubmit">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <RVTextbox Label="Branch Name"
+                               Id="branchName"
+                               Value="@BranchModel.Name"
+                               ValueChanged="@((string val) => BranchModel.Name = val)"
+                               IsValid="@(!string.IsNullOrEmpty(BranchModel.Name))"
+                               ValidationMessage="Branch name is required"
+                               IconLeft="far fa-building" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Contact Number"
+                               Id="contactNumber"
+                               Value="@BranchModel.ContactNumber"
+                               ValueChanged="@((string val) => BranchModel.ContactNumber = val)"
+                               IconLeft="far fa-phone" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Email"
+                               Id="email"
+                               Type="email"
+                               Value="@BranchModel.Email"
+                               ValueChanged="@((string val) => BranchModel.Email = val)"
+                               IconLeft="far fa-envelope" />
+                </div>
+
+                <div class="col-span-2">
+                    <h5 class="text-primary font-weight-semibold mb-2">Branch Address</h5>
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Street"
+                               Id="addressStreet"
+                               Value="@BranchModel.Address.Street"
+                               ValueChanged="@((string val) => BranchModel.Address.Street = val)"
+                               IconLeft="far fa-map-marker-alt" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="City"
+                               Id="addressCity"
+                               Value="@BranchModel.Address.City"
+                               ValueChanged="@((string val) => BranchModel.Address.City = val)"
+                               IconLeft="far fa-city" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Province"
+                               Id="addressProvince"
+                               Value="@BranchModel.Address.Province"
+                               ValueChanged="@((string val) => BranchModel.Address.Province = val)"
+                               IconLeft="far fa-map" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Postal Code"
+                               Id="addressPostalCode"
+                               Value="@BranchModel.Address.PostalCode"
+                               ValueChanged="@((string val) => BranchModel.Address.PostalCode = val)"
+                               IconLeft="far fa-mailbox" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Country"
+                               Id="addressCountry"
+                               Value="@BranchModel.Address.Country"
+                               ValueChanged="@((string val) => BranchModel.Address.Country = val)"
+                               IconLeft="far fa-globe" />
+                </div>
+            </div>
+        </EditForm>
+    </ChildContent>
+</RVModal>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public Branch BranchModel { get; set; } = new Branch();
+    [Parameter] public Guid CompanyId { get; set; }
+    [Parameter] public EventCallback<Branch> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Inject] private ToastService ToastService { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (!IsEdit)
+        {
+            BranchModel = new Branch
+                {
+                    CompanyId = CompanyId,
+                    Address = new Address()
+                };
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(BranchModel.Name))
+        {
+            ToastService.ShowError("Branch name is required", "Validation Error");
+            return;
+        }
+
+        await OnSave.InvokeAsync(BranchModel);
+        CloseModal();
+    }
+
+    private void CloseModal()
+    {
+        OnCancel.InvokeAsync();
+    }
+}

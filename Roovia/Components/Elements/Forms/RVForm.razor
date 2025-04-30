@@ -3,7 +3,7 @@
 @typeparam TModel where TModel : class
 
 <EditForm Model="@Model" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit" FormName="@(Name)">
-    <div class="roovia-form @SizeClass @(Disabled ? "roovia-form-disabled" : "") @(IsSubmitting ? "roovia-form-submitting" : "") @CssClass">
+    <div class="roovia-form @SizeClass @(Disabled ? "roovia-form-disabled" : "") @(IsSubmitting ? "roovia-form-submitting" : "") @(State == FormStateType.Error ? "roovia-form-error" : "") @CssClass">
         @if (!string.IsNullOrEmpty(Title))
         {
             <div class="roovia-form-header">
@@ -31,9 +31,13 @@
                 <FluentValidationValidator @ref="fluentValidator" DisableAssemblyScanning="@DisableAssemblyScanning" />
             }
 
-            @if (ShowValidationSummary)
+            @if (ShowValidationSummary && HasValidationErrors)
             {
-                <div class="roovia-form-validation-summary @(HasValidationErrors ? "visible" : "")">
+                <div class="roovia-form-validation-summary visible">
+                    <div class="roovia-validation-summary-title">
+                        <i class="far fa-exclamation-triangle"></i>
+                        <span>Please fix the following errors:</span>
+                    </div>
                     <ValidationSummary />
                 </div>
             }
@@ -147,14 +151,33 @@
             animation: fadeIn 0.3s ease;
         }
 
-        .roovia-form-validation-summary :deep(ul) {
-            margin: 0;
-            padding-left: var(--spacing-4);
-        }
+    .roovia-validation-summary-title {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        font-weight: 600;
+        margin-bottom: var(--spacing-2);
+    }
 
-        .roovia-form-validation-summary :deep(li) {
-            margin-bottom: var(--spacing-2);
-        }
+    /* Extra styling to make validation messages more visible */
+    .roovia-form-validation-summary :deep(ul) {
+        margin: 0;
+        padding-left: var(--spacing-4);
+        list-style-type: disc;
+    }
+
+    .roovia-form-validation-summary :deep(li) {
+        margin-bottom: var(--spacing-2);
+        color: var(--danger);
+    }
+
+    /* Ensure ValidationMessage components stand out */
+    :deep(.validation-message) {
+        color: var(--danger);
+        font-size: var(--font-size-sm);
+        margin-top: var(--spacing-1);
+        display: block;
+    }
 
     .roovia-form-body {
         padding: var(--spacing-4);
@@ -205,6 +228,11 @@
 
     .roovia-form-submitting {
         position: relative;
+    }
+
+    .roovia-form-error {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 1px var(--danger);
     }
 
     .roovia-form-overlay {
@@ -399,14 +427,31 @@
 
     private async Task HandleInvalidSubmit()
     {
-        var errors = new Dictionary<string, List<string>>();
+        // Force validation for all fields
+        EditContext.Validate();
 
         // Collect all validation errors
+        var errors = new Dictionary<string, List<string>>();
+
         if (EditContext != null)
         {
+            // First, ensure all fields are validated
+            var properties = typeof(TModel).GetProperties();
+            foreach (var property in properties)
+            {
+                var fieldIdentifier = new FieldIdentifier(Model, property.Name);
+                EditContext.NotifyFieldChanged(fieldIdentifier);
+            }
+
+            // Then collect validation messages
             var validationMessages = EditContext.GetValidationMessages();
-            var fields = EditContext.GetValidationMessages()
-                .Select(x => EditContext.Field(x.ToString()))
+            foreach (var message in validationMessages)
+            {
+                Console.WriteLine($"Validation error: {message}"); // Log for debugging
+            }
+
+            var fields = validationMessages
+                .Select(msg => EditContext.Field(msg.ToString()))
                 .Distinct();
 
             foreach (var field in fields)
@@ -417,17 +462,10 @@
             }
         }
 
-        if (OnSubmit.HasDelegate)
-        {
-            await OnSubmit.InvokeAsync(new FormSubmitEventArgs<TModel>
-                {
-                    Model = Model,
-                    IsValid = false,
-                    ValidationErrors = errors
-                });
-        }
-
+        // Set form state to error
         State = FormStateType.Error;
+
+        // Ensure validation errors are visible
         await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs { IsValid = false, State = State });
         StateHasChanged();
     }

@@ -1,0 +1,195 @@
+﻿@using Roovia.Models.Users
+@using Roovia.Services
+
+<RVModal IsVisible="@IsVisible"
+         Title="@(IsEdit ? "Edit User" : "Add New User")"
+         OnClose="CloseModal"
+         OnConfirm="HandleValidSubmit"
+         ConfirmText="Save"
+         CancelText="Cancel"
+         Size="md">
+    <ChildContent>
+        <EditForm Model="UserModel" OnValidSubmit="HandleValidSubmit">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-1">
+                    <RVTextbox Label="First Name"
+                               Id="firstName"
+                               Value="@UserModel.FirstName"
+                               ValueChanged="@((string val) => UserModel.FirstName = val)"
+                               IsValid="@(!string.IsNullOrEmpty(UserModel.FirstName))"
+                               ValidationMessage="First name is required"
+                               IconLeft="far fa-user" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Last Name"
+                               Id="lastName"
+                               Value="@UserModel.LastName"
+                               ValueChanged="@((string val) => UserModel.LastName = val)"
+                               IsValid="@(!string.IsNullOrEmpty(UserModel.LastName))"
+                               ValidationMessage="Last name is required"
+                               IconLeft="far fa-user" />
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Email"
+                               Id="email"
+                               Type="email"
+                               Value="@UserModel.Email"
+                               ValueChanged="@((string val) => UserModel.Email = val)"
+                               IsValid="@(!string.IsNullOrEmpty(UserModel.Email))"
+                               ValidationMessage="Email is required"
+                               IconLeft="far fa-envelope" />
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Phone Number"
+                               Id="phoneNumber"
+                               Value="@UserModel.PhoneNumber"
+                               ValueChanged="@((string val) => UserModel.PhoneNumber = val)"
+                               IconLeft="far fa-phone" />
+                </div>
+
+                <div class="col-span-2">
+                    <div class="form-group mb-3">
+                        <label class="form-label text-primary font-weight-semibold mb-2">User Role</label>
+                        <RVDropdown Items="@RoleOptions"
+                                    SelectedValue="@SelectedRole"
+                                    SelectedValueChanged="@OnRoleChanged"
+                                    TriggerText="@GetRoleName(UserModel.Role.GetValueOrDefault())"
+                                    TriggerIcon="far fa-shield-check"
+                                    ButtonType="outline"
+                                    FullWidth="true" />
+                    </div>
+                </div>
+
+                @if (!IsEdit)
+                {
+                    <div class="col-span-2">
+                        <RVTextbox Label="Password"
+                                   Id="password"
+                                   Type="password"
+                                   Value="@Password"
+                                   ValueChanged="@((string val) => Password = val)"
+                                   IsValid="@(!string.IsNullOrEmpty(Password) && Password.Length >= 6)"
+                                   ValidationMessage="Password must be at least 6 characters"
+                                   IconLeft="far fa-lock" />
+                    </div>
+
+                    <div class="col-span-2">
+                        <RVTextbox Label="Confirm Password"
+                                   Id="confirmPassword"
+                                   Type="password"
+                                   Value="@ConfirmPassword"
+                                   ValueChanged="@((string val) => ConfirmPassword = val)"
+                                   IsValid="@(Password == ConfirmPassword)"
+                                   ValidationMessage="Passwords do not match"
+                                   IconLeft="far fa-lock" />
+                    </div>
+                }
+            </div>
+        </EditForm>
+    </ChildContent>
+</RVModal>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public ApplicationUser UserModel { get; set; } = new ApplicationUser();
+    [Parameter] public Guid CompanyId { get; set; }
+    [Parameter] public Guid BranchId { get; set; }
+    [Parameter] public EventCallback<ApplicationUser> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Inject] private ToastService ToastService { get; set; }
+
+    private string Password { get; set; } = string.Empty;
+    private string ConfirmPassword { get; set; } = string.Empty;
+    private string SelectedRole { get; set; }
+
+    private List<RVDropdown.DropdownItem> RoleOptions = new List<RVDropdown.DropdownItem>
+    {
+        new RVDropdown.DropdownItem { Value = "1", Text = "Global Admin", Icon = "far fa-user-crown" },
+        new RVDropdown.DropdownItem { Value = "2", Text = "Company Admin", Icon = "far fa-user-tie" },
+        new RVDropdown.DropdownItem { Value = "3", Text = "Branch Manager", Icon = "far fa-user-hard-hat" },
+        new RVDropdown.DropdownItem { Value = "4", Text = "Standard User", Icon = "far fa-user" }
+    };
+
+    protected override void OnInitialized()
+    {
+        if (!IsEdit)
+        {
+            UserModel = new ApplicationUser
+                {
+                    CompanyId = CompanyId,
+                    BranchId = BranchId,
+                    Role = UserRole.StandardUser
+                };
+        }
+
+        SelectedRole = ((int)UserModel.Role).ToString();
+    }
+
+    private void OnRoleChanged(string value)
+    {
+        if (Enum.TryParse<UserRole>(value, out var role))
+        {
+            UserModel.Role = role;
+        }
+        SelectedRole = value;
+    }
+
+    private string GetRoleName(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.GlobalAdmin => "Global Admin",
+            UserRole.CompanyAdmin => "Company Admin",
+            UserRole.BranchManager => "Branch Manager",
+            UserRole.StandardUser => "Standard User",
+            _ => "Select Role"
+        };
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        // Basic validation
+        if (string.IsNullOrWhiteSpace(UserModel.FirstName) ||
+            string.IsNullOrWhiteSpace(UserModel.LastName) ||
+            string.IsNullOrWhiteSpace(UserModel.Email))
+        {
+            ToastService.ShowError("First name, last name, and email are required", "Validation Error");
+            return;
+        }
+
+        // Password validation for new users
+        if (!IsEdit && (string.IsNullOrWhiteSpace(Password) || Password.Length < 6))
+        {
+            ToastService.ShowError("Password must be at least 6 characters", "Validation Error");
+            return;
+        }
+
+        if (!IsEdit && Password != ConfirmPassword)
+        {
+            ToastService.ShowError("Passwords do not match", "Validation Error");
+            return;
+        }
+
+        // For new users, ensure UserName is set to email
+        if (!IsEdit)
+        {
+            UserModel.UserName = UserModel.Email;
+            // In a real app, you'd hash the password here or in the service
+            // This is a simplified example
+            UserModel.PasswordHash = Password;
+        }
+
+        await OnSave.InvokeAsync(UserModel);
+        CloseModal();
+    }
+
+    private void CloseModal()
+    {
+        OnCancel.InvokeAsync();
+    }
+}

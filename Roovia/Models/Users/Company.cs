@@ -7,27 +7,31 @@ namespace Roovia.Models.Users
     public class Company
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
-        public string RegistrationNumber { get; set; }
+        public string? RegistrationNumber { get; set; }
 
-        public string ContactNumber { get; set; }
+        public string? ContactNumber { get; set; }
 
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
         public Address Address { get; set; } = new Address();
 
-        public string Website { get; set; }
+        public string? Website { get; set; }
 
-        public string VatNumber { get; set; }
+        public string? VatNumber { get; set; }
 
-        public DateTime CreatedOn { get; set; }
+        public DateTime? CreatedOn { get; set; }
 
         public bool IsActive { get; set; } = true;
 
-        public Guid CreatedBy { get; set; }
+        public Guid? CreatedBy { get; set; }
 
-        public List<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
+        public DateTime? UpdatedDate { get; set; }
+        public string? UpdatedBy { get; set; }
+        public List<Branch>? Branches { get; set; } = new List<Branch>();
+        public List<ApplicationUser>? Users { get; set; } = new List<ApplicationUser>();
+
     }
 
     public class CompanyValidator : AbstractValidator<Company>

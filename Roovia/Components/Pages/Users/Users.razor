@@ -1,185 +1,653 @@
 ﻿@page "/Users"
 @using Roovia.Models.Users
+@using Roovia.Services
+@inject ToastService ToastService
 
 @rendermode InteractiveServer
 
-<div class="roovia-container roovia-my-4">
-    <div class="col-12 d-flex justify-content-between">
-        <h3 class="roovia-text-center" style="color: var(--primary);">
-            <i class="fas fa-users"></i> Company User Directory
-        </h3>
+<RVToastContainer Position="bottom-right" />
 
-        <div class="roovia-text-right roovia-my-3">
-            <button class="roovia-btn" style="background-color: var(--primary); color: #fff;" @onclick="AddCompany">
-                <i class="fas fa-plus"></i>
-            </button>
+<RVCard Title="Organization Management" Icon="far fa-users" Size="lg">
+    <HeaderActions>
+        <RVButton Text="Add Company"
+                  IconLeft="far fa-plus"
+                  ButtonType="primary"
+                  OnClick="() => OpenCompanyDialog()" />
+    </HeaderActions>
+    <ChildContent>
+        <div class="mb-4">
+            <RVTextbox Placeholder="Search companies, branches or users..."
+                       IconLeft="far fa-search"
+                       Value="@searchTerm"
+                       ValueChanged="@((val) => OnSearchChanged(val))"
+                       CssClass="w-100" />
         </div>
-    </div>
 
-
-    @foreach (var company in Companies)
-    {
-        <div class="roovia-card my-3 roovia-shadow">
-            <div class="roovia-card-header roovia-bg-primary roovia-text-white roovia-flex roovia-justify-between roovia-align-center">
-                <span><i class="fas fa-building"></i> @company.Name</span>
-                <button class="roovia-btn roovia-btn-small" style="background-color: var(--primary); color: #fff;" @onclick="() => AddUser(company.Id)">
-                    <i class="fas fa-user-plus"></i> 
-                </button>
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-content-center align-items-center my-5">
+                <div class="loading-spinner"></div>
+                <span class="ms-3 text-muted">Loading data...</span>
             </div>
-            <div class="roovia-card-body">
-                @if (company.Users.Any())
-                {
-                    <ul class="roovia-list-group roovia-list-group-flush">
-                        @foreach (var user in company.Users)
-                        {
-                            <li class="my-2 roovia-list-group-item roovia-flex roovia-justify-between roovia-align-center align-items-center">
-                                <div>
-                                    <strong>@user.FirstName @user.LastName</strong><br />
-                                    <small class="roovia-text-muted">@user.Email</small>
-                                </div>
-                                <button class="roovia-btn roovia-btn-small" style="background-color: var(--secondary); color: #fff;">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                            </li>
-                        }
-                    </ul>
-                }
-                else
-                {
-                    <div class="roovia-alert roovia-alert-info my-2">
-                        No users available for this company.
+        }
+        else
+        {
+            @if (!FilteredCompanies.Any())
+            {
+                <div class="empty-state">
+                    <i class="far fa-building empty-illustration"></i>
+                    <h3>No Companies Found</h3>
+                    <p>You haven't added any companies yet or your search returned no results.</p>
+                    <div class="empty-actions">
+                        <RVButton Text="Add Company" IconLeft="far fa-plus" ButtonType="primary" OnClick="() => OpenCompanyDialog()" />
                     </div>
-                }
-            </div>
-        </div>
-    }
-</div>
+                </div>
+            }
+            else
+            {
+                @foreach (var company in FilteredCompanies)
+                {
+                    <RVCard Title="@company.Name"
+                            Icon="far fa-building"
+                            Type="border-primary"
+                            Hover="true"
+                            CssClass="mb-4">
+                        <HeaderActions>
+                            <div class="d-flex gap-2">
+                                <RVButton Text=""
+                                          IconLeft="far fa-edit"
+                                          ButtonType="outline"
+                                          Size="sm"
+                                          OnClick="() => EditCompany(company)"
+                                          CssClass="p-2" />
+                                <RVButton Text="Add Branch"
+                                          IconLeft="far fa-plus"
+                                          ButtonType="primary"
+                                          Size="sm"
+                                          OnClick="() => OpenBranchDialog(company.Id)" />
+                            </div>
+                        </HeaderActions>
+                        <ChildContent>
+                            <div class="mb-3">
+                                <div class="d-flex flex-wrap gap-3 mb-2">
+                                    @if (!string.IsNullOrEmpty(company.ContactNumber))
+                                    {
+                                        <div class="badge badge-secondary">
+                                            <i class="far fa-phone me-1"></i> @company.ContactNumber
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(company.Email))
+                                    {
+                                        <div class="badge badge-secondary">
+                                            <i class="far fa-envelope me-1"></i> @company.Email
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(company.Website))
+                                    {
+                                        <div class="badge badge-secondary">
+                                            <i class="far fa-globe me-1"></i> @company.Website
+                                        </div>
+                                    }
+                                </div>
+                            </div>
 
-@if (companyAddDialogVisible)
+                            @if (!HasBranches(company))
+                            {
+                                <div class="alert alert-info d-flex align-items-center mb-3">
+                                    <i class="far fa-info-circle me-2"></i>
+                                    <span>No branches have been added to this company yet.</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <RVTab Style="pills">
+                                    <ChildContent>
+                                        @foreach (var branch in company.Branches)
+                                        {
+                                            <RVTabPanel IsActive="@(branch == company.Branches.First())">
+                                                <ChildContent>
+                                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                                        <h5 class="mb-0">
+                                                            <i class="far fa-building text-primary me-2"></i>
+                                                            @branch.Name
+                                                        </h5>
+                                                        <div class="d-flex gap-2">
+                                                            <RVButton Text=""
+                                                                      IconLeft="far fa-edit"
+                                                                      ButtonType="ghost"
+                                                                      Size="sm"
+                                                                      OnClick="() => EditBranch(branch)"
+                                                                      CssClass="p-2" />
+                                                            <RVButton Text="Add User"
+                                                                      IconLeft="far fa-user-plus"
+                                                                      ButtonType="primary"
+                                                                      Size="sm"
+                                                                      OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                                        @if (!string.IsNullOrEmpty(branch.ContactNumber))
+                                                        {
+                                                            <div class="badge badge-secondary">
+                                                                <i class="far fa-phone me-1"></i> @branch.ContactNumber
+                                                            </div>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(branch.Email))
+                                                        {
+                                                            <div class="badge badge-secondary">
+                                                                <i class="far fa-envelope me-1"></i> @branch.Email
+                                                            </div>
+                                                        }
+                                                        @if (branch.Address != null && !string.IsNullOrEmpty(branch.Address.City))
+                                                        {
+                                                            <div class="badge badge-secondary">
+                                                                <i class="far fa-map-marker-alt me-1"></i> @branch.Address.City
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    @if (!HasUsers(branch))
+                                                    {
+                                                        <div class="alert alert-info d-flex align-items-center">
+                                                            <i class="far fa-info-circle me-2"></i>
+                                                            <span>No users have been added to this branch yet.</span>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <RVCard Type="soft-secondary" Size="sm" CssClass="mb-3">
+                                                            <ChildContent>
+                                                                <div class="grid grid-cols-1 gap-2">
+                                                                    @foreach (var user in branch.Users)
+                                                                    {
+                                                                        <div class="border rounded p-3 bg-white d-flex justify-content-between align-items-center">
+                                                                            <div class="d-flex align-items-center">
+                                                                                <div class="d-flex justify-content-center align-items-center rounded-circle bg-primary-light text-primary p-2 me-3" style="width: 40px; height: 40px;">
+                                                                                    <i class="@GetRoleIcon(user.Role.GetValueOrDefault())"></i>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div class="font-weight-semibold">@user.FullName</div>
+                                                                                    <div class="text-muted small">@user.Email</div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="d-flex align-items-center">
+                                                                                <div class="badge badge-primary me-3">
+                                                                                    @GetRoleName(user.Role.GetValueOrDefault())
+                                                                                </div>
+                                                                                <RVButton Text=""
+                                                                                          IconLeft="far fa-edit"
+                                                                                          ButtonType="ghost"
+                                                                                          Size="sm"
+                                                                                          OnClick="() => EditUser(user)"
+                                                                                          CssClass="p-2" />
+                                                                            </div>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                            </ChildContent>
+                                                        </RVCard>
+                                                    }
+                                                </ChildContent>
+                                            </RVTabPanel>
+                                        }
+                                    </ChildContent>
+                                </RVTab>
+                            }
+                        </ChildContent>
+                    </RVCard>
+                }
+            }
+        }
+    </ChildContent>
+</RVCard>
+
+@if (companyDialogVisible)
 {
-    <CompanyDialog></CompanyDialog>
+    <CompanyDialog IsVisible="@companyDialogVisible"
+                   IsEdit="@editMode"
+                   CompanyModel="@selectedCompany"
+                   OnSave="SaveCompany"
+                   OnCancel="CloseCompanyDialog" />
+}
+
+@if (branchDialogVisible)
+{
+    <BranchDialog IsVisible="@branchDialogVisible"
+                  IsEdit="@editMode"
+                  BranchModel="@selectedBranch"
+                  CompanyId="@selectedCompanyId"
+                  OnSave="SaveBranch"
+                  OnCancel="CloseBranchDialog" />
+}
+
+@if (userDialogVisible)
+{
+    <UserDialog IsVisible="@userDialogVisible"
+                IsEdit="@editMode"
+                UserModel="@selectedUser"
+                CompanyId="@selectedCompanyId"
+                BranchId="@selectedBranchId"
+                OnSave="SaveUser"
+                OnCancel="CloseUserDialog" />
 }
 
 @code {
     private string searchTerm = string.Empty;
-    private bool sortAscending = true;
+    private bool IsLoading = false;
 
-    private List<Company> Companies;
+    // Data
+    private List<Company> Companies = new List<Company>();
 
-    bool userAddDialogVisible = false;
-    bool companyAddDialogVisible = false;
+    // Dialog states
+    private bool companyDialogVisible = false;
+    private bool branchDialogVisible = false;
+    private bool userDialogVisible = false;
+    private bool editMode = false;
+
+    // Selected items
+    private Company selectedCompany = new Company();
+    private Branch selectedBranch = new Branch();
+    private ApplicationUser selectedUser = new ApplicationUser();
+    private Guid selectedCompanyId;
+    private Guid selectedBranchId;
+
+    private IEnumerable<Company> FilteredCompanies => string.IsNullOrWhiteSpace(searchTerm)
+        ? Companies
+        : Companies
+            .Where(c =>
+                c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.Branches.Any(b =>
+                    b.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    b.Users.Any(u =>
+                        u.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        u.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+            );
 
     protected override void OnInitialized()
     {
-        Companies = new List<Company>
-       {
-           new Company
-           {
-               Id = Guid.NewGuid(),
-               Name = "Contoso Ltd",
-               Users = new List<ApplicationUser>
-               {
-                   new ApplicationUser
-                   {
-                       Id = Guid.NewGuid().ToString(),
-                       CompanyId = Guid.NewGuid(),
-                       FirstName = "John",
-                       LastName = "Doe",
-                       Email = "john.doe@contoso.com"
-                   },
-                   new ApplicationUser
-                   {
-                       Id = Guid.NewGuid().ToString(),
-                       CompanyId = Guid.NewGuid(),
-                       FirstName = "Jane",
-                       LastName = "Doe",
-                       Email = "jane.doe@contoso.com"
-                   }
-               }
-           },
-           new Company
-           {
-               Id = Guid.NewGuid(),
-               Name = "Fabrikam Inc",
-               Users = new List<ApplicationUser>
-               {
-                   new ApplicationUser
-                   {
-                       Id = Guid.NewGuid().ToString(),
-                       CompanyId = Guid.NewGuid(),
-                       FirstName = "Alice",
-                       LastName = "Smith",
-                       Email = "alice.smith@fabrikam.com"
-                   },
-                   new ApplicationUser
-                   {
-                       Id = Guid.NewGuid().ToString(),
-                       CompanyId = Guid.NewGuid(),
-                       FirstName = "Bob",
-                       LastName = "Smith",
-                       Email = "bob.smith@fabrikam.com"
-                   },
-                   new ApplicationUser
-                   {
-                       Id = Guid.NewGuid().ToString(),
-                       CompanyId = Guid.NewGuid(),
-                       FirstName = "Carl",
-                       LastName = "Johnson",
-                       Email = "carl.johnson@fabrikam.com"
-                   }
-               }
-           },
-           new Company
-           {
-               Id = Guid.NewGuid(),
-               Name = "Third Company",
-               Users = new List<ApplicationUser>() // No users available
-           }
-       };
+        LoadMockData();
     }
 
-    private void AddCompany()
+    private void LoadMockData()
     {
-        companyAddDialogVisible = true;
+        // Create sample data for demonstration
+        var company1 = new Company
+            {
+                Id = Guid.NewGuid(),
+                Name = "Contoso Ltd",
+                Email = "info@contoso.com",
+                ContactNumber = "+1 (555) 123-4567",
+                Website = "contoso.com",
+                Address = new Roovia.Models.Helper.Address
+                {
+                    Street = "123 Corporate Dr",
+                    City = "Seattle",
+                    Province = "WA",
+                    PostalCode = "98102",
+                    Country = "USA"
+                }
+            };
+
+        var company2 = new Company
+            {
+                Id = Guid.NewGuid(),
+                Name = "Fabrikam Inc",
+                Email = "contact@fabrikam.com",
+                ContactNumber = "+1 (555) 987-6543",
+                Website = "fabrikam.com",
+                Address = new Roovia.Models.Helper.Address
+                {
+                    Street = "456 Industry Blvd",
+                    City = "San Francisco",
+                    Province = "CA",
+                    PostalCode = "94105",
+                    Country = "USA"
+                }
+            };
+
+        var branch1_1 = new Branch
+            {
+                Id = Guid.NewGuid(),
+                Name = "Contoso HQ",
+                Email = "hq@contoso.com",
+                ContactNumber = "+1 (555) 123-4567",
+                CompanyId = company1.Id,
+                Address = new Roovia.Models.Helper.Address
+                {
+                    Street = "123 Corporate Dr",
+                    City = "Seattle",
+                    Province = "WA",
+                    PostalCode = "98102",
+                    Country = "USA"
+                }
+            };
+
+        var branch1_2 = new Branch
+            {
+                Id = Guid.NewGuid(),
+                Name = "Contoso East",
+                Email = "east@contoso.com",
+                ContactNumber = "+1 (555) 321-7654",
+                CompanyId = company1.Id,
+                Address = new Roovia.Models.Helper.Address
+                {
+                    Street = "789 Eastern Ave",
+                    City = "New York",
+                    Province = "NY",
+                    PostalCode = "10001",
+                    Country = "USA"
+                }
+            };
+
+        var branch2_1 = new Branch
+            {
+                Id = Guid.NewGuid(),
+                Name = "Fabrikam Main",
+                Email = "main@fabrikam.com",
+                ContactNumber = "+1 (555) 987-6543",
+                CompanyId = company2.Id,
+                Address = new Roovia.Models.Helper.Address
+                {
+                    Street = "456 Industry Blvd",
+                    City = "San Francisco",
+                    Province = "CA",
+                    PostalCode = "94105",
+                    Country = "USA"
+                }
+            };
+
+        var user1 = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@contoso.com",
+                PhoneNumber = "+1 (555) 111-2222",
+                CompanyId = company1.Id,
+                BranchId = branch1_1.Id,
+                Role = UserRole.CompanyAdmin
+            };
+
+        var user2 = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                FirstName = "Jane",
+                LastName = "Smith",
+                Email = "jane.smith@contoso.com",
+                PhoneNumber = "+1 (555) 222-3333",
+                CompanyId = company1.Id,
+                BranchId = branch1_1.Id,
+                Role = UserRole.StandardUser
+            };
+
+        var user3 = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                FirstName = "Bob",
+                LastName = "Johnson",
+                Email = "bob.johnson@contoso.com",
+                PhoneNumber = "+1 (555) 333-4444",
+                CompanyId = company1.Id,
+                BranchId = branch1_2.Id,
+                Role = UserRole.BranchManager
+            };
+
+        var user4 = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                FirstName = "Alice",
+                LastName = "Williams",
+                Email = "alice.williams@fabrikam.com",
+                PhoneNumber = "+1 (555) 444-5555",
+                CompanyId = company2.Id,
+                BranchId = branch2_1.Id,
+                Role = UserRole.CompanyAdmin
+            };
+
+        // Add users to branches
+        branch1_1.Users.Add(user1);
+        branch1_1.Users.Add(user2);
+        branch1_2.Users.Add(user3);
+        branch2_1.Users.Add(user4);
+
+        // Add branches to companies
+        company1.Branches.Add(branch1_1);
+        company1.Branches.Add(branch1_2);
+        company2.Branches.Add(branch2_1);
+
+        // Add to companies list
+        Companies.Add(company1);
+        Companies.Add(company2);
     }
 
-   private void AddUser(Guid companyId)
-   {
-       // Logic to add a new user to the specified company
-   }
-}
-
-
-<style>
-    .card-header {
-        background-color: var(--primary) !important;
+    private bool HasBranches(Company company)
+    {
+        return company.Branches != null && company.Branches.Any();
     }
 
-    .btn {
-        border: none;
+    private bool HasUsers(Branch branch)
+    {
+        return branch.Users != null && branch.Users.Any();
     }
 
-    @@media (max-width: 576px) {
-        .card {
-            margin-left: 0;
-            margin-right: 0;
+    private string GetRoleIcon(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.GlobalAdmin => "far fa-user-crown",
+            UserRole.CompanyAdmin => "far fa-user-tie",
+            UserRole.BranchManager => "far fa-user-hard-hat",
+            UserRole.StandardUser => "far fa-user",
+            _ => "far fa-user"
+        };
+    }
+
+    private string GetRoleName(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.GlobalAdmin => "Global Admin",
+            UserRole.CompanyAdmin => "Company Admin",
+            UserRole.BranchManager => "Branch Manager",
+            UserRole.StandardUser => "Standard User",
+            _ => "Unknown Role"
+        };
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        searchTerm = value;
+        StateHasChanged();
+    }
+
+    // Company Dialog Methods
+    private void OpenCompanyDialog()
+    {
+        selectedCompany = new Company { Address = new Roovia.Models.Helper.Address() };
+        editMode = false;
+        companyDialogVisible = true;
+    }
+
+    private void EditCompany(Company company)
+    {
+        selectedCompany = company;
+        editMode = true;
+        companyDialogVisible = true;
+    }
+
+    private void CloseCompanyDialog()
+    {
+        companyDialogVisible = false;
+    }
+
+    private void SaveCompany(Company company)
+    {
+        if (editMode)
+        {
+            // In a real app, you'd call a service to update the company
+            var index = Companies.FindIndex(c => c.Id == company.Id);
+            if (index >= 0)
+            {
+                Companies[index] = company;
+            }
+
+            ToastService.ShowSuccess($"Company '{company.Name}' has been updated", "Success");
         }
+        else
+        {
+            // In a real app, you'd call a service to create the company
+            Companies.Add(company);
+
+            ToastService.ShowSuccess($"Company '{company.Name}' has been created", "Success");
+        }
+
+        companyDialogVisible = false;
+        StateHasChanged();
     }
 
-    .roovia-list-group-item {
-        padding: 0.7em;
-        border-radius: 15px;
-        background-color: #f4f8f8;
+    // Branch Dialog Methods
+    private void OpenBranchDialog(Guid companyId)
+    {
+        selectedCompanyId = companyId;
+        selectedBranch = new Branch
+            {
+                CompanyId = companyId,
+                Address = new Roovia.Models.Helper.Address()
+            };
+        editMode = false;
+        branchDialogVisible = true;
     }
 
-    .roovia-alert {
-        padding: 0.7em;
-        border-radius: 15px;
-        background-color: #f4f8f8;
+    private void EditBranch(Branch branch)
+    {
+        selectedBranch = branch;
+        selectedCompanyId = branch.CompanyId;
+        editMode = true;
+        branchDialogVisible = true;
     }
 
-    .roovia-btn-small {
-        width: 5em;
-        height: 2em;
+    private void CloseBranchDialog()
+    {
+        branchDialogVisible = false;
     }
-</style>
+
+    private void SaveBranch(Branch branch)
+    {
+        var company = Companies.FirstOrDefault(c => c.Id == branch.CompanyId);
+        if (company == null)
+        {
+            ToastService.ShowError("Company not found", "Error");
+            return;
+        }
+
+        if (editMode)
+        {
+            // In a real app, you'd call a service to update the branch
+            var index = company.Branches.FindIndex(b => b.Id == branch.Id);
+            if (index >= 0)
+            {
+                company.Branches[index] = branch;
+            }
+
+            ToastService.ShowSuccess($"Branch '{branch.Name}' has been updated", "Success");
+        }
+        else
+        {
+            // In a real app, you'd call a service to create the branch
+            if (company.Branches == null)
+            {
+                company.Branches = new List<Branch>();
+            }
+
+            company.Branches.Add(branch);
+
+            ToastService.ShowSuccess($"Branch '{branch.Name}' has been created", "Success");
+        }
+
+        branchDialogVisible = false;
+        StateHasChanged();
+    }
+
+    // User Dialog Methods
+    private void OpenUserDialog(Guid companyId, Guid branchId)
+    {
+        selectedCompanyId = companyId;
+        selectedBranchId = branchId;
+        selectedUser = new ApplicationUser
+            {
+                CompanyId = companyId,
+                BranchId = branchId,
+                Role = UserRole.StandardUser
+            };
+        editMode = false;
+        userDialogVisible = true;
+    }
+
+    private void EditUser(ApplicationUser user)
+    {
+        selectedUser = user;
+        selectedCompanyId = user.CompanyId ?? Guid.Empty;
+        selectedBranchId = user.BranchId ?? Guid.Empty;
+        editMode = true;
+        userDialogVisible = true;
+    }
+
+    private void CloseUserDialog()
+    {
+        userDialogVisible = false;
+    }
+
+    private void SaveUser(ApplicationUser user)
+    {
+        var company = Companies.FirstOrDefault(c => c.Id == user.CompanyId);
+        if (company == null)
+        {
+            ToastService.ShowError("Company not found", "Error");
+            return;
+        }
+
+        var branch = company.Branches.FirstOrDefault(b => b.Id == user.BranchId);
+        if (branch == null)
+        {
+            ToastService.ShowError("Branch not found", "Error");
+            return;
+        }
+
+        if (editMode)
+        {
+            // In a real app, you'd call a service to update the user
+            var index = branch.Users.FindIndex(u => u.Id == user.Id);
+            if (index >= 0)
+            {
+                branch.Users[index] = user;
+            }
+
+            ToastService.ShowSuccess($"User '{user.FullName}' has been updated", "Success");
+        }
+        else
+        {
+            // In a real app, you'd call a service to create the user
+            if (branch.Users == null)
+            {
+                branch.Users = new List<ApplicationUser>();
+            }
+
+            // Set a dummy ID for the new user in this demo
+            if (string.IsNullOrEmpty(user.Id))
+            {
+                user.Id = Guid.NewGuid().ToString();
+            }
+
+            branch.Users.Add(user);
+
+            ToastService.ShowSuccess($"User '{user.FullName}' has been created", "Success");
+        }
+
+        userDialogVisible = false;
+        StateHasChanged();
+    }
+}

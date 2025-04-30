@@ -1,0 +1,265 @@
+﻿/* Additional Custom Styles for Organizations Page */
+
+/* Alert styles */
+.alert {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-3);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-3);
+}
+
+.alert-info {
+    background-color: var(--info-light);
+    color: var(--info);
+    border: 1px solid rgba(var(--info-rgb), 0.2);
+}
+
+.alert-success {
+    background-color: var(--success-light);
+    color: var(--success);
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.alert-warning {
+    background-color: var(--warning-light);
+    color: var(--warning);
+    border: 1px solid rgba(var(--warning-rgb), 0.2);
+}
+
+.alert-danger {
+    background-color: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+}
+
+/* Utility classes */
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.gap-1 {
+    gap: var(--spacing-1);
+}
+
+.gap-2 {
+    gap: var(--spacing-2);
+}
+
+.gap-3 {
+    gap: var(--spacing-3);
+}
+
+.rounded-circle {
+    border-radius: 50%;
+}
+
+.bg-primary-light {
+    background-color: var(--primary-light);
+}
+
+.text-primary {
+    color: var(--primary);
+}
+
+.font-weight-semibold {
+    font-weight: 600;
+}
+
+.me-1 {
+    margin-right: var(--spacing-1);
+}
+
+.me-2 {
+    margin-right: var(--spacing-2);
+}
+
+.me-3 {
+    margin-right: var(--spacing-3);
+}
+
+.ms-1 {
+    margin-left: var(--spacing-1);
+}
+
+.ms-2 {
+    margin-left: var(--spacing-2);
+}
+
+.ms-3 {
+    margin-left: var(--spacing-3);
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.mb-1 {
+    margin-bottom: var(--spacing-1);
+}
+
+.mb-2 {
+    margin-bottom: var(--spacing-2);
+}
+
+.mb-3 {
+    margin-bottom: var(--spacing-3);
+}
+
+.mb-4 {
+    margin-bottom: var(--spacing-4);
+}
+
+.mb-5 {
+    margin-bottom: var(--spacing-5);
+}
+
+.mt-1 {
+    margin-top: var(--spacing-1);
+}
+
+.mt-2 {
+    margin-top: var(--spacing-2);
+}
+
+.mt-3 {
+    margin-top: var(--spacing-3);
+}
+
+.mt-4 {
+    margin-top: var(--spacing-4);
+}
+
+.mt-5 {
+    margin-top: var(--spacing-5);
+}
+
+.p-2 {
+    padding: var(--spacing-2);
+}
+
+.p-3 {
+    padding: var(--spacing-3);
+}
+
+.small {
+    font-size: var(--font-size-xs);
+}
+
+.w-100 {
+    width: 100%;
+}
+
+/* Spacing for grid layout */
+.grid {
+    display: grid;
+    gap: var(--spacing-3);
+}
+
+.grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+    .grid-cols-2, .grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Role badge styling */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--border-radius-pill);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(var(--primary-rgb), 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Empty state styling */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-6) var(--spacing-4);
+    text-align: center;
+}
+
+.empty-illustration {
+    font-size: 3rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-4);
+}
+
+.empty-state h3 {
+    margin-bottom: var(--spacing-2);
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin-bottom: var(--spacing-4);
+}
+
+.empty-actions {
+    display: flex;
+    gap: var(--spacing-2);
+    justify-content: center;
+}
+
+/* Tab modification for branches */
+.roovia-tab {
+    font-weight: 600;
+}
+
+/* User card styling */
+.user-card {
+    transition: var(--hover-transition);
+    border: 1px solid var(--border-divider);
+}
+
+    .user-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+/* Responsive fixes */
+@media (max-width: 576px) {
+    .d-flex {
+        flex-direction: column;
+    }
+
+        .d-flex.align-items-center {
+            flex-direction: row;
+        }
+
+    .grid {
+        gap: var(--spacing-2);
+    }
+}
