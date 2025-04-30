@@ -1,0 +1,99 @@
+﻿@* RVValidationSummary.razor - Customized validation summary component *@
+
+<div class="roovia-validation-summary @(HasValidationErrors ? "visible" : "") @CssClass">
+    @if (HasValidationErrors)
+    {
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="roovia-validation-summary-title">
+                <i class="@(Icon ?? "far fa-exclamation-triangle")"></i>
+                <span>@Title</span>
+            </div>
+        }
+        <div class="roovia-validation-summary-content">
+            @if (Model != null)
+            {
+                <ul class="roovia-validation-summary-list">
+                    @foreach (var error in ValidationMessages)
+                    {
+                        <li class="roovia-validation-summary-item">@error</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <ValidationSummary Model="@Model" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    /* Validation Summary Styling */
+    .roovia-validation-summary {
+        border-radius: var(--border-radius-md);
+        background-color: var(--danger-light);
+        border: 1px solid var(--danger-border-light);
+        margin-bottom: var(--spacing-4);
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: all 0.3s ease-out;
+    }
+
+        .roovia-validation-summary.visible {
+            max-height: 500px; /* Adjust as needed */
+            opacity: 1;
+        }
+
+    .roovia-validation-summary-title {
+        padding: var(--spacing-3) var(--spacing-4);
+        background-color: rgba(var(--danger-rgb), 0.15);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        color: var(--danger);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-validation-summary-content {
+        padding: var(--spacing-3) var(--spacing-4);
+        color: var(--danger);
+    }
+
+    .roovia-validation-summary-list {
+        margin: 0;
+        padding-left: var(--spacing-5);
+    }
+
+    .roovia-validation-summary-item {
+        margin-bottom: var(--spacing-2);
+        font-size: var(--font-size-sm);
+    }
+
+        .roovia-validation-summary-item:last-child {
+            margin-bottom: 0;
+        }
+</style>
+
+@code {
+    [CascadingParameter] private EditContext CurrentEditContext { get; set; }
+    [Parameter] public string Title { get; set; } = "Please fix the following errors:";
+    [Parameter] public string Icon { get; set; } = "far fa-exclamation-triangle";
+    [Parameter] public object Model { get; set; }
+    [Parameter] public string CssClass { get; set; }
+
+    private bool HasValidationErrors => ValidationMessages.Any();
+    private IEnumerable<string> ValidationMessages => CurrentEditContext?.GetValidationMessages() ?? Enumerable.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        if (CurrentEditContext == null)
+        {
+            throw new InvalidOperationException($"{nameof(RVValidationSummary)} requires a cascading parameter of type {nameof(EditContext)}.");
+        }
+
+        CurrentEditContext.OnValidationStateChanged += (sender, eventArgs) => StateHasChanged();
+    }
+}

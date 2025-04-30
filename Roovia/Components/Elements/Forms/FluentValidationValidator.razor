@@ -1,0 +1,311 @@
+﻿@* FluentValidationValidator.razor - Integration with FluentValidation library *@
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Linq.Expressions
+@using System.Reflection
+
+@inject IServiceProvider ServiceProvider
+
+<CascadingValue Value="@CurrentEditContext" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private const string ComponentName = "FluentValidationValidator";
+
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public bool DisableAssemblyScanning { get; set; }
+
+    [CascadingParameter] private EditContext EditContext { get; set; }
+
+    public EditContext CurrentEditContext { get; private set; }
+    private ValidationMessageStore ValidationMessageStore { get; set; }
+    private Type ModelType { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (EditContext == null)
+        {
+            throw new InvalidOperationException(
+                $"{ComponentName} requires a cascading parameter of type {nameof(EditContext)}. " +
+                $"For example, you can use {ComponentName} inside an EditForm.");
+        }
+
+        // Store for validation messages
+        ValidationMessageStore = new ValidationMessageStore(EditContext);
+
+        // Set current EditContext
+        CurrentEditContext = EditContext;
+
+        // Get the model type
+        ModelType = EditContext.Model.GetType();
+
+        // Register validation handlers
+        EditContext.OnValidationRequested += HandleValidationRequested;
+        EditContext.OnFieldChanged += HandleFieldChanged;
+    }
+
+    private void HandleValidationRequested(object sender, ValidationRequestedEventArgs e)
+    {
+        // Clear existing messages
+        ValidationMessageStore.Clear();
+
+        // Get all validation errors
+        var errors = ValidateModel(EditContext.Model);
+
+        // Add errors to the message store
+        AddValidationErrors(errors);
+
+        // Trigger validation state changed
+        EditContext.NotifyValidationStateChanged();
+    }
+
+    private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        // Get the property name from the field identifier
+        var propertyName = e.FieldIdentifier.FieldName;
+
+        // Clear messages for this field
+        ValidationMessageStore.Clear(e.FieldIdentifier);
+
+        // Validate just this field
+        var errors = ValidateProperty(EditContext.Model, propertyName);
+
+        // Add errors to the message store for this field
+        if (errors.Any())
+        {
+            foreach (var error in errors)
+            {
+                ValidationMessageStore.Add(e.FieldIdentifier, error);
+            }
+        }
+
+        // Trigger validation state changed
+        EditContext.NotifyValidationStateChanged();
+    }
+
+    private Dictionary<string, List<string>> ValidateModel(object model)
+    {
+        var errors = new Dictionary<string, List<string>>();
+
+        // If using FluentValidation, get the validator and validate
+        var validatorType = GetValidatorType(ModelType);
+        if (validatorType != null)
+        {
+            try
+            {
+                // Try to resolve the validator from DI
+                var validator = ServiceProvider.GetService(validatorType);
+
+                if (validator == null && !DisableAssemblyScanning)
+                {
+                    // If not registered in DI, try to create an instance directly
+                    validator = Activator.CreateInstance(validatorType);
+                }
+
+                if (validator != null)
+                {
+                    // Use reflection to call Validate method
+                    var validateMethod = validatorType.GetMethod("Validate", new[] { ModelType });
+                    if (validateMethod != null)
+                    {
+                        var validationResult = validateMethod.Invoke(validator, new[] { model });
+
+                        // Extract validation errors using reflection
+                        var errorsProperty = validationResult.GetType().GetProperty("Errors");
+                        if (errorsProperty != null)
+                        {
+                            var validationErrors = errorsProperty.GetValue(validationResult) as System.Collections.IEnumerable;
+                            if (validationErrors != null)
+                            {
+                                foreach (var error in validationErrors)
+                                {
+                                    var propertyName = error.GetType().GetProperty("PropertyName")?.GetValue(error) as string;
+                                    var errorMessage = error.GetType().GetProperty("ErrorMessage")?.GetValue(error) as string;
+
+                                    if (!string.IsNullOrEmpty(propertyName) && !string.IsNullOrEmpty(errorMessage))
+                                    {
+                                        if (!errors.ContainsKey(propertyName))
+                                        {
+                                            errors[propertyName] = new List<string>();
+                                        }
+                                        errors[propertyName].Add(errorMessage);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Handle validator instantiation or validation errors
+                // In production, you might want to log this
+            }
+        }
+
+        // As a fallback, use DataAnnotations
+        if (!errors.Any())
+        {
+            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(model);
+
+            System.ComponentModel.DataAnnotations.Validator.TryValidateObject(model, validationContext, validationResults, true);
+
+            foreach (var validationResult in validationResults)
+            {
+                foreach (var memberName in validationResult.MemberNames)
+                {
+                    if (!errors.ContainsKey(memberName))
+                    {
+                        errors[memberName] = new List<string>();
+                    }
+                    errors[memberName].Add(validationResult.ErrorMessage);
+                }
+            }
+        }
+
+        return errors;
+    }
+
+    private List<string> ValidateProperty(object model, string propertyName)
+    {
+        var errors = new List<string>();
+
+        // Get property info
+        var propertyInfo = model.GetType().GetProperty(propertyName);
+        if (propertyInfo == null)
+        {
+            return errors;
+        }
+
+        // Get property value
+        var value = propertyInfo.GetValue(model);
+
+        // If using FluentValidation, get the validator and validate
+        var validatorType = GetValidatorType(ModelType);
+        if (validatorType != null)
+        {
+            try
+            {
+                // Try to resolve the validator from DI
+                var validator = ServiceProvider.GetService(validatorType);
+
+                if (validator == null && !DisableAssemblyScanning)
+                {
+                    // If not registered in DI, try to create an instance directly
+                    validator = Activator.CreateInstance(validatorType);
+                }
+
+                if (validator != null)
+                {
+                    // Check if there's a method to validate a single property
+                    var validatePropertyMethod = validatorType.GetMethod("ValidateProperty",
+                        new[] { ModelType, typeof(string) });
+
+                    if (validatePropertyMethod != null)
+                    {
+                        var validationResult = validatePropertyMethod.Invoke(validator, new[] { model, propertyName });
+
+                        // Extract validation errors using reflection
+                        var errorsProperty = validationResult.GetType().GetProperty("Errors");
+                        if (errorsProperty != null)
+                        {
+                            var validationErrors = errorsProperty.GetValue(validationResult) as System.Collections.IEnumerable;
+                            if (validationErrors != null)
+                            {
+                                foreach (var error in validationErrors)
+                                {
+                                    var errorMessage = error.GetType().GetProperty("ErrorMessage")?.GetValue(error) as string;
+                                    if (!string.IsNullOrEmpty(errorMessage))
+                                    {
+                                        errors.Add(errorMessage);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Handle validator instantiation or validation errors
+            }
+        }
+
+        // As a fallback, use DataAnnotations
+        if (!errors.Any())
+        {
+            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(model)
+                {
+                    MemberName = propertyName
+                };
+            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value, validationContext, validationResults);
+
+            errors.AddRange(validationResults.Select(r => r.ErrorMessage));
+        }
+
+        return errors;
+    }
+
+    private Type GetValidatorType(Type modelType)
+    {
+        // Try to find a validator for the model type
+        // The convention is that validators are named [ModelName]Validator
+        var validatorTypeName = $"{modelType.FullName}Validator";
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+        foreach (var assembly in assemblies)
+        {
+            try
+            {
+                // Look for validator by name convention
+                var validatorType = assembly.GetTypes()
+                    .FirstOrDefault(t => t.FullName == validatorTypeName ||
+                                        t.Name == $"{modelType.Name}Validator");
+
+                if (validatorType != null)
+                {
+                    return validatorType;
+                }
+
+                // Alternative approach: look for types that implement IValidator<ModelType>
+                var genericValidatorInterface = typeof(object).Assembly
+                    .GetTypes()
+                    .FirstOrDefault(t => t.FullName == "FluentValidation.IValidator`1");
+
+                if (genericValidatorInterface != null)
+                {
+                    var specificValidatorInterface = genericValidatorInterface.MakeGenericType(modelType);
+                    var validator = assembly.GetTypes()
+                        .FirstOrDefault(t => specificValidatorInterface.IsAssignableFrom(t));
+
+                    if (validator != null)
+                    {
+                        return validator;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors when scanning assemblies
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    private void AddValidationErrors(Dictionary<string, List<string>> errors)
+    {
+        foreach (var error in errors)
+        {
+            foreach (var message in error.Value)
+            {
+                var fieldIdentifier = new FieldIdentifier(EditContext.Model, error.Key);
+                ValidationMessageStore.Add(fieldIdentifier, message);
+            }
+        }
+    }
+}

@@ -1,0 +1,74 @@
+﻿@* RVValidationMessage.razor - Displays validation messages for specific fields *@
+@using System.Linq.Expressions
+
+@typeparam TValue
+
+<div class="roovia-validation-message @(HasValidationMessage ? "visible" : "")">
+    @if (HasValidationMessage)
+    {
+        @ValidationMessage
+    }
+</div>
+
+<style>
+    .roovia-validation-message {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: var(--spacing-1);
+        min-height: 0;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.2s ease-out;
+    }
+
+        .roovia-validation-message.visible {
+            opacity: 1;
+            min-height: 1.2em;
+            max-height: 100px; /* Adjust as needed */
+            animation: slideDown 0.3s ease-out;
+        }
+
+    @@keyframes slideDown {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
+
+@code {
+    private const string ComponentName = "RVValidationMessage";
+
+    [CascadingParameter] private EditContext CurrentEditContext { get; set; }
+    [Parameter] public Expression<Func<TValue>> For { get; set; }
+
+    private FieldIdentifier _fieldIdentifier;
+    private string ValidationMessage => CurrentEditContext?.GetValidationMessages(_fieldIdentifier).FirstOrDefault();
+    private bool HasValidationMessage => !string.IsNullOrEmpty(ValidationMessage);
+
+    protected override void OnInitialized()
+    {
+        if (CurrentEditContext == null)
+        {
+            throw new InvalidOperationException($"{ComponentName} requires a cascading parameter of type {nameof(EditContext)}.");
+        }
+
+        if (For == null)
+        {
+            throw new InvalidOperationException($"{ComponentName} requires a value for the {nameof(For)} parameter.");
+        }
+
+        _fieldIdentifier = FieldIdentifier.Create(For);
+
+        CurrentEditContext.OnValidationStateChanged += (sender, eventArgs) => StateHasChanged();
+    }
+}

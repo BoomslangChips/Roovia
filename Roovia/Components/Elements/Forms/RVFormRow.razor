@@ -1,0 +1,32 @@
+﻿@* RVFormRow.razor - Grid layout for form fields *@
+
+<div class="roovia-form-row @CssClass">
+    @ChildContent
+</div>
+
+<style>
+    /* Form Row styling */
+    .roovia-form-row {
+        display: grid;
+        grid-template-columns: repeat( @Columns, 1fr);
+        gap: var(--spacing-4);
+        margin-bottom: var(--spacing-4);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .roovia-form-row
+
+    {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-3);
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public int Columns { get; set; } = 2;
+    [Parameter] public string CssClass { get; set; }
+}

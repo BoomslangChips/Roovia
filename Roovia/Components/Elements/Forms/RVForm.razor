@@ -1,0 +1,469 @@
+﻿@* RVForm.razor - Main form container with validation support *@
+@using Roovia.Forms
+@typeparam TModel where TModel : class
+
+<EditForm Model="@Model" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit" FormName="@(Name)">
+    <div class="roovia-form @SizeClass @(Disabled ? "roovia-form-disabled" : "") @(IsSubmitting ? "roovia-form-submitting" : "") @CssClass">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="roovia-form-header">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="@Icon roovia-form-icon"></i>
+                }
+                <h3 class="roovia-form-title">@Title</h3>
+                @if (HeaderContent != null)
+                {
+                    <div class="roovia-form-header-content">
+                        @HeaderContent
+                    </div>
+                }
+            </div>
+        }
+
+        <CascadingValue Value="@CurrentFormContext" IsFixed="false">
+            @if (ValidationMode == ValidationModeType.DataAnnotations)
+            {
+                <DataAnnotationsValidator />
+            }
+            else if (ValidationMode == ValidationModeType.FluentValidation)
+            {
+                <FluentValidationValidator @ref="fluentValidator" DisableAssemblyScanning="@DisableAssemblyScanning" />
+            }
+
+            @if (ShowValidationSummary)
+            {
+                <div class="roovia-form-validation-summary @(HasValidationErrors ? "visible" : "")">
+                    <ValidationSummary />
+                </div>
+            }
+
+            <div class="roovia-form-body">
+                @ChildContent
+            </div>
+        </CascadingValue>
+
+        @if (FooterContent != null || ShowDefaultFooter)
+        {
+            <div class="roovia-form-footer">
+                @if (FooterContent != null)
+                {
+                    @FooterContent
+                }
+                else if (ShowDefaultFooter)
+                {
+                    <div class="roovia-form-buttons">
+                        @if (ShowCancelButton)
+                        {
+                            <button type="button"
+                                    class="roovia-btn roovia-btn-secondary"
+                                    @onclick="HandleCancel"
+                                    disabled="@(IsSubmitting || Disabled)">
+                                @CancelText
+                            </button>
+                        }
+                        <button type="submit"
+                                class="roovia-btn roovia-btn-primary"
+                                disabled="@(IsSubmitting || Disabled || (DisableIfInvalid && !IsValid))">
+                            @if (IsSubmitting)
+                            {
+                                <div class="roovia-btn-spinner"></div>
+                                <span>@SubmittingText</span>
+                            }
+                            else
+                            {
+                                <span>@SubmitText</span>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (IsSubmitting && ShowOverlay)
+        {
+            <div class="roovia-form-overlay">
+                <div class="roovia-form-overlay-content">
+                    <div class="roovia-loading-spinner"></div>
+                    <span>@SubmittingText</span>
+                </div>
+            </div>
+        }
+    </div>
+</EditForm>
+
+<style>
+    /* Form component styling */
+    .roovia-form {
+        position: relative;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-divider);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-5);
+        transition: var(--hover-transition);
+    }
+
+    .roovia-form-header {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        border-top-left-radius: var(--border-radius-lg);
+        border-top-right-radius: var(--border-radius-lg);
+    }
+
+    .roovia-form-icon {
+        font-size: 1.25rem;
+        color: var(--primary);
+        margin-right: var(--spacing-3);
+    }
+
+    .roovia-form-title {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .roovia-form-header-content {
+        margin-left: auto;
+    }
+
+    .roovia-form-validation-summary {
+        padding: var(--spacing-4);
+        background-color: var(--danger-light);
+        color: var(--danger);
+        border-radius: var(--border-radius-md);
+        margin: var(--spacing-4);
+        border: 1px solid var(--danger-border-light);
+        display: none;
+    }
+
+        .roovia-form-validation-summary.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .roovia-form-validation-summary :deep(ul) {
+            margin: 0;
+            padding-left: var(--spacing-4);
+        }
+
+        .roovia-form-validation-summary :deep(li) {
+            margin-bottom: var(--spacing-2);
+        }
+
+    .roovia-form-body {
+        padding: var(--spacing-4);
+    }
+
+    .roovia-form-footer {
+        padding: var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+        border-bottom-left-radius: var(--border-radius-lg);
+        border-bottom-right-radius: var(--border-radius-lg);
+    }
+
+    .roovia-form-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+    }
+
+    /* Form size variations */
+    .roovia-form.size-sm .roovia-form-header,
+    .roovia-form.size-sm .roovia-form-body,
+    .roovia-form.size-sm .roovia-form-footer {
+        padding: var(--spacing-3);
+    }
+
+    .roovia-form.size-sm .roovia-form-validation-summary {
+        margin: var(--spacing-3);
+        padding: var(--spacing-3);
+    }
+
+    .roovia-form.size-lg .roovia-form-header,
+    .roovia-form.size-lg .roovia-form-body,
+    .roovia-form.size-lg .roovia-form-footer {
+        padding: var(--spacing-5);
+    }
+
+    .roovia-form.size-lg .roovia-form-validation-summary {
+        margin: var(--spacing-5);
+        padding: var(--spacing-5);
+    }
+
+    /* Form states */
+    .roovia-form-disabled {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .roovia-form-submitting {
+        position: relative;
+    }
+
+    .roovia-form-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--border-radius-lg);
+        z-index: 10;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .theme-dark .roovia-form-overlay {
+        background-color: rgba(20, 42, 57, 0.8);
+    }
+
+    .roovia-form-overlay-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-3);
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    /* Success form state */
+    .roovia-form-success {
+        animation: success-pulse 0.5s ease;
+    }
+
+    @@keyframes success-pulse {
+        0%
+
+    {
+        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(var(--success-rgb), 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0);
+    }
+
+    }
+
+    @@keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .roovia-form-buttons
+
+    {
+        flex-direction: column-reverse;
+        gap: var(--spacing-2);
+    }
+
+    .roovia-form-buttons .roovia-btn {
+        width: 100%;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public TModel Model { get; set; }
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public string Name { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public bool ShowDefaultFooter { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public string SubmitText { get; set; } = "Submit";
+    [Parameter] public string SubmittingText { get; set; } = "Submitting...";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool DisableIfInvalid { get; set; } = true;
+    [Parameter] public bool ShowValidationSummary { get; set; } = false;
+    [Parameter] public ValidationTriggerType ValidationTrigger { get; set; } = ValidationTriggerType.OnSubmit;
+    [Parameter] public ValidationModeType ValidationMode { get; set; } = ValidationModeType.DataAnnotations;
+    [Parameter] public bool DisableAssemblyScanning { get; set; } = true;
+    [Parameter] public bool ShowOverlay { get; set; } = false;
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<FormSubmitEventArgs<TModel>> OnSubmit { get; set; }
+    [Parameter] public EventCallback<FormSubmitEventArgs<TModel>> OnCancel { get; set; }
+    [Parameter] public EventCallback<FormStateChangedEventArgs> OnStateChanged { get; set; }
+
+    private FormContext CurrentFormContext { get; set; } = new FormContext();
+    private EditContext EditContext { get; set; }
+    private bool HasValidationErrors => EditContext?.GetValidationMessages().Any() ?? false;
+    private bool IsValid => !(EditContext?.GetValidationMessages().Any() ?? true);
+    private bool IsSubmitting { get; set; }
+    private FormStateType State { get; set; } = FormStateType.Idle;
+    private FluentValidationValidator fluentValidator;
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    protected override void OnInitialized()
+    {
+        if (Model == null)
+        {
+            throw new ArgumentNullException(nameof(Model), "Form model cannot be null");
+        }
+
+        EditContext = new EditContext(Model);
+        EditContext.OnValidationStateChanged += ValidationStateChanged;
+
+        CurrentFormContext.ValidationTrigger = ValidationTrigger;
+        CurrentFormContext.EditContext = EditContext;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Model != null && EditContext?.Model != Model)
+        {
+            EditContext = new EditContext(Model);
+            EditContext.OnValidationStateChanged += ValidationStateChanged;
+            CurrentFormContext.EditContext = EditContext;
+        }
+
+        CurrentFormContext.ValidationTrigger = ValidationTrigger;
+    }
+
+    private void ValidationStateChanged(object sender, ValidationStateChangedEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs
+                {
+                    IsValid = IsValid,
+                    State = State
+                });
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (IsSubmitting || Disabled) return;
+
+        try
+        {
+            IsSubmitting = true;
+            State = FormStateType.Submitting;
+            await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs { IsValid = true, State = State });
+            StateHasChanged();
+
+            if (OnSubmit.HasDelegate)
+            {
+                await OnSubmit.InvokeAsync(new FormSubmitEventArgs<TModel>
+                    {
+                        Model = Model,
+                        IsValid = true,
+                        ValidationErrors = new Dictionary<string, List<string>>()
+                    });
+            }
+
+            State = FormStateType.Success;
+        }
+        catch (Exception ex)
+        {
+            State = FormStateType.Error;
+            // Could log the exception here
+        }
+        finally
+        {
+            IsSubmitting = false;
+            await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs { IsValid = IsValid, State = State });
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleInvalidSubmit()
+    {
+        var errors = new Dictionary<string, List<string>>();
+
+        // Collect all validation errors
+        if (EditContext != null)
+        {
+            var validationMessages = EditContext.GetValidationMessages();
+            var fields = EditContext.GetValidationMessages()
+                .Select(x => EditContext.Field(x.ToString()))
+                .Distinct();
+
+            foreach (var field in fields)
+            {
+                var fieldName = field.FieldName;
+                var messages = EditContext.GetValidationMessages(field).ToList();
+                errors[fieldName] = messages;
+            }
+        }
+
+        if (OnSubmit.HasDelegate)
+        {
+            await OnSubmit.InvokeAsync(new FormSubmitEventArgs<TModel>
+                {
+                    Model = Model,
+                    IsValid = false,
+                    ValidationErrors = errors
+                });
+        }
+
+        State = FormStateType.Error;
+        await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs { IsValid = false, State = State });
+        StateHasChanged();
+    }
+
+    private async Task HandleCancel()
+    {
+        if (IsSubmitting || Disabled) return;
+
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync(new FormSubmitEventArgs<TModel>
+                {
+                    Model = Model,
+                    IsValid = IsValid,
+                    ValidationErrors = new Dictionary<string, List<string>>()
+                });
+        }
+    }
+
+    public async Task ResetForm()
+    {
+        if (EditContext != null)
+        {
+            EditContext.MarkAsUnmodified();
+        }
+
+        State = FormStateType.Idle;
+        await OnStateChanged.InvokeAsync(new FormStateChangedEventArgs { IsValid = IsValid, State = State });
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= ValidationStateChanged;
+        }
+    }
+}

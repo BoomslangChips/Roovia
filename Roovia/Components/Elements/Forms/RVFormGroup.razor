@@ -1,0 +1,147 @@
+﻿@* RVFormGroup.razor - Grouping container for related form fields *@
+
+<div class="roovia-form-group @(Collapsible ? "roovia-form-group-collapsible" : "") @(IsExpanded ? "roovia-form-group-expanded" : "") @CssClass">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="roovia-form-group-header" @onclick="ToggleExpand">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="@Icon roovia-form-group-icon"></i>
+            }
+            <h4 class="roovia-form-group-title">@Title</h4>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <div class="roovia-form-group-description">@Description</div>
+            }
+            @if (Collapsible)
+            {
+                <button type="button" class="roovia-form-group-toggle">
+                    <i class="far fa-chevron-@(IsExpanded ? "up" : "down")"></i>
+                </button>
+            }
+        </div>
+    }
+
+    <div class="roovia-form-group-content">
+        @ChildContent
+    </div>
+</div>
+
+<style>
+    /* Form Group styling */
+    .roovia-form-group {
+        margin-bottom: var(--spacing-5);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-divider);
+        background-color: var(--content-bg);
+        overflow: hidden;
+    }
+
+    .roovia-form-group-header {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-3) var(--spacing-4);
+        background-color: var(--subtle-bg);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .roovia-form-group-collapsible .roovia-form-group-header {
+        cursor: pointer;
+        transition: var(--hover-transition);
+    }
+
+        .roovia-form-group-collapsible .roovia-form-group-header:hover {
+            background-color: var(--primary-lighter);
+        }
+
+    .roovia-form-group-icon {
+        color: var(--primary);
+        font-size: 1.125rem;
+        margin-right: var(--spacing-3);
+    }
+
+    .roovia-form-group-title {
+        margin: 0;
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .roovia-form-group-description {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        margin-left: var(--spacing-3);
+    }
+
+    .roovia-form-group-toggle {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: var(--font-size-base);
+        cursor: pointer;
+        padding: var(--spacing-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s ease;
+    }
+
+    .roovia-form-group-content {
+        padding: var(--spacing-4);
+    }
+
+    .roovia-form-group-collapsible:not(.roovia-form-group-expanded) .roovia-form-group-content {
+        display: none;
+    }
+
+    /* Animation for expanding/collapsing */
+    .roovia-form-group-expanded .roovia-form-group-content {
+        animation: expandContent 0.3s ease;
+    }
+
+    @@keyframes expandContent {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public string Description { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public bool Collapsible { get; set; }
+    [Parameter] public bool InitiallyExpanded { get; set; } = true;
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public EventCallback<bool> OnExpandChanged { get; set; }
+
+    private bool IsExpanded { get; set; }
+
+    protected override void OnInitialized()
+    {
+        IsExpanded = InitiallyExpanded || !Collapsible;
+    }
+
+    private async Task ToggleExpand()
+    {
+        if (Collapsible)
+        {
+            IsExpanded = !IsExpanded;
+            if (OnExpandChanged.HasDelegate)
+            {
+                await OnExpandChanged.InvokeAsync(IsExpanded);
+            }
+        }
+    }
+}

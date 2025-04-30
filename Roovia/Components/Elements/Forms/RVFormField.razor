@@ -1,0 +1,207 @@
+﻿@* RVFormField.razor - Field container with validation support *@
+@using Roovia.Forms
+@typeparam TValue
+@using System.Linq.Expressions
+
+<div class="roovia-form-field @(HasValidationError ? "roovia-form-field-invalid" : "") @SizeClass @CssClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@FieldId" class="roovia-form-field-label">
+            @Label
+            @if (Required)
+            {
+                <span class="roovia-form-field-required">*</span>
+            }
+        </label>
+    }
+
+    <div class="roovia-form-field-control">
+        @ChildContent
+    </div>
+
+    @if (HasValidationError)
+    {
+        <div class="roovia-form-field-validation">
+            @foreach (var message in ValidationMessages)
+            {
+                <div class="roovia-form-field-validation-message">@message</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(HelperText))
+    {
+        <div class="roovia-form-field-helper">@((MarkupString)HelperText)</div>
+    }
+</div>
+
+<style>
+    /* Form Field styling */
+    .roovia-form-field {
+        margin-bottom: var(--spacing-4);
+        position: relative;
+    }
+
+    .roovia-form-field-label {
+        display: block;
+        margin-bottom: var(--spacing-1);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .roovia-form-field-required {
+        color: var(--danger);
+        margin-left: var(--spacing-1);
+    }
+
+    .roovia-form-field-control {
+        position: relative;
+    }
+
+    .roovia-form-field-helper {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin-top: var(--spacing-1);
+    }
+
+    .roovia-form-field-validation {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: var(--spacing-1);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .roovia-form-field-validation-message {
+        margin-bottom: var(--spacing-1);
+    }
+
+        .roovia-form-field-validation-message:last-child {
+            margin-bottom: 0;
+        }
+
+    .roovia-form-field-invalid :deep(.roovia-textbox-input),
+    .roovia-form-field-invalid :deep(.roovia-dropdown-wrapper),
+    .roovia-form-field-invalid :deep(.roovia-multiselect-wrapper),
+    .roovia-form-field-invalid :deep(.roovia-datetime-picker-input),
+    .roovia-form-field-invalid :deep(.roovia-chips-input-wrapper) {
+        border-color: var(--danger) !important;
+    }
+
+    .roovia-form-field-invalid :deep(input:focus),
+    .roovia-form-field-invalid :deep(select:focus),
+    .roovia-form-field-invalid :deep(textarea:focus) {
+        box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.2) !important;
+    }
+
+    /* Size variations */
+    .roovia-form-field.size-sm .roovia-form-field-label {
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-form-field.size-sm .roovia-form-field-helper,
+    .roovia-form-field.size-sm .roovia-form-field-validation {
+        font-size: calc(var(--font-size-xs) - 1px);
+    }
+
+    .roovia-form-field.size-lg .roovia-form-field-label {
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-form-field.size-lg .roovia-form-field-helper,
+    .roovia-form-field.size-lg .roovia-form-field-validation {
+        font-size: var(--font-size-sm);
+    }
+
+    @@keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
+
+@code {
+    private const string ComponentName = "RVFormField";
+
+    [CascadingParameter] public FormContext FormContext { get; set; }
+    [Parameter] public string Label { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public Expression<Func<TValue>> For { get; set; }
+    [Parameter] public string FieldId { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public bool ValidateOnChange { get; set; }
+    [Parameter] public bool ValidateOnBlur { get; set; }
+
+    private string FieldName { get; set; }
+    private FieldIdentifier FieldIdentifier { get; set; }
+    private bool HasValidationError => ValidationMessages.Any();
+    private List<string> ValidationMessages { get; set; } = new List<string>();
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    protected override void OnInitialized()
+    {
+        if (FormContext == null)
+        {
+            throw new InvalidOperationException($"{ComponentName} must be used within an RVForm component");
+        }
+
+        if (For != null)
+        {
+            FieldIdentifier = FieldIdentifier.Create(For);
+            FieldName = FieldIdentifier.FieldName;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (FormContext == null) return;
+
+        // Validate based on the form's validation trigger
+        bool validateOnChange = ValidateOnChange || FormContext.ValidationTrigger == ValidationTriggerType.OnChange;
+        bool validateOnBlur = ValidateOnBlur || FormContext.ValidationTrigger == ValidationTriggerType.OnBlur;
+
+        // Subscribe to validation state changes
+        if (FormContext.EditContext != null && FieldIdentifier.Model != null)
+        {
+            FormContext.EditContext.OnValidationStateChanged += (sender, args) =>
+            {
+                UpdateValidationMessages();
+                StateHasChanged();
+            };
+
+            // Initial validation messages check
+            UpdateValidationMessages();
+        }
+    }
+
+    private void UpdateValidationMessages()
+    {
+        if (FormContext.EditContext != null && FieldIdentifier.Model != null)
+        {
+            ValidationMessages = FormContext.EditContext.GetValidationMessages(FieldIdentifier).ToList();
+        }
+    }
+
+    // Method to be called from child components to trigger field-level validation
+    public void Validate()
+    {
+        if (FormContext.EditContext != null && FieldIdentifier.Model != null)
+        {
+            FormContext.EditContext.NotifyFieldChanged(FieldIdentifier);
+            UpdateValidationMessages();
+            StateHasChanged();
+        }
+    }
+}
