@@ -129,7 +129,7 @@
                                     <ChildContent>
                                         @foreach (var branch in company.Branches)
                                         {
-                                            <RVTabPanel IsActive="@(branch == company.Branches.First())" Text="@branch.Name">
+                                            <RVTabPanel IsActive="@(branch == company.Branches.First())">
                                                 <ChildContent>
                                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                                         <h5 class="mb-0">

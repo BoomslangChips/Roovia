@@ -1,0 +1,286 @@
+﻿/* auth-shared-styles.css */
+
+/* ====== Authentication Pages Shared Styling ====== */
+.auth-page {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--subtle-bg);
+    font-family: var(--font-sans);
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--spacing-6);
+    background-color: var(--content-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: var(--spacing-6);
+}
+
+.auth-logo {
+    height: 50px;
+    margin: 0 auto var(--spacing-4);
+    animation: logoEntrance 1s ease-out;
+}
+
+.auth-header h1 {
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-2);
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-header h2 {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-4);
+}
+
+.auth-form {
+    width: 100%;
+    animation: fadeIn 0.8s ease-out 0.3s both;
+}
+
+    .auth-form .form-group {
+        margin-bottom: var(--spacing-4);
+    }
+
+    .auth-form .form-label {
+        display: block;
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-1);
+    }
+
+    .auth-form .input-with-icon {
+        position: relative;
+    }
+
+        .auth-form .input-with-icon i {
+            position: absolute;
+            left: var(--spacing-3);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+        }
+
+    .auth-form .form-control {
+        width: 100%;
+        padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) calc(var(--spacing-6) + 4px);
+        border: 1.5px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-base);
+        transition: all 0.2s ease;
+    }
+
+        .auth-form .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+            outline: none;
+        }
+
+            .auth-form .form-control:focus + i {
+                color: var(--primary);
+            }
+
+.auth-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    margin-top: var(--spacing-4);
+}
+
+    .auth-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .auth-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .auth-button i {
+        margin-left: var(--spacing-2);
+        transition: transform 0.2s ease;
+    }
+
+    .auth-button:hover i {
+        transform: translateX(4px);
+    }
+
+.auth-footer {
+    text-align: center;
+    margin-top: var(--spacing-6);
+    padding-top: var(--spacing-4);
+    border-top: 1px solid var(--border-divider);
+}
+
+    .auth-footer p {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-2);
+    }
+
+.auth-link {
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+    .auth-link:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+.auth-alert {
+    padding: var(--spacing-4);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: var(--spacing-5);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+    animation: fadeIn 0.5s ease;
+}
+
+.auth-alert-success {
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-border-light);
+}
+
+    .auth-alert-success i {
+        color: var(--success);
+        font-size: var(--font-size-xl);
+    }
+
+.auth-alert-info {
+    background-color: var(--info-light);
+    border: 1px solid rgba(var(--info-rgb), 0.2);
+}
+
+    .auth-alert-info i {
+        color: var(--info);
+        font-size: var(--font-size-xl);
+    }
+
+.auth-alert-danger {
+    background-color: var(--danger-bg);
+    border: 1px solid var(--danger-border-light);
+}
+
+    .auth-alert-danger i {
+        color: var(--danger);
+        font-size: var(--font-size-xl);
+    }
+
+.auth-alert-content {
+    flex: 1;
+}
+
+    .auth-alert-content h3 {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        margin-bottom: var(--spacing-1);
+    }
+
+.auth-alert-success h3 {
+    color: var(--success);
+}
+
+.auth-alert-info h3 {
+    color: var(--info);
+}
+
+.auth-alert-danger h3 {
+    color: var(--danger);
+}
+
+.auth-alert-content p {
+    margin-bottom: 0;
+    color: var(--text-secondary);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .auth-container {
+        padding: var(--spacing-4);
+        margin: var(--spacing-4);
+        width: auto;
+    }
+
+    .auth-header h1 {
+        font-size: var(--font-size-2xl);
+    }
+
+    .auth-header h2 {
+        font-size: var(--font-size-base);
+    }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes logoEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateY(5px);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}

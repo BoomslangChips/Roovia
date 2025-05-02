@@ -2,34 +2,95 @@
 
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.WebUtilities
+@using Roovia.Components.Layout
 @inject NavigationManager NavigationManager
-
+@layout BlankLayout
 <PageTitle>Registration Pending - Roovia Estate Agent Management</PageTitle>
 
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card mt-5">
-                <div class="card-body text-center">
-                    <div class="mb-4">
-                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                    </div>
-                    <h1 class="card-title mb-3">Registration Successful!</h1>
-                    <p class="card-text">
-                        Thank you for registering with Roovia Estate Agent Management System.
-                    </p>
-                    <hr>
-                    <h3>What happens next?</h3>
-                    <p>
-                        Your registration is currently pending review by our team. We've sent a confirmation email to <strong>@Email</strong>.
-                    </p>
-                    <p>
-                        Once your account is approved, you'll receive a notification and will be able to fully access the system.
-                    </p>
-                    <div class="mt-4">
-                        <a href="/" class="btn btn-primary">Return to Home</a>
+<div class="pending-page">
+    <div class="pending-container">
+        <div class="pending-content">
+            <div class="pending-logo-container">
+                <img src="/images/roovia-logo.png" alt="Roovia Logo" class="pending-logo">
+            </div>
+
+            <div class="pending-status">
+                <div class="status-icon-container">
+                    <div class="status-icon-ring"></div>
+                    <div class="status-icon">
+                        <i class="fal fa-check"></i>
                     </div>
                 </div>
+            </div>
+
+            <div class="pending-header">
+                <h1>Registration Successful!</h1>
+                <p>Your account has been created and is pending approval</p>
+            </div>
+
+            <div class="pending-card">
+                <div class="email-sent-indicator">
+                    <div class="email-icon">
+                        <i class="fal fa-envelope-open-text"></i>
+                    </div>
+                    <div class="email-text">
+                        <h3>Email Confirmation Sent</h3>
+                        <p>We've sent a confirmation email to <strong>@Email</strong></p>
+                    </div>
+                </div>
+
+                <div class="pending-steps">
+                    <div class="step-title">
+                        <h3>What happens next?</h3>
+                    </div>
+
+                    <div class="step-list">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Email Verification</h4>
+                                <p>Please check your inbox and click the verification link we've sent you.</p>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Account Review</h4>
+                                <p>Our team will review your application to ensure everything is in order.</p>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Approval Notification</h4>
+                                <p>Once approved, you'll receive an email notification that your account is ready to use.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="support-info">
+                    <div class="support-icon">
+                        <i class="fal fa-info-circle"></i>
+                    </div>
+                    <div class="support-text">
+                        <p>Need help? If you don't receive an email within 10 minutes, please check your spam folder or contact our support team.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pending-actions">
+                <a href="/" class="home-button">
+                    <i class="fal fa-home"></i>
+                    <span>Return to Home</span>
+                </a>
+
+                <a href="Account/Login" class="login-link">
+                    <span>Go to Login</span>
+                    <i class="fal fa-arrow-right"></i>
+                </a>
             </div>
         </div>
     </div>
@@ -42,3 +103,465 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 }
+
+<style>
+    /* Modern Registration Pending Page Styles */
+    .pending-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--subtle-bg), #f0f4f5);
+        padding: var(--spacing-5);
+        font-family: var(--font-sans);
+    }
+
+    .pending-container {
+        width: 100%;
+        max-width: 800px;
+        animation: fadeIn 0.8s ease;
+    }
+
+    .pending-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .pending-logo-container {
+        margin-bottom: var(--spacing-6);
+    }
+
+    .pending-logo {
+        height: 50px;
+    }
+
+    /* Status Icon with Animation */
+    .pending-status {
+        margin-bottom: var(--spacing-6);
+    }
+
+    .status-icon-container {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+    }
+
+    .status-icon {
+        width: 80px;
+        height: 80px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 2;
+        box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.3);
+        animation: scaleIn 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) 0.2s both;
+    }
+
+    .status-icon-ring {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid var(--primary);
+        top: 0;
+        left: 0;
+        opacity: 0;
+        animation: ringPulse 2s cubic-bezier(0.17, 0.67, 0.83, 0.67) 0.5s infinite;
+    }
+
+    .pending-header {
+        margin-bottom: var(--spacing-8);
+    }
+
+        .pending-header h1 {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2);
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pending-header p {
+            font-size: var(--font-size-lg);
+            color: var(--text-secondary);
+        }
+
+    .pending-card {
+        width: 100%;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-xl);
+        box-shadow: var(--shadow-lg);
+        padding: var(--spacing-6);
+        margin-bottom: var(--spacing-8);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .pending-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--primary-gradient);
+        }
+
+    /* Email Confirmation Section */
+    .email-sent-indicator {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-4);
+        background-color: rgba(var(--primary-rgb), 0.05);
+        border-radius: var(--border-radius-lg);
+        margin-bottom: var(--spacing-6);
+        border: 1px solid rgba(var(--primary-rgb), 0.1);
+        animation: slideIn 0.6s ease 0.3s both;
+    }
+
+    .email-icon {
+        background-color: var(--primary-light);
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        font-size: 1.5rem;
+        margin-right: var(--spacing-4);
+    }
+
+    .email-text {
+        text-align: left;
+    }
+
+        .email-text h3 {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-1);
+        }
+
+        .email-text p {
+            margin: 0;
+            color: var(--text-secondary);
+        }
+
+    /* Steps Section */
+    .pending-steps {
+        margin-bottom: var(--spacing-6);
+    }
+
+    .step-title {
+        margin-bottom: var(--spacing-4);
+        text-align: left;
+    }
+
+        .step-title h3 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            position: relative;
+            display: inline-block;
+        }
+
+            .step-title h3::after {
+                content: '';
+                position: absolute;
+                bottom: -8px;
+                left: 0;
+                width: 60px;
+                height: 3px;
+                background: var(--primary-gradient);
+                border-radius: var(--border-radius-pill);
+            }
+
+    .step-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-4);
+    }
+
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        text-align: left;
+        animation: slideIn 0.6s ease calc(0.4s + var(--index, 0) * 0.1s) both;
+    }
+
+        .step-item:nth-child(1) {
+            --index: 1;
+        }
+
+        .step-item:nth-child(2) {
+            --index: 2;
+        }
+
+        .step-item:nth-child(3) {
+            --index: 3;
+        }
+
+    .step-number {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        margin-right: var(--spacing-3);
+    }
+
+    .step-content h4 {
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-1);
+    }
+
+    .step-content p {
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        margin: 0;
+    }
+
+    /* Support Info Section */
+    .support-info {
+        display: flex;
+        align-items: flex-start;
+        background-color: rgba(var(--info-rgb), 0.1);
+        border-radius: var(--border-radius-lg);
+        padding: var(--spacing-4);
+        text-align: left;
+        animation: slideIn 0.6s ease 0.7s both;
+    }
+
+    .support-icon {
+        color: var(--info);
+        font-size: 1.25rem;
+        margin-right: var(--spacing-3);
+        margin-top: 2px;
+    }
+
+    .support-text p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+    }
+
+    /* Action Buttons */
+    .pending-actions {
+        display: flex;
+        gap: var(--spacing-4);
+        animation: fadeIn 0.8s ease 0.8s both;
+    }
+
+    .home-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-3) var(--spacing-5);
+        background-color: var(--content-bg);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+        .home-button:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            transform: translateY(-2px);
+        }
+
+        .home-button i {
+            margin-right: var(--spacing-2);
+        }
+
+    .login-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-3) var(--spacing-5);
+        background: var(--primary-gradient);
+        color: white;
+        border-radius: var(--border-radius-md);
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    }
+
+        .login-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .login-link i {
+            margin-left: var(--spacing-2);
+            transition: transform 0.2s ease;
+        }
+
+        .login-link:hover i {
+            transform: translateX(4px);
+        }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    @@keyframes slideIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    @@keyframes scaleIn {
+        from
+
+    {
+        transform: scale(0);
+    }
+
+    to {
+        transform: scale(1);
+    }
+
+    }
+
+    @@keyframes ringPulse {
+        0%
+
+    {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 768px) {
+        .pending-card
+
+    {
+        padding: var(--spacing-4);
+    }
+
+    .step-item {
+        flex-direction: column;
+    }
+
+    .step-number {
+        margin-bottom: var(--spacing-2);
+    }
+
+    .pending-header h1 {
+        font-size: var(--font-size-2xl);
+    }
+
+    .pending-header p {
+        font-size: var(--font-size-base);
+    }
+
+    .email-sent-indicator {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .email-icon {
+        margin-right: 0;
+        margin-bottom: var(--spacing-3);
+    }
+
+    .email-text {
+        text-align: center;
+    }
+
+    .support-info {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .support-icon {
+        margin-right: 0;
+        margin-bottom: var(--spacing-2);
+        font-size: 1.5rem;
+    }
+
+    .pending-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .home-button, .login-link {
+        width: 100%;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .status-icon
+
+    {
+        width: 60px;
+        height: 60px;
+        font-size: 1.75rem;
+        top: 20px;
+        left: 20px;
+    }
+
+    .status-icon-ring {
+        width: 100px;
+        height: 100px;
+    }
+
+    }
+</style>

@@ -9,7 +9,9 @@
 @using Roovia.Models.Users
 @using Roovia.Models.Helper
 @using Roovia.Interfaces
-
+@using System.Linq.Expressions
+@using Roovia.Components.Layout
+@rendermode InteractiveServer
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
@@ -18,173 +20,2104 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject IUser UserService
-
+@inject IJSRuntime JSRuntime
+@layout BlankLayout
 <PageTitle>Register - Roovia Estate Agent Management</PageTitle>
 
-<div class="container">
-    <h1 class="mb-4">Create Your Account</h1>
+<div class="registration-page">
+    <div class="registration-sidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-logo">
+                <img src="/images/roovia-logo.png" alt="Roovia" class="sidebar-logo-img">
+            </div>
+            <div class="sidebar-info">
+                <h2>Join Roovia</h2>
+                <p>Complete your registration to access our comprehensive estate management platform.</p>
 
-    <div class="row">
-        <div class="col-lg-8 col-md-10 mx-auto">
-            <StatusMessage Message="@Message" />
+                <div class="sidebar-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fal fa-shield-check"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Secure Platform</h3>
+                            <p>Enterprise-grade security for your data</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fal fa-analytics"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Powerful Analytics</h3>
+                            <p>Comprehensive insights for your business</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fal fa-clock"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Save Time</h3>
+                            <p>Streamlined workflows to boost productivity</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-testimonial">
+                    <div class="testimonial-quote">
+                        <i class="fal fa-quote-left"></i>
+                        <p>Roovia has transformed how we manage our estate agency. The platform is intuitive and powerful.</p>
+                        <div class="testimonial-author">
+                            <span>Sarah Johnson</span>
+                            <span class="testimonial-role">CEO, Prime Properties</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="registration-container">
+        <div class="registration-header">
+            <img src="/images/roovia-logo.png" alt="Roovia" class="registration-logo">
+            <h1>Create Your Account</h1>
+            <p>Complete these steps to set up your estate agency account</p>
+        </div>
+
+        <div class="registration-wizard">
+            <div class="wizard-progress">
+                @foreach (var step in Steps)
+                {
+                    var stepState = GetStepState(step.Number);
+                    <div class="step-indicator @stepState">
+                        @if (StepValidationState.TryGetValue(step.Number, out bool isValid) && isValid && CurrentStep > step.Number)
+                        {
+                            <i class="fal fa-check"></i>
+                        }
+                        else
+                        {
+                            @step.Number
+                        }
+                        <span class="step-label">@step.Label</span>
+                    </div>
+                }
+            </div>
+            <div style="line-height: 30px;"></div>
+            @if (ValidationErrors.Any())
+            {
+                <div class="validation-summary">
+                    @foreach (var error in ValidationErrors)
+                    {
+                        <div class="validation-error">
+                            <i class="fal fa-circle-exclamation"></i>
+                            <span class="error-message">@error.ErrorMessage</span>
+                        </div>
+                    }
+                </div>
+            }
+
             <EditForm Model="Input" OnValidSubmit="RegisterUser" FormName="register">
                 <DataAnnotationsValidator />
 
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Personal Information</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_FirstName" class="form-label">First Name</label>
-                                <InputText @bind-Value="Input.FirstName" id="Input_FirstName" class="form-control" autocomplete="given-name" aria-required="true" />
-                                <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                <div class="step-container">
+                    @switch (CurrentStep)
+                    {
+                        case 1:
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <h2><i class="fal fa-user"></i> Personal Information</h2>
+                                </div>
+
+                                <div class="form-section">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_FirstName">First Name</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-user"></i>
+                                                <InputText @bind-Value="Input.FirstName" id="Input_FirstName"
+                                                           class="@(!HasFieldError(() => Input.FirstName) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter your first name" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.FirstName))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.FirstName)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_LastName">Last Name</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-user"></i>
+                                                <InputText @bind-Value="Input.LastName" id="Input_LastName"
+                                                           class="@(!HasFieldError(() => Input.LastName) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter your last name" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.LastName))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.LastName)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_Email">Email Address</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-envelope"></i>
+                                                <InputText @bind-Value="Input.Email" id="Input_Email"
+                                                           class="@(!HasFieldError(() => Input.Email) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="name@example.com" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.Email))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.Email)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_PhoneNumber">Mobile Number</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-phone"></i>
+                                                <InputText @bind-Value="Input.PhoneNumber" id="Input_PhoneNumber"
+                                                           class="@(!HasFieldError(() => Input.PhoneNumber) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="+27 12 345 6789" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.PhoneNumber))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.PhoneNumber)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="password-section">
+                                        <div class="section-header">
+                                            <h3><i class="fal fa-lock"></i> Security Information</h3>
+                                            <p>Create a strong password to secure your account</p>
+                                        </div>
+
+                                        <div class="password-requirements">
+                                            <ul class="requirements-list">
+                                                <li class="@(Input.Password?.Length >= 8 ? "requirement-met" : "")">
+                                                    <i class="@(Input.Password?.Length >= 8 ? "fal fa-check-circle" : "fal fa-circle")"></i>
+                                                    At least 8 characters
+                                                </li>
+                                                <li class="@(Input.Password?.Any(char.IsUpper) == true ? "requirement-met" : "")">
+                                                    <i class="@(Input.Password?.Any(char.IsUpper) == true ? "fal fa-check-circle" : "fal fa-circle")"></i>
+                                                    One uppercase letter
+                                                </li>
+                                                <li class="@(Input.Password?.Any(char.IsLower) == true ? "requirement-met" : "")">
+                                                    <i class="@(Input.Password?.Any(char.IsLower) == true ? "fal fa-check-circle" : "fal fa-circle")"></i>
+                                                    One lowercase letter
+                                                </li>
+                                                <li class="@(Input.Password?.Any(char.IsDigit) == true ? "requirement-met" : "")">
+                                                    <i class="@(Input.Password?.Any(char.IsDigit) == true ? "fal fa-check-circle" : "fal fa-circle")"></i>
+                                                    One number
+                                                </li>
+                                                <li class="@(Input.Password?.Any(c => "@$!%*?&".Contains(c)) == true ? "requirement-met" : "")">
+                                                    <i class="@(Input.Password?.Any(c => "@$!%*?&".Contains(c)) == true ? "fal fa-check-circle" : "fal fa-circle")"></i>
+                                                    One special character
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="Input_Password">Password</label>
+                                                <div class="input-with-icon">
+                                                    <i class="fal fa-lock"></i>
+                                                    <InputText type="password" @bind-Value="Input.Password" id="Input_Password"
+                                                               class="@(!HasFieldError(() => Input.Password) ? "form-control" : "form-control is-invalid")"
+                                                               placeholder="Create a secure password" />
+                                                </div>
+                                                @if (HasFieldError(() => Input.Password))
+                                                {
+                                                    <div class="error-message">
+                                                        <i class="fal fa-circle-exclamation"></i>
+                                                        <span>@GetValidationMessage(() => Input.Password)</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="Input_ConfirmPassword">Confirm Password</label>
+                                                <div class="input-with-icon">
+                                                    <i class="fal fa-lock-keyhole"></i>
+                                                    <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input_ConfirmPassword"
+                                                               class="@(!HasFieldError(() => Input.ConfirmPassword) ? "form-control" : "form-control is-invalid")"
+                                                               placeholder="Confirm your password" />
+                                                </div>
+                                                @if (HasFieldError(() => Input.ConfirmPassword))
+                                                {
+                                                    <div class="error-message">
+                                                        <i class="fal fa-circle-exclamation"></i>
+                                                        <span>@GetValidationMessage(() => Input.ConfirmPassword)</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_LastName" class="form-label">Last Name</label>
-                                <InputText @bind-Value="Input.LastName" id="Input_LastName" class="form-control" autocomplete="family-name" aria-required="true" />
-                                <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                            break;
+                        case 2:
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <h2><i class="fal fa-building"></i> Company Information</h2>
+                                </div>
+
+                                <div class="form-section">
+                                    <div class="form-group full-width">
+                                        <label for="Input_CompanyName">Company Name</label>
+                                        <div class="input-with-icon">
+                                            <i class="fal fa-building"></i>
+                                            <InputText @bind-Value="Input.CompanyName" id="Input_CompanyName"
+                                                       class="@(!HasFieldError(() => Input.CompanyName) ? "form-control" : "form-control is-invalid")"
+                                                       placeholder="Enter your company name" />
+                                        </div>
+                                        @if (HasFieldError(() => Input.CompanyName))
+                                        {
+                                            <div class="error-message">
+                                                <i class="fal fa-circle-exclamation"></i>
+                                                <span>@GetValidationMessage(() => Input.CompanyName)</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_RegistrationNumber">Company Registration Number</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-file-certificate"></i>
+                                                <InputText @bind-Value="Input.RegistrationNumber" id="Input_RegistrationNumber"
+                                                           class="@(!HasFieldError(() => Input.RegistrationNumber) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter registration number" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.RegistrationNumber))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.RegistrationNumber)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_VatNumber">VAT Number (optional)</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-file-invoice"></i>
+                                                <InputText @bind-Value="Input.VatNumber" id="Input_VatNumber"
+                                                           class="@(!HasFieldError(() => Input.VatNumber) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter VAT number if applicable" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.VatNumber))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.VatNumber)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group full-width">
+                                        <label for="Input_Website">Website (optional)</label>
+                                        <div class="input-with-icon">
+                                            <i class="fal fa-globe"></i>
+                                            <InputText @bind-Value="Input.Website" id="Input_Website"
+                                                       class="@(!HasFieldError(() => Input.Website) ? "form-control" : "form-control is-invalid")"
+                                                       placeholder="https://www.example.com" />
+                                        </div>
+                                        @if (HasFieldError(() => Input.Website))
+                                        {
+                                            <div class="error-message">
+                                                <i class="fal fa-circle-exclamation"></i>
+                                                <span>@GetValidationMessage(() => Input.Website)</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_CompanyEmail">Company Email</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-envelope"></i>
+                                                <InputText @bind-Value="Input.CompanyEmail" id="Input_CompanyEmail"
+                                                           class="@(!HasFieldError(() => Input.CompanyEmail) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="company@example.com" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.CompanyEmail))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.CompanyEmail)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_CompanyPhone">Company Phone</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-phone-office"></i>
+                                                <InputText @bind-Value="Input.CompanyPhone" id="Input_CompanyPhone"
+                                                           class="@(!HasFieldError(() => Input.CompanyPhone) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="+27 12 345 6789" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.CompanyPhone))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.CompanyPhone)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                            break;
+                        case 3:
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <h2><i class="fal fa-map-marker-alt"></i> Company Address</h2>
+                                </div>
 
-                        <div class="mb-3">
-                            <label for="Input_Email" class="form-label">Email Address</label>
-                            <InputText @bind-Value="Input.Email" id="Input_Email" class="form-control" autocomplete="email" aria-required="true" />
-                            <ValidationMessage For="() => Input.Email" class="text-danger" />
-                        </div>
+                                <div class="form-section">
+                                    <div class="form-group full-width">
+                                        <label for="Input_Street">Street</label>
+                                        <div class="input-with-icon">
+                                            <i class="fal fa-road"></i>
+                                            <InputText @bind-Value="Input.Street" id="Input_Street"
+                                                       class="@(!HasFieldError(() => Input.Street) ? "form-control" : "form-control is-invalid")"
+                                                       placeholder="Enter street address" />
+                                        </div>
+                                        @if (HasFieldError(() => Input.Street))
+                                        {
+                                            <div class="error-message">
+                                                <i class="fal fa-circle-exclamation"></i>
+                                                <span>@GetValidationMessage(() => Input.Street)</span>
+                                            </div>
+                                        }
+                                    </div>
 
-                        <div class="mb-3">
-                            <label for="Input_PhoneNumber" class="form-label">Mobile Number</label>
-                            <InputText @bind-Value="Input.PhoneNumber" id="Input_PhoneNumber" class="form-control" autocomplete="tel" aria-required="true" />
-                            <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
-                        </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_City">City</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-city"></i>
+                                                <InputText @bind-Value="Input.City" id="Input_City"
+                                                           class="@(!HasFieldError(() => Input.City) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter city" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.City))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.City)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_Suburb">Suburb</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-map-marker"></i>
+                                                <InputText @bind-Value="Input.Suburb" id="Input_Suburb"
+                                                           class="@(!HasFieldError(() => Input.Suburb) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter suburb" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.Suburb))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.Suburb)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_Password" class="form-label">Password</label>
-                                <InputText type="password" @bind-Value="Input.Password" id="Input_Password" class="form-control" autocomplete="new-password" aria-required="true" />
-                                <ValidationMessage For="() => Input.Password" class="text-danger" />
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="Input_Province">Province</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-map"></i>
+                                                <InputText @bind-Value="Input.Province" id="Input_Province"
+                                                           class="@(!HasFieldError(() => Input.Province) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter province" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.Province))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.Province)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="Input_PostalCode">Postal Code</label>
+                                            <div class="input-with-icon">
+                                                <i class="fal fa-mailbox"></i>
+                                                <InputText @bind-Value="Input.PostalCode" id="Input_PostalCode"
+                                                           class="@(!HasFieldError(() => Input.PostalCode) ? "form-control" : "form-control is-invalid")"
+                                                           placeholder="Enter postal code" />
+                                            </div>
+                                            @if (HasFieldError(() => Input.PostalCode))
+                                            {
+                                                <div class="error-message">
+                                                    <i class="fal fa-circle-exclamation"></i>
+                                                    <span>@GetValidationMessage(() => Input.PostalCode)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group full-width">
+                                        <label for="Input_Country">Country</label>
+                                        <div class="input-with-icon">
+                                            <i class="fal fa-flag"></i>
+                                            <InputText @bind-Value="Input.Country" id="Input_Country"
+                                                       class="@(!HasFieldError(() => Input.Country) ? "form-control" : "form-control is-invalid")"
+                                                       placeholder="Enter country" />
+                                        </div>
+                                        @if (HasFieldError(() => Input.Country))
+                                        {
+                                            <div class="error-message">
+                                                <i class="fal fa-circle-exclamation"></i>
+                                                <span>@GetValidationMessage(() => Input.Country)</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="terms-container">
+                                        <div class="custom-checkbox">
+                                            <input type="checkbox" id="terms-checkbox" @bind="AcceptTerms" />
+                                            <label for="terms-checkbox">
+                                                <span class="checkbox-visual"></span>
+                                                <span class="checkbox-text">I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a></span>
+                                            </label>
+                                        </div>
+                                        @if (!AcceptTerms && TermsValidated)
+                                        {
+                                            <div class="error-message terms-error">
+                                                <i class="fal fa-circle-exclamation"></i>
+                                                <span>You must agree to the terms and conditions</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_ConfirmPassword" class="form-label">Confirm Password</label>
-                                <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input_ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
-                                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                            break;
+                        case 4:
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <h2><i class="fal fa-check-circle"></i> Verification</h2>
+                                    <p>Please review your information before submission</p>
+                                </div>
+
+                                <div class="summary-container">
+                                    <div class="summary-section">
+                                        <h3><i class="fal fa-user"></i> Personal Information</h3>
+                                        <div class="summary-grid">
+                                            <div class="summary-item">
+                                                <span class="summary-label">Name</span>
+                                                <span class="summary-value">@Input.FirstName @Input.LastName</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Email</span>
+                                                <span class="summary-value">@Input.Email</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Phone</span>
+                                                <span class="summary-value">@Input.PhoneNumber</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="summary-section">
+                                        <h3><i class="fal fa-building"></i> Company Information</h3>
+                                        <div class="summary-grid">
+                                            <div class="summary-item">
+                                                <span class="summary-label">Company Name</span>
+                                                <span class="summary-value">@Input.CompanyName</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Registration No.</span>
+                                                <span class="summary-value">@Input.RegistrationNumber</span>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(Input.VatNumber))
+                                            {
+                                                <div class="summary-item">
+                                                    <span class="summary-label">VAT Number</span>
+                                                    <span class="summary-value">@Input.VatNumber</span>
+                                                </div>
+                                            }
+                                            <div class="summary-item">
+                                                <span class="summary-label">Company Email</span>
+                                                <span class="summary-value">@Input.CompanyEmail</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Company Phone</span>
+                                                <span class="summary-value">@Input.CompanyPhone</span>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(Input.Website))
+                                            {
+                                                <div class="summary-item">
+                                                    <span class="summary-label">Website</span>
+                                                    <span class="summary-value">@Input.Website</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="summary-section">
+                                        <h3><i class="fal fa-map-marker-alt"></i> Company Address</h3>
+                                        <address class="company-address">
+                                            @Input.Street<br>
+                                            @Input.Suburb, @Input.City<br>
+                                            @Input.Province, @Input.PostalCode<br>
+                                            @Input.Country
+                                        </address>
+                                    </div>
+                                </div>
+
+                                <div class="verification-notice">
+                                    <i class="fal fa-info-circle notice-icon"></i>
+                                    <div class="notice-content">
+                                        <p>By clicking "Complete Registration" you confirm that:</p>
+                                        <ul>
+                                            <li>All information provided is accurate and complete</li>
+                                            <li>You agree to the terms and conditions of Roovia</li>
+                                            <li>You'll receive an email verification link after registration</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Company Information</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="Input_CompanyName" class="form-label">Company Name</label>
-                            <InputText @bind-Value="Input.CompanyName" id="Input_CompanyName" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.CompanyName" class="text-danger" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_RegistrationNumber" class="form-label">Company Registration Number</label>
-                            <InputText @bind-Value="Input.RegistrationNumber" id="Input_RegistrationNumber" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.RegistrationNumber" class="text-danger" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_VatNumber" class="form-label">VAT Number (optional)</label>
-                            <InputText @bind-Value="Input.VatNumber" id="Input_VatNumber" class="form-control" />
-                            <ValidationMessage For="() => Input.VatNumber" class="text-danger" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_Website" class="form-label">Website (optional)</label>
-                            <InputText @bind-Value="Input.Website" id="Input_Website" class="form-control" />
-                            <ValidationMessage For="() => Input.Website" class="text-danger" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_CompanyEmail" class="form-label">Company Email</label>
-                            <InputText @bind-Value="Input.CompanyEmail" id="Input_CompanyEmail" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.CompanyEmail" class="text-danger" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_CompanyPhone" class="form-label">Company Phone</label>
-                            <InputText @bind-Value="Input.CompanyPhone" id="Input_CompanyPhone" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.CompanyPhone" class="text-danger" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Company Address</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="Input_Street" class="form-label">Street</label>
-                            <InputText @bind-Value="Input.Street" id="Input_Street" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.Street" class="text-danger" />
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_City" class="form-label">City</label>
-                                <InputText @bind-Value="Input.City" id="Input_City" class="form-control" aria-required="true" />
-                                <ValidationMessage For="() => Input.City" class="text-danger" />
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_Suburb" class="form-label">Suburb</label>
-                                <InputText @bind-Value="Input.Suburb" id="Input_Suburb" class="form-control" aria-required="true" />
-                                <ValidationMessage For="() => Input.Suburb" class="text-danger" />
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_Province" class="form-label">Province</label>
-                                <InputText @bind-Value="Input.Province" id="Input_Province" class="form-control" aria-required="true" />
-                                <ValidationMessage For="() => Input.Province" class="text-danger" />
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="Input_PostalCode" class="form-label">Postal Code</label>
-                                <InputText @bind-Value="Input.PostalCode" id="Input_PostalCode" class="form-control" aria-required="true" />
-                                <ValidationMessage For="() => Input.PostalCode" class="text-danger" />
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="Input_Country" class="form-label">Country</label>
-                            <InputText @bind-Value="Input.Country" id="Input_Country" class="form-control" aria-required="true" />
-                            <ValidationMessage For="() => Input.Country" class="text-danger" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary btn-lg">Register</button>
-                </div>
-
-                <div class="mt-3 text-center">
-                    <p>Already have an account? <a href="Account/Login">Sign in</a></p>
+                            break;
+                    }
                 </div>
             </EditForm>
+
+            <div class="wizard-buttons">
+                <div class="wizard-buttons-left">
+                    @if (CurrentStep > 1)
+                    {
+                        <button type="button" class="btn btn-secondary" @onclick="PreviousStep">
+                            <i class="fal fa-arrow-left"></i>
+                            <span>Previous</span>
+                        </button>
+                    }
+                </div>
+                <div class="wizard-buttons-right">
+                    @if (CurrentStep < TotalSteps)
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="ValidateAndNextStep">
+                            <span>Next</span>
+                            <i class="fal fa-arrow-right"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-primary btn-complete" @onclick="HandleSubmit" disabled="@IsSubmitting">
+                            @if (IsSubmitting)
+                            {
+                                <div class="btn-spinner"></div>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Complete Registration</span>
+                                <i class="fal fa-check"></i>
+                            }
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="login-link">
+            <p>Already have an account? <a href="Account/Login">Sign in</a></p>
         </div>
     </div>
 </div>
 
+<!-- Error Modal -->
+<RVModal @ref="ErrorModal"
+         Title="Registration Error"
+         Icon="fal fa-exclamation-circle"
+         IsVisible="@ShowErrorModal"
+         ShowCloseButton="true"
+         DefaultFooter="true"
+         ConfirmText="Try Again"
+         CancelText="Close"
+         OnClose="CloseErrorModal"
+         OnConfirm="CloseErrorModal"
+         OnCancel="CloseErrorModal"
+         Size="md"
+         CssClass="error-modal">
+    <div class="error-modal-content">
+        <div class="error-icon-container">
+            <i class="fal fa-circle-exclamation error-icon"></i>
+        </div>
+        <div class="error-message-container">
+            @if (identityErrors != null && identityErrors.Any())
+            {
+                <div class="error-list">
+                    @foreach (var error in identityErrors)
+                    {
+                        <div class="error-item">
+                            <i class="fal fa-circle-exclamation"></i>
+                            <span>@error.Description</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p>An unexpected error occurred during registration. Please try again.</p>
+            }
+        </div>
+    </div>
+</RVModal>
+
+<style>
+    /* Modern Registration Page Styles */
+    .registration-page {
+        display: flex;
+        min-height: 100vh;
+        background-color: var(--subtle-bg);
+        font-family: var(--font-sans);
+    }
+
+    /* Sidebar Styles */
+    .registration-sidebar {
+        width: 30%;
+        min-width: 400px;
+        background: var(--primary-gradient);
+        background-size: 200% 200%;
+        animation: gradientAnimation 15s ease infinite;
+        color: white;
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-8);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .registration-sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('/images/login-bg.png') no-repeat center center;
+            background-size: cover;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+    .sidebar-content {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+    }
+
+    .sidebar-logo {
+        margin-bottom: var(--spacing-8);
+        text-align: center;
+    }
+
+.sidebar-logo-img {
+    height: 50px;
+    filter: brightness(0) invert(1); /* Makes the logo white */
+}
+
+    .sidebar-info {
+        animation: fadeIn 0.8s ease-out;
+    }
+
+        .sidebar-info h2 {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-3);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+.sidebar-info p {
+    color: rgba(255, 255, 255, 0.9); /* Brighter text for better contrast */
+    margin-bottom: var(--spacing-6);
+    opacity: 0.9;
+}
+
+
+    .sidebar-features {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-5);
+        margin-bottom: var(--spacing-8);
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-3);
+    }
+
+    .feature-icon {
+        background-color: rgba(255, 255, 255, 0.2);
+        min-width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--font-size-xl);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(5px);
+    }
+
+    .feature-content h3 {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        margin-bottom: var(--spacing-1);
+        color: white;
+    }
+
+    .feature-content p {
+        font-size: var(--font-size-sm);
+        opacity: 0.9;
+        margin-bottom: 0;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .sidebar-testimonial {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius-lg);
+        padding: var(--spacing-4);
+        backdrop-filter: blur(5px);
+    }
+
+    .testimonial-quote {
+        position: relative;
+        padding-left: var(--spacing-6);
+    }
+
+        .testimonial-quote i {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: var(--font-size-2xl);
+            opacity: 0.5;
+        }
+
+        .testimonial-quote p {
+            font-size: var(--font-size-base);
+            font-style: italic;
+            margin-bottom: var(--spacing-3);
+        }
+
+    .testimonial-author {
+        display: flex;
+        flex-direction: column;
+        font-weight: 600;
+    }
+
+    .testimonial-role {
+        font-size: var(--font-size-xs);
+        font-weight: normal;
+        opacity: 0.8;
+    }
+
+    /* Main Content Styles */
+    .registration-container {
+        flex: 1;
+        padding: var(--spacing-6);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .registration-header {
+    text-align: center;
+    margin-bottom: var(--spacing-6);
+    animation: fadeIn 0.8s ease;
+    display: grid;
+    justify-content: center;
+    justify-items: center;
+    }
+
+    .registration-logo {
+        height: 50px;
+        margin-bottom: var(--spacing-4);
+    }
+
+    .registration-header h1 {
+        font-size: var(--font-size-3xl);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-2);
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .registration-header p {
+        color: var(--text-secondary);
+        font-size: var(--font-size-lg);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Wizard Styles */
+    .registration-wizard {
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-xl);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: var(--spacing-6);
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    /* Progress Steps */
+    .wizard-progress {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--spacing-5) var(--spacing-6);
+    position: relative;
+    margin-bottom: 30px;
+    }
+
+        .wizard-progress::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: var(--border-color);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .wizard-progress::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            height: 2px;
+            background: var(--primary);
+            transform: translateY(-50%);
+            z-index: 2;
+            width: calc((80% / 3) * (var(--step-progress, 1) - 1));
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+    .step-indicator {
+        position: relative;
+        z-index: 3;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--content-bg);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: var(--text-secondary);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+        .step-indicator.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--content-bg);
+            transform: scale(1.1);
+            box-shadow: 0 3px 12px rgba(var(--primary-rgb), 0.2);
+        }
+
+        .step-indicator.completed {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 3px 12px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .step-indicator.invalid {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: rgba(var(--danger-rgb), 0.05);
+        }
+
+    .step-label {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: var(--spacing-2);
+        white-space: nowrap;
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* Validation Summary */
+    .validation-summary {
+        margin: var(--spacing-4) var(--spacing-6);
+        padding: var(--spacing-4);
+        border-radius: var(--border-radius-lg);
+        background-color: rgba(var(--danger-rgb), 0.05);
+        border: 1px solid rgba(var(--danger-rgb), 0.1);
+        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    .validation-error {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-2);
+        color: var(--danger);
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--spacing-2);
+    }
+
+        .validation-error:last-child {
+            margin-bottom: 0;
+        }
+
+        .validation-error i {
+            margin-top: 0.2rem;
+        }
+
+    /* Step Container */
+    .step-container {
+        padding: 0;
+    }
+
+    .step-content {
+        padding: var(--spacing-6);
+        animation: fadeSlideIn 0.4s ease;
+    }
+
+    .step-header {
+        margin-bottom: var(--spacing-5);
+    }
+
+        .step-header h2 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+            .step-header h2 i {
+                color: var(--primary);
+                font-size: var(--font-size-xl);
+            }
+
+        .step-header p {
+            color: var(--text-secondary);
+            font-size: var(--font-size-base);
+            margin-bottom: 0;
+        }
+
+    /* Form Section */
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-5);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-4);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0;
+    }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-1);
+        }
+
+    .input-with-icon {
+        position: relative;
+    }
+
+        .input-with-icon i {
+            position: absolute;
+            left: var(--spacing-3);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+        }
+
+    .form-control {
+        padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) calc(var(--spacing-6) + 4px);
+        border: 1.5px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-base);
+        transition: all 0.2s ease;
+        width: 100%;
+        padding-left: 2rem;
+    }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+            outline: none;
+        }
+
+            .form-control:focus + i {
+                color: var(--primary);
+            }
+
+        .form-control.is-invalid {
+            border-color: var(--danger);
+        }
+
+            .form-control.is-invalid:focus {
+                box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.2);
+            }
+
+            .form-control.is-invalid + i {
+                color: var(--danger);
+            }
+
+    .error-message {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        margin-top: var(--spacing-1);
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+    }
+
+    /* Password Section */
+    .password-section {
+        margin-top: var(--spacing-4);
+    }
+
+    .section-header {
+        margin-bottom: var(--spacing-4);
+    }
+
+        .section-header h3 {
+            color: var(--text-primary);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--spacing-1);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+            .section-header h3 i {
+                color: var(--primary);
+            }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            margin-bottom: 0;
+        }
+
+    .password-requirements {
+        background-color: var(--subtle-bg);
+        border-radius: var(--border-radius-lg);
+        padding: var(--spacing-4);
+        margin-bottom: var(--spacing-4);
+        border: 1px solid var(--border-light);
+    }
+
+    .requirements-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-3);
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+        .requirements-list li {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            transition: all 0.2s ease;
+        }
+
+            .requirements-list li i {
+                font-size: var(--font-size-base);
+                color: var(--text-muted);
+                transition: all 0.2s ease;
+            }
+
+    .requirement-met {
+        color: var(--success) !important;
+    }
+
+        .requirement-met i {
+            color: var(--success) !important;
+        }
+
+    /* Terms Container */
+    .terms-container {
+        margin-top: var(--spacing-4);
+    }
+
+  .custom-checkbox {
+    position: relative;
+    padding-left: 36px;
+    margin-bottom: var(--spacing-2);
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    height: 0;
+    width: 0;
+    cursor: pointer;
+}
+
+.checkbox-visual {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 24px;
+    width: 24px;
+    background-color: var(--input-bg);
+    border: 1.5px solid var(--border-divider);
+    border-radius: var(--border-radius-sm);
+    transition: all 0.2s ease;
+}
+
+.custom-checkbox input:checked ~ .checkbox-visual {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkbox-visual:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 8px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.custom-checkbox input:checked ~ .checkbox-visual:after {
+    display: block;
+}
+
+    .checkbox-text {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        line-height: 24px;
+    }
+
+    .terms-link {
+        color: var(--primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+        .terms-link:hover {
+            text-decoration: underline;
+        }
+
+    .terms-error {
+        margin-top: var(--spacing-2);
+    }
+
+    /* Summary Container */
+    .summary-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-4);
+        margin-bottom: var(--spacing-5);
+    }
+
+    .summary-section {
+        padding: var(--spacing-4);
+        border-radius: var(--border-radius-lg);
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-light);
+    }
+
+        .summary-section h3 {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-3);
+            padding-bottom: var(--spacing-2);
+            border-bottom: 1px solid var(--border-divider);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+            .summary-section h3 i {
+                color: var(--primary);
+            }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-4);
+    }
+
+    .summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-1);
+    }
+
+    .summary-label {
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-value {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .company-address {
+        font-style: normal;
+        color: var(--text-primary);
+        line-height: 1.6;
+        margin-bottom: 0;
+    }
+
+    /* Verification Notice */
+    .verification-notice {
+        padding: var(--spacing-4);
+        border-radius: var(--border-radius-lg);
+        background-color: rgba(var(--info-rgb), 0.05);
+        border: 1px solid rgba(var(--info-rgb), 0.1);
+        display: flex;
+        gap: var(--spacing-3);
+    }
+
+    .notice-icon {
+        font-size: var(--font-size-xl);
+        color: var(--info);
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    .notice-content p {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-2);
+    }
+
+    .notice-content ul {
+        padding-left: var(--spacing-5);
+        margin-bottom: 0;
+    }
+
+    .notice-content li {
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-2);
+        font-size: var(--font-size-sm);
+    }
+
+        .notice-content li:last-child {
+            margin-bottom: 0;
+        }
+
+    /* Wizard Buttons */
+    .wizard-buttons {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--spacing-5) var(--spacing-6);
+        background-color: var(--subtle-bg);
+        border-top: 1px solid var(--border-divider);
+    }
+
+    .wizard-buttons-left,
+    .wizard-buttons-right {
+        display: flex;
+        gap: var(--spacing-3);
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-3) var(--spacing-5);
+        border-radius: var(--border-radius-md);
+        font-weight: 500;
+        font-size: var(--font-size-base);
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+    .btn-secondary {
+        background-color: var(--content-bg);
+        border: 1.5px solid var(--border-divider);
+        color: var(--text-secondary);
+    }
+
+        .btn-secondary:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            transform: translateY(-2px);
+        }
+
+    .btn-complete {
+        padding: var(--spacing-3) var(--spacing-6);
+    }
+
+    .btn i {
+        transition: transform 0.2s ease;
+    }
+
+    .btn-primary:hover i.fal.fa-arrow-right {
+        transform: translateX(4px);
+    }
+
+    .btn-secondary:hover i.fal.fa-arrow-left {
+        transform: translateX(-4px);
+    }
+
+    .btn-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s linear infinite;
+        margin-right: var(--spacing-2);
+    }
+
+    /* Login Link */
+    .login-link {
+        text-align: center;
+        margin-top: auto;
+        padding-top: var(--spacing-4);
+    }
+
+        .login-link p {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .login-link a {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+            .login-link a:hover {
+                text-decoration: underline;
+            }
+
+    /* Error Modal Styles */
+    .error-modal .roovia-modal-header {
+        border-bottom-color: rgba(var(--danger-rgb), 0.1);
+        background-color: rgba(var(--danger-rgb), 0.05);
+    }
+
+    .error-modal .roovia-modal-title h3 {
+        color: var(--danger);
+    }
+
+    .error-modal .roovia-modal-icon {
+        color: var(--danger);
+    }
+
+    .error-modal-content {
+        text-align: center;
+        padding: var(--spacing-5) 0;
+    }
+
+    .error-icon-container {
+        margin-bottom: var(--spacing-5);
+    }
+
+    .error-icon {
+        font-size: 4rem;
+        color: var(--danger);
+    }
+
+    .error-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-3);
+        text-align: left;
+    }
+
+    .error-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-2);
+        color: var(--danger);
+        font-size: var(--font-size-base);
+    }
+
+        .error-item i {
+            margin-top: 0.25rem;
+            flex-shrink: 0;
+        }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    @@keyframes fadeInUp {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    @@keyframes fadeSlideIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    @@keyframes gradientAnimation {
+        0%
+
+    {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+
+    }
+
+    @@keyframes shake {
+        10%, 90%
+
+    {
+        transform: translateX(-1px);
+    }
+
+    20%, 80% {
+        transform: translateX(2px);
+    }
+
+    30%, 50%, 70% {
+        transform: translateX(-2px);
+    }
+
+    40%, 60% {
+        transform: translateX(2px);
+    }
+
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 1200px) {
+        .registration-sidebar
+
+    {
+        min-width: 350px;
+    }
+
+    }
+
+    @@media (max-width: 992px) {
+        .registration-page
+
+    {
+        flex-direction: column;
+    }
+
+    .registration-sidebar {
+        width: 100%;
+        min-width: 0;
+        padding: var(--spacing-5);
+        order: -1;
+    }
+
+    .sidebar-features {
+        gap: var(--spacing-3);
+        margin-bottom: var(--spacing-5);
+    }
+
+    .registration-container {
+        padding: var(--spacing-5);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .form-row
+
+    {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-4);
+    }
+
+    .step-content {
+        padding: var(--spacing-4);
+    }
+
+    .wizard-buttons {
+        padding: var(--spacing-4);
+    }
+
+    .requirements-list {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar-features {
+        display: none;
+    }
+
+    .sidebar-testimonial {
+        display: none;
+    }
+
+    .verification-notice {
+        flex-direction: column;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .registration-header h1
+
+    {
+        font-size: var(--font-size-2xl);
+    }
+
+    .step-indicator {
+        width: 36px;
+        height: 36px;
+    }
+
+    .step-label {
+        display: none;
+    }
+
+    .wizard-buttons {
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+
+    .wizard-buttons-left,
+    .wizard-buttons-right {
+        width: 100%;
+    }
+
+        .wizard-buttons-left .btn,
+        .wizard-buttons-right .btn {
+            width: 100%;
+        }
+
+    .wizard-progress::before,
+    .wizard-progress::after {
+        left: 5%;
+        right: 5%;
+    }
+
+    .wizard-progress::after {
+        width: calc((90% / 3) * (var(--step-progress, 1) - 1));
+    }
+
+    }
+
+    /* Improved focus states for better accessibility */
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+    outline: none;
+}
+
+/* Ensure better text contrast in sidebar testimonial */
+.testimonial-quote p {
+    font-size: var(--font-size-base);
+    font-style: italic;
+    margin-bottom: var(--spacing-3);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.testimonial-author {
+    display: flex;
+    flex-direction: column;
+    font-weight: 600;
+    color: white;
+}
+
+/* Enhance the visual feedback for validation */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-top: var(--spacing-1);
+    font-size: var(--font-size-xs);
+    color: var(--danger);
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+</style>
+
 @code {
     private IEnumerable<IdentityError>? identityErrors;
+    private RVModal ErrorModal;
+    private bool ShowErrorModal = false;
 
     [SupplyParameterFromForm]
     private RegistrationInputModel Input { get; set; } = new();
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
-    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
     private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+
+    private int CurrentStep = 1;
+    private const int TotalSteps = 4;
+    private Dictionary<int, bool> StepValidationState = new();
+    private List<ValidationResult> ValidationErrors = new();
+    private bool AcceptTerms = false;
+    private bool TermsValidated = false;
+    private bool IsSubmitting = false;
+
+    private readonly List<(int Number, string Label)> Steps = new()
+    {
+        (1, "Personal"),
+        (2, "Company"),
+        (3, "Address"),
+        (4, "Verify")
+    };
+
+    protected override void OnInitialized()
+    {
+        // Initialize step validation state
+        foreach (var step in Steps)
+        {
+            StepValidationState[step.Number] = false;
+        }
+
+        // Set default country to South Africa
+        Input.Country = "South Africa";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await UpdateProgressBar();
+
+            // Add JavaScript for keyboard navigation (arrows, enter)
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey && document.activeElement.tagName !== 'TEXTAREA') {
+                        const nextBtn = document.querySelector('.wizard-buttons-right button');
+                        if (nextBtn) {
+                            e.preventDefault();
+                            nextBtn.click();
+                        }
+                    }
+                });
+            ");
+        }
+
+        // Show error modal if there are identity errors
+        if (identityErrors != null && identityErrors.Any() && !ShowErrorModal)
+        {
+            //ShowErrorModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseErrorModal()
+    {
+        ShowErrorModal = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStepState(int stepNumber)
+    {
+        if (CurrentStep == stepNumber)
+            return "active";
+        if (CurrentStep > stepNumber && StepValidationState[stepNumber])
+            return "completed";
+        if (CurrentStep > stepNumber)
+            return "invalid";
+        return "";
+    }
+
+    private async Task UpdateProgressBar()
+    {
+        await JSRuntime.InvokeVoidAsync("document.documentElement.style.setProperty",
+            "--step-progress", CurrentStep.ToString());
+    }
+
+    private async Task PreviousStep()
+    {
+        if (CurrentStep > 1)
+        {
+            CurrentStep--;
+            ValidationErrors.Clear();
+            await UpdateProgressBar();
+        }
+    }
+
+    private async Task ValidateAndNextStep()
+    {
+        ValidationErrors.Clear();
+        bool isValid = await ValidateCurrentStep();
+
+        if (isValid)
+        {
+            StepValidationState[CurrentStep] = true;
+            await NextStep();
+        }
+        else
+        {
+            StepValidationState[CurrentStep] = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NextStep()
+    {
+        if (CurrentStep < TotalSteps)
+        {
+            CurrentStep++;
+            ValidationErrors.Clear();
+            await UpdateProgressBar();
+
+            // Scroll to top of the step content
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    private async Task<bool> ValidateCurrentStep()
+    {
+        bool isValid = true;
+        var validationResults = new List<ValidationResult>();
+
+        switch (CurrentStep)
+        {
+            case 1: // Personal Information
+                if (string.IsNullOrWhiteSpace(Input.FirstName))
+                {
+                    validationResults.Add(new ValidationResult("First name is required.", new[] { "Input.FirstName" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.LastName))
+                {
+                    validationResults.Add(new ValidationResult("Last name is required.", new[] { "Input.LastName" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.Email))
+                {
+                    validationResults.Add(new ValidationResult("Email address is required.", new[] { "Input.Email" }));
+                    isValid = false;
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(Input.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                {
+                    validationResults.Add(new ValidationResult("Invalid email address format.", new[] { "Input.Email" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.PhoneNumber))
+                {
+                    validationResults.Add(new ValidationResult("Phone number is required.", new[] { "Input.PhoneNumber" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.Password))
+                {
+                    validationResults.Add(new ValidationResult("Password is required.", new[] { "Input.Password" }));
+                    isValid = false;
+                }
+                else
+                {
+                    bool isPasswordValid = true;
+                    var password = Input.Password;
+
+                    if (password.Length < 8)
+                    {
+                        isPasswordValid = false;
+                    }
+                    if (!password.Any(char.IsUpper))
+                    {
+                        isPasswordValid = false;
+                    }
+                    if (!password.Any(char.IsLower))
+                    {
+                        isPasswordValid = false;
+                    }
+                    if (!password.Any(char.IsDigit))
+                    {
+                        isPasswordValid = false;
+                    }
+                    if (!password.Any(c => "@$!%*?&".Contains(c)))
+                    {
+                        isPasswordValid = false;
+                    }
+
+                    if (!isPasswordValid)
+                    {
+                        validationResults.Add(new ValidationResult("Password must meet all requirements.", new[] { "Input.Password" }));
+                        isValid = false;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.ConfirmPassword))
+                {
+                    validationResults.Add(new ValidationResult("Confirm password is required.", new[] { "Input.ConfirmPassword" }));
+                    isValid = false;
+                }
+                else if (Input.Password != Input.ConfirmPassword)
+                {
+                    validationResults.Add(new ValidationResult("Passwords do not match.", new[] { "Input.ConfirmPassword" }));
+                    isValid = false;
+                }
+                break;
+
+            case 2: // Company Information
+                if (string.IsNullOrWhiteSpace(Input.CompanyName))
+                {
+                    validationResults.Add(new ValidationResult("Company name is required.", new[] { "Input.CompanyName" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.RegistrationNumber))
+                {
+                    validationResults.Add(new ValidationResult("Company registration number is required.", new[] { "Input.RegistrationNumber" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.CompanyEmail))
+                {
+                    validationResults.Add(new ValidationResult("Company email is required.", new[] { "Input.CompanyEmail" }));
+                    isValid = false;
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(Input.CompanyEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                {
+                    validationResults.Add(new ValidationResult("Invalid company email address format.", new[] { "Input.CompanyEmail" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.CompanyPhone))
+                {
+                    validationResults.Add(new ValidationResult("Company phone is required.", new[] { "Input.CompanyPhone" }));
+                    isValid = false;
+                }
+
+                if (!string.IsNullOrEmpty(Input.Website) && !System.Text.RegularExpressions.Regex.IsMatch(Input.Website, @"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-]*)*$"))
+                {
+                    validationResults.Add(new ValidationResult("Please enter a valid URL.", new[] { "Input.Website" }));
+                    isValid = false;
+                }
+                break;
+
+            case 3: // Address
+                if (string.IsNullOrWhiteSpace(Input.Street))
+                {
+                    validationResults.Add(new ValidationResult("Street address is required.", new[] { "Input.Street" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.City))
+                {
+                    validationResults.Add(new ValidationResult("City is required.", new[] { "Input.City" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.Suburb))
+                {
+                    validationResults.Add(new ValidationResult("Suburb is required.", new[] { "Input.Suburb" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.Province))
+                {
+                    validationResults.Add(new ValidationResult("Province is required.", new[] { "Input.Province" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.PostalCode))
+                {
+                    validationResults.Add(new ValidationResult("Postal code is required.", new[] { "Input.PostalCode" }));
+                    isValid = false;
+                }
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(Input.PostalCode, @"^\d{4}$"))
+                {
+                    validationResults.Add(new ValidationResult("Postal code must be 4 digits.", new[] { "Input.PostalCode" }));
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(Input.Country))
+                {
+                    validationResults.Add(new ValidationResult("Country is required.", new[] { "Input.Country" }));
+                    isValid = false;
+                }
+
+                // Check terms acceptance
+                TermsValidated = true;
+                if (!AcceptTerms)
+                {
+                    validationResults.Add(new ValidationResult("You must agree to the terms and conditions.", new[] { "AcceptTerms" }));
+                    isValid = false;
+                }
+                break;
+
+            case 4: // Verification and Summary
+                // No additional validation required
+                break;
+        }
+
+        if (!isValid)
+        {
+            ValidationErrors.AddRange(validationResults);
+
+            // Scroll to first error
+            if (ValidationErrors.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("window.setTimeout", "document.querySelector('.validation-summary')?.scrollIntoView({behavior: 'smooth', block: 'center'})", 100);
+            }
+        }
+
+        return isValid;
+    }
+
+    private bool HasFieldError(Expression<Func<object>> expression)
+    {
+        var memberExpression = expression.Body as MemberExpression;
+        var propertyName = memberExpression?.Member.Name;
+
+        return ValidationErrors.Any(e => e.MemberNames.Contains(propertyName));
+    }
+
+    private string GetValidationMessage(Expression<Func<object>> expression)
+    {
+        var memberExpression = expression.Body as MemberExpression;
+        var propertyName = memberExpression?.Member.Name;
+
+        return ValidationErrors.FirstOrDefault(e => e.MemberNames.Contains(propertyName))?.ErrorMessage ?? "";
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (await ValidateCurrentStep())
+        {
+            IsSubmitting = true;
+            StateHasChanged();
+
+            try
+            {
+                await RegisterUser(null);
+            }
+            finally
+            {
+                IsSubmitting = false;
+                StateHasChanged();
+            }
+        }
+    }
 
     public async Task RegisterUser(EditContext editContext)
     {
@@ -215,6 +2148,7 @@
             if (!result.Succeeded)
             {
                 identityErrors = result.Errors;
+                ShowErrorModal = true;
                 return;
             }
 
@@ -251,7 +2185,9 @@
             {
                 // If company creation failed, delete the user and show error
                 await UserManager.DeleteAsync(user);
-                throw new Exception($"Failed to create company: {companyResult.ResponseInfo.Message}");
+                identityErrors = new[] { new IdentityError { Description = $"Failed to create company: {companyResult.ResponseInfo.Message}" } };
+                ShowErrorModal = true;
+                return;
             }
 
             // Get the newly created company
@@ -306,7 +2242,9 @@
 
             if (!branchResult.ResponseInfo.Success)
             {
-                throw new Exception($"Failed to create branch: {branchResult.ResponseInfo.Message}");
+                identityErrors = new[] { new IdentityError { Description = $"Failed to create branch: {branchResult.ResponseInfo.Message}" } };
+                ShowErrorModal = true;
+                return;
             }
 
             var createdBranch = (Branch)branchResult.Response;
@@ -354,14 +2292,12 @@
             await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
 
             // 8. Navigate to registration confirmation
-
             RedirectManager.RedirectTo(
                 "Account/RegistrationPending",
                 new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
         }
         catch (Exception ex) when (ex is not NavigationException) // Add exception filter
         {
-            HttpContext?.RedirectTo("Account/RegistrationPending"); // Perform server-side redirection
             Logger.LogError(ex, "Registration failed");
             identityErrors = new[]
             {
@@ -370,6 +2306,7 @@
                     Description = $"Registration failed: {ex.Message}"
                 }
             };
+            ShowErrorModal = true;
         }
     }
 

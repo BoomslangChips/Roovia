@@ -210,6 +210,60 @@
     }
 
     }
+
+    /* Button styles for modals and the entire application */
+    .roovia-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-3) var(--spacing-5);
+        border-radius: var(--border-radius-md);
+        font-weight: 500;
+        font-size: var(--font-size-base);
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .roovia-btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    }
+
+        .roovia-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .roovia-btn-primary:active {
+            transform: translateY(0);
+        }
+
+    .roovia-btn-secondary {
+        background-color: var(--content-bg);
+        border: 1.5px solid var(--border-divider);
+        color: var(--text-secondary);
+    }
+
+        .roovia-btn-secondary:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            transform: translateY(-2px);
+        }
+
+    /* Modal specific button fixes */
+    .error-modal .roovia-modal-footer .roovia-btn {
+        min-width: 100px;
+    }
+
+    .roovia-modal-footer .roovia-btn {
+        margin-left: var(--spacing-2);
+    }
 </style>
 
 @code {
