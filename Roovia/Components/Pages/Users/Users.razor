@@ -6,43 +6,65 @@
 @inject IUser UserService
 @inject ToastService ToastService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @rendermode InteractiveServer
 
 <RVToastContainer Position="bottom-right" />
 
-<RVCard Title="Organization Management" Icon="far fa-users" Size="lg">
-    <HeaderActions>
-        <RVButton Text="Add Company"
-                  IconLeft="far fa-plus"
-                  ButtonType="primary"
-                  OnClick="() => OpenCompanyDialog()" />
-    </HeaderActions>
-    <ChildContent>
-        <div class="mb-4">
-            <RVTextbox Placeholder="Search companies, branches or users..."
-                       IconLeft="far fa-search"
-                       Value="@searchTerm"
-                       ValueChanged="@((val) => OnSearchChanged(val))"
-                       CssClass="w-100" />
+<div class="organization-dashboard">
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-title">
+                <h1><i class="far fa-sitemap me-2"></i>Organization Management</h1>
+                <p>Manage your company structure, branches, and team members</p>
+            </div>
+            <div class="header-actions">
+                <div class="search-wrapper">
+                    <RVTextbox Placeholder="Search organizations..."
+                              IconLeft="far fa-search"
+                              Value="@searchTerm"
+                              ValueChanged="@((val) => OnSearchChanged(val))"
+                              CssClass="header-search" />
+                    
+                    @if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        <button class="search-clear-btn" @onclick="ClearSearch">
+                            <i class="far fa-times"></i>
+                        </button>
+                    }
+                </div>
+                <RVButton Text="Add Company"
+                         IconLeft="far fa-building-circle-check"
+                         ButtonType="primary"
+                         OnClick="() => OpenCompanyDialog()" />
+            </div>
         </div>
+    </header>
 
+    <div class="dashboard-content">
         @if (isLoading)
         {
-            <div class="d-flex justify-content-center align-items-center my-5">
-                <div class="loading-spinner"></div>
-                <span class="ms-3 text-muted">Loading data...</span>
+            <div class="loading-state">
+                <div class="loading-animation">
+                    <div class="loading-circle"></div>
+                    <div class="loading-circle"></div>
+                    <div class="loading-circle"></div>
+                </div>
+                <h3>Loading Organization Data</h3>
+                <p>Please wait while we retrieve your organization structure...</p>
             </div>
         }
         else if (loadError)
         {
-            <div class="alert alert-danger d-flex align-items-center mb-3">
-                <i class="far fa-exclamation-triangle me-2"></i>
-                <div>
-                    <p class="mb-1"><strong>Error loading data</strong></p>
-                    <p class="mb-0">@errorMessage</p>
-                </div>
-                <RVButton Text="Try Again" ButtonType="outline-danger" OnClick="LoadCompanies" CssClass="ms-auto" />
+            <div class="error-state">
+                <i class="far fa-times-hexagon"></i>
+                <h3>Failed to Load Organization Data</h3>
+                <p>@errorMessage</p>
+                <RVButton Text="Try Again" 
+                         ButtonType="primary" 
+                         OnClick="LoadCompanies" 
+                         CssClass="retry-button" />
             </div>
         }
         else
@@ -50,182 +72,202 @@
             @if (!FilteredCompanies.Any())
             {
                 <div class="empty-state">
-                    <i class="far fa-building empty-illustration"></i>
+                    <div class="empty-animation">
+                        <i class="far fa-building"></i>
+                        <i class="far fa-plus-circle"></i>
+                    </div>
                     <h3>No Companies Found</h3>
                     <p>@(companies.Any() ? "Your search returned no results." : "You haven't added any companies yet.")</p>
                     <div class="empty-actions">
-                        <RVButton Text="Add Company" IconLeft="far fa-plus" ButtonType="primary" OnClick="() => OpenCompanyDialog()" />
+                        <RVButton Text="Add Your First Company" 
+                                 IconLeft="far fa-building-circle-plus" 
+                                 ButtonType="primary" 
+                                 OnClick="() => OpenCompanyDialog()" 
+                                 CssClass="primary-action" />
                         @if (companies.Any() && !string.IsNullOrWhiteSpace(searchTerm))
                         {
-                            <RVButton Text="Clear Search" IconLeft="far fa-times" ButtonType="outline" OnClick="ClearSearch" />
+                            <RVButton Text="Clear Search" 
+                                     IconLeft="far fa-filter-slash" 
+                                     ButtonType="secondary" 
+                                     OnClick="ClearSearch" />
                         }
                     </div>
                 </div>
             }
             else
             {
-                @foreach (var company in FilteredCompanies)
-                {
-                    <RVCard Title="@company.Name"
-                            Icon="far fa-building"
-                            Type="border-primary"
-                            Hover="true"
-                            CssClass="mb-4">
-                        <HeaderActions>
-                            <div class="d-flex gap-2">
-                                <RVButton Text=""
-                                          IconLeft="far fa-edit"
-                                          ButtonType="outline"
-                                          Size="sm"
-                                          OnClick="() => EditCompany(company)"
-                                          CssClass="p-2" />
-                                <RVButton Text="Add Branch"
-                                          IconLeft="far fa-plus"
-                                          ButtonType="primary"
-                                          Size="sm"
-                                          OnClick="() => OpenBranchDialog(company.Id)" />
-                            </div>
-                        </HeaderActions>
-                        <ChildContent>
-                            <div class="mb-3">
-                                <div class="d-flex flex-wrap gap-3 mb-2">
-                                    @if (company.ContactNumbers != null && company.ContactNumbers.Any(c => c.IsPrimary))
-                                    {
-                                        <div class="badge badge-secondary">
-                                            <i class="far fa-phone me-1"></i> @(company.GetPrimaryContactNumber())
+                <div class="company-grid">
+                    @foreach (var company in FilteredCompanies)
+                    {
+                        <div class="company-card @(IsExpanded(company.Id) ? "expanded" : "")" id="company-@company.Id">
+                            <div class="company-card-header" @onclick="() => ToggleCompanyExpansion(company.Id)">
+                                <div class="company-info">
+                                    <div class="company-avatar">
+                                        @company.Name.Substring(0, 1)
+                                    </div>
+                                    <div class="company-title">
+                                        <h2>@company.Name</h2>
+                                        <div class="company-meta">
+                                            <span><i class="far fa-building"></i> @(company.Branches?.Count ?? 0) branches</span>
+                                            <span><i class="far fa-users"></i> @(company.Branches?.Sum(b => b.Users?.Count ?? 0) ?? 0) users</span>
                                         </div>
-                                    }
-                                    @if (company.EmailAddresses != null && company.EmailAddresses.Any(e => e.IsPrimary))
-                                    {
-                                        <div class="badge badge-secondary">
-                                            <i class="far fa-envelope me-1"></i> @(company.GetPrimaryEmail())
-                                        </div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(company.Website))
-                                    {
-                                        <div class="badge badge-secondary">
-                                            <i class="far fa-globe me-1"></i> @company.Website
-                                        </div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(company.RegistrationNumber))
-                                    {
-                                        <div class="badge badge-secondary">
-                                            <i class="far fa-id-card me-1"></i> @company.RegistrationNumber
-                                        </div>
-                                    }
+                                    </div>
+                                </div>
+                                <div class="company-actions">
+                                    <button class="btn-icon" title="Edit Company" @onclick:stopPropagation="true" @onclick="() => EditCompany(company)">
+                                        <i class="far fa-edit"></i>
+                                    </button>
+                                    <RVButton Text="Add Branch"
+                                             IconLeft="far fa-code-branch"
+                                             ButtonType="outline"
+                                             Size="sm"
+                                             OnClick="() => OpenBranchDialog(company.Id)"
+                                              />
+                                    <div class="expand-indicator">
+                                        <i class="far fa-chevron-@(IsExpanded(company.Id) ? "up" : "down")"></i>
+                                    </div>
                                 </div>
                             </div>
+                            
+                            <div class="company-card-body">
+                                <div class="company-details">
+                                    <div class="detail-item">
+                                        <i class="far fa-id-card"></i>
+                                        <span class="detail-label">Reg. Number:</span>
+                                        <span class="detail-value">@(string.IsNullOrEmpty(company.RegistrationNumber) ? "—" : company.RegistrationNumber)</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="far fa-at"></i>
+                                        <span class="detail-label">Email:</span>
+                                        <span class="detail-value">@(company.GetPrimaryEmail() ?? "—")</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="far fa-phone"></i>
+                                        <span class="detail-label">Phone:</span>
+                                        <span class="detail-value">@(company.GetPrimaryContactNumber() ?? "—")</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="far fa-globe"></i>
+                                        <span class="detail-label">Website:</span>
+                                        <span class="detail-value">@(string.IsNullOrEmpty(company.Website) ? "—" : company.Website)</span>
+                                    </div>
+                                </div>
 
-                            @if (!HasBranches(company))
-                            {
-                                <div class="alert alert-info d-flex align-items-center mb-3">
-                                    <i class="far fa-info-circle me-2"></i>
-                                    <span>No branches have been added to this company yet.</span>
-                                </div>
-                            }
-                            else
-                            {
-                                <RVTab Style="pills">
-                                    <ChildContent>
-                                        @foreach (var branch in company.Branches)
-                                        {
-                                            <RVTabPanel IsActive="@(branch == company.Branches.First())">
-                                                <ChildContent>
-                                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                                        <h5 class="mb-0">
-                                                            <i class="far fa-building text-primary me-2"></i>
-                                                            @branch.Name
-                                                        </h5>
-                                                        <div class="d-flex gap-2">
-                                                            <RVButton Text=""
-                                                                      IconLeft="far fa-edit"
-                                                                      ButtonType="ghost"
-                                                                      Size="sm"
-                                                                      OnClick="() => EditBranch(branch)"
-                                                                      CssClass="p-2" />
-                                                            <RVButton Text="Add User"
-                                                                      IconLeft="far fa-user-plus"
-                                                                      ButtonType="primary"
-                                                                      Size="sm"
-                                                                      OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
+                                @if (!HasBranches(company))
+                                {
+                                    <div class="no-branches-message">
+                                        <i class="far fa-code-branch"></i>
+                                        <p>No branches have been added to this company yet</p>
+                                        <RVButton Text="Add First Branch"
+                                                 IconLeft="far fa-plus"
+                                                 ButtonType="primary"
+                                                 Size="sm"
+                                                 OnClick="() => OpenBranchDialog(company.Id)" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="branch-tabs">
+                                        <div class="branch-tabs-header">
+                                            @foreach (var branch in company.Branches)
+                                            {
+                                                <button class="branch-tab @(activeBranchTabs.ContainsKey(company.Id) && activeBranchTabs[company.Id] == branch.Id ? "active" : "")"
+                                                        @onclick="() => SetActiveBranchTab(company.Id, branch.Id)">
+                                                    <i class="far fa-code-branch"></i>
+                                                    <span>@branch.Name</span>
+                                                </button>
+                                            }
+                                        </div>
+                                        
+                                        <div class="branch-tabs-content">
+                                            @foreach (var branch in company.Branches)
+                                            {
+                                                <div class="branch-tab-panel @(activeBranchTabs.ContainsKey(company.Id) && activeBranchTabs[company.Id] == branch.Id ? "active" : "")">
+                                                    <div class="branch-header">
+                                                        <div class="branch-info">
+                                                            <h3>@branch.Name</h3>
+                                                            <div class="branch-meta">
+                                                                @if (branch.Address != null)
+                                                                {
+                                                                    <span><i class="far fa-map-marker-alt"></i> @(string.IsNullOrEmpty(branch.Address.City) ? "No location" : $"{branch.Address.City}, {branch.Address.Province}")</span>
+                                                                }
+                                                                <span><i class="far fa-phone"></i> @(branch.GetPrimaryContactNumber() ?? "No phone")</span>
+                                                                <span><i class="far fa-envelope"></i> @(branch.GetPrimaryEmail() ?? "No email")</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
-
-                                                    <div class="d-flex flex-wrap gap-2 mb-3">
-                                                        @if (branch.ContactNumbers != null && branch.ContactNumbers.Any(c => c.IsPrimary))
-                                                        {
-                                                            <div class="badge badge-secondary">
-                                                                <i class="far fa-phone me-1"></i> @(branch.GetPrimaryContactNumber())
-                                                            </div>
-                                                        }
-                                                        @if (branch.EmailAddresses != null && branch.EmailAddresses.Any(e => e.IsPrimary))
-                                                        {
-                                                            <div class="badge badge-secondary">
-                                                                <i class="far fa-envelope me-1"></i> @(branch.GetPrimaryEmail())
-                                                            </div>
-                                                        }
-                                                        @if (branch.Address != null && !string.IsNullOrEmpty(branch.Address.City))
-                                                        {
-                                                            <div class="badge badge-secondary">
-                                                                <i class="far fa-map-marker-alt me-1"></i> @branch.Address.City
-                                                            </div>
-                                                        }
+                                                        <div class="branch-actions">
+                                                            <button class="btn-icon" title="Edit Branch" @onclick="() => EditBranch(branch)">
+                                                                <i class="far fa-edit"></i>
+                                                            </button>
+                                                            <RVButton Text="Add User"
+                                                                     IconLeft="far fa-user-plus"
+                                                                     ButtonType="primary"
+                                                                     Size="sm"
+                                                                     OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
+                                                        </div>
                                                     </div>
 
                                                     @if (!HasUsers(branch))
                                                     {
-                                                        <div class="alert alert-info d-flex align-items-center">
-                                                            <i class="far fa-info-circle me-2"></i>
-                                                            <span>No users have been added to this branch yet.</span>
+                                                        <div class="no-users-message">
+                                                            <i class="far fa-users"></i>
+                                                            <p>No users have been added to this branch yet</p>
+                                                            <RVButton Text="Add First User"
+                                                                     IconLeft="far fa-user-plus"
+                                                                     ButtonType="primary"
+                                                                     Size="sm"
+                                                                     OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
                                                         </div>
                                                     }
                                                     else
                                                     {
-                                                        <RVCard Type="soft-secondary" Size="sm" CssClass="mb-3">
-                                                            <ChildContent>
-                                                                <div class="grid grid-cols-1 gap-2">
-                                                                    @foreach (var user in branch.Users)
-                                                                    {
-                                                                        <div class="border rounded p-3 bg-white d-flex justify-content-between align-items-center">
-                                                                            <div class="d-flex align-items-center">
-                                                                                <div class="d-flex justify-content-center align-items-center rounded-circle bg-primary-light text-primary p-2 me-3" style="width: 40px; height: 40px;">
-                                                                                    <i class="@GetRoleIcon(user.Role.GetValueOrDefault())"></i>
-                                                                                </div>
-                                                                                <div>
-                                                                                    <div class="font-weight-semibold">@user.FullName</div>
-                                                                                    <div class="text-muted small">@user.Email</div>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="d-flex align-items-center">
-                                                                                <div class="badge badge-primary me-3">
-                                                                                    @GetRoleName(user.Role.GetValueOrDefault())
-                                                                                </div>
-                                                                                <RVButton Text=""
-                                                                                          IconLeft="far fa-edit"
-                                                                                          ButtonType="ghost"
-                                                                                          Size="sm"
-                                                                                          OnClick="() => EditUser(user)"
-                                                                                          CssClass="p-2" />
-                                                                            </div>
+                                                        <div class="users-grid">
+                                                            @foreach (var user in branch.Users)
+                                                            {
+                                                                <div class="user-card">
+                                                                    <div class="user-avatar @GetRoleClass(user.Role.GetValueOrDefault())">
+                                                                        <i class="@GetRoleIcon(user.Role.GetValueOrDefault())"></i>
+                                                                    </div>
+                                                                    <div class="user-info">
+                                                                        <h4>@user.FullName</h4>
+                                                                        <div class="user-meta">
+                                                                            <span class="role-badge @GetRoleClass(user.Role.GetValueOrDefault())">
+                                                                                @GetRoleName(user.Role.GetValueOrDefault())
+                                                                            </span>
+                                                                            <span class="status-indicator @(user.IsActive ? "active" : "inactive")">
+                                                                                @(user.IsActive ? "Active" : "Inactive")
+                                                                            </span>
                                                                         </div>
-                                                                    }
+                                                                        <div class="user-contact">
+                                                                            <span><i class="far fa-envelope"></i> @user.Email</span>
+                                                                            @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                                                                            {
+                                                                                <span><i class="far fa-phone"></i> @user.PhoneNumber</span>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="user-actions">
+                                                                        <button class="btn-icon" title="Edit User" @onclick="() => EditUser(user)">
+                                                                            <i class="far fa-edit"></i>
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                            </ChildContent>
-                                                        </RVCard>
+                                                            }
+                                                        </div>
                                                     }
-                                                </ChildContent>
-                                            </RVTabPanel>
-                                        }
-                                    </ChildContent>
-                                </RVTab>
-                            }
-                        </ChildContent>
-                    </RVCard>
-                }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
             }
         }
-    </ChildContent>
-</RVCard>
+    </div>
+</div>
 
 @if (companyDialogVisible)
 {
@@ -257,6 +299,1089 @@
                 OnCancel="CloseUserDialog" />
 }
 
+<style>
+/* Modern Organization Dashboard Styles */
+:root {
+    --card-radius: 16px;
+    --header-box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.05);
+    --card-box-shadow: 0 6px 24px rgba(var(--primary-rgb), 0.07);
+    --card-hover-transform: translateY(-3px);
+    --card-active-transform: translateY(-1px);
+    --card-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --grid-gap: 1.5rem;
+    --btn-hover-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.15);
+}
+
+.organization-dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--header-height));
+    background-color: var(--body-bg);
+    position: relative;
+}
+
+/* Dashboard Header Styles */
+.dashboard-header {
+    background-color: var(--content-bg);
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border-divider);
+    box-shadow: var(--header-box-shadow);
+    top: 0;
+    z-index: 10;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.header-title h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.header-title p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.search-wrapper {
+    position: relative;
+    min-width: 300px;
+    transition: all 0.3s ease;
+}
+
+.header-search {
+    border-radius: 50px;
+    border: 1.5px solid var(--border-divider);
+    background-color: var(--content-bg);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.05);
+}
+
+.header-search:focus {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.search-clear-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Dashboard Content */
+.dashboard-content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Company Cards */
+.company-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--grid-gap);
+}
+
+.company-card {
+    background-color: var(--content-bg);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-box-shadow);
+    overflow: hidden;
+    transition: var(--card-transition);
+    border: 1px solid var(--border-divider);
+    will-change: transform, box-shadow;
+}
+
+.company-card:hover {
+    box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.1);
+    transform: var(--card-hover-transform);
+}
+
+.company-card.expanded {
+    box-shadow: 0 12px 36px rgba(var(--primary-rgb), 0.12);
+}
+
+.company-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.company-card-header:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.company-card:hover .company-card-header:after {
+    opacity: 1;
+}
+
+.company-card.expanded .company-card-header {
+    border-bottom-color: var(--border-divider);
+    background-color: var(--subtle-bg);
+}
+
+.company-info {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.company-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: var(--primary-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.2);
+    position: relative;
+}
+
+.company-title h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: var(--text-primary);
+}
+
+.company-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.company-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.company-meta i {
+    color: var(--primary);
+    opacity: 0.8;
+}
+
+.company-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.btn-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-divider);
+    background-color: var(--content-bg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-icon:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.15);
+}
+
+.btn-icon:active {
+    transform: translateY(0);
+}
+
+.expand-indicator {
+    margin-left: 0.25rem;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.company-card.expanded .expand-indicator {
+    transform: rotate(180deg);
+}
+
+.company-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.6s cubic-bezier(0, 1, 0, 1);
+}
+
+.company-card.expanded .company-card-body {
+    max-height: 2000px;
+    transition: max-height 1s ease-in-out;
+}
+
+/* Company Details Section */
+.company-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    padding: 1.5rem 1.75rem;
+    background-color: var(--subtle-bg);
+    border-bottom: 1px solid var(--border-divider);
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.detail-item i {
+    color: var(--primary);
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-right: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.detail-value {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Branch Tabs */
+.branch-tabs {
+    padding: 1.75rem;
+}
+
+.branch-tabs-header {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-divider);
+    margin-bottom: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 1px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.branch-tabs-header::-webkit-scrollbar {
+    height: 3px;
+}
+
+.branch-tabs-header::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.branch-tabs-header::-webkit-scrollbar-thumb {
+    background-color: var(--primary-light);
+    border-radius: 3px;
+}
+
+.branch-tab {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    position: relative;
+}
+
+.branch-tab:hover {
+    color: var(--primary);
+    background-color: var(--primary-lighter);
+}
+
+.branch-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
+.branch-tab.active:before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-gradient);
+    border-radius: 2px 2px 0 0;
+}
+
+.branch-tab-panel {
+    display: none;
+    animation: tabFadeIn 0.4s ease forwards;
+}
+
+.branch-tab-panel.active {
+    display: block;
+}
+
+@@keyframes tabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Branch Header */
+.branch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.75rem;
+}
+
+.branch-info h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.branch-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.branch-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.branch-meta i {
+    color: var(--primary);
+    opacity: 0.8;
+}
+
+.branch-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+/* Users Grid */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+}
+
+.user-card {
+    background-color: white;
+    border-radius: 14px;
+    border: 1px solid var(--border-divider);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.user-card:hover {
+    border-color: var(--primary-light);
+    box-shadow: 0 8px 16px rgba(var(--primary-rgb), 0.08);
+    transform: translateY(-3px);
+}
+
+.user-card:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--primary-gradient);
+    border-radius: 3px 0 0 3px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.user-card:hover:after {
+    opacity: 1;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.user-avatar:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(50%);
+    transition: transform 0.3s ease;
+}
+
+.user-card:hover .user-avatar:before {
+    transform: translateY(-50%);
+}
+
+.user-avatar.global-admin {
+    background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%);
+}
+
+.user-avatar.company-admin {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
+}
+
+.user-avatar.branch-manager {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.user-avatar.standard-user {
+    background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-info h4 {
+    font-size: 1.05rem;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-badge.global-admin {
+    background-color: rgba(147, 51, 234, 0.1);
+    color: #9333ea;
+}
+
+.role-badge.company-admin {
+    background-color: rgba(14, 165, 233, 0.1);
+    color: #0ea5e9;
+}
+
+.role-badge.branch-manager {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.role-badge.standard-user {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+}
+
+.status-indicator.active {
+    background-color: var(--success-bg);
+    color: var(--success);
+}
+
+.status-indicator.active::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--success);
+    margin-right: 0.35rem;
+    box-shadow: 0 0 0 rgba(var(--success-rgb), 0.4);
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.inactive {
+    background-color: rgba(var(--text-secondary-rgb), 0.1);
+    color: var(--text-muted);
+}
+
+.status-indicator.inactive::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+    margin-right: 0.35rem;
+}
+
+@@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(var(--success-rgb), 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0);
+    }
+}
+
+.user-contact {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.6;
+}
+
+.user-contact span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-contact i {
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+}
+
+/* Empty States Messages */
+.no-branches-message,
+.no-users-message {
+    background-color: var(--subtle-bg);
+    border-radius: 12px;
+    border: 1.5px dashed var(--border-divider);
+    padding: 2.75rem;
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.no-branches-message:hover,
+.no-users-message:hover {
+    border-color: var(--border-color);
+    background-color: rgba(var(--primary-rgb), 0.02);
+}
+
+.no-branches-message > i,
+.no-users-message > i {
+    font-size: 2.75rem;
+    color: var(--primary);
+    opacity: 0.2;
+    margin-bottom: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.no-branches-message:hover i,
+.no-users-message:hover i {
+    opacity: 0.4;
+    transform: scale(1.1);
+}
+
+.no-branches-message p,
+.no-users-message p {
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+}
+
+/* Loading, Error, Empty States */
+.loading-state,
+.error-state,
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 2rem;
+    text-align: center;
+    min-height: 60vh;
+}
+
+.error-state i,
+.empty-state .empty-animation i {
+    font-size: 4.5rem;
+    margin-bottom: 1.75rem;
+    transition: all 0.3s ease;
+}
+
+.error-state i {
+    color: var(--danger);
+}
+
+.empty-state .empty-animation {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.75rem;
+}
+
+.empty-state .empty-animation i:first-child {
+    color: var(--text-muted);
+    font-size: 4.5rem;
+}
+
+.empty-state .empty-animation i:last-child {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    font-size: 2.5rem;
+    color: var(--primary);
+    background-color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    animation: pulse-animation 2s infinite;
+}
+
+@@keyframes pulse-animation {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+    }
+}
+
+.loading-state h3,
+.error-state h3,
+.empty-state h3 {
+    font-size: 1.6rem;
+    margin-bottom: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+    max-width: 500px;
+    margin-bottom: 2.25rem;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.loading-animation {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2.25rem;
+}
+
+.loading-circle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    opacity: 0.3;
+    animation: loadingPulse 1.5s infinite ease-in-out both;
+}
+
+.loading-circle:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.loading-circle:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.loading-circle:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@@keyframes loadingPulse {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.empty-actions {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.primary-action {
+    min-width: 220px;
+}
+
+.retry-button {
+    min-width: 150px;
+}
+
+/* Animation enhancements */
+@@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Responsive Adjustments */
+@@media (max-width: 1200px) {
+    .company-details {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .dashboard-header {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-content {
+        padding: 1.5rem;
+    }
+}
+
+@@media (max-width: 992px) {
+    .header-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .search-wrapper {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .company-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .company-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .users-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 1.25rem;
+    }
+    
+    .header-title h1 {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-content {
+        padding: 1.25rem;
+    }
+    
+    .company-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .branch-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .branch-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .branch-tabs {
+        padding: 1.25rem;
+    }
+    
+    .users-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .no-branches-message,
+    .no-users-message {
+        padding: 2rem;
+    }
+}
+
+@@media (max-width: 576px) {
+    .dashboard-header {
+        padding: 1rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-wrapper {
+        width: 100%;
+    }
+    
+    .dashboard-content {
+        padding: 1rem;
+    }
+    
+    .company-card-header {
+        padding: 1.25rem;
+    }
+    
+    .company-info {
+        width: 100%;
+    }
+    
+    .branch-tabs-header {
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+    }
+    
+    .branch-tab {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    .user-card {
+        padding: 1rem;
+    }
+}
+
+@@media (max-width: 480px) {
+    .company-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .company-actions {
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .user-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .dashboard-content {
+        padding: 0.75rem;
+    }
+    
+    .no-branches-message,
+    .no-users-message {
+        padding: 1.5rem;
+    }
+}
+
+@@media (max-width: 400px) {
+    .header-title h1 {
+        font-size: 1.3rem;
+    }
+    
+    .header-title p {
+        font-size: 0.85rem;
+    }
+    
+    .company-card-header {
+        padding: 1rem;
+    }
+    
+    .company-details {
+        padding: 1rem;
+    }
+    
+    .branch-tabs {
+        padding: 1rem;
+    }
+    
+    .company-avatar {
+        width: 42px;
+        height: 42px;
+        font-size: 1.3rem;
+    }
+    
+    .company-title h2 {
+        font-size: 1.1rem;
+    }
+    
+    .company-meta {
+        font-size: 0.8rem;
+    }
+    
+    .user-info h4 {
+        font-size: 0.95rem;
+    }
+    
+    .role-badge {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.5rem;
+    }
+    
+    .user-contact {
+        font-size: 0.75rem;
+    }
+}
+</style>
+
 @code {
     private string searchTerm = string.Empty;
     private bool isLoading = true;
@@ -265,6 +1390,10 @@
 
     // Data
     private List<Company> companies = new List<Company>();
+    
+    // UI State
+    private HashSet<int> expandedCompanies = new HashSet<int>();
+    private Dictionary<int, int> activeBranchTabs = new Dictionary<int, int>();
 
     // Dialog states
     private bool companyDialogVisible = false;
@@ -303,6 +1432,22 @@
         await LoadCompanies();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Add scroll into view behavior for expanded companies
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.scrollElementIntoView = function(elementId) {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            ");
+        }
+    }
+
     private async Task LoadCompanies()
     {
         isLoading = true;
@@ -336,7 +1481,18 @@
                                     branch.Users = (List<ApplicationUser>)usersResponse.Response;
                                 }
                             }
+                            
+                            // Set active branch tab to first branch
+                            if (company.Branches.Any())
+                            {
+                                activeBranchTabs[company.Id] = company.Branches.First().Id;
+                            }
                         }
+                    }
+                    else if (company.Branches.Any() && !activeBranchTabs.ContainsKey(company.Id))
+                    {
+                        // Set active branch tab to first branch if not set
+                        activeBranchTabs[company.Id] = company.Branches.First().Id;
                     }
                 }
             }
@@ -392,6 +1548,18 @@
         };
     }
 
+    private string GetRoleClass(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.GlobalAdmin => "global-admin",
+            UserRole.CompanyAdmin => "company-admin",
+            UserRole.BranchManager => "branch-manager",
+            UserRole.StandardUser => "standard-user",
+            _ => "standard-user"
+        };
+    }
+
     private string GetRoleName(UserRole role)
     {
         return role switch
@@ -403,6 +1571,41 @@
             _ => "Unknown Role"
         };
     }
+    
+    // UI State Management
+    private bool IsExpanded(int companyId)
+    {
+        return expandedCompanies.Contains(companyId);
+    }
+    
+    private async Task ToggleCompanyExpansion(int companyId)
+    {
+        if (expandedCompanies.Contains(companyId))
+        {
+            expandedCompanies.Remove(companyId);
+        }
+        else
+        {
+            expandedCompanies.Add(companyId);
+            
+            // Ensure a branch tab is selected
+            var company = companies.FirstOrDefault(c => c.Id == companyId);
+            if (company?.Branches != null && company.Branches.Any() && !activeBranchTabs.ContainsKey(companyId))
+            {
+                activeBranchTabs[companyId] = company.Branches.First().Id;
+            }
+            
+            // Scroll expanded company into view
+            await Task.Delay(100); // Small delay to let the DOM update
+            await JSRuntime.InvokeVoidAsync("scrollElementIntoView", $"company-{companyId}");
+        }
+    }
+    
+    private void SetActiveBranchTab(int companyId, int branchId)
+    {
+        activeBranchTabs[companyId] = branchId;
+        StateHasChanged();
+    }
 
     // Company Dialog Methods
     private void OpenCompanyDialog()
@@ -411,13 +1614,13 @@
             {
                 Address = new Address(),
                 EmailAddresses = new List<Email>
-            {
-                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Company" }
-            },
+                {
+                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Company" }
+                },
                 ContactNumbers = new List<ContactNumber>
-            {
-                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Company", Type = ContactNumberType.Mobile }
-            }
+                {
+                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Company", Type = ContactNumberType.Mobile }
+                }
             };
         editMode = false;
         companyDialogVisible = true;
@@ -489,7 +1692,6 @@
             else
             {
                 company.CreatedOn = DateTime.Now;
-               // company.CreatedBy = 1; // Replace with actual logged-in user ID
                 company.IsActive = true;
 
                 // Initialize collections if null
@@ -533,6 +1735,16 @@
             {
                 ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
                 await LoadCompanies();
+                
+                // Auto-expand newly created company
+                if (!editMode && response.Response != null)
+                {
+                    var newCompany = response.Response as Company;
+                    if (newCompany != null)
+                    {
+                        expandedCompanies.Add(newCompany.Id);
+                    }
+                }
             }
             else
             {
@@ -560,13 +1772,13 @@
                 CompanyId = companyId,
                 Address = new Address(),
                 EmailAddresses = new List<Email>
-            {
-                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch" }
-            },
+                {
+                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch" }
+                },
                 ContactNumbers = new List<ContactNumber>
-            {
-                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch", Type = ContactNumberType.Mobile }
-            }
+                {
+                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch", Type = ContactNumberType.Mobile }
+                }
             };
         editMode = false;
         branchDialogVisible = true;
@@ -682,7 +1894,24 @@
             if (response.ResponseInfo.Success)
             {
                 ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                
+                // Ensure company is expanded
+                if (!expandedCompanies.Contains(branch.CompanyId))
+                {
+                    expandedCompanies.Add(branch.CompanyId);
+                }
+                
                 await LoadCompanies();
+                
+                // Set active tab to the new/edited branch
+                if (response.Response != null)
+                {
+                    var updatedBranch = response.Response as Branch;
+                    if (updatedBranch != null)
+                    {
+                        activeBranchTabs[updatedBranch.CompanyId] = updatedBranch.Id;
+                    }
+                }
             }
             else
             {
@@ -713,13 +1942,13 @@
                 Role = UserRole.StandardUser,
                 IsActive = true,
                 EmailAddresses = new List<Email>
-            {
-                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "User" }
-            },
+                {
+                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "User" }
+                },
                 ContactNumbers = new List<ContactNumber>
-            {
-                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "User", Type = ContactNumberType.Mobile }
-            }
+                {
+                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "User", Type = ContactNumberType.Mobile }
+                }
             };
         editMode = false;
         userDialogVisible = true;
@@ -824,6 +2053,19 @@
             if (response.ResponseInfo.Success)
             {
                 ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                
+                // Ensure company is expanded
+                if (!expandedCompanies.Contains(user.CompanyId ?? 0))
+                {
+                    expandedCompanies.Add(user.CompanyId ?? 0);
+                }
+                
+                // Ensure correct branch tab is active
+                if (user.BranchId.HasValue)
+                {
+                    activeBranchTabs[user.CompanyId ?? 0] = user.BranchId.Value;
+                }
+                
                 await LoadCompanies();
             }
             else

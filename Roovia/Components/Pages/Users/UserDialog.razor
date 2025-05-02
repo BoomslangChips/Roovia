@@ -8,225 +8,312 @@
          OnConfirm="HandleValidSubmit"
          ConfirmText="Save"
          CancelText="Cancel"
-         Size="md">
+         Size="md"
+         CssClass="user-dialog-modal">
     <ChildContent>
-        <EditForm Model="UserModel" OnValidSubmit="HandleValidSubmit">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="col-span-1">
-                    <RVTextbox Label="First Name"
-                               Id="firstName"
-                               Value="@UserModel.FirstName"
-                               ValueChanged="@((string val) => UserModel.FirstName = val)"
-                               IsValid="@(!string.IsNullOrEmpty(UserModel.FirstName))"
-                               ValidationMessage="First name is required"
-                               IconLeft="far fa-user" />
-                </div>
-
-                <div class="col-span-1">
-                    <RVTextbox Label="Last Name"
-                               Id="lastName"
-                               Value="@UserModel.LastName"
-                               ValueChanged="@((string val) => UserModel.LastName = val)"
-                               IsValid="@(!string.IsNullOrEmpty(UserModel.LastName))"
-                               ValidationMessage="Last name is required"
-                               IconLeft="far fa-user" />
-                </div>
-
-                <div class="col-span-2">
-                    <h5 class="text-primary font-weight-semibold mb-2">Primary Contact Information</h5>
-                </div>
-
-                <div class="col-span-2">
-                    <RVTextbox Label="Primary Email"
-                               Id="primaryEmail"
-                               Type="email"
-                               Value="@PrimaryEmail"
-                               ValueChanged="@((string val) => UpdatePrimaryEmail(val))"
-                               IsValid="@(!string.IsNullOrEmpty(PrimaryEmail) && IsValidEmail(PrimaryEmail))"
-                               ValidationMessage="Valid primary email is required"
-                               IconLeft="far fa-envelope" />
-                </div>
-
-                <div class="col-span-2">
-                    <RVTextbox Label="Primary Phone Number"
-                               Id="primaryContactNumber"
-                               Value="@PrimaryContactNumber"
-                               ValueChanged="@((string val) => UpdatePrimaryContactNumber(val))"
-                               IsValid="@(!string.IsNullOrEmpty(PrimaryContactNumber))"
-                               ValidationMessage="Primary phone number is required"
-                               IconLeft="far fa-phone" />
-                </div>
-
-                <div class="col-span-2">
-                    <div class="form-group mb-3">
-                        <label class="form-label text-primary font-weight-semibold mb-2">User Role</label>
-                        <RVDropdown Items="@RoleOptions"
-                                    SelectedValue="@SelectedRole"
-                                    SelectedValueChanged="@OnRoleChanged"
-                                    TriggerText="@GetRoleName(UserModel.Role.GetValueOrDefault())"
-                                    TriggerIcon="far fa-shield-check"
-                                    ButtonType="outline"
-                                    FullWidth="true" />
-                    </div>
-                </div>
-
-                <div class="col-span-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" @bind="UserModel.IsActive" id="userActive">
-                        <label class="form-check-label" for="userActive">
-                            Is Active
-                        </label>
-                    </div>
-                </div>
-
-                @if (!IsEdit)
-                {
-                    <div class="col-span-2">
-                        <RVTextbox Label="Password"
-                                   Id="password"
-                                   Type="password"
-                                   Value="@Password"
-                                   ValueChanged="@((string val) => Password = val)"
-                                   IsValid="@(!string.IsNullOrEmpty(Password) && Password.Length >= 6)"
-                                   ValidationMessage="Password must be at least 6 characters"
-                                   IconLeft="far fa-lock" />
+        <div class="user-form">
+            <EditForm Model="UserModel" OnValidSubmit="HandleValidSubmit">
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3><i class="far fa-user-circle"></i> Personal Information</h3>
+                        <p>Enter user's personal details</p>
                     </div>
 
-                    <div class="col-span-2">
-                        <RVTextbox Label="Confirm Password"
-                                   Id="confirmPassword"
-                                   Type="password"
-                                   Value="@ConfirmPassword"
-                                   ValueChanged="@((string val) => ConfirmPassword = val)"
-                                   IsValid="@(Password == ConfirmPassword)"
-                                   ValidationMessage="Passwords do not match"
-                                   IconLeft="far fa-lock" />
-                    </div>
-                }
+                    <div class="form-row">
+                        <div class="form-group">
+                            <RVTextbox Label="First Name"
+                                       Id="firstName"
+                                       Value="@UserModel.FirstName"
+                                       ValueChanged="@((string val) => UserModel.FirstName = val)"
+                                       IsValid="@(!string.IsNullOrEmpty(UserModel.FirstName))"
+                                       ValidationMessage="First name is required"
+                                       IconLeft="far fa-user"
+                                       CssClass="modern-input" />
+                        </div>
 
-                @if (IsEdit && UserModel.EmailAddresses != null && UserModel.EmailAddresses.Count > 1)
-                {
-                    <div class="col-span-2">
-                        <h5 class="text-primary font-weight-semibold mb-2">Additional Email Addresses</h5>
-                        <div class="grid grid-cols-1 gap-2">
-                            @foreach (var email in UserModel.EmailAddresses.Where(e => !e.IsPrimary))
+                        <div class="form-group">
+                            <RVTextbox Label="Last Name"
+                                       Id="lastName"
+                                       Value="@UserModel.LastName"
+                                       ValueChanged="@((string val) => UserModel.LastName = val)"
+                                       IsValid="@(!string.IsNullOrEmpty(UserModel.LastName))"
+                                       ValidationMessage="Last name is required"
+                                       IconLeft="far fa-user"
+                                       CssClass="modern-input" />
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <h3><i class="far fa-address-card"></i> Contact Information</h3>
+                        <p>How to reach this user</p>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <RVTextbox Label="Email Address"
+                                   Id="primaryEmail"
+                                   Type="email"
+                                   Value="@PrimaryEmail"
+                                   ValueChanged="@((string val) => UpdatePrimaryEmail(val))"
+                                   IsValid="@(!string.IsNullOrEmpty(PrimaryEmail) && IsValidEmail(PrimaryEmail))"
+                                   ValidationMessage="Valid email address is required"
+                                   IconLeft="far fa-envelope"
+                                   CssClass="modern-input" />
+                    </div>
+
+                    <div class="form-group full-width">
+                        <RVTextbox Label="Phone Number"
+                                   Id="primaryContactNumber"
+                                   Value="@PrimaryContactNumber"
+                                   ValueChanged="@((string val) => UpdatePrimaryContactNumber(val))"
+                                   IsValid="@(!string.IsNullOrEmpty(PrimaryContactNumber))"
+                                   ValidationMessage="Phone number is required"
+                                   IconLeft="far fa-phone"
+                                   CssClass="modern-input" />
+                    </div>
+
+                    <div class="section-header">
+                        <h3><i class="far fa-shield-check"></i> Role & Permissions</h3>
+                        <p>Set access level and activation status</p>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="modern-label">User Role</label>
+                        <div class="role-selector">
+                            @foreach (var role in RoleOptions)
                             {
-                                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <i class="far fa-envelope me-2"></i>
-                                            <span>@email.EmailAddress</span>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(email.Description))
-                                        {
-                                            <small class="text-muted">@email.Description</small>
-                                        }
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <RVButton Text=""
-                                                  IconLeft="far fa-edit"
-                                                  ButtonType="outline"
-                                                  Size="sm"
-                                                  OnClick="() => EditEmail(email)" />
-                                        <RVButton Text=""
-                                                  IconLeft="far fa-trash"
-                                                  ButtonType="outline-danger"
-                                                  Size="sm"
-                                                  OnClick="() => RemoveEmail(email)" />
+                                <div class="role-option @(SelectedRole == role.Value ? "selected" : "")"
+                                     @onclick="() => OnRoleChanged(role.Value)">
+                                    <div class="role-icon"><i class="@role.Icon"></i></div>
+                                    <div class="role-info">
+                                        <div class="role-name">@role.Text</div>
+                                        <div class="role-description">@GetRoleDescription(role.Value)</div>
                                     </div>
                                 </div>
                             }
                         </div>
-                        <div class="mt-2">
-                            <RVButton Text="Add Email"
-                                      IconLeft="far fa-plus"
-                                      ButtonType="outline-primary"
-                                      Size="sm"
-                                      OnClick="AddEmail" />
-                        </div>
                     </div>
-                }
 
-                @if (IsEdit && UserModel.ContactNumbers != null && UserModel.ContactNumbers.Count > 1)
-                {
-                    <div class="col-span-2">
-                        <h5 class="text-primary font-weight-semibold mb-2">Additional Contact Numbers</h5>
-                        <div class="grid grid-cols-1 gap-2">
+                    <div class="modern-checkbox">
+                        <label class="checkbox-container">
+                            <input type="checkbox" @bind="UserModel.IsActive" id="userActive" />
+                            <span class="checkmark"></span>
+                            <span class="checkbox-label">Account is active</span>
+                        </label>
+                        <div class="checkbox-hint">Inactive accounts cannot log in to the system</div>
+                    </div>
+
+                    @if (!IsEdit)
+                    {
+                        <div class="section-header">
+                            <h3><i class="far fa-lock"></i> Account Security</h3>
+                            <p>Set initial password for the user</p>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <RVTextbox Label="Password"
+                                       Id="password"
+                                       Type="password"
+                                       Value="@Password"
+                                       ValueChanged="@((string val) => Password = val)"
+                                       IsValid="@(!string.IsNullOrEmpty(Password) && Password.Length >= 6)"
+                                       ValidationMessage="Password must be at least 6 characters"
+                                       IconLeft="far fa-lock"
+                                       CssClass="modern-input" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <RVTextbox Label="Confirm Password"
+                                       Id="confirmPassword"
+                                       Type="password"
+                                       Value="@ConfirmPassword"
+                                       ValueChanged="@((string val) => ConfirmPassword = val)"
+                                       IsValid="@(Password == ConfirmPassword)"
+                                       ValidationMessage="Passwords do not match"
+                                       IconLeft="far fa-lock-keyhole"
+                                       CssClass="modern-input" />
+                        </div>
+
+                        <div class="password-requirements">
+                            <div class="requirement @(Password?.Length >= 6 ? "met" : "")">
+                                <i class="@(Password?.Length >= 6 ? "far fa-check-circle" : "far fa-circle")"></i>
+                                <span>At least 6 characters</span>
+                            </div>
+                            <div class="requirement @(Password?.Any(char.IsUpper) == true ? "met" : "")">
+                                <i class="@(Password?.Any(char.IsUpper) == true ? "far fa-check-circle" : "far fa-circle")"></i>
+                                <span>One uppercase letter</span>
+                            </div>
+                            <div class="requirement @(Password?.Any(char.IsLower) == true ? "met" : "")">
+                                <i class="@(Password?.Any(char.IsLower) == true ? "far fa-check-circle" : "far fa-circle")"></i>
+                                <span>One lowercase letter</span>
+                            </div>
+                            <div class="requirement @(Password?.Any(char.IsDigit) == true ? "met" : "")">
+                                <i class="@(Password?.Any(char.IsDigit) == true ? "far fa-check-circle" : "far fa-circle")"></i>
+                                <span>One number</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if (IsEdit && UserModel.EmailAddresses != null && UserModel.EmailAddresses.Count > 1)
+                    {
+                        <div class="section-header with-actions">
+                            <div>
+                                <h3><i class="far fa-envelope-open"></i> Additional Email Addresses</h3>
+                                <p>Alternative contact emails for this user</p>
+                            </div>
+                            <button type="button" class="add-item-btn" @onclick="AddEmail">
+                                <i class="far fa-plus"></i>
+                                <span>Add Email</span>
+                            </button>
+                        </div>
+
+                        <div class="contact-items">
+                            @foreach (var email in UserModel.EmailAddresses.Where(e => !e.IsPrimary))
+                            {
+                                <div class="contact-item">
+                                    <div class="contact-item-icon">
+                                        <i class="far fa-envelope"></i>
+                                    </div>
+                                    <div class="contact-item-details">
+                                        <div class="contact-item-primary">@email.EmailAddress</div>
+                                        @if (!string.IsNullOrEmpty(email.Description))
+                                        {
+                                            <div class="contact-item-secondary">@email.Description</div>
+                                        }
+                                    </div>
+                                    <div class="contact-item-actions">
+                                        <button type="button" class="item-action edit" @onclick="() => EditEmail(email)">
+                                            <i class="far fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="item-action delete" @onclick="() => RemoveEmail(email)">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (IsEdit)
+                    {
+                        <div class="section-header with-actions">
+                            <div>
+                                <h3><i class="far fa-envelope-open"></i> Additional Email Addresses</h3>
+                                <p>Alternative contact emails for this user</p>
+                            </div>
+                            <button type="button" class="add-item-btn" @onclick="AddEmail">
+                                <i class="far fa-plus"></i>
+                                <span>Add Email</span>
+                            </button>
+                        </div>
+                        <div class="no-items-message">
+                            <i class="far fa-envelope-open"></i>
+                            <p>No additional email addresses have been added</p>
+                        </div>
+                    }
+
+                    @if (IsEdit && UserModel.ContactNumbers != null && UserModel.ContactNumbers.Count > 1)
+                    {
+                        <div class="section-header with-actions">
+                            <div>
+                                <h3><i class="far fa-phone-alt"></i> Additional Contact Numbers</h3>
+                                <p>Alternative phone numbers for this user</p>
+                            </div>
+                            <button type="button" class="add-item-btn" @onclick="AddContactNumber">
+                                <i class="far fa-plus"></i>
+                                <span>Add Number</span>
+                            </button>
+                        </div>
+
+                        <div class="contact-items">
                             @foreach (var contact in UserModel.ContactNumbers.Where(c => !c.IsPrimary))
                             {
-                                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <i class="far fa-phone me-2"></i>
-                                            <span>@contact.Number</span>
-                                        </div>
-                                        <div class="d-flex gap-2">
-                                            <small class="text-muted">@contact.Type</small>
+                                <div class="contact-item">
+                                    <div class="contact-item-icon contact-@contact.Type.ToString().ToLower()">
+                                        <i class="@GetContactTypeIcon(contact.Type)"></i>
+                                    </div>
+                                    <div class="contact-item-details">
+                                        <div class="contact-item-primary">@contact.Number</div>
+                                        <div class="contact-item-secondary">
+                                            <span class="contact-type">@contact.Type</span>
                                             @if (!string.IsNullOrEmpty(contact.Description))
                                             {
-                                                <small class="text-muted">(@contact.Description)</small>
+                                                <span class="contact-description">@contact.Description</span>
                                             }
                                         </div>
                                     </div>
-                                    <div class="d-flex gap-2">
-                                        <RVButton Text=""
-                                                  IconLeft="far fa-edit"
-                                                  ButtonType="outline"
-                                                  Size="sm"
-                                                  OnClick="() => EditContactNumber(contact)" />
-                                        <RVButton Text=""
-                                                  IconLeft="far fa-trash"
-                                                  ButtonType="outline-danger"
-                                                  Size="sm"
-                                                  OnClick="() => RemoveContactNumber(contact)" />
+                                    <div class="contact-item-actions">
+                                        <button type="button" class="item-action edit" @onclick="() => EditContactNumber(contact)">
+                                            <i class="far fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="item-action delete" @onclick="() => RemoveContactNumber(contact)">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
                                     </div>
                                 </div>
                             }
                         </div>
-                        <div class="mt-2">
-                            <RVButton Text="Add Contact Number"
-                                      IconLeft="far fa-plus"
-                                      ButtonType="outline-primary"
-                                      Size="sm"
-                                      OnClick="AddContactNumber" />
+                    }
+                    else if (IsEdit)
+                    {
+                        <div class="section-header with-actions">
+                            <div>
+                                <h3><i class="far fa-phone-alt"></i> Additional Contact Numbers</h3>
+                                <p>Alternative phone numbers for this user</p>
+                            </div>
+                            <button type="button" class="add-item-btn" @onclick="AddContactNumber">
+                                <i class="far fa-plus"></i>
+                                <span>Add Number</span>
+                            </button>
                         </div>
-                    </div>
-                }
-            </div>
-        </EditForm>
+                        <div class="no-items-message">
+                            <i class="far fa-phone"></i>
+                            <p>No additional contact numbers have been added</p>
+                        </div>
+                    }
+                </div>
+            </EditForm>
+        </div>
     </ChildContent>
 </RVModal>
 
 @if (emailDialogVisible)
 {
     <RVModal IsVisible="true"
-             Title="@(editingEmail.Id == 0 ? "Add Email" : "Edit Email")"
+             Title="@(editingEmail.Id == 0 ? "Add Email Address" : "Edit Email Address")"
              OnClose="CloseEmailDialog"
              OnConfirm="SaveEmail"
              ConfirmText="Save"
              CancelText="Cancel"
-             Size="sm">
+             Size="sm"
+             CssClass="contact-dialog-modal">
         <ChildContent>
-            <div class="grid grid-cols-1 gap-3">
-                <RVTextbox Label="Email Address"
-                           Id="emailAddress"
-                           Type="email"
-                           Value="@editingEmail.EmailAddress"
-                           ValueChanged="@((string val) => editingEmail.EmailAddress = val)"
-                           IsValid="@(!string.IsNullOrEmpty(editingEmail.EmailAddress) && IsValidEmail(editingEmail.EmailAddress))"
-                           ValidationMessage="Valid email address is required"
-                           IconLeft="far fa-envelope" />
+            <div class="form-section">
+                <div class="form-group full-width">
+                    <RVTextbox Label="Email Address"
+                               Id="emailAddress"
+                               Type="email"
+                               Value="@editingEmail.EmailAddress"
+                               ValueChanged="@((string val) => editingEmail.EmailAddress = val)"
+                               IsValid="@(!string.IsNullOrEmpty(editingEmail.EmailAddress) && IsValidEmail(editingEmail.EmailAddress))"
+                               ValidationMessage="Valid email address is required"
+                               IconLeft="far fa-envelope"
+                               CssClass="modern-input" />
+                </div>
 
-                <RVTextbox Label="Description (Optional)"
-                           Id="emailDescription"
-                           Value="@editingEmail.Description"
-                           ValueChanged="@((string val) => editingEmail.Description = val)"
-                           IconLeft="far fa-tag" />
+                <div class="form-group full-width">
+                    <RVTextbox Label="Description (Optional)"
+                               Id="emailDescription"
+                               Value="@editingEmail.Description"
+                               ValueChanged="@((string val) => editingEmail.Description = val)"
+                               Placeholder="e.g. Personal, Work, Recovery"
+                               IconLeft="far fa-tag"
+                               CssClass="modern-input" />
+                </div>
 
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" @bind="editingEmail.IsActive" id="emailActive">
-                    <label class="form-check-label" for="emailActive">
-                        Is Active
+                <div class="modern-checkbox">
+                    <label class="checkbox-container">
+                        <input type="checkbox" @bind="editingEmail.IsActive" id="emailActive" />
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">Is Active</span>
                     </label>
                 </div>
             </div>
@@ -242,43 +329,603 @@
              OnConfirm="SaveContactNumber"
              ConfirmText="Save"
              CancelText="Cancel"
-             Size="sm">
+             Size="sm"
+             CssClass="contact-dialog-modal">
         <ChildContent>
-            <div class="grid grid-cols-1 gap-3">
-                <RVTextbox Label="Phone Number"
-                           Id="phoneNumber"
-                           Value="@editingContact.Number"
-                           ValueChanged="@((string val) => editingContact.Number = val)"
-                           IsValid="@(!string.IsNullOrEmpty(editingContact.Number))"
-                           ValidationMessage="Phone number is required"
-                           IconLeft="far fa-phone" />
-
-                <div class="form-group">
-                    <label class="form-label">Contact Type</label>
-                    <select class="form-select" @bind="editingContact.Type">
-                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
-                        {
-                            <option value="@type">@type</option>
-                        }
-                    </select>
+            <div class="form-section">
+                <div class="form-group full-width">
+                    <RVTextbox Label="Phone Number"
+                               Id="phoneNumber"
+                               Value="@editingContact.Number"
+                               ValueChanged="@((string val) => editingContact.Number = val)"
+                               IsValid="@(!string.IsNullOrEmpty(editingContact.Number))"
+                               ValidationMessage="Phone number is required"
+                               IconLeft="far fa-phone"
+                               CssClass="modern-input" />
                 </div>
 
-                <RVTextbox Label="Description (Optional)"
-                           Id="contactDescription"
-                           Value="@editingContact.Description"
-                           ValueChanged="@((string val) => editingContact.Description = val)"
-                           IconLeft="far fa-tag" />
+                <div class="form-group full-width">
+                    <label class="modern-label">Contact Type</label>
+                    <div class="contact-type-selector">
+                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                        {
+                            <div class="contact-type-option @(editingContact.Type.ToString() == type.ToString() ? "selected" : "")"
+                                 @onclick="() => editingContact.Type = (ContactNumberType)type">
+                                <i class="@GetContactTypeIcon((ContactNumberType)type)"></i>
+                                <span>@type</span>
+                            </div>
+                        }
+                    </div>
+                </div>
 
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" @bind="editingContact.IsActive" id="contactActive">
-                    <label class="form-check-label" for="contactActive">
-                        Is Active
+                <div class="form-group full-width">
+                    <RVTextbox Label="Description (Optional)"
+                               Id="contactDescription"
+                               Value="@editingContact.Description"
+                               ValueChanged="@((string val) => editingContact.Description = val)"
+                               Placeholder="e.g. Home, Office, Personal"
+                               IconLeft="far fa-tag"
+                               CssClass="modern-input" />
+                </div>
+
+                <div class="modern-checkbox">
+                    <label class="checkbox-container">
+                        <input type="checkbox" @bind="editingContact.IsActive" id="contactActive" />
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">Is Active</span>
                     </label>
                 </div>
             </div>
         </ChildContent>
     </RVModal>
 }
+
+<style>
+    /* User Dialog Styling */
+    .user-dialog-modal :deep(.roovia-modal-content) {
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .user-dialog-modal :deep(.roovia-modal-header) {
+        background: var(--subtle-bg);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+    .user-dialog-modal :deep(.roovia-modal-title h3) {
+        font-weight: 600;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .user-dialog-modal :deep(.roovia-modal-footer) {
+        background: var(--subtle-bg);
+        border-top: 1px solid var(--border-divider);
+    }
+
+    .contact-dialog-modal {
+        --modal-width: 450px;
+    }
+
+    .user-form {
+        padding: 0.5rem 0;
+    }
+
+    .form-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .section-header {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+        .section-header h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .section-header.with-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+    .form-group {
+        margin-bottom: 0.5rem;
+    }
+
+        .form-group.full-width {
+            width: 100%;
+        }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .modern-input:deep(.form-control) {
+        border-radius: 10px;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1.5px solid var(--border-divider);
+        background-color: var(--input-bg);
+        transition: all 0.2s ease;
+    }
+
+    .modern-input:deep(.form-control:focus) {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .modern-input:deep(.input-icon) {
+        left: 1rem;
+        color: var(--primary);
+        opacity: 0.7;
+    }
+
+    .modern-input:deep(.form-label) {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        margin-bottom: 0.4rem;
+    }
+
+    .modern-input:deep(.input-validation-message) {
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+    }
+
+    .modern-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        margin-bottom: 0.4rem;
+        display: block;
+    }
+
+    /* Role selector styling */
+    .role-selector {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .role-option {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        border: 1.5px solid var(--border-divider);
+        background-color: var(--content-bg);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .role-option:hover {
+            border-color: var(--primary-light);
+            background-color: var(--primary-lighter);
+            transform: translateY(-2px);
+        }
+
+        .role-option.selected {
+            border-color: var(--primary);
+            background-color: var(--primary-light);
+        }
+
+    .role-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background-color: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .role-info {
+        flex: 1;
+    }
+
+    .role-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .role-description {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    /* Password requirements */
+    .password-requirements {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 8px;
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-divider);
+    }
+
+    .requirement {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        width: calc(50% - 0.75rem);
+    }
+
+        .requirement i {
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .requirement.met i {
+            color: var(--success);
+        }
+
+    /* Additional contacts styling */
+    .add-item-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border: none;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .add-item-btn:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+    .contact-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        background-color: var(--content-bg);
+        border: 1px solid var(--border-divider);
+        transition: all 0.2s ease;
+    }
+
+        .contact-item:hover {
+            border-color: var(--border-color);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+    .contact-item-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+        .contact-item-icon.contact-mobile {
+            background-color: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+        }
+
+        .contact-item-icon.contact-landline {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .contact-item-icon.contact-fax {
+            background-color: rgba(168, 85, 247, 0.1);
+            color: #a855f7;
+        }
+
+        .contact-item-icon.contact-whatsapp {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+
+    .contact-item-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .contact-item-primary {
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .contact-item-secondary {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .contact-type {
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .contact-description {
+        color: var(--text-muted);
+    }
+
+    .contact-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .item-action {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        border: 1px solid var(--border-divider);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .item-action.edit:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            border-color: var(--primary-light);
+        }
+
+        .item-action.delete:hover {
+            background-color: var(--danger-light);
+            color: var(--danger);
+            border-color: var(--danger-light);
+        }
+
+    .no-items-message {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        background-color: var(--subtle-bg);
+        border-radius: 10px;
+        border: 1.5px dashed var(--border-divider);
+        color: var(--text-muted);
+    }
+
+        .no-items-message i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .no-items-message p {
+            margin: 0;
+            color: var(--text-secondary);
+        }
+
+    /* Contact type selector */
+    .contact-type-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .contact-type-option {
+        flex: 1;
+        min-width: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1.5px solid var(--border-divider);
+        background-color: var(--content-bg);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .contact-type-option:hover {
+            border-color: var(--primary-light);
+            background-color: var(--primary-lighter);
+            color: var(--primary);
+        }
+
+        .contact-type-option.selected {
+            border-color: var(--primary);
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .contact-type-option i {
+            font-size: 1.2rem;
+        }
+
+        .contact-type-option span {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+    /* Modern checkbox */
+    .modern-checkbox {
+        margin-top: 0.5rem;
+    }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+    }
+
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+        }
+
+    .checkmark {
+        height: 20px;
+        width: 20px;
+        border-radius: 6px;
+        border: 1.5px solid var(--border-divider);
+        background-color: var(--content-bg);
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-container input:checked ~ .checkmark {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 6px;
+        top: 2px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+    .checkbox-container input:checked ~ .checkmark:after {
+        display: block;
+    }
+
+    .checkbox-label {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .checkbox-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+        margin-left: 2.75rem;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .form-row
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .section-header.with-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+
+    .add-item-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .contact-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .contact-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
+
+    .requirement {
+        width: 100%;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .role-option
+
+    {
+        flex-direction: column;
+        padding: 1rem;
+        align-items: center;
+        text-align: center;
+    }
+
+    .role-icon {
+        margin-bottom: 0.5rem;
+    }
+
+    .contact-type-selector {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 400px) {
+        .contact-type-selector
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    }
+</style>
 
 @code {
     [Parameter] public bool IsVisible { get; set; }
@@ -466,6 +1113,30 @@
             UserRole.BranchManager => "Branch Manager",
             UserRole.StandardUser => "Standard User",
             _ => "Select Role"
+        };
+    }
+
+    private string GetRoleDescription(string roleValue)
+    {
+        return roleValue switch
+        {
+            "1" => "Full access to all companies and system settings",
+            "2" => "Manage all branches and users within a company",
+            "3" => "Manage users and data for a specific branch",
+            "4" => "Regular access with limited permissions",
+            _ => ""
+        };
+    }
+
+    private string GetContactTypeIcon(ContactNumberType type)
+    {
+        return type switch
+        {
+            ContactNumberType.Mobile => "far fa-mobile-alt",
+            ContactNumberType.Landline => "far fa-phone-office",
+            ContactNumberType.Fax => "far fa-fax",
+            ContactNumberType.WhatsApp => "fab fa-whatsapp",
+            _ => "far fa-phone"
         };
     }
 
