@@ -495,22 +495,20 @@
                                         }
                                     </div>
 
-                                    <div class="terms-container">
-                                        <div class="custom-checkbox">
-                                            <input type="checkbox" id="terms-checkbox" @bind="AcceptTerms" />
-                                            <label for="terms-checkbox">
-                                                <span class="checkbox-visual"></span>
-                                                <span class="checkbox-text">I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a></span>
-                                            </label>
-                                        </div>
-                                        @if (!AcceptTerms && TermsValidated)
-                                        {
-                                            <div class="error-message terms-error">
-                                                <i class="fal fa-circle-exclamation"></i>
-                                                <span>You must agree to the terms and conditions</span>
-                                            </div>
-                                        }
-                                    </div>
+<div class="terms-container">
+    <label class="custom-checkbox">
+        <InputCheckbox @bind-Value="AcceptTerms" id="terms-checkbox" class="checkbox-input" />
+        <span class="checkbox-visual"></span>
+        <span class="checkbox-text">I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a></span>
+    </label>
+    @if (!AcceptTerms && TermsValidated)
+    {
+        <div class="error-message terms-error">
+            <i class="fal fa-circle-exclamation"></i>
+            <span>You must agree to the terms and conditions</span>
+        </div>
+    }
+</div>
                                 </div>
                             </div>
                             break;
@@ -1083,7 +1081,7 @@
         font-size: var(--font-size-base);
         transition: all 0.2s ease;
         width: 100%;
-        padding-left: 2rem;
+        padding-left: 2.5rem;
     }
 
         .form-control:focus {
@@ -1753,6 +1751,88 @@
     color: var(--danger);
     animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
 }
+
+/* Terms Container */
+.terms-container {
+    margin-top: var(--spacing-4);
+}
+
+.custom-checkbox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding-left: 36px;
+    margin-bottom: var(--spacing-2);
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.checkbox-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkbox-visual {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 24px;
+    width: 24px;
+    background-color: var(--input-bg);
+    border: 1.5px solid var(--border-divider);
+    border-radius: var(--border-radius-sm);
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.custom-checkbox input:checked ~ .checkbox-visual {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkbox-visual:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 8px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.custom-checkbox input:checked ~ .checkbox-visual:after {
+    display: block;
+}
+
+.checkbox-text {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 24px;
+}
+
+.terms-link {
+    color: var(--primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.terms-link:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+}
+
+.terms-error {
+    margin-top: var(--spacing-2);
+}
+
 </style>
 
 @code {
