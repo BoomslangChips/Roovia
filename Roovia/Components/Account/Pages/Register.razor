@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using Roovia.Data
 @using Roovia.Models.Users
+@using Roovia.Models.Helper
+@using Roovia.Interfaces
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -15,43 +17,161 @@
 @inject ILogger<Register> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject IUser UserService
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Register - Roovia Estate Agent Management</PageTitle>
 
-<h1>Register</h1>
+<div class="container">
+    <h1 class="mb-4">Create Your Account</h1>
 
-<div class="row">
-    <div class="col-lg-6">
-        <StatusMessage Message="@Message" />
-        <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
-            <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="Input.Email">Email</label>
-                <ValidationMessage For="() => Input.Email" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="Input.Password">Password</label>
-                <ValidationMessage For="() => Input.Password" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="Input.ConfirmPassword">Confirm Password</label>
-                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
-    </div>
-    <div class="col-lg-4 col-lg-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <StatusMessage Message="@Message" />
+            <EditForm Model="Input" OnValidSubmit="RegisterUser" FormName="register">
+                <DataAnnotationsValidator />
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Personal Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_FirstName" class="form-label">First Name</label>
+                                <InputText @bind-Value="Input.FirstName" id="Input_FirstName" class="form-control" autocomplete="given-name" aria-required="true" />
+                                <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_LastName" class="form-label">Last Name</label>
+                                <InputText @bind-Value="Input.LastName" id="Input_LastName" class="form-control" autocomplete="family-name" aria-required="true" />
+                                <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_Email" class="form-label">Email Address</label>
+                            <InputText @bind-Value="Input.Email" id="Input_Email" class="form-control" autocomplete="email" aria-required="true" />
+                            <ValidationMessage For="() => Input.Email" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_PhoneNumber" class="form-label">Mobile Number</label>
+                            <InputText @bind-Value="Input.PhoneNumber" id="Input_PhoneNumber" class="form-control" autocomplete="tel" aria-required="true" />
+                            <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_Password" class="form-label">Password</label>
+                                <InputText type="password" @bind-Value="Input.Password" id="Input_Password" class="form-control" autocomplete="new-password" aria-required="true" />
+                                <ValidationMessage For="() => Input.Password" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_ConfirmPassword" class="form-label">Confirm Password</label>
+                                <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input_ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
+                                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Company Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="Input_CompanyName" class="form-label">Company Name</label>
+                            <InputText @bind-Value="Input.CompanyName" id="Input_CompanyName" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.CompanyName" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_RegistrationNumber" class="form-label">Company Registration Number</label>
+                            <InputText @bind-Value="Input.RegistrationNumber" id="Input_RegistrationNumber" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.RegistrationNumber" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_VatNumber" class="form-label">VAT Number (optional)</label>
+                            <InputText @bind-Value="Input.VatNumber" id="Input_VatNumber" class="form-control" />
+                            <ValidationMessage For="() => Input.VatNumber" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_Website" class="form-label">Website (optional)</label>
+                            <InputText @bind-Value="Input.Website" id="Input_Website" class="form-control" />
+                            <ValidationMessage For="() => Input.Website" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_CompanyEmail" class="form-label">Company Email</label>
+                            <InputText @bind-Value="Input.CompanyEmail" id="Input_CompanyEmail" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.CompanyEmail" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_CompanyPhone" class="form-label">Company Phone</label>
+                            <InputText @bind-Value="Input.CompanyPhone" id="Input_CompanyPhone" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.CompanyPhone" class="text-danger" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Company Address</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="Input_Street" class="form-label">Street</label>
+                            <InputText @bind-Value="Input.Street" id="Input_Street" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.Street" class="text-danger" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_City" class="form-label">City</label>
+                                <InputText @bind-Value="Input.City" id="Input_City" class="form-control" aria-required="true" />
+                                <ValidationMessage For="() => Input.City" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_Suburb" class="form-label">Suburb</label>
+                                <InputText @bind-Value="Input.Suburb" id="Input_Suburb" class="form-control" aria-required="true" />
+                                <ValidationMessage For="() => Input.Suburb" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_Province" class="form-label">Province</label>
+                                <InputText @bind-Value="Input.Province" id="Input_Province" class="form-control" aria-required="true" />
+                                <ValidationMessage For="() => Input.Province" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="Input_PostalCode" class="form-label">Postal Code</label>
+                                <InputText @bind-Value="Input.PostalCode" id="Input_PostalCode" class="form-control" aria-required="true" />
+                                <ValidationMessage For="() => Input.PostalCode" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Input_Country" class="form-label">Country</label>
+                            <InputText @bind-Value="Input.Country" id="Input_Country" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Input.Country" class="text-danger" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">Register</button>
+                </div>
+
+                <div class="mt-3 text-center">
+                    <p>Already have an account? <a href="Account/Login">Sign in</a></p>
+                </div>
+            </EditForm>
+        </div>
     </div>
 </div>
 
@@ -59,48 +179,198 @@
     private IEnumerable<IdentityError>? identityErrors;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private RegistrationInputModel Input { get; set; } = new();
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
-
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
     private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
     public async Task RegisterUser(EditContext editContext)
     {
-        var user = CreateUser();
-
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        var emailStore = GetEmailStore();
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-        var result = await UserManager.CreateAsync(user, Input.Password);
-
-        if (!result.Succeeded)
+        try
         {
-            identityErrors = result.Errors;
-            return;
-        }
+            // 1. Create the user
+            var user = CreateUser();
 
-        Logger.LogInformation("User created a new account with password.");
+            // Set user properties
+            user.FirstName = Input.FirstName;
+            user.LastName = Input.LastName;
+            user.Role = UserRole.CompanyAdmin; // Set as Company Admin
+            user.IsActive = false; // Set to pending status
+            user.CreatedDate = DateTime.Now;
+            user.CreatedBy = "Self-Registration";
 
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+            // Set username and email
+            await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+            var emailStore = GetEmailStore();
+            await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
 
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+            // Set phone number directly on the base class to avoid triggering our override
+            ((IdentityUser)user).PhoneNumber = Input.PhoneNumber;
 
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
+            // Create the user with password
+            var result = await UserManager.CreateAsync(user, Input.Password);
+
+            if (!result.Succeeded)
+            {
+                identityErrors = result.Errors;
+                return;
+            }
+
+            // Get the newly created user ID
+            var userId = await UserManager.GetUserIdAsync(user);
+
+            // 2. Create the company
+            var company = new Company
+                {
+                    Name = Input.CompanyName,
+                    RegistrationNumber = Input.RegistrationNumber,
+                    VatNumber = Input.VatNumber,
+                    Website = Input.Website,
+                    IsActive = false, // Set to pending until approved
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId,
+                    Address = new Address
+                    {
+                        Street = Input.Street,
+                        City = Input.City,
+                        Suburb = Input.Suburb,
+                        Province = Input.Province,
+                        PostalCode = Input.PostalCode,
+                        Country = Input.Country,
+                        IsResidential = false // Business address
+                    },
+                // IMPORTANT: Don't initialize EmailAddresses and ContactNumbers here
+                };
+
+            // Create the company first without related entities
+            var companyResult = await UserService.CreateCompany(company);
+
+            if (!companyResult.ResponseInfo.Success)
+            {
+                // If company creation failed, delete the user and show error
+                await UserManager.DeleteAsync(user);
+                throw new Exception($"Failed to create company: {companyResult.ResponseInfo.Message}");
+            }
+
+            // Get the newly created company
+            var createdCompany = (Company)companyResult.Response;
+
+            // 3. Update the user with the company ID
+            await UserService.UpdateUserCompanyId(userId, createdCompany.Id);
+
+            // 4. Now add email and contact number to the company separately
+            var companyEmail = new Email
+                {
+                    EmailAddress = Input.CompanyEmail,
+                    Description = "Primary",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = createdCompany.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
+
+            await UserService.AddEmailAddress(companyEmail);
+
+            var companyPhone = new ContactNumber
+                {
+                    Number = Input.CompanyPhone,
+                    Type = ContactNumberType.Landline,
+                    Description = "Main Office",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = createdCompany.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
+
+            await UserService.AddContactNumber(companyPhone);
+
+            // 5. Create a default branch without related entities
+            var branch = new Branch
+                {
+                    Name = "Main Office",
+                    CompanyId = createdCompany.Id,
+                    Address = company.Address, // Use the same address
+                    IsActive = false, // Set to pending
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId,
+                // IMPORTANT: Don't initialize EmailAddresses and ContactNumbers here
+                };
+
+            var branchResult = await UserService.CreateBranch(branch);
+
+            if (!branchResult.ResponseInfo.Success)
+            {
+                throw new Exception($"Failed to create branch: {branchResult.ResponseInfo.Message}");
+            }
+
+            var createdBranch = (Branch)branchResult.Response;
+
+            // Update user with branch ID
+            await UserService.UpdateUserBranch(userId, createdBranch.Id);
+
+            // 6. Now add email and contact number to the branch separately
+            var branchEmail = new Email
+                {
+                    EmailAddress = Input.CompanyEmail,
+                    Description = "Primary",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = createdBranch.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
+
+            await UserService.AddEmailAddress(branchEmail);
+
+            var branchPhone = new ContactNumber
+                {
+                    Number = Input.CompanyPhone,
+                    Type = ContactNumberType.Landline,
+                    Description = "Reception",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = createdBranch.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
+
+            await UserService.AddContactNumber(branchPhone);
+
+            // 7. Send email confirmation
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+                new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+
+            await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+
+            // 8. Navigate to registration confirmation
+
             RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
+                "Account/RegistrationPending",
                 new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
         }
-
-        await SignInManager.SignInAsync(user, isPersistent: false);
-        RedirectManager.RedirectTo(ReturnUrl);
+        catch (Exception ex) when (ex is not NavigationException) // Add exception filter
+        {
+            HttpContext?.RedirectTo("Account/RegistrationPending"); // Perform server-side redirection
+            Logger.LogError(ex, "Registration failed");
+            identityErrors = new[]
+            {
+                new IdentityError
+                {
+                    Description = $"Registration failed: {ex.Message}"
+                }
+            };
+        }
     }
 
     private ApplicationUser CreateUser()
@@ -125,22 +395,101 @@
         return (IUserEmailStore<ApplicationUser>)UserStore;
     }
 
-    private sealed class InputModel
+    private sealed class RegistrationInputModel
     {
-        [Required]
-        [EmailAddress]
+        // Personal Information
+        [Required(ErrorMessage = "First name is required.")]
+        [Display(Name = "First Name")]
+        [StringLength(50, ErrorMessage = "First name cannot exceed 50 characters.")]
+        public string FirstName { get; set; } = "";
+
+        [Required(ErrorMessage = "Last name is required.")]
+        [Display(Name = "Last Name")]
+        [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters.")]
+        public string LastName { get; set; } = "";
+
+        [Required(ErrorMessage = "Email address is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email address.")]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
 
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [Required(ErrorMessage = "Phone number is required.")]
+        [Phone(ErrorMessage = "Invalid phone number.")]
+        [Display(Name = "Phone Number")]
+        public string PhoneNumber { get; set; } = "";
+
+        [Required(ErrorMessage = "Password is required.")]
+        [StringLength(100, ErrorMessage = "Password must be at least {2} characters long.", MinimumLength = 8)]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
         public string Password { get; set; } = "";
 
+        [Required(ErrorMessage = "Please confirm your password.")]
         [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Display(Name = "Confirm Password")]
+        [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; } = "";
+
+        // Company Information
+        [Required(ErrorMessage = "Company name is required.")]
+        [Display(Name = "Company Name")]
+        [StringLength(100, ErrorMessage = "Company name cannot exceed 100 characters.")]
+        public string CompanyName { get; set; } = "";
+
+        [Required(ErrorMessage = "Registration number is required.")]
+        [Display(Name = "Registration Number")]
+        [StringLength(50, ErrorMessage = "Registration number cannot exceed 50 characters.")]
+        public string RegistrationNumber { get; set; } = "";
+
+        [Display(Name = "VAT Number")]
+        [StringLength(50, ErrorMessage = "VAT number cannot exceed 50 characters.")]
+        public string? VatNumber { get; set; }
+
+        [Display(Name = "Website")]
+        [StringLength(200, ErrorMessage = "Website cannot exceed 200 characters.")]
+        [RegularExpression(@"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-]*)*$", ErrorMessage = "Please enter a valid URL.")]
+        public string? Website { get; set; }
+
+        [Required(ErrorMessage = "Company email is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email address.")]
+        [Display(Name = "Company Email")]
+        public string CompanyEmail { get; set; } = "";
+
+        [Required(ErrorMessage = "Company phone is required.")]
+        [Phone(ErrorMessage = "Invalid phone number.")]
+        [Display(Name = "Company Phone")]
+        public string CompanyPhone { get; set; } = "";
+
+        // Address Information
+        [Required(ErrorMessage = "Street address is required.")]
+        [Display(Name = "Street")]
+        [StringLength(200, ErrorMessage = "Street address cannot exceed 200 characters.")]
+        public string Street { get; set; } = "";
+
+        [Required(ErrorMessage = "City is required.")]
+        [Display(Name = "City")]
+        [StringLength(100, ErrorMessage = "City cannot exceed 100 characters.")]
+        public string City { get; set; } = "";
+
+        [Required(ErrorMessage = "Suburb is required.")]
+        [Display(Name = "Suburb")]
+        [StringLength(100, ErrorMessage = "Suburb cannot exceed 100 characters.")]
+        public string Suburb { get; set; } = "";
+
+        [Required(ErrorMessage = "Province is required.")]
+        [Display(Name = "Province")]
+        [StringLength(50, ErrorMessage = "Province cannot exceed 50 characters.")]
+        public string Province { get; set; } = "";
+
+        [Required(ErrorMessage = "Postal code is required.")]
+        [Display(Name = "Postal Code")]
+        [StringLength(10, ErrorMessage = "Postal code cannot exceed 10 characters.")]
+        [RegularExpression(@"^\d{4}$", ErrorMessage = "Postal code must be 4 digits.")]
+        public string PostalCode { get; set; } = "";
+
+        [Required(ErrorMessage = "Country is required.")]
+        [Display(Name = "Country")]
+        [StringLength(50, ErrorMessage = "Country cannot exceed 50 characters.")]
+        public string Country { get; set; } = "South Africa";
     }
 }

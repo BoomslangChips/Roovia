@@ -1,16 +1,20 @@
 ﻿using FluentValidation;
+using System.ComponentModel.DataAnnotations;
 
 namespace Roovia.Models.Helper
 {
     public class BankAccount
     {
-        public string AccountType { get; set; }
+        [StringLength(100)]
+        public string? AccountType { get; set; }
 
-        public string AccountNumber { get; set; }
+        [StringLength(10)]
+        public string? AccountNumber { get; set; }
 
         public BankName BankName { get; set; }
 
-        public string BranchCode { get; set; }
+        [StringLength(6)]
+        public string? BranchCode { get; set; }
     }
 
     public enum BankName
@@ -22,6 +26,7 @@ namespace Roovia.Models.Helper
         StandardBank,
     }
 
+    // Keep the validator class - no changes needed
     public class BankAccountValidator : AbstractValidator<BankAccount>
     {
         public BankAccountValidator()

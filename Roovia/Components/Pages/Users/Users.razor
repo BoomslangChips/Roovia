@@ -1,7 +1,11 @@
 ﻿@page "/Users"
 @using Roovia.Models.Users
+@using Roovia.Models.Helper
+@using Roovia.Interfaces
 @using Roovia.Services
+@inject IUser UserService
 @inject ToastService ToastService
+@inject NavigationManager NavigationManager
 
 @rendermode InteractiveServer
 
@@ -23,11 +27,22 @@
                        CssClass="w-100" />
         </div>
 
-        @if (IsLoading)
+        @if (isLoading)
         {
             <div class="d-flex justify-content-center align-items-center my-5">
                 <div class="loading-spinner"></div>
                 <span class="ms-3 text-muted">Loading data...</span>
+            </div>
+        }
+        else if (loadError)
+        {
+            <div class="alert alert-danger d-flex align-items-center mb-3">
+                <i class="far fa-exclamation-triangle me-2"></i>
+                <div>
+                    <p class="mb-1"><strong>Error loading data</strong></p>
+                    <p class="mb-0">@errorMessage</p>
+                </div>
+                <RVButton Text="Try Again" ButtonType="outline-danger" OnClick="LoadCompanies" CssClass="ms-auto" />
             </div>
         }
         else
@@ -37,9 +52,13 @@
                 <div class="empty-state">
                     <i class="far fa-building empty-illustration"></i>
                     <h3>No Companies Found</h3>
-                    <p>You haven't added any companies yet or your search returned no results.</p>
+                    <p>@(companies.Any() ? "Your search returned no results." : "You haven't added any companies yet.")</p>
                     <div class="empty-actions">
                         <RVButton Text="Add Company" IconLeft="far fa-plus" ButtonType="primary" OnClick="() => OpenCompanyDialog()" />
+                        @if (companies.Any() && !string.IsNullOrWhiteSpace(searchTerm))
+                        {
+                            <RVButton Text="Clear Search" IconLeft="far fa-times" ButtonType="outline" OnClick="ClearSearch" />
+                        }
                     </div>
                 </div>
             }
@@ -70,22 +89,28 @@
                         <ChildContent>
                             <div class="mb-3">
                                 <div class="d-flex flex-wrap gap-3 mb-2">
-                                    @if (!string.IsNullOrEmpty(company.ContactNumber))
+                                    @if (company.ContactNumbers != null && company.ContactNumbers.Any(c => c.IsPrimary))
                                     {
                                         <div class="badge badge-secondary">
-                                            <i class="far fa-phone me-1"></i> @company.ContactNumber
+                                            <i class="far fa-phone me-1"></i> @(company.GetPrimaryContactNumber())
                                         </div>
                                     }
-                                    @if (!string.IsNullOrEmpty(company.Email))
+                                    @if (company.EmailAddresses != null && company.EmailAddresses.Any(e => e.IsPrimary))
                                     {
                                         <div class="badge badge-secondary">
-                                            <i class="far fa-envelope me-1"></i> @company.Email
+                                            <i class="far fa-envelope me-1"></i> @(company.GetPrimaryEmail())
                                         </div>
                                     }
                                     @if (!string.IsNullOrEmpty(company.Website))
                                     {
                                         <div class="badge badge-secondary">
                                             <i class="far fa-globe me-1"></i> @company.Website
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(company.RegistrationNumber))
+                                    {
+                                        <div class="badge badge-secondary">
+                                            <i class="far fa-id-card me-1"></i> @company.RegistrationNumber
                                         </div>
                                     }
                                 </div>
@@ -104,7 +129,7 @@
                                     <ChildContent>
                                         @foreach (var branch in company.Branches)
                                         {
-                                            <RVTabPanel IsActive="@(branch == company.Branches.First())">
+                                            <RVTabPanel IsActive="@(branch == company.Branches.First())" Text="@branch.Name">
                                                 <ChildContent>
                                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                                         <h5 class="mb-0">
@@ -127,16 +152,16 @@
                                                     </div>
 
                                                     <div class="d-flex flex-wrap gap-2 mb-3">
-                                                        @if (!string.IsNullOrEmpty(branch.ContactNumber))
+                                                        @if (branch.ContactNumbers != null && branch.ContactNumbers.Any(c => c.IsPrimary))
                                                         {
                                                             <div class="badge badge-secondary">
-                                                                <i class="far fa-phone me-1"></i> @branch.ContactNumber
+                                                                <i class="far fa-phone me-1"></i> @(branch.GetPrimaryContactNumber())
                                                             </div>
                                                         }
-                                                        @if (!string.IsNullOrEmpty(branch.Email))
+                                                        @if (branch.EmailAddresses != null && branch.EmailAddresses.Any(e => e.IsPrimary))
                                                         {
                                                             <div class="badge badge-secondary">
-                                                                <i class="far fa-envelope me-1"></i> @branch.Email
+                                                                <i class="far fa-envelope me-1"></i> @(branch.GetPrimaryEmail())
                                                             </div>
                                                         }
                                                         @if (branch.Address != null && !string.IsNullOrEmpty(branch.Address.City))
@@ -234,10 +259,12 @@
 
 @code {
     private string searchTerm = string.Empty;
-    private bool IsLoading = false;
+    private bool isLoading = true;
+    private bool loadError = false;
+    private string errorMessage = string.Empty;
 
     // Data
-    private List<Company> Companies = new List<Company>();
+    private List<Company> companies = new List<Company>();
 
     // Dialog states
     private bool companyDialogVisible = false;
@@ -249,179 +276,98 @@
     private Company selectedCompany = new Company();
     private Branch selectedBranch = new Branch();
     private ApplicationUser selectedUser = new ApplicationUser();
-    private Guid selectedCompanyId;
-    private Guid selectedBranchId;
+    private int selectedCompanyId;
+    private int selectedBranchId;
 
     private IEnumerable<Company> FilteredCompanies => string.IsNullOrWhiteSpace(searchTerm)
-        ? Companies
-        : Companies
-            .Where(c =>
-                c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                c.Branches.Any(b =>
-                    b.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    b.Users.Any(u =>
-                        u.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        u.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                    )
-                )
-            );
+        ? companies
+        : companies.Where(c =>
+            (c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.RegistrationNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.EmailAddresses?.Any(e => e.EmailAddress?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
+            (c.ContactNumbers?.Any(n => n.Number?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
+            (c.Branches?.Any(b =>
+                (b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (b.EmailAddresses?.Any(e => e.EmailAddress?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
+                (b.ContactNumbers?.Any(n => n.Number?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
+                (b.Users?.Any(u =>
+                    (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+                ) ?? false)
+            ) ?? false)
+        );
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        LoadMockData();
+        await LoadCompanies();
     }
 
-    private void LoadMockData()
+    private async Task LoadCompanies()
     {
-        // Create sample data for demonstration
-        var company1 = new Company
+        isLoading = true;
+        loadError = false;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var response = await UserService.GetAllCompanies();
+
+            if (response.ResponseInfo.Success && response.Response != null)
             {
-                Id = Guid.NewGuid(),
-                Name = "Contoso Ltd",
-                Email = "info@contoso.com",
-                ContactNumber = "+1 (555) 123-4567",
-                Website = "contoso.com",
-                Address = new Roovia.Models.Helper.Address
+                companies = (List<Company>)response.Response;
+
+                // Load branches and users for each company
+                foreach (var company in companies)
                 {
-                    Street = "123 Corporate Dr",
-                    City = "Seattle",
-                    Province = "WA",
-                    PostalCode = "98102",
-                    Country = "USA"
+                    if (company.Branches == null || !company.Branches.Any())
+                    {
+                        var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
+                        if (branchesResponse.ResponseInfo.Success && branchesResponse.Response != null)
+                        {
+                            company.Branches = (List<Branch>)branchesResponse.Response;
+
+                            // Load users for each branch
+                            foreach (var branch in company.Branches)
+                            {
+                                var usersResponse = await UserService.GetUsersByBranch(branch.Id);
+                                if (usersResponse.ResponseInfo.Success && usersResponse.Response != null)
+                                {
+                                    branch.Users = (List<ApplicationUser>)usersResponse.Response;
+                                }
+                            }
+                        }
+                    }
                 }
-            };
-
-        var company2 = new Company
+            }
+            else
             {
-                Id = Guid.NewGuid(),
-                Name = "Fabrikam Inc",
-                Email = "contact@fabrikam.com",
-                ContactNumber = "+1 (555) 987-6543",
-                Website = "fabrikam.com",
-                Address = new Roovia.Models.Helper.Address
-                {
-                    Street = "456 Industry Blvd",
-                    City = "San Francisco",
-                    Province = "CA",
-                    PostalCode = "94105",
-                    Country = "USA"
-                }
-            };
+                loadError = true;
+                errorMessage = response.ResponseInfo.Message ?? "Failed to load companies.";
+            }
+        }
+        catch (Exception ex)
+        {
+            loadError = true;
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
 
-        var branch1_1 = new Branch
-            {
-                Id = Guid.NewGuid(),
-                Name = "Contoso HQ",
-                Email = "hq@contoso.com",
-                ContactNumber = "+1 (555) 123-4567",
-                CompanyId = company1.Id,
-                Address = new Roovia.Models.Helper.Address
-                {
-                    Street = "123 Corporate Dr",
-                    City = "Seattle",
-                    Province = "WA",
-                    PostalCode = "98102",
-                    Country = "USA"
-                }
-            };
+    private void OnSearchChanged(string value)
+    {
+        searchTerm = value;
+        StateHasChanged();
+    }
 
-        var branch1_2 = new Branch
-            {
-                Id = Guid.NewGuid(),
-                Name = "Contoso East",
-                Email = "east@contoso.com",
-                ContactNumber = "+1 (555) 321-7654",
-                CompanyId = company1.Id,
-                Address = new Roovia.Models.Helper.Address
-                {
-                    Street = "789 Eastern Ave",
-                    City = "New York",
-                    Province = "NY",
-                    PostalCode = "10001",
-                    Country = "USA"
-                }
-            };
-
-        var branch2_1 = new Branch
-            {
-                Id = Guid.NewGuid(),
-                Name = "Fabrikam Main",
-                Email = "main@fabrikam.com",
-                ContactNumber = "+1 (555) 987-6543",
-                CompanyId = company2.Id,
-                Address = new Roovia.Models.Helper.Address
-                {
-                    Street = "456 Industry Blvd",
-                    City = "San Francisco",
-                    Province = "CA",
-                    PostalCode = "94105",
-                    Country = "USA"
-                }
-            };
-
-        var user1 = new ApplicationUser
-            {
-                Id = Guid.NewGuid().ToString(),
-                FirstName = "John",
-                LastName = "Doe",
-                Email = "john.doe@contoso.com",
-                PhoneNumber = "+1 (555) 111-2222",
-                CompanyId = company1.Id,
-                BranchId = branch1_1.Id,
-                Role = UserRole.CompanyAdmin
-            };
-
-        var user2 = new ApplicationUser
-            {
-                Id = Guid.NewGuid().ToString(),
-                FirstName = "Jane",
-                LastName = "Smith",
-                Email = "jane.smith@contoso.com",
-                PhoneNumber = "+1 (555) 222-3333",
-                CompanyId = company1.Id,
-                BranchId = branch1_1.Id,
-                Role = UserRole.StandardUser
-            };
-
-        var user3 = new ApplicationUser
-            {
-                Id = Guid.NewGuid().ToString(),
-                FirstName = "Bob",
-                LastName = "Johnson",
-                Email = "bob.johnson@contoso.com",
-                PhoneNumber = "+1 (555) 333-4444",
-                CompanyId = company1.Id,
-                BranchId = branch1_2.Id,
-                Role = UserRole.BranchManager
-            };
-
-        var user4 = new ApplicationUser
-            {
-                Id = Guid.NewGuid().ToString(),
-                FirstName = "Alice",
-                LastName = "Williams",
-                Email = "alice.williams@fabrikam.com",
-                PhoneNumber = "+1 (555) 444-5555",
-                CompanyId = company2.Id,
-                BranchId = branch2_1.Id,
-                Role = UserRole.CompanyAdmin
-            };
-
-        // Add users to branches
-        branch1_1.Users.Add(user1);
-        branch1_1.Users.Add(user2);
-        branch1_2.Users.Add(user3);
-        branch2_1.Users.Add(user4);
-
-        // Add branches to companies
-        company1.Branches.Add(branch1_1);
-        company1.Branches.Add(branch1_2);
-        company2.Branches.Add(branch2_1);
-
-        // Add to companies list
-        Companies.Add(company1);
-        Companies.Add(company2);
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        StateHasChanged();
     }
 
     private bool HasBranches(Company company)
@@ -458,16 +404,21 @@
         };
     }
 
-    private void OnSearchChanged(string value)
-    {
-        searchTerm = value;
-        StateHasChanged();
-    }
-
     // Company Dialog Methods
     private void OpenCompanyDialog()
     {
-        selectedCompany = new Company { Address = new Roovia.Models.Helper.Address() };
+        selectedCompany = new Company
+            {
+                Address = new Address(),
+                EmailAddresses = new List<Email>
+            {
+                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Company" }
+            },
+                ContactNumbers = new List<ContactNumber>
+            {
+                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Company", Type = ContactNumberType.Mobile }
+            }
+            };
         editMode = false;
         companyDialogVisible = true;
     }
@@ -475,6 +426,41 @@
     private void EditCompany(Company company)
     {
         selectedCompany = company;
+
+        // Ensure the company has at least one email and contact number
+        if (selectedCompany.EmailAddresses == null)
+        {
+            selectedCompany.EmailAddresses = new List<Email>();
+        }
+
+        if (!selectedCompany.EmailAddresses.Any(e => e.IsPrimary))
+        {
+            selectedCompany.EmailAddresses.Add(new Email
+                {
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = company.Id
+                });
+        }
+
+        if (selectedCompany.ContactNumbers == null)
+        {
+            selectedCompany.ContactNumbers = new List<ContactNumber>();
+        }
+
+        if (!selectedCompany.ContactNumbers.Any(c => c.IsPrimary))
+        {
+            selectedCompany.ContactNumbers.Add(new ContactNumber
+                {
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = company.Id,
+                    Type = ContactNumberType.Mobile
+                });
+        }
+
         editMode = true;
         companyDialogVisible = true;
     }
@@ -484,39 +470,103 @@
         companyDialogVisible = false;
     }
 
-    private void SaveCompany(Company company)
+    private async Task SaveCompany(Company company)
     {
-        if (editMode)
+        isLoading = true;
+
+        try
         {
-            // In a real app, you'd call a service to update the company
-            var index = Companies.FindIndex(c => c.Id == company.Id);
-            if (index >= 0)
+            ResponseModel response;
+
+            // Set audit fields
+            if (editMode)
             {
-                Companies[index] = company;
+                company.UpdatedDate = DateTime.Now;
+                company.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
+
+                response = await UserService.UpdateCompany(company.Id, company);
+            }
+            else
+            {
+                company.CreatedOn = DateTime.Now;
+               // company.CreatedBy = 1; // Replace with actual logged-in user ID
+                company.IsActive = true;
+
+                // Initialize collections if null
+                if (company.EmailAddresses == null)
+                    company.EmailAddresses = new List<Email>();
+
+                if (company.ContactNumbers == null)
+                    company.ContactNumbers = new List<ContactNumber>();
+
+                // Set primary email
+                if (!company.EmailAddresses.Any(e => e.IsPrimary) && !string.IsNullOrEmpty(company.GetPrimaryEmail()))
+                {
+                    company.EmailAddresses.Add(new Email
+                        {
+                            EmailAddress = company.GetPrimaryEmail(),
+                            IsPrimary = true,
+                            IsActive = true,
+                            RelatedEntityType = "Company",
+                            CreatedOn = DateTime.Now
+                        });
+                }
+
+                // Set primary contact number
+                if (!company.ContactNumbers.Any(c => c.IsPrimary) && !string.IsNullOrEmpty(company.GetPrimaryContactNumber()))
+                {
+                    company.ContactNumbers.Add(new ContactNumber
+                        {
+                            Number = company.GetPrimaryContactNumber(),
+                            IsPrimary = true,
+                            IsActive = true,
+                            RelatedEntityType = "Company",
+                            Type = ContactNumberType.Mobile,
+                            CreatedOn = DateTime.Now
+                        });
+                }
+
+                response = await UserService.CreateCompany(company);
             }
 
-            ToastService.ShowSuccess($"Company '{company.Name}' has been updated", "Success");
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                await LoadCompanies();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // In a real app, you'd call a service to create the company
-            Companies.Add(company);
-
-            ToastService.ShowSuccess($"Company '{company.Name}' has been created", "Success");
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
         }
-
-        companyDialogVisible = false;
-        StateHasChanged();
+        finally
+        {
+            isLoading = false;
+            companyDialogVisible = false;
+            StateHasChanged();
+        }
     }
 
     // Branch Dialog Methods
-    private void OpenBranchDialog(Guid companyId)
+    private void OpenBranchDialog(int companyId)
     {
         selectedCompanyId = companyId;
         selectedBranch = new Branch
             {
                 CompanyId = companyId,
-                Address = new Roovia.Models.Helper.Address()
+                Address = new Address(),
+                EmailAddresses = new List<Email>
+            {
+                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch" }
+            },
+                ContactNumbers = new List<ContactNumber>
+            {
+                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch", Type = ContactNumberType.Mobile }
+            }
             };
         editMode = false;
         branchDialogVisible = true;
@@ -526,6 +576,41 @@
     {
         selectedBranch = branch;
         selectedCompanyId = branch.CompanyId;
+
+        // Ensure the branch has at least one email and contact number
+        if (selectedBranch.EmailAddresses == null)
+        {
+            selectedBranch.EmailAddresses = new List<Email>();
+        }
+
+        if (!selectedBranch.EmailAddresses.Any(e => e.IsPrimary))
+        {
+            selectedBranch.EmailAddresses.Add(new Email
+                {
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = branch.Id
+                });
+        }
+
+        if (selectedBranch.ContactNumbers == null)
+        {
+            selectedBranch.ContactNumbers = new List<ContactNumber>();
+        }
+
+        if (!selectedBranch.ContactNumbers.Any(c => c.IsPrimary))
+        {
+            selectedBranch.ContactNumbers.Add(new ContactNumber
+                {
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = branch.Id,
+                    Type = ContactNumberType.Mobile
+                });
+        }
+
         editMode = true;
         branchDialogVisible = true;
     }
@@ -535,45 +620,89 @@
         branchDialogVisible = false;
     }
 
-    private void SaveBranch(Branch branch)
+    private async Task SaveBranch(Branch branch)
     {
-        var company = Companies.FirstOrDefault(c => c.Id == branch.CompanyId);
-        if (company == null)
-        {
-            ToastService.ShowError("Company not found", "Error");
-            return;
-        }
+        isLoading = true;
 
-        if (editMode)
+        try
         {
-            // In a real app, you'd call a service to update the branch
-            var index = company.Branches.FindIndex(b => b.Id == branch.Id);
-            if (index >= 0)
+            ResponseModel response;
+
+            // Set audit fields
+            if (editMode)
             {
-                company.Branches[index] = branch;
+                branch.UpdatedDate = DateTime.Now;
+                branch.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
+
+                response = await UserService.UpdateBranch(branch.Id, branch);
+            }
+            else
+            {
+                branch.CreatedOn = DateTime.Now;
+                branch.CreatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
+                branch.IsActive = true;
+
+                // Initialize collections if null
+                if (branch.EmailAddresses == null)
+                    branch.EmailAddresses = new List<Email>();
+
+                if (branch.ContactNumbers == null)
+                    branch.ContactNumbers = new List<ContactNumber>();
+
+                // Set primary email
+                if (!branch.EmailAddresses.Any(e => e.IsPrimary) && !string.IsNullOrEmpty(branch.GetPrimaryEmail()))
+                {
+                    branch.EmailAddresses.Add(new Email
+                        {
+                            EmailAddress = branch.GetPrimaryEmail(),
+                            IsPrimary = true,
+                            IsActive = true,
+                            RelatedEntityType = "Branch",
+                            CreatedOn = DateTime.Now
+                        });
+                }
+
+                // Set primary contact number
+                if (!branch.ContactNumbers.Any(c => c.IsPrimary) && !string.IsNullOrEmpty(branch.GetPrimaryContactNumber()))
+                {
+                    branch.ContactNumbers.Add(new ContactNumber
+                        {
+                            Number = branch.GetPrimaryContactNumber(),
+                            IsPrimary = true,
+                            IsActive = true,
+                            RelatedEntityType = "Branch",
+                            Type = ContactNumberType.Mobile,
+                            CreatedOn = DateTime.Now
+                        });
+                }
+
+                response = await UserService.CreateBranch(branch);
             }
 
-            ToastService.ShowSuccess($"Branch '{branch.Name}' has been updated", "Success");
-        }
-        else
-        {
-            // In a real app, you'd call a service to create the branch
-            if (company.Branches == null)
+            if (response.ResponseInfo.Success)
             {
-                company.Branches = new List<Branch>();
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                await LoadCompanies();
             }
-
-            company.Branches.Add(branch);
-
-            ToastService.ShowSuccess($"Branch '{branch.Name}' has been created", "Success");
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
         }
-
-        branchDialogVisible = false;
-        StateHasChanged();
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+            branchDialogVisible = false;
+            StateHasChanged();
+        }
     }
 
     // User Dialog Methods
-    private void OpenUserDialog(Guid companyId, Guid branchId)
+    private void OpenUserDialog(int companyId, int branchId)
     {
         selectedCompanyId = companyId;
         selectedBranchId = branchId;
@@ -581,7 +710,16 @@
             {
                 CompanyId = companyId,
                 BranchId = branchId,
-                Role = UserRole.StandardUser
+                Role = UserRole.StandardUser,
+                IsActive = true,
+                EmailAddresses = new List<Email>
+            {
+                new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "User" }
+            },
+                ContactNumbers = new List<ContactNumber>
+            {
+                new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "User", Type = ContactNumberType.Mobile }
+            }
             };
         editMode = false;
         userDialogVisible = true;
@@ -590,8 +728,45 @@
     private void EditUser(ApplicationUser user)
     {
         selectedUser = user;
-        selectedCompanyId = user.CompanyId ?? Guid.Empty;
-        selectedBranchId = user.BranchId ?? Guid.Empty;
+        selectedCompanyId = user.CompanyId ?? 0;
+        selectedBranchId = user.BranchId ?? 0;
+
+        // Ensure the user has at least one email and contact number
+        if (selectedUser.EmailAddresses == null)
+        {
+            selectedUser.EmailAddresses = new List<Email>();
+        }
+
+        if (!selectedUser.EmailAddresses.Any(e => e.IsPrimary))
+        {
+            selectedUser.EmailAddresses.Add(new Email
+                {
+                    EmailAddress = user.Email,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    RelatedEntityId = int.Parse(user.Id)
+                });
+        }
+
+        if (selectedUser.ContactNumbers == null)
+        {
+            selectedUser.ContactNumbers = new List<ContactNumber>();
+        }
+
+        if (!selectedUser.ContactNumbers.Any(c => c.IsPrimary))
+        {
+            selectedUser.ContactNumbers.Add(new ContactNumber
+                {
+                    Number = user.PhoneNumber,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    RelatedEntityId = int.Parse(user.Id),
+                    Type = ContactNumberType.Mobile
+                });
+        }
+
         editMode = true;
         userDialogVisible = true;
     }
@@ -601,53 +776,70 @@
         userDialogVisible = false;
     }
 
-    private void SaveUser(ApplicationUser user)
+    private async Task SaveUser(ApplicationUser user)
     {
-        var company = Companies.FirstOrDefault(c => c.Id == user.CompanyId);
-        if (company == null)
-        {
-            ToastService.ShowError("Company not found", "Error");
-            return;
-        }
+        isLoading = true;
 
-        var branch = company.Branches.FirstOrDefault(b => b.Id == user.BranchId);
-        if (branch == null)
+        try
         {
-            ToastService.ShowError("Branch not found", "Error");
-            return;
-        }
+            ResponseModel response;
 
-        if (editMode)
-        {
-            // In a real app, you'd call a service to update the user
-            var index = branch.Users.FindIndex(u => u.Id == user.Id);
-            if (index >= 0)
+            // Set common properties
+            user.UserName = user.Email;
+
+            if (editMode)
             {
-                branch.Users[index] = user;
+                user.UpdatedDate = DateTime.Now;
+                user.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
+
+                // Convert string ID to int for the service
+                int userId = int.Parse(user.Id);
+                response = await UserService.UpdateUser(userId, user);
+            }
+            else
+            {
+                user.CreatedDate = DateTime.Now;
+                user.CreatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
+
+                // In a real app, you would need to create the user with Identity first
+                // This is a simplified example
+                // Here we would typically call UserManager<ApplicationUser> to create the user
+
+                // After creating the user, update company and branch assignments
+                // await UserService.UpdateUserCompanyId(userId, user.CompanyId.Value);
+                // await UserService.UpdateUserBranch(user.Id, user.BranchId.Value);
+
+                // Since we cannot create a user here without Identity, show a toast
+                ToastService.ShowInfo("In production, this would create a new user with Identity", "Demo Mode");
+                response = new ResponseModel
+                    {
+                        ResponseInfo = new ResponseInfo
+                        {
+                            Success = true,
+                            Message = "User creation simulated successfully"
+                        }
+                    };
             }
 
-            ToastService.ShowSuccess($"User '{user.FullName}' has been updated", "Success");
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                await LoadCompanies();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // In a real app, you'd call a service to create the user
-            if (branch.Users == null)
-            {
-                branch.Users = new List<ApplicationUser>();
-            }
-
-            // Set a dummy ID for the new user in this demo
-            if (string.IsNullOrEmpty(user.Id))
-            {
-                user.Id = Guid.NewGuid().ToString();
-            }
-
-            branch.Users.Add(user);
-
-            ToastService.ShowSuccess($"User '{user.FullName}' has been created", "Success");
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
         }
-
-        userDialogVisible = false;
-        StateHasChanged();
+        finally
+        {
+            isLoading = false;
+            userDialogVisible = false;
+            StateHasChanged();
+        }
     }
 }

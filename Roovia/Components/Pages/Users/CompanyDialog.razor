@@ -38,29 +38,37 @@
                                IconLeft="far fa-file-invoice" />
                 </div>
 
-                <div class="col-span-1">
-                    <RVTextbox Label="Contact Number"
-                               Id="contactNumber"
-                               Value="@CompanyModel.ContactNumber"
-                               ValueChanged="@((string val) => CompanyModel.ContactNumber = val)"
-                               IconLeft="far fa-phone" />
-                </div>
-
-                <div class="col-span-1">
-                    <RVTextbox Label="Email"
-                               Id="email"
-                               Type="email"
-                               Value="@CompanyModel.Email"
-                               ValueChanged="@((string val) => CompanyModel.Email = val)"
-                               IconLeft="far fa-envelope" />
-                </div>
-
                 <div class="col-span-2">
                     <RVTextbox Label="Website"
                                Id="website"
                                Value="@CompanyModel.Website"
                                ValueChanged="@((string val) => CompanyModel.Website = val)"
                                IconLeft="far fa-globe" />
+                </div>
+
+                <div class="col-span-2">
+                    <h5 class="text-primary font-weight-semibold mb-2">Primary Contact Information</h5>
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Primary Email"
+                               Id="primaryEmail"
+                               Type="email"
+                               Value="@PrimaryEmail"
+                               ValueChanged="@((string val) => UpdatePrimaryEmail(val))"
+                               IsValid="@(!string.IsNullOrEmpty(PrimaryEmail) && IsValidEmail(PrimaryEmail))"
+                               ValidationMessage="Valid primary email is required"
+                               IconLeft="far fa-envelope" />
+                </div>
+
+                <div class="col-span-2">
+                    <RVTextbox Label="Primary Contact Number"
+                               Id="primaryContactNumber"
+                               Value="@PrimaryContactNumber"
+                               ValueChanged="@((string val) => UpdatePrimaryContactNumber(val))"
+                               IsValid="@(!string.IsNullOrEmpty(PrimaryContactNumber))"
+                               ValidationMessage="Primary contact number is required"
+                               IconLeft="far fa-phone" />
                 </div>
 
                 <div class="col-span-2">
@@ -76,11 +84,35 @@
                 </div>
 
                 <div class="col-span-1">
+                    <RVTextbox Label="Unit/Suite Number"
+                               Id="addressUnitNumber"
+                               Value="@CompanyModel.Address.UnitNumber"
+                               ValueChanged="@((string val) => CompanyModel.Address.UnitNumber = val)"
+                               IconLeft="far fa-door-open" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Complex/Estate Name"
+                               Id="addressComplexName"
+                               Value="@CompanyModel.Address.ComplexName"
+                               ValueChanged="@((string val) => CompanyModel.Address.ComplexName = val)"
+                               IconLeft="far fa-building" />
+                </div>
+
+                <div class="col-span-1">
                     <RVTextbox Label="City"
                                Id="addressCity"
                                Value="@CompanyModel.Address.City"
                                ValueChanged="@((string val) => CompanyModel.Address.City = val)"
                                IconLeft="far fa-city" />
+                </div>
+
+                <div class="col-span-1">
+                    <RVTextbox Label="Suburb"
+                               Id="addressSuburb"
+                               Value="@CompanyModel.Address.Suburb"
+                               ValueChanged="@((string val) => CompanyModel.Address.Suburb = val)"
+                               IconLeft="far fa-map" />
                 </div>
 
                 <div class="col-span-1">
@@ -99,17 +131,189 @@
                                IconLeft="far fa-mailbox" />
                 </div>
 
-                <div class="col-span-1">
+                <div class="col-span-2">
                     <RVTextbox Label="Country"
                                Id="addressCountry"
                                Value="@CompanyModel.Address.Country"
                                ValueChanged="@((string val) => CompanyModel.Address.Country = val)"
                                IconLeft="far fa-globe" />
                 </div>
+
+                @if (IsEdit && CompanyModel.EmailAddresses != null && CompanyModel.EmailAddresses.Count > 1)
+                {
+                    <div class="col-span-2">
+                        <h5 class="text-primary font-weight-semibold mb-2">Additional Email Addresses</h5>
+                        <div class="grid grid-cols-1 gap-2">
+                            @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
+                            {
+                                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="far fa-envelope me-2"></i>
+                                            <span>@email.EmailAddress</span>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(email.Description))
+                                        {
+                                            <small class="text-muted">@email.Description</small>
+                                        }
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <RVButton Text=""
+                                                  IconLeft="far fa-edit"
+                                                  ButtonType="outline"
+                                                  Size="sm"
+                                                  OnClick="() => EditEmail(email)" />
+                                        <RVButton Text=""
+                                                  IconLeft="far fa-trash"
+                                                  ButtonType="outline-danger"
+                                                  Size="sm"
+                                                  OnClick="() => RemoveEmail(email)" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="mt-2">
+                            <RVButton Text="Add Email"
+                                      IconLeft="far fa-plus"
+                                      ButtonType="outline-primary"
+                                      Size="sm"
+                                      OnClick="AddEmail" />
+                        </div>
+                    </div>
+                }
+
+                @if (IsEdit && CompanyModel.ContactNumbers != null && CompanyModel.ContactNumbers.Count > 1)
+                {
+                    <div class="col-span-2">
+                        <h5 class="text-primary font-weight-semibold mb-2">Additional Contact Numbers</h5>
+                        <div class="grid grid-cols-1 gap-2">
+                            @foreach (var contact in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
+                            {
+                                <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="far fa-phone me-2"></i>
+                                            <span>@contact.Number</span>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <small class="text-muted">@contact.Type</small>
+                                            @if (!string.IsNullOrEmpty(contact.Description))
+                                            {
+                                                <small class="text-muted">(@contact.Description)</small>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <RVButton Text=""
+                                                  IconLeft="far fa-edit"
+                                                  ButtonType="outline"
+                                                  Size="sm"
+                                                  OnClick="() => EditContactNumber(contact)" />
+                                        <RVButton Text=""
+                                                  IconLeft="far fa-trash"
+                                                  ButtonType="outline-danger"
+                                                  Size="sm"
+                                                  OnClick="() => RemoveContactNumber(contact)" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="mt-2">
+                            <RVButton Text="Add Contact Number"
+                                      IconLeft="far fa-plus"
+                                      ButtonType="outline-primary"
+                                      Size="sm"
+                                      OnClick="AddContactNumber" />
+                        </div>
+                    </div>
+                }
             </div>
         </EditForm>
     </ChildContent>
 </RVModal>
+
+@if (emailDialogVisible)
+{
+    <RVModal IsVisible="true"
+             Title="@(editingEmail.Id == 0 ? "Add Email" : "Edit Email")"
+             OnClose="CloseEmailDialog"
+             OnConfirm="SaveEmail"
+             ConfirmText="Save"
+             CancelText="Cancel"
+             Size="sm">
+        <ChildContent>
+            <div class="grid grid-cols-1 gap-3">
+                <RVTextbox Label="Email Address"
+                           Id="emailAddress"
+                           Type="email"
+                           Value="@editingEmail.EmailAddress"
+                           ValueChanged="@((string val) => editingEmail.EmailAddress = val)"
+                           IsValid="@(!string.IsNullOrEmpty(editingEmail.EmailAddress) && IsValidEmail(editingEmail.EmailAddress))"
+                           ValidationMessage="Valid email address is required"
+                           IconLeft="far fa-envelope" />
+
+                <RVTextbox Label="Description (Optional)"
+                           Id="emailDescription"
+                           Value="@editingEmail.Description"
+                           ValueChanged="@((string val) => editingEmail.Description = val)"
+                           IconLeft="far fa-tag" />
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="editingEmail.IsActive" id="emailActive">
+                    <label class="form-check-label" for="emailActive">
+                        Is Active
+                    </label>
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+@if (contactDialogVisible)
+{
+    <RVModal IsVisible="true"
+             Title="@(editingContact.Id == 0 ? "Add Contact Number" : "Edit Contact Number")"
+             OnClose="CloseContactDialog"
+             OnConfirm="SaveContactNumber"
+             ConfirmText="Save"
+             CancelText="Cancel"
+             Size="sm">
+        <ChildContent>
+            <div class="grid grid-cols-1 gap-3">
+                <RVTextbox Label="Phone Number"
+                           Id="phoneNumber"
+                           Value="@editingContact.Number"
+                           ValueChanged="@((string val) => editingContact.Number = val)"
+                           IsValid="@(!string.IsNullOrEmpty(editingContact.Number))"
+                           ValidationMessage="Phone number is required"
+                           IconLeft="far fa-phone" />
+
+                <div class="form-group">
+                    <label class="form-label">Contact Type</label>
+                    <select class="form-select" @bind="editingContact.Type">
+                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </select>
+                </div>
+
+                <RVTextbox Label="Description (Optional)"
+                           Id="contactDescription"
+                           Value="@editingContact.Description"
+                           ValueChanged="@((string val) => editingContact.Description = val)"
+                           IconLeft="far fa-tag" />
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="editingContact.IsActive" id="contactActive">
+                    <label class="form-check-label" for="contactActive">
+                        Is Active
+                    </label>
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
 
 @code {
     [Parameter] public bool IsVisible { get; set; }
@@ -120,23 +324,311 @@
 
     [Inject] private ToastService ToastService { get; set; }
 
+    // Contact and email management
+    private string PrimaryEmail
+    {
+        get => CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress ?? string.Empty;
+    }
+
+    private string PrimaryContactNumber
+    {
+        get => CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number ?? string.Empty;
+    }
+
+    // Email dialog
+    private bool emailDialogVisible = false;
+    private Email editingEmail = new Email();
+
+    // Contact dialog
+    private bool contactDialogVisible = false;
+    private ContactNumber editingContact = new ContactNumber();
+
     protected override void OnInitialized()
     {
         if (!IsEdit)
         {
             CompanyModel = new Company
                 {
-                    Address = new Address()
+                    Address = new Address(),
+                    EmailAddresses = new List<Email>
+                {
+                    new Email
+                    {
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "Company"
+                    }
+                },
+                    ContactNumbers = new List<ContactNumber>
+                {
+                    new ContactNumber
+                    {
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "Company",
+                        Type = ContactNumberType.Mobile
+                    }
+                }
                 };
         }
+        else
+        {
+            // Ensure collections exist
+            if (CompanyModel.EmailAddresses == null)
+            {
+                CompanyModel.EmailAddresses = new List<Email>
+                {
+                    new Email
+                    {
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "Company",
+                        RelatedEntityId = CompanyModel.Id
+                    }
+                };
+            }
+
+            if (CompanyModel.ContactNumbers == null)
+            {
+                CompanyModel.ContactNumbers = new List<ContactNumber>
+                {
+                    new ContactNumber
+                    {
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "Company",
+                        RelatedEntityId = CompanyModel.Id,
+                        Type = ContactNumberType.Mobile
+                    }
+                };
+            }
+        }
+    }
+
+    private void UpdatePrimaryEmail(string value)
+    {
+        var primaryEmail = CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+
+        if (primaryEmail == null)
+        {
+            if (CompanyModel.EmailAddresses == null)
+                CompanyModel.EmailAddresses = new List<Email>();
+
+            CompanyModel.EmailAddresses.Add(new Email
+                {
+                    EmailAddress = value,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = CompanyModel.Id
+                });
+        }
+        else
+        {
+            primaryEmail.EmailAddress = value;
+        }
+    }
+
+    private void UpdatePrimaryContactNumber(string value)
+    {
+        var primaryContact = CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+
+        if (primaryContact == null)
+        {
+            if (CompanyModel.ContactNumbers == null)
+                CompanyModel.ContactNumbers = new List<ContactNumber>();
+
+            CompanyModel.ContactNumbers.Add(new ContactNumber
+                {
+                    Number = value,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = CompanyModel.Id,
+                    Type = ContactNumberType.Mobile
+                });
+        }
+        else
+        {
+            primaryContact.Number = value;
+        }
+    }
+
+    // Email management
+    private void AddEmail()
+    {
+        editingEmail = new Email
+            {
+                IsActive = true,
+                RelatedEntityType = "Company",
+                RelatedEntityId = CompanyModel.Id
+            };
+        emailDialogVisible = true;
+    }
+
+    private void EditEmail(Email email)
+    {
+        editingEmail = new Email
+            {
+                Id = email.Id,
+                EmailAddress = email.EmailAddress,
+                Description = email.Description,
+                IsActive = email.IsActive,
+                IsPrimary = email.IsPrimary,
+                RelatedEntityType = email.RelatedEntityType,
+                RelatedEntityId = email.RelatedEntityId
+            };
+        emailDialogVisible = true;
+    }
+
+    private void RemoveEmail(Email email)
+    {
+        if (email.IsPrimary)
+        {
+            ToastService.ShowError("Cannot remove primary email address", "Error");
+            return;
+        }
+
+        CompanyModel.EmailAddresses.Remove(email);
+    }
+
+    private void CloseEmailDialog()
+    {
+        emailDialogVisible = false;
+    }
+
+    private void SaveEmail()
+    {
+        if (string.IsNullOrWhiteSpace(editingEmail.EmailAddress) || !IsValidEmail(editingEmail.EmailAddress))
+        {
+            ToastService.ShowError("Please enter a valid email address", "Validation Error");
+            return;
+        }
+
+        var existingEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.Id == editingEmail.Id);
+        if (existingEmail != null)
+        {
+            // Update existing
+            existingEmail.EmailAddress = editingEmail.EmailAddress;
+            existingEmail.Description = editingEmail.Description;
+            existingEmail.IsActive = editingEmail.IsActive;
+        }
+        else
+        {
+            // Add new
+            CompanyModel.EmailAddresses.Add(editingEmail);
+        }
+
+        emailDialogVisible = false;
+    }
+
+    // Contact number management
+    private void AddContactNumber()
+    {
+        editingContact = new ContactNumber
+            {
+                IsActive = true,
+                RelatedEntityType = "Company",
+                RelatedEntityId = CompanyModel.Id,
+                Type = ContactNumberType.Mobile
+            };
+        contactDialogVisible = true;
+    }
+
+    private void EditContactNumber(ContactNumber contact)
+    {
+        editingContact = new ContactNumber
+            {
+                Id = contact.Id,
+                Number = contact.Number,
+                Type = contact.Type,
+                Description = contact.Description,
+                IsActive = contact.IsActive,
+                IsPrimary = contact.IsPrimary,
+                RelatedEntityType = contact.RelatedEntityType,
+                RelatedEntityId = contact.RelatedEntityId
+            };
+        contactDialogVisible = true;
+    }
+
+    private void RemoveContactNumber(ContactNumber contact)
+    {
+        if (contact.IsPrimary)
+        {
+            ToastService.ShowError("Cannot remove primary contact number", "Error");
+            return;
+        }
+
+        CompanyModel.ContactNumbers.Remove(contact);
+    }
+
+    private void CloseContactDialog()
+    {
+        contactDialogVisible = false;
+    }
+
+    private void SaveContactNumber()
+    {
+        if (string.IsNullOrWhiteSpace(editingContact.Number))
+        {
+            ToastService.ShowError("Please enter a contact number", "Validation Error");
+            return;
+        }
+
+        var existingContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.Id == editingContact.Id);
+        if (existingContact != null)
+        {
+            // Update existing
+            existingContact.Number = editingContact.Number;
+            existingContact.Type = editingContact.Type;
+            existingContact.Description = editingContact.Description;
+            existingContact.IsActive = editingContact.IsActive;
+        }
+        else
+        {
+            // Add new
+            CompanyModel.ContactNumbers.Add(editingContact);
+        }
+
+        contactDialogVisible = false;
     }
 
     private async Task HandleValidSubmit()
     {
+        // Validate required fields
         if (string.IsNullOrWhiteSpace(CompanyModel.Name))
         {
             ToastService.ShowError("Company name is required", "Validation Error");
             return;
+        }
+
+        // Validate primary email
+        var primaryEmail = CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+        if (primaryEmail == null || string.IsNullOrWhiteSpace(primaryEmail.EmailAddress) || !IsValidEmail(primaryEmail.EmailAddress))
+        {
+            ToastService.ShowError("A valid primary email address is required", "Validation Error");
+            return;
+        }
+
+        // Validate primary contact number
+        var primaryContact = CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+        if (primaryContact == null || string.IsNullOrWhiteSpace(primaryContact.Number))
+        {
+            ToastService.ShowError("A primary contact number is required", "Validation Error");
+            return;
+        }
+
+        // Set entity relationships if not already set
+        foreach (var email in CompanyModel.EmailAddresses)
+        {
+            email.RelatedEntityType = "Company";
+            email.RelatedEntityId = CompanyModel.Id;
+        }
+
+        foreach (var contact in CompanyModel.ContactNumbers)
+        {
+            contact.RelatedEntityType = "Company";
+            contact.RelatedEntityId = CompanyModel.Id;
         }
 
         await OnSave.InvokeAsync(CompanyModel);
@@ -146,5 +638,18 @@
     private void CloseModal()
     {
         OnCancel.InvokeAsync();
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

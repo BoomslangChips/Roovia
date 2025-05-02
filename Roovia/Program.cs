@@ -20,15 +20,22 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = IdentityConstants.ApplicationScheme;
-        options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-    })
+{
+    options.DefaultScheme = IdentityConstants.ApplicationScheme;
+    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+})
     .AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+// Register DbContext as scoped (default)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString));
+
+// Register DbContextFactory with the SAME LIFETIME (scoped)
+builder.Services.AddDbContextFactory<ApplicationDbContext>(
+    options => options.UseSqlServer(connectionString),
+    lifetime: ServiceLifetime.Scoped); // Fix: explicitly set to scoped
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -41,7 +48,6 @@ builder.Services.AddScoped<ITenant, TenantService>();
 builder.Services.AddScoped<IProperty, PropertyService>();
 builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
 builder.Services.AddScoped<IUser, UserService>();
-
 
 builder.Services.AddScoped<ToastService>();
 
@@ -62,7 +68,6 @@ else
 }
 
 app.UseHttpsRedirection();
-
 
 app.UseAntiforgery();
 
