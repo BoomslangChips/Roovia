@@ -5,8 +5,8 @@ namespace Roovia.Models.Properties
 {
     public class Property
     {
-        public Guid Id { get; set; }
-        public Guid OwnerId { get; set; }
+        public int Id { get; set; }
+        public int OwnerId { get; set; }
         public Address Address { get; set; } = new Address();
 
         public decimal RentalAmount { get; set; }

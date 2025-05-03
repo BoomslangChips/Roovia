@@ -5,7 +5,7 @@ namespace Roovia.Models.Tenant
 {
     public class PropertyTenant
     {
-        public Guid Id { get; set; }
+        public int Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string IdNumber { get; set; }
@@ -22,7 +22,6 @@ namespace Roovia.Models.Tenant
         public DateTime UpdatedDate { get; set; }
 
         public Guid UpdatedBy { get; set; }
-        public object BankingDetails { get; internal set; }
     }
 
     public class PropertyTenantValidator : AbstractValidator<PropertyTenant>

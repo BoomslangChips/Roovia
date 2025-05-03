@@ -1,56 +1,66 @@
 ﻿@using Roovia.Components.Elements
+@using Roovia.Interfaces
+@using Roovia.Services
+@using Roovia.Models.Users
+@using Roovia.Models.Helper
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUser UserService
 
-<div class="roovia-page" id="app-container">
-    <div class="roovia-sidebar" id="sidebarContainer">
-        <NavMenu />
+<CascadingValue Value="CurrentUser">
+    <div class="roovia-page" id="app-container">
+        <div class="roovia-sidebar" id="sidebarContainer">
+            <NavMenu />
 
-        <!-- New bottom sidebar toggle -->
-        <div class="roovia-sidebar-footer">
-            <button class="roovia-sidebar-bottom-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
-                <i class="fal fa-chevron-left" id="sidebar-toggle-icon"></i>
-                <span>Collapse Sidebar</span>
-            </button>
+            <!-- New bottom sidebar toggle -->
+            <div class="roovia-sidebar-footer">
+                <button class="roovia-sidebar-bottom-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
+                    <i class="fal fa-chevron-left" id="sidebar-toggle-icon"></i>
+                    <span>Collapse Sidebar</span>
+                </button>
+            </div>
         </div>
+
+        <main class="roovia-main">
+            <div class="roovia-topbar">
+                <div class="roovia-topbar-content">
+                    <!-- Mobile menu toggle integrated directly in topbar -->
+                    <div class="roovia-menu-toggle-wrapper">
+                        <button id="mobile-menu-toggle" class="roovia-mobile-menu-toggle" onclick="toggleMobileMenu(event)">
+                            <i class="fal fa-bars"></i>
+                        </button>
+                    </div>
+
+                    <div class="roovia-logo">
+                        <i class="fal fa-building"></i>
+                        <span>Roovia</span>
+                    </div>
+
+                    <div class="roovia-topbar-actions">
+                        <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
+                            <i class="fal fa-user"></i>
+                            <span>@(CurrentUser?.FullName ?? "Account")</span>
+                        </button>
+                        <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
+                            <i class="fal fa-cog"></i>
+                        </button>
+                        <button id="theme-toggle-btn" class="roovia-btn roovia-btn-sm roovia-btn-secondary" onclick="toggleTheme()">
+                            <i class="fal fa-moon" id="theme-toggle-icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="roovia-content">
+                <div class="roovia-content-container">
+                    @Body
+                </div>
+            </div>
+        </main>
     </div>
-
-    <main class="roovia-main">
-        <div class="roovia-topbar">
-            <div class="roovia-topbar-content">
-                <!-- Mobile menu toggle integrated directly in topbar -->
-                <div class="roovia-menu-toggle-wrapper">
-                    <button id="mobile-menu-toggle" class="roovia-mobile-menu-toggle" onclick="toggleMobileMenu(event)">
-                        <i class="fal fa-bars"></i>
-                    </button>
-                </div>
-
-                <div class="roovia-logo">
-                    <i class="fal fa-building"></i>
-                    <span>Roovia</span>
-                </div>
-
-                <div class="roovia-topbar-actions">
-                    <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
-                        <i class="fal fa-user"></i>
-                        <span>Account</span>
-                    </button>
-                    <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
-                        <i class="fal fa-cog"></i>
-                    </button>
-                    <button id="theme-toggle-btn" class="roovia-btn roovia-btn-sm roovia-btn-secondary" onclick="toggleTheme()">
-                        <i class="fal fa-moon" id="theme-toggle-icon"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="roovia-content">
-            <div class="roovia-content-container">
-                @Body
-            </div>
-        </div>
-    </main>
-</div>
+</CascadingValue>
 
 <div id="blazor-error-ui" data-nosnippet>
     <div class="roovia-alert roovia-alert-danger">
@@ -68,7 +78,50 @@
 </div>
 
 @code {
-    // No C# event handlers needed
+    private ApplicationUser? CurrentUser { get; set; }
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUserAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task GetCurrentUserAsync()
+    {
+        try
+        {
+            // Get the authentication state
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated)
+            {
+                // Get user ID from claims
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    // Get full user details from the service
+                    var response = await UserService.GetUserById(userId);
+
+                    if (response.ResponseInfo.Success && response.Response != null)
+                    {
+                        CurrentUser = response.Response as ApplicationUser;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error or handle it according to your application's requirements
+            Console.WriteLine($"Error getting user data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 }
 
 <script>

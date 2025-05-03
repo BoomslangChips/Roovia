@@ -24,7 +24,6 @@
                     <RVTextbox Placeholder="Search organizations..."
                               IconLeft="far fa-search"
                               Value="@searchTerm"
-                              ValueChanged="@((val) => OnSearchChanged(val))"
                               CssClass="header-search" />
                     
                     @if (!string.IsNullOrWhiteSpace(searchTerm))

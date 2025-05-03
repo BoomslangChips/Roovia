@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Users;
+using System.Security.Claims;
 
 namespace Roovia.Services
 {
@@ -10,18 +12,21 @@ namespace Roovia.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly AuthenticationStateProvider _authState;
 
         public UserService(
             ApplicationDbContext context,
-            IDbContextFactory<ApplicationDbContext> contextFactory)
+            IDbContextFactory<ApplicationDbContext> contextFactory,
+            AuthenticationStateProvider authState)
         {
             _context = context;
             _contextFactory = contextFactory;
+            _authState = authState;
         }
 
         #region User Methods (Identity-related, using scoped DbContext)
 
-        public async Task<ResponseModel> GetUserById(int id)
+        public async Task<ResponseModel> GetUserById(string id)
         {
             ResponseModel response = new();
 
@@ -32,7 +37,7 @@ namespace Roovia.Services
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Company)
                     .Include(u => u.Branch)
-                    .FirstOrDefaultAsync(u => u.Id == id.ToString());
+                    .FirstOrDefaultAsync(u => u.Id == id);
 
                 if (user != null)
                 {
@@ -1327,6 +1332,63 @@ namespace Roovia.Services
             return response;
         }
 
+        public async Task<ResponseModel> GetAuthenticatedUserInfo()
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var authState = await _authState.GetAuthenticationStateAsync();
+                var user = authState.User;
+
+                if (user.Identity != null && user.Identity.IsAuthenticated)
+                {
+                    var userId = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        var applicationUser = await _context.Users
+                            .Include(u => u.EmailAddresses.Where(e => e.IsActive))
+                            .Include(u => u.ContactNumbers.Where(c => c.IsActive))
+                            .Include(u => u.Company)
+                            .Include(u => u.Branch)
+                            .FirstOrDefaultAsync(u => u.Id == userId);
+
+                        if (applicationUser != null)
+                        {
+                            response.Response = applicationUser;
+                            response.ResponseInfo.Success = true;
+                            response.ResponseInfo.Message = "Authenticated user retrieved successfully.";
+                        }
+                        else
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "Authenticated user not found.";
+                        }
+                    }
+                    else
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "User ID not found in claims.";
+                    }
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "User is not authenticated.";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving authenticated user info: " + ex.Message;
+            }
+
+            return response;
+        }
+
         #endregion
+
+
     }
 }

@@ -6,7 +6,7 @@ namespace Roovia.Interfaces
     public interface IUser
     {
         // User methods (Identity-related)
-        Task<ResponseModel> GetUserById(int id);
+        Task<ResponseModel> GetUserById(string id);
         Task<ResponseModel> UpdateUser(int id, ApplicationUser updatedUser);
         Task<ResponseModel> DeleteUser(int id);
         Task<ResponseModel> GetAllUsers();
@@ -14,6 +14,8 @@ namespace Roovia.Interfaces
         Task<ResponseModel> UpdateUserRole(string userId, UserRole role);
         Task<ResponseModel> UpdateUserBranch(string userId, int branchId);
         Task<ResponseModel> GetUsersByBranch(int branchId);
+
+        Task<ResponseModel> GetAuthenticatedUserInfo();
 
         // Company methods
         Task<ResponseModel> CreateCompany(Company company);

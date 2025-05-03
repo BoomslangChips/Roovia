@@ -1,0 +1,308 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper
+@using Roovia.Models.Properties
+@using Roovia.Models.PropertyOwner
+@using Roovia.Models.Users
+@using Roovia.Services
+
+@rendermode InteractiveServer
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-edit" IsVisible="@IsVisible" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="roovia-panel">
+            <div class="roovia-panel-header">
+                <h3 class="roovia-panel-title">Edit Property Owner</h3>
+            </div>
+            <div class="roovia-panel-body p-0">
+                <!-- Tab Navigation -->
+                <div class="d-flex border-bottom">
+                    <div class="@GetTabClass(1)" @onclick="() => ActiveTab = 1">
+                        <i class="fas fa-user me-2"></i>Owner Details
+                    </div>
+                    <div class="@GetTabClass(2)" @onclick="() => ActiveTab = 2">
+                        <i class="fas fa-building me-2"></i>Properties (@(selectedOwner.Properties?.Count ?? 0))
+                    </div>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-4">
+                    @if (ActiveTab == 1)
+                    {
+                        <!-- Owner Details Tab -->
+                        <div class="container-fluid">
+                            <!-- Owner Details Section -->
+                            <div class="row">
+                                <div class="col-12 mb-4">
+                                    <h5 class="text-primary mb-3">Personal Information</h5>
+                                    <div class="roovia-grid-cols-2 gap-4">
+                                        <div>
+                                            <RVTextbox Label="First Name" Value="@selectedOwner.FirstName" @onchange="(e => selectedOwner.FirstName = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Last Name" Value="@selectedOwner.LastName" @onchange="(e => selectedOwner.LastName = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="ID Number" Value="@selectedOwner.IdNumber" @onchange="(e => selectedOwner.IdNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="VAT Number" Value="@selectedOwner.VatNumber" @onchange="(e => selectedOwner.VatNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mb-4">
+                                    <h5 class="text-primary mb-3">Contact Information</h5>
+                                    <div class="roovia-grid-cols-2 gap-4">
+                                        <div>
+                                            <RVTextbox Label="Email Address" Value="@selectedOwner.EmailAddress" @onchange="(e => selectedOwner.EmailAddress = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Mobile Number" Value="@selectedOwner.MobileNumber" @onchange="(e => selectedOwner.MobileNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVCheckbox Label="Email Notifications" Value="@(selectedOwner.IsEmailNotificationsEnabled == "true")" @onchange="(e => selectedOwner.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                        </div>
+                                        <div>
+                                            <RVCheckbox Label="SMS Notifications" Value="@(selectedOwner.IsSmsNotificationsEnabled == "true")" @onchange="(e => selectedOwner.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mb-4">
+                                    <h5 class="text-primary mb-3">Bank Details</h5>
+                                    <div class="roovia-grid-cols-3 gap-4">
+                                        <div>
+                                            <RVTextbox Label="Account Type" Value="@selectedOwner.BankAccount.AccountType" @onchange="(e => selectedOwner.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Account Number" Value="@selectedOwner.BankAccount.AccountNumber" @onchange="(e => selectedOwner.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Branch Code" Value="@selectedOwner.BankAccount.BranchCode" @onchange="(e => selectedOwner.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">Address</h5>
+                                    <div class="roovia-grid-cols-2 gap-4">
+                                        <div>
+                                            <RVTextbox Label="Street" Value="@selectedOwner.Address.Street" @onchange="(e => selectedOwner.Address.Street = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="City" Value="@selectedOwner.Address.City" @onchange="(e => selectedOwner.Address.City = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Province" Value="@selectedOwner.Address.Province" @onchange="(e => selectedOwner.Address.Province = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Postal Code" Value="@selectedOwner.Address.PostalCode" @onchange="(e => selectedOwner.Address.PostalCode = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div class="grid-column-span-2">
+                                            <RVTextbox Label="Country" Value="@selectedOwner.Address.Country" @onchange="(e => selectedOwner.Address.Country = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ActiveTab == 2)
+                    {
+                        <!-- Properties Tab -->
+                        <div class="container-fluid">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="m-0">Properties Owned</h5>
+                                <button class="btn roovia-btn-primary btn-sm" @onclick="AddNewProperty">
+                                    <i class="fas fa-plus me-1"></i> Add Property
+                                </button>
+                            </div>
+
+                            @if (selectedOwner.Properties != null && selectedOwner.Properties.Any())
+                            {
+                                <div class="table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Address</th>
+                                                <th>Rental Amount</th>
+                                                <th>Lease Status</th>
+                                                <th>Lease End Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var prop in selectedOwner.Properties)
+                                            {
+                                                <tr>
+                                                    <td>@prop.Id</td>
+                                                    <td>
+                                                        @GetPropertyAddress(prop)
+                                                    </td>
+                                                    <td>@prop.RentalAmount.ToString("C")</td>
+                                                    <td>
+                                                        @if (prop.HasTenant)
+                                                        {
+                                                            <span class="badge bg-success-light">Occupied</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-warning-light">Vacant</span>
+                                                        }
+                                                    </td>
+                                                    <td>@prop.LeaseEndDate.ToShortDateString()</td>
+                                                    <td>
+                                                        <div class="d-flex gap-2">
+                                                            <button class="btn-primary btn-sm rounded-md" @onclick="() => ViewProperty(prop)">
+                                                                <i class="fas fa-eye"></i> View
+                                                            </button>
+                                                            <button class="btn-secondary btn-sm rounded-md" @onclick="() => EditProperty(prop)">
+                                                                <i class="fas fa-pencil-alt"></i> Edit
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="auth-alert auth-alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div class="auth-alert-content">
+                                        <h3>No Properties</h3>
+                                        <p>This owner doesn't have any properties yet. Click the "Add Property" button to add a property.</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (selectedOwner.Id != 0)
+                {
+                    <span class="text-muted">ID: @selectedOwner.Id</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="UpdatePropertyOwner">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter]
+    ApplicationUser? CurrentUser { get; set; }
+
+    [CascadingParameter]
+    PropertyOwner? selectedOwner { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public IPropertyOwner PropertyOwnerService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    bool IsVisible = true;
+    int ActiveTab = 1;
+
+    private string GetTabClass(int tabNumber)
+    {
+        return "px-4 py-3 cursor-pointer " + (ActiveTab == tabNumber
+            ? "border-bottom-2 border-primary text-primary fw-semibold"
+            : "text-secondary hover:bg-gray-100");
+    }
+
+    private string GetPropertyAddress(Property property)
+    {
+        var addressParts = new List<string>();
+
+        if (!string.IsNullOrEmpty(property.Address.Street))
+            addressParts.Add(property.Address.Street);
+
+        if (!string.IsNullOrEmpty(property.Address.City))
+            addressParts.Add(property.Address.City);
+
+        if (!string.IsNullOrEmpty(property.Address.Province))
+            addressParts.Add(property.Address.Province);
+
+        return string.Join(", ", addressParts);
+    }
+
+    private async Task UpdatePropertyOwner()
+    {
+        try
+        {
+            // Set updated date/time fields if necessary
+            selectedOwner.UpdatedDate = DateTime.Now;
+
+            // Use the current user's ID if available
+            if (CurrentUser != null && Guid.TryParse(CurrentUser.Id, out Guid userId))
+            {
+                selectedOwner.UpdatedBy = userId;
+            }
+            else
+            {
+                selectedOwner.UpdatedBy = Guid.NewGuid(); // Fallback
+            }
+
+            var response = await PropertyOwnerService.UpdatePropertyOwner(selectedOwner.Id, selectedOwner);
+
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            }
+            else
+            {
+                // Optionally update Owner with returned data (e.g., properties list)
+                selectedOwner = response.Response as PropertyOwner;
+                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                await CloseModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+        }
+    }
+
+    private void ViewProperty(Property property)
+    {
+        // Implement view property functionality
+        ToastService.ShowInfo($"Viewing property at {GetPropertyAddress(property)}", "View Property");
+    }
+
+    private void EditProperty(Property property)
+    {
+        // Implement edit property functionality
+        ToastService.ShowInfo($"Editing property at {GetPropertyAddress(property)}", "Edit Property");
+    }
+
+    private void AddNewProperty()
+    {
+        // Implement add new property functionality
+        ToastService.ShowInfo("Adding new property", "Add Property");
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}

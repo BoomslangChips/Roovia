@@ -1,5 +1,12 @@
 ﻿@page "/beneficiaries"
 
+@using Roovia.Models.PropertyOwner
+@using Roovia.Interfaces
+@using Roovia.Models.Users
+@using Roovia.Services
+
+@inject IPropertyOwner PropertyOwnerService
+
 @rendermode InteractiveServer
 
 <div class="container my-4">
@@ -22,9 +29,10 @@
                             <tr>
                                 <th>First Name</th>
                                 <th>Last Name</th>
-                                <th>Contact Number</th>
+                                <th>ID Number</th>
+                                <th>VAT Number</th>
+                                <th>Mobile Number</th>
                                 <th>Email</th>
-                                <th>Status</th>
                                 <th>Date Added</th>
                                 <th>Actions</th>
                             </tr>
@@ -35,10 +43,11 @@
                                 <tr>
                                     <td>@owner.FirstName</td>
                                     <td>@owner.LastName</td>
-                                    <td>@owner.ContactNumber</td>
+                                    <td>@owner.IdNumber</td>
+                                    <td>@owner.VatNumber</td>
+                                    <td>@owner.MobileNumber</td>
                                     <td>@owner.EmailAddress</td>
-                                    <td>@(owner.IsActive ? "Active" : "Inactive")</td>
-                                    <td>@owner.DateAdded.ToShortDateString()</td>
+                                    <td>@owner.CreatedOn.ToShortDateString()</td>
                                     <td>
                                         <button class="btn roovia-btn btn-sm me-2" @onclick="() => ViewPropertyOwner(owner)">
                                             <i class="fas fa-eye"></i> View
@@ -58,8 +67,8 @@
             }
             else
             {
-                <div class="alert alert-info">
-                    No property owners available.
+                <div class="roovia-alert-info d-flex justify-content-between align-items-center">
+                    <span>No property owners available.</span>
                 </div>
             }
         </div>
@@ -68,51 +77,61 @@
 
 @if (showPropertyOwnerModal)
 {
-    <PropertyOwnerModal></PropertyOwnerModal>
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <PropertyOwnerModal OnModalClosed="ModalClosed"></PropertyOwnerModal>
+    </CascadingValue>
 }
 
+@if (showEditModal)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="PropertyOwner" Value="selectedOwner">
+            <PropertyOwnerEditModal OnModalClosed="EditModalClosed"></PropertyOwnerEditModal>
+        </CascadingValue>
+    </CascadingValue>
+}
 
 @code {
     private string searchTerm = string.Empty;
-
     bool showPropertyOwnerModal = false;
+    bool showEditModal = false;
+    PropertyOwner selectedOwner = new();
+    private List<Roovia.Models.PropertyOwner.PropertyOwner> propertyOwners = new List<PropertyOwner>();
 
-    public class PropertyOwner
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    [CascadingParameter]
+    private ApplicationUser? CurrentUser { get; set; }
+
+
+    [Inject]
+    public IUser UserService { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string ContactNumber { get; set; }
-        public string EmailAddress { get; set; }
-        public bool IsActive { get; set; }
-        public DateTime DateAdded { get; set; }
+        if (CurrentUser == null)
+        {
+            await GetLoggedInUser();
+        }
+        await LoadPropertyOwnersAsync();
     }
 
-    private List<PropertyOwner> propertyOwners = new List<PropertyOwner>();
-
-    protected override void OnInitialized()
+    private async Task LoadPropertyOwnersAsync()
     {
-        // Simulated property owners data
-        propertyOwners = new List<PropertyOwner>
-       {
-           new PropertyOwner
-           {
-               FirstName = "Alice",
-               LastName = "Johnson",
-               ContactNumber = "555-123-4567",
-               EmailAddress = "alice.johnson@example.com",
-               IsActive = true,
-               DateAdded = DateTime.Now.AddDays(-15)
-           },
-           new PropertyOwner
-           {
-               FirstName = "Bob",
-               LastName = "Williams",
-               ContactNumber = "555-987-6543",
-               EmailAddress = "bob.williams@example.com",
-               IsActive = false,
-               DateAdded = DateTime.Now.AddDays(-30)
-           }
-       };
+        if (CurrentUser != null)
+        {
+            var response = await PropertyOwnerService.GetAllPropertyOwners(CurrentUser.CompanyId.Value);
+            if (response.ResponseInfo.Success)
+            {
+                propertyOwners = response.Response as List<PropertyOwner>;
+            }
+            else
+            {
+                Console.WriteLine($"Error loading property owners: {response.ResponseInfo.Message}");
+            }
+        }
+
     }
 
     private IEnumerable<PropertyOwner> FilteredPropertyOwners =>
@@ -122,19 +141,18 @@
 
     private void ViewPropertyOwner(PropertyOwner owner)
     {
-        // Logic to view property owner details
         Console.WriteLine($"Viewing property owner: {owner.FirstName} {owner.LastName}");
     }
 
-    private void EditPropertyOwner(PropertyOwner owner)
+    private async Task EditPropertyOwner(PropertyOwner owner)
     {
-        // Logic to edit property owner
-        Console.WriteLine($"Editing property owner: {owner.FirstName} {owner.LastName}");
+        selectedOwner = owner;
+        showEditModal = true;
+        await InvokeAsync(() => StateHasChanged());
     }
 
     private void DeletePropertyOwner(PropertyOwner owner)
     {
-        // Logic to delete property owner
         propertyOwners.Remove(owner);
         Console.WriteLine($"Deleted property owner: {owner.FirstName} {owner.LastName}");
     }
@@ -142,6 +160,32 @@
     private async Task AddPropertyOwner()
     {
         showPropertyOwnerModal = true;
-        await InvokeAsync(() => this.StateHasChanged());
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    public async Task GetLoggedInUser()
+    {
+        var userResponse = await UserService.GetAuthenticatedUserInfo();
+        if (userResponse.ResponseInfo.Success)
+        {
+            CurrentUser = userResponse.Response as ApplicationUser;
+        }
+        else
+        {
+            Console.WriteLine($"Error loading user: {userResponse.ResponseInfo.Message}");
+        }
+    }
+
+    public async Task ModalClosed()
+    {
+        showPropertyOwnerModal = false;
+        await LoadPropertyOwnersAsync();
+    }
+
+    public async Task EditModalClosed()
+    {
+        showEditModal = false;
+        await LoadPropertyOwnersAsync();
     }
 }

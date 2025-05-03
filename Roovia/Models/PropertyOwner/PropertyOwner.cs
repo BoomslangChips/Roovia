@@ -6,9 +6,9 @@ namespace Roovia.Models.PropertyOwner
 {
     public class PropertyOwner
     {
-        public Guid Id { get; set; }
+        public int Id { get; set; }
 
-        public Guid CompanyId { get; set; }
+        public int CompanyId { get; set; }
 
         public string FirstName { get; set; }
 

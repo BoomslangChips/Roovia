@@ -1,87 +1,239 @@
 ﻿@using Roovia.Interfaces
-@using Roovia.Models.Helper  
-@using Roovia.Models.Properties  
-@using Roovia.Models.PropertyOwner  
+@using Roovia.Models.Helper
+@using Roovia.Models.Properties
+@using Roovia.Models.PropertyOwner
+@using Roovia.Models.Users
 @using Roovia.Services
-
-@inject IPropertyOwner PropertyOwnerService
-@inject ToastService ToastService
 
 @rendermode InteractiveServer
 
-<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible">
-    <ChildContent>  
-        <h3>Property Owner</h3>  
-        <RVTextbox Label="First Name" Value="@Owner.FirstName"></RVTextbox>  
-        <RVTextbox Label="Last Name" Value="@Owner.LastName"></RVTextbox>  
-        <RVTextbox Label="ID Number" Value="@Owner.IdNumber"></RVTextbox>  
-        <RVTextbox Label="VAT Number" Value="@Owner.VatNumber"></RVTextbox>  
-        <RVTextbox Label="Email Address" Value="@Owner.EmailAddress"></RVTextbox>  
-        <RVTextbox Label="Mobile Number" Value="@Owner.MobileNumber"></RVTextbox>  
-        @* 
-        <h4>Bank Account</h4>  
-        <RVTextbox Label="Account Type" Value="@Owner.BankAccount.AccountType"></RVTextbox>  
-        <RVTextbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber"></RVTextbox>  
-        <RVTextbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode"></RVTextbox>  
+@page "/propertyowners"
 
-        <h4>Address</h4>  
-        <RVTextbox Label="Street" Value="@Owner.Address.Street"></RVTextbox>  
-        <RVTextbox Label="City" Value="@Owner.Address.City"></RVTextbox>  
-        <RVTextbox Label="Province" Value="@Owner.Address.Province"></RVTextbox>  
-        <RVTextbox Label="Postal Code" Value="@Owner.Address.PostalCode"></RVTextbox>  
-        <RVTextbox Label="Country" Value="@Owner.Address.Country"></RVTextbox>  *@ 
-    </ChildContent>  
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible" Size="ModalSize.Medium">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h3>Property Owner</h3>
+                    </div>
+                </div>
+                <div class="row">
+                    <!-- Owner Details -->
+                    <div class="col-12">
+                        <h5>Owner Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <RVTextbox Label="First Name" Value="@Owner.FirstName" @onchange="(e => Owner.FirstName = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Last Name" Value="@Owner.LastName" @onchange="(e => Owner.LastName = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="ID Number" Value="@Owner.IdNumber" @onchange="(e => Owner.IdNumber = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="VAT Number" Value="@Owner.VatNumber" @onchange="(e => Owner.VatNumber = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Email Address" Value="@Owner.EmailAddress" @onchange="(e => Owner.EmailAddress = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Mobile Number" Value="@Owner.MobileNumber" @onchange="(e => Owner.MobileNumber = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVCheckbox Label="Email Notifications" Value="@(Owner.IsEmailNotificationsEnabled == "true")" @onchange="(e => Owner.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVCheckbox Label="SMS Notifications" Value="@(Owner.IsSmsNotificationsEnabled == "true")" @onchange="(e => Owner.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bank Details -->
+                    <div class="col-12 mt-4">
+                        <h5>Bank Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <RVTextbox Label="Account Type" Value="@Owner.BankAccount.AccountType" @onchange="(e => Owner.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber" @onchange="(e => Owner.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode" @onchange="(e => Owner.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Details -->
+                    <div class="col-12 mt-4">
+                        <h5>Address</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <RVTextbox Label="Street" Value="@Owner.Address.Street" @onchange="(e => Owner.Address.Street = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="City" Value="@Owner.Address.City" @onchange="(e => Owner.Address.City = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Province" Value="@Owner.Address.Province" @onchange="(e => Owner.Address.Province = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-6">
+                                <RVTextbox Label="Postal Code" Value="@Owner.Address.PostalCode" @onchange="(e => Owner.Address.PostalCode = e.Value.ToString())"></RVTextbox>
+                            </div>
+                            <div class="col-md-12">
+                                <RVTextbox Label="Country" Value="@Owner.Address.Country" @onchange="(e => Owner.Address.Country = e.Value.ToString())"></RVTextbox>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
     <FooterContent>
-        <button class="btn roovia-btn-primary" @onclick="SavePropertyOwner">Save</button>  
-        <button class="btn roovia-btn-secondary" @onclick="() => IsVisible = false">Cancel</button>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (Owner.Id != 0)
+                {
+                    <span class="text-muted">ID: @Owner.Id</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="SavePropertyOwner">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
     </FooterContent>
-</RVModal>  
+</RVModal>
 
 @code {
-    [Parameter]  
+    [CascadingParameter]
+    private ApplicationUser? CurrentUser { get; set; }
+
+    [Parameter]
     public PropertyOwner Owner { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public IPropertyOwner PropertyOwnerService { get; set; }
+
+    [Inject]
+    public IUser UserService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
 
     bool IsVisible = true;
 
-    protected override async Task OnParametersSetAsync()  
-    {  
-        Owner.FirstName = "DefaultFirstName";  
-        Owner.LastName = "DefaultLastName";  
-        Owner.IdNumber = "0000000000000";  
-        Owner.VatNumber = "0000000000";  
-        Owner.EmailAddress = "default@example.com";  
-        Owner.MobileNumber = "0000000000";  
-        Owner.IsEmailNotificationsEnabled = "false";  
-        Owner.IsSmsNotificationsEnabled = "false";  
-        Owner.BankAccount = new BankAccount  
-       {  
-           AccountType = "DefaultType",  
-           AccountNumber = "0000000000",  
-           BankName = new BankName(),  
-           BranchCode = "0000"  
-       };  
-        Owner.Address = new Address  
-       {  
-           Street = "Default Street",  
-           City = "Default City",  
-           Province = "Default Province",  
-           PostalCode = "0000",  
-           Country = "Default Country"  
-       };  
-        Owner.Properties = new List<Property>();  
-    }  
+    protected override async Task OnInitializedAsync()
+    {
+        if (Owner.Id == 0)
+        {
+            InitializeNewOwner();
+        }
+    }
+
+    private void InitializeNewOwner()
+    {
+        Owner.FirstName = "";
+        Owner.LastName = "";
+        Owner.IdNumber = "";
+        Owner.VatNumber = "";
+        Owner.EmailAddress = "";
+        Owner.MobileNumber = "";
+        Owner.IsEmailNotificationsEnabled = "false";
+        Owner.IsSmsNotificationsEnabled = "false";
+        Owner.BankAccount = new BankAccount
+            {
+                AccountType = "",
+                AccountNumber = "",
+                BankName = new BankName(),
+                BranchCode = ""
+            };
+        Owner.Address = new Address
+            {
+                Street = "",
+                City = "",
+                Province = "",
+                PostalCode = "",
+                Country = ""
+            };
+    }
 
     private async Task SavePropertyOwner()
     {
-        var response = await PropertyOwnerService.CreatePropertyOwner(Owner);
-        if(response.ResponseInfo.Success == false)
+        try
         {
-            ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            Owner.CreatedBy = Guid.Parse(CurrentUser.Id);
+            Owner.CompanyId = CurrentUser.CompanyId.Value;
+            Owner.UpdatedBy = Guid.Parse(CurrentUser.Id);
+
+            Owner.CreatedOn = DateTime.Now;
+            Owner.UpdatedDate = DateTime.Now;
+
+            var response = Owner.Id == 0
+                ? await PropertyOwnerService.CreatePropertyOwner(Owner)
+                : await PropertyOwnerService.UpdatePropertyOwner(Owner.Id, Owner);
+
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            }
+            else
+            {
+                Owner = response.Response as PropertyOwner; // Update with returned data that includes the ID
+                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                await CloseModal();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
-            IsVisible = false;
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
         }
-    }  
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+
 }
+
+<style>
+    /* Adjust modal width dynamically based on screen size */
+    .roovia-modal {
+        max-width: 90vw;
+        width: 90%;
+        margin: 0 auto;
+    }
+
+    @@media (max-width: 1200px) {
+        .roovia-modal {
+            max-width: 80vw;
+            width: 80%;
+        }
+    }
+
+    @@media (max-width: 992px) {
+        .roovia-modal {
+            max-width: 70vw;
+            width: 70%;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .roovia-modal {
+            max-width: 100vw;
+            width: 100%;
+        }
+    }
+</style>
