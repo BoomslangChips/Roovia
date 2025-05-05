@@ -130,17 +130,21 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> GetPropertyById(int id)
+        public async Task<ResponseModel> GetPropertyById(int id, int companyId)
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM Properties WHERE Id = @Id";
+            string sql = @"
+                SELECT p.* 
+                FROM Properties p
+                LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
+                WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
 
             try
             {
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     // Get raw data from database
-                    var row = await conn.QueryFirstOrDefaultAsync(sql, new { Id = id });
+                    var row = await conn.QueryFirstOrDefaultAsync(sql, new { CompanyId = companyId, Id = id });
 
                     if (row == null)
                     {
@@ -206,11 +210,11 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> UpdateProperty(int id, Property updatedProperty)
+        public async Task<ResponseModel> UpdateProperty(int id, Property updatedProperty, int companyId)
         {
             ResponseModel response = new();
             string sql = @"
-                UPDATE Properties 
+                UPDATE p
                 SET 
                     OwnerId = @OwnerId,
                     Street = @Street,
@@ -236,7 +240,9 @@ namespace Roovia.Services
                     CurrentTenantId = @CurrentTenantId, 
                     UpdatedDate = @UpdatedDate, 
                     UpdatedBy = @UpdatedBy
-                WHERE Id = @Id";
+                FROM Properties p
+                LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
+                WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
 
             try
             {
@@ -245,6 +251,7 @@ namespace Roovia.Services
                     var result = await conn.ExecuteAsync(sql, new
                     {
                         Id = id,
+                        CompanyId = companyId,
                         updatedProperty.OwnerId,
                         Street = updatedProperty.Address?.Street,
                         UnitNumber = updatedProperty.Address?.UnitNumber,
@@ -274,7 +281,7 @@ namespace Roovia.Services
                     if (result > 0)
                     {
                         // Get the updated property
-                        var getResponse = await GetPropertyById(id);
+                        var getResponse = await GetPropertyById(id, companyId);
                         if (getResponse.ResponseInfo.Success)
                         {
                             response.Response = getResponse.Response;
@@ -303,7 +310,7 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> DeleteProperty(int id)
+        public async Task<ResponseModel> DeleteProperty(int id, int companyId)
         {
             ResponseModel response = new();
 
@@ -312,8 +319,13 @@ namespace Roovia.Services
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     // First get the property to return in the response
-                    string selectSql = "SELECT * FROM Properties WHERE Id = @Id";
-                    var row = await conn.QueryFirstOrDefaultAsync(selectSql, new { Id = id });
+                    string selectSql = @"
+                        SELECT p.* 
+                        FROM Properties p
+                        LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
+                        WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
+
+                    var row = await conn.QueryFirstOrDefaultAsync(selectSql, new { CompanyId = companyId, Id = id });
 
                     if (row == null)
                     {
@@ -366,8 +378,13 @@ namespace Roovia.Services
                     };
 
                     // Now perform the deletion
-                    string deleteSql = "DELETE FROM Properties WHERE Id = @Id";
-                    var result = await conn.ExecuteAsync(deleteSql, new { Id = id });
+                    string deleteSql = @"
+                        DELETE p
+                        FROM Properties p
+                        LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
+                        WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
+
+                    var result = await conn.ExecuteAsync(deleteSql, new { CompanyId = companyId, Id = id });
 
                     if (result > 0)
                     {
@@ -391,17 +408,21 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> GetAllProperties()
+        public async Task<ResponseModel> GetAllProperties(int companyId)
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM Properties";
+            string sql = @"
+                SELECT p.* 
+                FROM Properties p
+                LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
+                WHERE po.CompanyId = @CompanyId";
 
             try
             {
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     // Get the raw data from the database
-                    var propertiesRaw = await conn.QueryAsync(sql);
+                    var propertiesRaw = await conn.QueryAsync(sql, new { CompanyId = companyId });
 
                     // Map the results to the object model
                     var result = propertiesRaw.Select(row => {

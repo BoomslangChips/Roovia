@@ -4,6 +4,7 @@
 @using Roovia.Services
 @using Roovia.Interfaces
 @inject IProperty PropertyService
+@inject IUser UserService
 
 @rendermode InteractiveServer
 
@@ -135,7 +136,7 @@
 
 @code {
     [CascadingParameter]
-    public ApplicationUser CurrentUser { get; set; } = new();
+    private ApplicationUser? CurrentUser { get; set; }
 
     private List<Property> properties = new List<Property>();
     private List<Property> filteredProperties = new List<Property>();
@@ -145,21 +146,42 @@
     private string sortOption = "AddressAsc";
     bool showAddPropertyModal = false;
 
-    protected override async Task OnInitializedAsync()
+            protected override async Task OnInitializedAsync()
     {
+        if (CurrentUser == null)
+        {
+            await GetLoggedInUser();
+        }
         await LoadProperties();
+    }
+
+    public async Task GetLoggedInUser()
+    {
+        var userResponse = await UserService.GetAuthenticatedUserInfo();
+        if (userResponse.ResponseInfo.Success)
+        {
+            CurrentUser = userResponse.Response as ApplicationUser;
+        }
+        else
+        {
+            Console.WriteLine($"Error loading user: {userResponse.ResponseInfo.Message}");
+        }
     }
 
     private async Task LoadProperties()
     {
         isLoading = true;
-        var response = await PropertyService.GetAllProperties();
-
-        if (response.ResponseInfo.Success && response.Response != null)
+        if (CurrentUser != null && CurrentUser.CompanyId != null)
         {
-            properties = (List<Property>)response.Response;
-            ApplyFiltersAndSort();
+            var response = await PropertyService.GetAllProperties(CurrentUser.CompanyId.Value);
+
+            if (response.ResponseInfo.Success && response.Response != null)
+            {
+                properties = (List<Property>)response.Response;
+                ApplyFiltersAndSort();
+            }
         }
+      
 
         isLoading = false;
     }
