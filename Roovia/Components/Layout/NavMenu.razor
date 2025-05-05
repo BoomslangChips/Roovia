@@ -1,36 +1,39 @@
-﻿@implements IDisposable
+﻿@using Roovia.Models.Users
+@implements IDisposable
 @inject NavigationManager NavigationManager
 
 <div class="roovia-nav-header">
     <div class="roovia-nav-brand">
-        <img src="/images/roovia-logo.png" alt="Roovia" class="roovia-nav-logo" onerror="this.src='/images/roovia-logo.png'; this.onerror=null;" />
+        <img src="/images/roovia-logo.png" alt="Roovia" class="roovia-nav-logo" />
     </div>
-    <button type="button" class="roovia-nav-toggle" title="Close menu" onclick="closeNavMenuMobile(event)">
-        <i class="fal fa-times"></i>
-    </button>
 </div>
+
+
 
 <div class="roovia-nav-menu" id="roovia-nav-menu">
     <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">Management</div>
+        <div class="roovia-nav-section-title">
+        <span class="roovia-nav-section-title-full">Management</span>
+        <span class="roovia-nav-section-title-abbreviated">Manage</span>
+        </div>
         <div class="roovia-nav-links">
-            <NavLink class="roovia-nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="roovia-nav-link" href="" Match="NavLinkMatch.All" title="Dashboard">
                 <i class="fal fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </NavLink>
 
-            <NavLink class="roovia-nav-link" href="tenants">
+            <NavLink class="roovia-nav-link" href="tenants" title="Tenants">
                 <i class="fal fa-people-roof"></i>
                 <span>Tenants</span>
             </NavLink>
 
-            <NavLink class="roovia-nav-link" href="properties">
+            <NavLink class="roovia-nav-link" href="properties" title="Properties">
                 <i class="fal fa-house"></i>
                 <span>Properties</span>
                 <span class="roovia-nav-badge">12</span>
             </NavLink>
 
-            <NavLink class="roovia-nav-link" href="beneficiaries">
+            <NavLink class="roovia-nav-link" href="beneficiaries" title="Owners">
                 <i class="fal fa-users"></i>
                 <span>Owners</span>
             </NavLink>
@@ -38,14 +41,24 @@
     </div>
 
     <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">Administration</div>
+        <div class="roovia-nav-section-title">
+        <span class="roovia-nav-section-title-full">Administration</span>
+        <span class="roovia-nav-section-title-abbreviated">Admin</span>
+        </div>
         <div class="roovia-nav-links">
-            <NavLink class="roovia-nav-link" href="users">
+            <NavLink class="roovia-nav-link" href="users" title="Users">
                 <i class="fal fa-people-group"></i>
                 <span>Users</span>
             </NavLink>
 
-            <NavLink class="roovia-nav-link" href="settings">
+            <Roovia.Security.PermissionAuthorizeView Permission="settings.permissions">
+                <NavLink class="roovia-nav-link" href="admin/roles" title="Role Management">
+                    <i class="fal fa-shield-check"></i>
+                    <span>Role Management</span>
+                </NavLink>
+            </Roovia.Security.PermissionAuthorizeView>
+
+            <NavLink class="roovia-nav-link" href="settings" title="Settings">
                 <i class="fal fa-gear"></i>
                 <span>Settings</span>
             </NavLink>
@@ -53,54 +66,97 @@
     </div>
 
     <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">Dev Tutorial</div>
+        <div class="roovia-nav-section-title">
+        <span class="roovia-nav-section-title-full">Dev Tutorial</span>
+        <span class="roovia-nav-section-title-abbreviated">Dev</span>
+        </div>
         <div class="roovia-nav-links">
-            <NavLink class="roovia-nav-link" href="components">
+            <NavLink class="roovia-nav-link" href="components" title="Components">
                 <i class="fal fa-puzzle-piece"></i>
                 <span>Components</span>
             </NavLink>
 
-            <NavLink class="roovia-nav-link" href="Components-Grid">
+            <NavLink class="roovia-nav-link" href="Components-Grid" title="Grid">
                 <i class="fal fa-table"></i>
                 <span>Grid</span>
             </NavLink>
         </div>
     </div>
-
-    <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">User</div>
-        <div class="roovia-nav-links">
-            <AuthorizeView>
-                <Authorized>
-                    <NavLink class="roovia-nav-link" href="Account/Manage">
-                        <i class="fal fa-user"></i>
-                        <span>@context.User.Identity?.Name</span>
-                    </NavLink>
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="roovia-nav-link w-100 text-left">
-                            <i class="fal fa-sign-out-alt"></i>
-                            <span>Logout</span>
-                        </button>
-                    </form>
-                </Authorized>
-                <NotAuthorized>
-                    <NavLink class="roovia-nav-link" href="Account/Register">
-                        <i class="fal fa-user-plus"></i>
-                        <span>Register</span>
-                    </NavLink>
-                    <NavLink class="roovia-nav-link" href="Account/Login">
-                        <i class="fal fa-sign-in-alt"></i>
-                        <span>Login</span>
-                    </NavLink>
-                </NotAuthorized>
-            </AuthorizeView>
+</div>
+<div class="roovia-desktop-toggle-wrapper">
+    <button class="roovia-desktop-menu-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
+        <i class="fal fa-angle-double-left" id="desktop-toggle-icon"></i>
+    </button>
+</div>
+<div class="roovia-sidebar-footer">
+    <div class="roovia-user-profile" onclick="toggleUserMenu()">
+        <div class="roovia-user-avatar">
+            <i class="fal fa-user"></i>
         </div>
+        <div class="roovia-user-details">
+            <div class="roovia-user-name">@(CurrentUser?.FullName ?? "Guest")</div>
+            <div class="roovia-user-role">@(CurrentUser?.Role.ToString() ?? "Not logged in")</div>
+        </div>
+        <div class="roovia-user-dropdown-icon">
+            <i class="fal fa-chevron-down"></i>
+        </div>
+    </div>
+
+    <!-- User Menu Dropdown -->
+    <div class="roovia-user-menu" id="userMenu">
+        <div class="roovia-user-menu-header">
+            <div class="roovia-user-menu-avatar">
+                <i class="fal fa-user-circle"></i>
+            </div>
+            <div>
+                <div class="roovia-user-menu-name">@(CurrentUser?.FullName ?? "Guest")</div>
+                <div class="roovia-user-menu-email">@(CurrentUser?.Email ?? "Sign in to access your account")</div>
+            </div>
+        </div>
+
+        <div class="roovia-user-menu-divider"></div>
+
+        <AuthorizeView>
+            <Authorized>
+                <a href="Account/Manage" class="roovia-user-menu-item">
+                    <i class="fal fa-user-cog"></i>
+                    <span>My Profile</span>
+                </a>
+                <a href="#" class="roovia-user-menu-item" onclick="toggleTheme(); return false;">
+                    <i class="fal fa-moon" id="theme-toggle-icon"></i>
+                    <span>Toggle Theme</span>
+                </a>
+                <form action="Account/Logout" method="post" class="roovia-user-menu-form">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <button type="submit" class="roovia-user-menu-item roovia-user-menu-logout">
+                        <i class="fal fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <a href="Account/Login" class="roovia-user-menu-item">
+                    <i class="fal fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </a>
+                <a href="Account/Register" class="roovia-user-menu-item">
+                    <i class="fal fa-user-plus"></i>
+                    <span>Register</span>
+                </a>
+                <a href="#" class="roovia-user-menu-item" onclick="toggleTheme(); return false;">
+                    <i class="fal fa-moon" id="theme-toggle-icon"></i>
+                    <span>Toggle Theme</span>
+                </a>
+            </NotAuthorized>
+        </AuthorizeView>
     </div>
 </div>
 
 @code {
+    [Parameter]
+    public ApplicationUser? CurrentUser { get; set; }
+
     private string? currentUrl;
 
     protected override void OnInitialized()

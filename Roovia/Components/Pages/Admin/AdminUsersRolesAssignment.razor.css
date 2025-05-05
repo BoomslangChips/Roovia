@@ -1,0 +1,473 @@
+﻿/* Admin Header */
+.admin-header {
+    position: relative;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    margin: calc(var(--spacing-5) * -1) calc(var(--spacing-5) * -1) var(--spacing-6) calc(var(--spacing-5) * -1);
+    padding: var(--spacing-6) var(--spacing-5);
+    color: white;
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.admin-header-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-pattern {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+}
+
+.admin-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 var(--spacing-2) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+    .admin-header h1 i {
+        font-size: 1.75rem;
+    }
+
+.admin-header p {
+    margin: 0;
+    font-size: var(--font-size-base);
+    opacity: 0.9;
+    max-width: 600px;
+}
+
+/* Search Box */
+.search-box {
+    position: relative;
+    min-width: 300px;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: var(--spacing-3);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.search-input .roovia-textbox-input {
+    padding-left: calc(var(--spacing-3) + 1rem + var(--spacing-2));
+    background-color: var(--content-bg);
+    border: 1px solid var(--border-divider);
+}
+
+.clear-search {
+    margin-left: var(--spacing-1);
+}
+
+/* Table Styles */
+.table-container {
+    overflow-x: auto;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-4);
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 0;
+}
+
+    .table th {
+        text-align: left;
+        padding: var(--spacing-3) var(--spacing-4);
+        background-color: var(--table-header-bg);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-divider);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        font-size: var(--font-size-sm);
+        letter-spacing: 0.02em;
+    }
+
+    .table td {
+        padding: var(--spacing-3) var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        vertical-align: middle;
+        transition: all 0.2s ease;
+        font-size: var(--font-size-sm);
+    }
+
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table tr:hover td {
+        background-color: var(--primary-lighter);
+    }
+
+.inactive-row td {
+    opacity: 0.6;
+}
+
+/* User Name Cell */
+.user-name-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+}
+
+.user-avatar-large {
+    width: 48px;
+    height: 48px;
+    font-size: var(--font-size-lg);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.user-full-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Organization Info */
+.org-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.company-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.branch-name {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+/* Role Badges */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-pill);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.system-globaladmin {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+}
+
+.system-companyadmin {
+    background-color: var(--warning-light);
+    color: var(--warning);
+}
+
+.system-branchmanager {
+    background-color: var(--info-light);
+    color: var(--info);
+}
+
+.system-standarduser {
+    background-color: var(--success-bg);
+    color: var(--success);
+}
+
+/* User Roles Container */
+.user-roles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+}
+
+.role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-pill);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+    .role-chip.preset {
+        background-color: var(--info-light);
+        color: var(--info);
+    }
+
+    .role-chip.custom {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+.remove-role-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: var(--spacing-1);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .remove-role-btn:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+        transform: scale(1.1);
+    }
+
+.no-roles {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-style: italic;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+/* Modal Styles */
+.user-info-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
+    padding: var(--spacing-3);
+    background-color: var(--subtle-bg);
+    border-radius: var(--border-radius-md);
+}
+
+.user-details h4 {
+    margin: 0 0 var(--spacing-1) 0;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+}
+
+.user-details p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-4);
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: var(--spacing-2);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+.role-description {
+    margin-top: var(--spacing-3);
+    padding: var(--spacing-3);
+    background-color: var(--subtle-bg);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+    .role-description p {
+        margin: 0;
+    }
+
+/* Permissions View */
+.permissions-container {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.permissions-by-category {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-4);
+    margin-top: var(--spacing-4);
+}
+
+.permission-card {
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+.permission-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    background-color: var(--subtle-bg);
+    border-bottom: 1px solid var(--border-divider);
+}
+
+    .permission-card-header i {
+        color: var(--primary);
+    }
+
+    .permission-card-header h4 {
+        margin: 0;
+        font-size: var(--font-size-base);
+        font-weight: 600;
+    }
+
+.permission-list {
+    padding: var(--spacing-2);
+}
+
+.permission-item {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--spacing-2);
+    gap: var(--spacing-2);
+    border-bottom: 1px solid var(--border-divider);
+}
+
+    .permission-item:last-child {
+        border-bottom: none;
+    }
+
+.permission-check {
+    color: var(--success);
+    margin-top: var(--spacing-1);
+}
+
+.permission-content {
+    flex: 1;
+}
+
+.permission-name {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.permission-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.modal-footer-custom {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--spacing-5);
+    padding-top: var(--spacing-4);
+    border-top: 1px solid var(--border-divider);
+}
+
+/* Animation */
+.user-management-card {
+    animation: fade-in-up 0.4s ease;
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+    .permissions-by-category {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-box {
+        min-width: unset;
+        width: 100%;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+        .action-buttons .roovia-btn {
+            width: 100%;
+        }
+
+    .org-info {
+        flex-direction: row;
+        gap: var(--spacing-3);
+    }
+
+    .admin-header {
+        padding: var(--spacing-4) var(--spacing-3);
+    }
+
+        .admin-header h1 {
+            font-size: 1.5rem;
+        }
+
+            .admin-header h1 i {
+                font-size: 1.5rem;
+            }
+
+    .table th,
+    .table td {
+        padding: var(--spacing-2) var(--spacing-3);
+    }
+}
+
+@media (max-width: 576px) {
+    .user-name-cell {
+        flex-direction: column;
+        gap: var(--spacing-2);
+        align-items: flex-start;
+    }
+
+    .user-roles-container {
+        flex-direction: column;
+        gap: var(--spacing-1);
+    }
+
+    .table {
+        font-size: var(--font-size-xs);
+    }
+
+    .role-badge,
+    .role-chip {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.5rem;
+    }
+}

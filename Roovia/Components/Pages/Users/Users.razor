@@ -1,255 +1,172 @@
-﻿@page "/Users"
+﻿@page "/users"
+@using Roovia.Interfaces
 @using Roovia.Models.Users
 @using Roovia.Models.Helper
-@using Roovia.Interfaces
+@using Roovia.Security
 @using Roovia.Services
-@inject IUser UserService
-@inject ToastService ToastService
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JSRuntime
-
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@attribute [Authorize(Policy = "GlobalAdminOnly")]
 @rendermode InteractiveServer
+@inject IUser UserService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<RVToastContainer Position="bottom-right" />
-
-<div class="organization-dashboard">
-    <header class="dashboard-header">
-        <div class="header-container">
-            <div class="header-title">
-                <h1><i class="far fa-sitemap me-2"></i>Organization Management</h1>
-                <p>Manage your company structure, branches, and team members</p>
-            </div>
-            <div class="header-actions">
-                <div class="search-wrapper">
-                    <RVTextbox Placeholder="Search organizations..."
-                              IconLeft="far fa-search"
-                              Value="@searchTerm"
-                              CssClass="header-search" />
-                    
-                    @if (!string.IsNullOrWhiteSpace(searchTerm))
-                    {
-                        <button class="search-clear-btn" @onclick="ClearSearch">
-                            <i class="far fa-times"></i>
-                        </button>
-                    }
+<div class="users-page">
+    <div class="admin-header-section">
+        <div class="admin-header-content">
+            <div class="header-text-content">
+                <div class="header-icon">
+                    <i class="fa-light fa-users"></i>
                 </div>
-                <RVButton Text="Add Company"
-                         IconLeft="far fa-building-circle-check"
-                         ButtonType="primary"
-                         OnClick="() => OpenCompanyDialog()" />
+                <div class="header-title-group">
+                    <h1 class="header-title">User Management</h1>
+                    <p class="header-subtitle">Manage users, assign roles and company access</p>
+                </div>
+            </div>
+
+            <div class="header-action-panel">
+                <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Create User"
+                          OnClick="() => ShowUserEditModal()" CssClass="create-user-btn" />
             </div>
         </div>
-    </header>
+    </div>
 
-    <div class="dashboard-content">
+    <div class="admin-main-container">
         @if (isLoading)
         {
             <div class="loading-state">
-                <div class="loading-animation">
-                    <div class="loading-circle"></div>
-                    <div class="loading-circle"></div>
-                    <div class="loading-circle"></div>
-                </div>
-                <h3>Loading Organization Data</h3>
-                <p>Please wait while we retrieve your organization structure...</p>
-            </div>
-        }
-        else if (loadError)
-        {
-            <div class="error-state">
-                <i class="far fa-times-hexagon"></i>
-                <h3>Failed to Load Organization Data</h3>
-                <p>@errorMessage</p>
-                <RVButton Text="Try Again" 
-                         ButtonType="primary" 
-                         OnClick="LoadCompanies" 
-                         CssClass="retry-button" />
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading user hierarchy...</h3>
             </div>
         }
         else
         {
-            @if (!FilteredCompanies.Any())
-            {
-                <div class="empty-state">
-                    <div class="empty-animation">
-                        <i class="far fa-building"></i>
-                        <i class="far fa-plus-circle"></i>
-                    </div>
-                    <h3>No Companies Found</h3>
-                    <p>@(companies.Any() ? "Your search returned no results." : "You haven't added any companies yet.")</p>
-                    <div class="empty-actions">
-                        <RVButton Text="Add Your First Company" 
-                                 IconLeft="far fa-building-circle-plus" 
-                                 ButtonType="primary" 
-                                 OnClick="() => OpenCompanyDialog()" 
-                                 CssClass="primary-action" />
-                        @if (companies.Any() && !string.IsNullOrWhiteSpace(searchTerm))
-                        {
-                            <RVButton Text="Clear Search" 
-                                     IconLeft="far fa-filter-slash" 
-                                     ButtonType="secondary" 
-                                     OnClick="ClearSearch" />
-                        }
-                    </div>
-                </div>
-            }
-            else
-            {
-                <div class="company-grid">
-                    @foreach (var company in FilteredCompanies)
+            <RVCard CssClass="management-card">
+                <HeaderActions>
+                    <UserFilterPanel Companies="@allCompanies"
+                                     OnCompanySelected="HandleCompanyChange"
+                                     SelectedCompanyId="@selectedCompanyId"
+                                     Branches="@filteredBranches"
+                                     OnBranchSelected="HandleBranchChange"
+                                     SelectedBranchId="@selectedBranchId"
+                                     OnRoleFilterChanged="HandleRoleFilterChange"
+                                     SelectedRoleFilter="@selectedRoleFilter"
+                                     OnStatusFilterChanged="HandleStatusFilterChange"
+                                     SelectedStatusFilter="@selectedStatusFilter"
+                                     SearchTerm="@searchTerm"
+                                     OnSearchChanged="HandleSearch"
+                                     OnClearFilters="ClearFilters"
+                                     OnRefresh="LoadUserHierarchy" />
+                </HeaderActions>
+                <ChildContent>
+                    @if (currentUser?.Role == SystemRole.GlobalAdmin)
                     {
-                        <div class="company-card @(IsExpanded(company.Id) ? "expanded" : "")" id="company-@company.Id">
-                            <div class="company-card-header" @onclick="() => ToggleCompanyExpansion(company.Id)">
-                                <div class="company-info">
-                                    <div class="company-avatar">
-                                        @company.Name.Substring(0, 1)
-                                    </div>
-                                    <div class="company-title">
-                                        <h2>@company.Name</h2>
-                                        <div class="company-meta">
-                                            <span><i class="far fa-building"></i> @(company.Branches?.Count ?? 0) branches</span>
-                                            <span><i class="far fa-users"></i> @(company.Branches?.Sum(b => b.Users?.Count ?? 0) ?? 0) users</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="company-actions">
-                                    <button class="btn-icon" title="Edit Company" @onclick:stopPropagation="true" @onclick="() => EditCompany(company)">
-                                        <i class="far fa-edit"></i>
-                                    </button>
-                                    <RVButton Text="Add Branch"
-                                             IconLeft="far fa-code-branch"
-                                             ButtonType="outline"
-                                             Size="sm"
-                                             OnClick="() => OpenBranchDialog(company.Id)"
-                                              />
-                                    <div class="expand-indicator">
-                                        <i class="far fa-chevron-@(IsExpanded(company.Id) ? "up" : "down")"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="company-card-body">
-                                <div class="company-details">
-                                    <div class="detail-item">
-                                        <i class="far fa-id-card"></i>
-                                        <span class="detail-label">Reg. Number:</span>
-                                        <span class="detail-value">@(string.IsNullOrEmpty(company.RegistrationNumber) ? "—" : company.RegistrationNumber)</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="far fa-at"></i>
-                                        <span class="detail-label">Email:</span>
-                                        <span class="detail-value">@(company.GetPrimaryEmail() ?? "—")</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="far fa-phone"></i>
-                                        <span class="detail-label">Phone:</span>
-                                        <span class="detail-value">@(company.GetPrimaryContactNumber() ?? "—")</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="far fa-globe"></i>
-                                        <span class="detail-label">Website:</span>
-                                        <span class="detail-value">@(string.IsNullOrEmpty(company.Website) ? "—" : company.Website)</span>
-                                    </div>
-                                </div>
+                        <div class="hierarchy-view">
+                            @if (filteredCompanies.Any())
+                            {
+                                <div class="company-accordion">
+                                    @foreach (var company in filteredCompanies)
+                                    {
+                                        var companyUsers = GetCompanyUsers(company.Id);
+                                        var companyBranches = GetCompanyBranches(company.Id);
 
-                                @if (!HasBranches(company))
-                                {
-                                    <div class="no-branches-message">
-                                        <i class="far fa-code-branch"></i>
-                                        <p>No branches have been added to this company yet</p>
-                                        <RVButton Text="Add First Branch"
-                                                 IconLeft="far fa-plus"
-                                                 ButtonType="primary"
-                                                 Size="sm"
-                                                 OnClick="() => OpenBranchDialog(company.Id)" />
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="branch-tabs">
-                                        <div class="branch-tabs-header">
-                                            @foreach (var branch in company.Branches)
-                                            {
-                                                <button class="branch-tab @(activeBranchTabs.ContainsKey(company.Id) && activeBranchTabs[company.Id] == branch.Id ? "active" : "")"
-                                                        @onclick="() => SetActiveBranchTab(company.Id, branch.Id)">
-                                                    <i class="far fa-code-branch"></i>
-                                                    <span>@branch.Name</span>
-                                                </button>
-                                            }
-                                        </div>
-                                        
-                                        <div class="branch-tabs-content">
-                                            @foreach (var branch in company.Branches)
-                                            {
-                                                <div class="branch-tab-panel @(activeBranchTabs.ContainsKey(company.Id) && activeBranchTabs[company.Id] == branch.Id ? "active" : "")">
-                                                    <div class="branch-header">
-                                                        <div class="branch-info">
-                                                            <h3>@branch.Name</h3>
-                                                            <div class="branch-meta">
-                                                                @if (branch.Address != null)
-                                                                {
-                                                                    <span><i class="far fa-map-marker-alt"></i> @(string.IsNullOrEmpty(branch.Address.City) ? "No location" : $"{branch.Address.City}, {branch.Address.Province}")</span>
-                                                                }
-                                                                <span><i class="far fa-phone"></i> @(branch.GetPrimaryContactNumber() ?? "No phone")</span>
-                                                                <span><i class="far fa-envelope"></i> @(branch.GetPrimaryEmail() ?? "No email")</span>
+                                        <div class="accordion-item @(expandedCompanies.Contains(company.Id) ? "expanded" : "")">
+                                            <div class="accordion-header" @onclick="() => ToggleCompany(company.Id)">
+                                                <div class="accordion-title">
+                                                    <div class="accordion-icon">
+                                                        <i class="@(expandedCompanies.Contains(company.Id) ? "fa-light fa-chevron-down" : "fa-light fa-chevron-right")"></i>
+                                                    </div>
+                                                    <div class="company-info">
+                                                        <div class="company-logo">
+                                                            <i class="fa-light fa-building"></i>
+                                                        </div>
+                                                        <div class="company-details">
+                                                            <h3>@company.Name</h3>
+                                                            <div class="company-meta">
+                                                                <span><i class="fa-light fa-code-branch"></i> @companyBranches.Count() branches</span>
+                                                                <span><i class="fa-light fa-users"></i> @companyUsers.Count() users</span>
+                                                                <span class="status-badge @(company.IsActive ? "active" : "inactive")">
+                                                                    @(company.IsActive ? "Active" : "Inactive")
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                        <div class="branch-actions">
-                                                            <button class="btn-icon" title="Edit Branch" @onclick="() => EditBranch(branch)">
-                                                                <i class="far fa-edit"></i>
-                                                            </button>
-                                                            <RVButton Text="Add User"
-                                                                     IconLeft="far fa-user-plus"
-                                                                     ButtonType="primary"
-                                                                     Size="sm"
-                                                                     OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
-                                                        </div>
                                                     </div>
+                                                </div>
+                                                <div class="accordion-actions" @onclick:stopPropagation="true">
+                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
+                                                              OnClick="() => ViewCompany(company.Id)" CssClass="action-btn" />
+                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
+                                                              OnClick="() => EditCompany(company.Id)" CssClass="action-btn" />
+                                                </div>
+                                            </div>
 
-                                                    @if (!HasUsers(branch))
+                                            @if (expandedCompanies.Contains(company.Id))
+                                            {
+                                                <div class="accordion-content">
+                                                    @if (companyUsers.Any())
                                                     {
-                                                        <div class="no-users-message">
-                                                            <i class="far fa-users"></i>
-                                                            <p>No users have been added to this branch yet</p>
-                                                            <RVButton Text="Add First User"
-                                                                     IconLeft="far fa-user-plus"
-                                                                     ButtonType="primary"
-                                                                     Size="sm"
-                                                                     OnClick="() => OpenUserDialog(company.Id, branch.Id)" />
+                                                        <div class="company-users-section">
+                                                            <h4><i class="fa-light fa-users"></i> Company Users</h4>
+                                                            @foreach (var user in companyUsers)
+                                                            {
+                                                                <UserCard User="user" OnView="(id) => ShowUserDetailsModal(id)" OnEdit="(id) => ShowUserEditModal(id)"
+                                                                          OnRoles="(id) => ShowUserRolesModal(id)" OnToggleStatus="(user) => ConfirmToggleUserStatus(user)" />
+                                                            }
                                                         </div>
                                                     }
-                                                    else
+
+                                                    @if (companyBranches.Any())
                                                     {
-                                                        <div class="users-grid">
-                                                            @foreach (var user in branch.Users)
+                                                        <div class="branch-accordion">
+                                                            @foreach (var branch in companyBranches)
                                                             {
-                                                                <div class="user-card">
-                                                                    <div class="user-avatar @GetRoleClass(user.Role.GetValueOrDefault())">
-                                                                        <i class="@GetRoleIcon(user.Role.GetValueOrDefault())"></i>
-                                                                    </div>
-                                                                    <div class="user-info">
-                                                                        <h4>@user.FullName</h4>
-                                                                        <div class="user-meta">
-                                                                            <span class="role-badge @GetRoleClass(user.Role.GetValueOrDefault())">
-                                                                                @GetRoleName(user.Role.GetValueOrDefault())
-                                                                            </span>
-                                                                            <span class="status-indicator @(user.IsActive ? "active" : "inactive")">
-                                                                                @(user.IsActive ? "Active" : "Inactive")
-                                                                            </span>
+                                                                var branchUsers = GetBranchUsers(branch.Id);
+
+                                                                <div class="accordion-item @(expandedBranches.Contains(branch.Id) ? "expanded" : "")">
+                                                                    <div class="accordion-header" @onclick="() => ToggleBranch(branch.Id)">
+                                                                        <div class="accordion-title">
+                                                                            <div class="accordion-icon">
+                                                                                <i class="@(expandedBranches.Contains(branch.Id) ? "fa-light fa-chevron-down" : "fa-light fa-chevron-right")"></i>
+                                                                            </div>
+                                                                            <div class="branch-info">
+                                                                                <div class="branch-logo">
+                                                                                    <i class="fa-light fa-code-branch"></i>
+                                                                                </div>
+                                                                                <div class="branch-details">
+                                                                                    <h4>@branch.Name</h4>
+                                                                                    <div class="branch-meta">
+                                                                                        <span><i class="fa-light fa-users"></i> @branchUsers.Count() users</span>
+                                                                                        <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
+                                                                                            @(branch.IsActive ? "Active" : "Inactive")
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                        <div class="user-contact">
-                                                                            <span><i class="far fa-envelope"></i> @user.Email</span>
-                                                                            @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                                                                        <div class="accordion-actions" @onclick:stopPropagation="true">
+                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
+                                                                                      OnClick="() => ViewBranch(branch.Id)" CssClass="action-btn" />
+                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
+                                                                                      OnClick="() => EditBranch(branch.Id)" CssClass="action-btn" />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    @if (expandedBranches.Contains(branch.Id) && branchUsers.Any())
+                                                                    {
+                                                                        <div class="accordion-content">
+                                                                            <h5><i class="fa-light fa-users"></i> Branch Users</h5>
+                                                                            @foreach (var user in branchUsers)
                                                                             {
-                                                                                <span><i class="far fa-phone"></i> @user.PhoneNumber</span>
+                                                                                <UserCard User="user" OnView="(id) => ShowUserDetailsModal(id)" OnEdit="(id) => ShowUserEditModal(id)"
+                                                                                          OnRoles="(id) => ShowUserRolesModal(id)" OnToggleStatus="(user) => ConfirmToggleUserStatus(user)" />
                                                                             }
                                                                         </div>
-                                                                    </div>
-                                                                    <div class="user-actions">
-                                                                        <button class="btn-icon" title="Edit User" @onclick="() => EditUser(user)">
-                                                                            <i class="far fa-edit"></i>
-                                                                        </button>
-                                                                    </div>
+                                                                    }
                                                                 </div>
                                                             }
                                                         </div>
@@ -257,1815 +174,581 @@
                                                 </div>
                                             }
                                         </div>
-                                    </div>
-                                }
-                            </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <EmptyState Title="No companies found"
+                                            Description="No companies match your current filters."
+                                            Icon="fa-light fa-building-slash"
+                                            ActionText="Clear Filters"
+                                            OnAction="ClearFilters" />
+                            }
                         </div>
                     }
-                </div>
-            }
+                    else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser?.CompanyId.HasValue == true)
+                    {
+                        <div class="company-view">
+                            @if (currentUserCompany != null)
+                            {
+                                <div class="company-overview">
+                                    <div class="company-header">
+                                        <div class="company-logo-large">
+                                            <i class="fa-light fa-building"></i>
+                                        </div>
+                                        <div class="company-header-info">
+                                            <h2>@currentUserCompany.Name</h2>
+                                            <div class="company-stats">
+                                                <div class="stat-item">
+                                                    <span class="stat-value">@GetCompanyBranches(currentUserCompany.Id).Count()</span>
+                                                    <span class="stat-label">Branches</span>
+                                                </div>
+                                                <div class="stat-item">
+                                                    <span class="stat-value">@GetCompanyUsers(currentUserCompany.Id).Count()</span>
+                                                    <span class="stat-label">Total Users</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="tabs-container">
+                                    <div class="tabs-header">
+                                        <button class="tab-button @(activeTab == "users" ? "active" : "")" @onclick='() => activeTab = "users"'>
+                                            <i class="fa-light fa-users"></i> Company Users
+                                        </button>
+                                        <button class="tab-button @(activeTab == "branches" ? "active" : "")" @onclick='() => activeTab = "branches"'>
+                                            <i class="fa-light fa-code-branch"></i> Branches
+                                        </button>
+                                    </div>
+
+                                    <div class="tabs-content">
+                                        @if (activeTab == "users")
+                                        {
+                                            <div class="tab-panel">
+                                                @if (GetCompanyUsers(currentUserCompany.Id).Any())
+                                                {
+                                                    @foreach (var user in GetCompanyUsers(currentUserCompany.Id))
+                                                    {
+                                                        <UserCard User="user" OnView="(id) => ShowUserDetailsModal(id)" OnEdit="(id) => ShowUserEditModal(id)"
+                                                                  OnRoles="(id) => ShowUserRolesModal(id)" OnToggleStatus="(user) => ConfirmToggleUserStatus(user)" />
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <EmptyState Title="No users in company"
+                                                                Description="No users are currently assigned to this company."
+                                                                Icon="fa-light fa-user-plus"
+                                                                ActionText="Add User"
+                                                                OnAction="() => ShowUserEditModal()" />
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="tab-panel">
+                                                @if (GetCompanyBranches(currentUserCompany.Id).Any())
+                                                {
+                                                    <div class="branch-grid">
+                                                        @foreach (var branch in GetCompanyBranches(currentUserCompany.Id))
+                                                        {
+                                                            var branchUsers = GetBranchUsers(branch.Id);
+                                                            <div class="branch-card">
+                                                                <div class="branch-card-header">
+                                                                    <div class="branch-card-icon">
+                                                                        <i class="fa-light fa-code-branch"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h3>@branch.Name</h3>
+                                                                        <div class="branch-card-meta">
+                                                                            <span><i class="fa-light fa-users"></i> @branchUsers.Count() users</span>
+                                                                            <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
+                                                                                @(branch.IsActive ? "Active" : "Inactive")
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="branch-card-actions">
+                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View Users"
+                                                                              OnClick="() => ViewBranchUsers(branch.Id)" />
+                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
+                                                                              OnClick="() => EditBranch(branch.Id)" />
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <EmptyState Title="No branches found"
+                                                                Description="No branches are currently set up for this company."
+                                                                Icon="fa-light fa-code-branch-slash"
+                                                                ActionText="Add Branch"
+                                                                OnAction='() => NavigationManager.NavigateTo("/branches")' />
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (currentUser?.Role == SystemRole.BranchManager && currentUser?.BranchId.HasValue == true)
+                    {
+                        <div class="branch-view">
+                            @if (currentUserBranch != null)
+                            {
+                                <div class="branch-overview">
+                                    <div class="branch-header">
+                                        <div class="branch-logo-large">
+                                            <i class="fa-light fa-code-branch"></i>
+                                        </div>
+                                        <div class="branch-header-info">
+                                            <h2>@currentUserBranch.Name</h2>
+                                            <div class="branch-stats">
+                                                <div class="stat-item">
+                                                    <span class="stat-value">@GetBranchUsers(currentUserBranch.Id).Count()</span>
+                                                    <span class="stat-label">Users</span>
+                                                </div>
+                                                <div class="stat-item">
+                                                    <span class="stat-value">
+                                                        @GetBranchUsers(currentUserBranch.Id).Count(u => u.IsActive)
+                                                    </span>
+                                                    <span class="stat-label">Active</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="branch-users-section">
+                                    <h3><i class="fa-light fa-users"></i> Branch Users</h3>
+                                    @if (GetBranchUsers(currentUserBranch.Id).Any())
+                                    {
+                                        @foreach (var user in GetBranchUsers(currentUserBranch.Id))
+                                        {
+                                            <UserCard User="user" OnView="(id) => ShowUserDetailsModal(id)" OnEdit="(id) => ShowUserEditModal(id)"
+                                                      OnRoles="(id) => ShowUserRolesModal(id)" OnToggleStatus="(user) => ConfirmToggleUserStatus(user)" />
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <EmptyState Title="No users in branch"
+                                                    Description="No users are currently assigned to this branch."
+                                                    Icon="fa-light fa-user-plus"
+                                                    ActionText="Add User"
+                                                    OnAction="() => ShowUserEditModal()" />
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <EmptyState Title="No access"
+                                    Description="You don't have permission to view user information."
+                                    Icon="fa-light fa-lock"
+                                    ActionText="Return to Dashboard"
+                                    OnAction='() => NavigationManager.NavigateTo("/")' />
+                    }
+                </ChildContent>
+            </RVCard>
         }
     </div>
+
+    @if (showStatusConfirmation)
+    {
+        <RVModal IsVisible="true"
+                 Title="@(userToToggle?.IsActive == true ? "Deactivate User" : "Activate User")"
+                 Icon="@(userToToggle?.IsActive == true ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
+                 OnClose="() => showStatusConfirmation = false"
+                 OnCancel="() => showStatusConfirmation = false"
+                 OnConfirm="ToggleUserStatus"
+                 ConfirmText="@(userToToggle?.IsActive == true ? "Deactivate" : "Activate")"
+                 CancelText="Cancel"
+                 Size="sm"
+                 CssClass="status-modal">
+            <ChildContent>
+                <div class="status-modal-content">
+                    <div class="alert @(userToToggle?.IsActive == true ? "alert-danger" : "alert-success")">
+                        <i class="@(userToToggle?.IsActive == true ? "fa-light fa-exclamation-triangle" : "fa-light fa-check-circle")"></i>
+                        <div class="alert-content">
+                            @if (userToToggle?.IsActive == true)
+                            {
+                                <p>Are you sure you want to deactivate <strong>@GetUserDisplayName(userToToggle)</strong>?</p>
+                                <p>Deactivated users will not be able to log in to the system.</p>
+                            }
+                            else
+                            {
+                                <p>Are you sure you want to activate <strong>@GetUserDisplayName(userToToggle)</strong>?</p>
+                                <p>Activated users will be able to log in to the system.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </ChildContent>
+        </RVModal>
+    }
+
+    @if (showUserEditModal)
+    {
+        <UserEditModal UserId="@selectedUserId"
+                       Companies="allCompanies"
+                       OnClose="() => showUserEditModal = false"
+                       OnSaved="HandleUserSaved" />
+    }
+
+    @if (showUserDetailsModal)
+    {
+        <UserDetailsModal UserId="@selectedUserId"
+                          OnClose="() => showUserDetailsModal = false"
+                          OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
+    }
+
+    @if (showUserRolesModal)
+    {
+        <UserRolesModal UserId="@selectedUserId"
+                        OnClose="() => showUserRolesModal = false"
+                        OnSaved="HandleRolesSaved" />
+    }
 </div>
 
-@if (companyDialogVisible)
-{
-    <CompanyDialog IsVisible="@companyDialogVisible"
-                   IsEdit="@editMode"
-                   CompanyModel="@selectedCompany"
-                   OnSave="SaveCompany"
-                   OnCancel="CloseCompanyDialog" />
-}
-
-@if (branchDialogVisible)
-{
-    <BranchDialog IsVisible="@branchDialogVisible"
-                  IsEdit="@editMode"
-                  BranchModel="@selectedBranch"
-                  CompanyId="@selectedCompanyId"
-                  OnSave="SaveBranch"
-                  OnCancel="CloseBranchDialog" />
-}
-
-@if (userDialogVisible)
-{
-    <UserDialog IsVisible="@userDialogVisible"
-                IsEdit="@editMode"
-                UserModel="@selectedUser"
-                CompanyId="@selectedCompanyId"
-                BranchId="@selectedBranchId"
-                OnSave="SaveUser"
-                OnCancel="CloseUserDialog" />
-}
-
-<style>
-/* Modern Organization Dashboard Styles */
-:root {
-    --card-radius: 16px;
-    --header-box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.05);
-    --card-box-shadow: 0 6px 24px rgba(var(--primary-rgb), 0.07);
-    --card-hover-transform: translateY(-3px);
-    --card-active-transform: translateY(-1px);
-    --card-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --grid-gap: 1.5rem;
-    --btn-hover-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.15);
-}
-
-.organization-dashboard {
-    display: flex;
-    flex-direction: column;
-    min-height: calc(100vh - var(--header-height));
-    background-color: var(--body-bg);
-    position: relative;
-}
-
-/* Dashboard Header Styles */
-.dashboard-header {
-    background-color: var(--content-bg);
-    padding: 1.75rem 2rem;
-    border-bottom: 1px solid var(--border-divider);
-    box-shadow: var(--header-box-shadow);
-    top: 0;
-    z-index: 10;
-}
-
-.header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1600px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-.header-title h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-    display: flex;
-    align-items: center;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.header-title p {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    margin-bottom: 0;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-}
-
-.search-wrapper {
-    position: relative;
-    min-width: 300px;
-    transition: all 0.3s ease;
-}
-
-.header-search {
-    border-radius: 50px;
-    border: 1.5px solid var(--border-divider);
-    background-color: var(--content-bg);
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.05);
-}
-
-.header-search:focus {
-    border-color: var(--primary);
-    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
-}
-
-.search-clear-btn {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    transition: all 0.2s ease;
-}
-
-.search-clear-btn:hover {
-    background-color: var(--primary-light);
-    color: var(--primary);
-}
-
-/* Dashboard Content */
-.dashboard-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1800px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-/* Company Cards */
-.company-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--grid-gap);
-}
-
-.company-card {
-    background-color: var(--content-bg);
-    border-radius: var(--card-radius);
-    box-shadow: var(--card-box-shadow);
-    overflow: hidden;
-    transition: var(--card-transition);
-    border: 1px solid var(--border-divider);
-    will-change: transform, box-shadow;
-}
-
-.company-card:hover {
-    box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.1);
-    transform: var(--card-hover-transform);
-}
-
-.company-card.expanded {
-    box-shadow: 0 12px 36px rgba(var(--primary-rgb), 0.12);
-}
-
-.company-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 1.75rem;
-    cursor: pointer;
-    border-bottom: 1px solid transparent;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.company-card-header:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--primary-gradient);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.company-card:hover .company-card-header:after {
-    opacity: 1;
-}
-
-.company-card.expanded .company-card-header {
-    border-bottom-color: var(--border-divider);
-    background-color: var(--subtle-bg);
-}
-
-.company-info {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-}
-
-.company-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 14px;
-    background: var(--primary-gradient);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-    font-weight: 700;
-    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.2);
-    position: relative;
-}
-
-.company-title h2 {
-    font-size: 1.3rem;
-    font-weight: 600;
-    margin-bottom: 0.35rem;
-    color: var(--text-primary);
-}
-
-.company-meta {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.company-meta span {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.company-meta i {
-    color: var(--primary);
-    opacity: 0.8;
-}
-
-.company-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
-
-.btn-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    border: 1.5px solid var(--border-divider);
-    background-color: var(--content-bg);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-icon:hover {
-    background-color: var(--primary-light);
-    color: var(--primary);
-    border-color: var(--primary-light);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.15);
-}
-
-.btn-icon:active {
-    transform: translateY(0);
-}
-
-.expand-indicator {
-    margin-left: 0.25rem;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.company-card.expanded .expand-indicator {
-    transform: rotate(180deg);
-}
-
-.company-card-body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.6s cubic-bezier(0, 1, 0, 1);
-}
-
-.company-card.expanded .company-card-body {
-    max-height: 2000px;
-    transition: max-height 1s ease-in-out;
-}
-
-/* Company Details Section */
-.company-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.25rem;
-    padding: 1.5rem 1.75rem;
-    background-color: var(--subtle-bg);
-    border-bottom: 1px solid var(--border-divider);
-}
-
-.detail-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.detail-item i {
-    color: var(--primary);
-    font-size: 1.1rem;
-    width: 24px;
-    text-align: center;
-    opacity: 0.8;
-}
-
-.detail-label {
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-right: 0.25rem;
-    font-size: 0.85rem;
-}
-
-.detail-value {
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-/* Branch Tabs */
-.branch-tabs {
-    padding: 1.75rem;
-}
-
-.branch-tabs-header {
-    display: flex;
-    gap: 0.5rem;
-    border-bottom: 1px solid var(--border-divider);
-    margin-bottom: 1.75rem;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: 1px;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-.branch-tabs-header::-webkit-scrollbar {
-    height: 3px;
-}
-
-.branch-tabs-header::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.branch-tabs-header::-webkit-scrollbar-thumb {
-    background-color: var(--primary-light);
-    border-radius: 3px;
-}
-
-.branch-tab {
-    padding: 0.75rem 1.25rem;
-    border: none;
-    background: none;
-    color: var(--text-secondary);
-    border-bottom: 2px solid transparent;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.95rem;
-    position: relative;
-}
-
-.branch-tab:hover {
-    color: var(--primary);
-    background-color: var(--primary-lighter);
-}
-
-.branch-tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    font-weight: 600;
-}
-
-.branch-tab.active:before {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--primary-gradient);
-    border-radius: 2px 2px 0 0;
-}
-
-.branch-tab-panel {
-    display: none;
-    animation: tabFadeIn 0.4s ease forwards;
-}
-
-.branch-tab-panel.active {
-    display: block;
-}
-
-@@keyframes tabFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(5px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Branch Header */
-.branch-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.75rem;
-}
-
-.branch-info h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-}
-
-.branch-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.branch-meta span {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.branch-meta i {
-    color: var(--primary);
-    opacity: 0.8;
-}
-
-.branch-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
-
-/* Users Grid */
-.users-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.25rem;
-}
-
-.user-card {
-    background-color: white;
-    border-radius: 14px;
-    border: 1px solid var(--border-divider);
-    padding: 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.user-card:hover {
-    border-color: var(--primary-light);
-    box-shadow: 0 8px 16px rgba(var(--primary-rgb), 0.08);
-    transform: translateY(-3px);
-}
-
-.user-card:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--primary-gradient);
-    border-radius: 3px 0 0 3px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.user-card:hover:after {
-    opacity: 1;
-}
-
-.user-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-.user-avatar:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(50%);
-    transition: transform 0.3s ease;
-}
-
-.user-card:hover .user-avatar:before {
-    transform: translateY(-50%);
-}
-
-.user-avatar.global-admin {
-    background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%);
-}
-
-.user-avatar.company-admin {
-    background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
-}
-
-.user-avatar.branch-manager {
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-}
-
-.user-avatar.standard-user {
-    background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
-}
-
-.user-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.user-info h4 {
-    font-size: 1.05rem;
-    margin-bottom: 0.35rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-}
-
-.role-badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.role-badge.global-admin {
-    background-color: rgba(147, 51, 234, 0.1);
-    color: #9333ea;
-}
-
-.role-badge.company-admin {
-    background-color: rgba(14, 165, 233, 0.1);
-    color: #0ea5e9;
-}
-
-.role-badge.branch-manager {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-}
-
-.role-badge.standard-user {
-    background-color: rgba(100, 116, 139, 0.1);
-    color: #64748b;
-}
-
-.status-indicator {
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.75rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 6px;
-}
-
-.status-indicator.active {
-    background-color: var(--success-bg);
-    color: var(--success);
-}
-
-.status-indicator.active::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--success);
-    margin-right: 0.35rem;
-    box-shadow: 0 0 0 rgba(var(--success-rgb), 0.4);
-    animation: pulse 2s infinite;
-}
-
-.status-indicator.inactive {
-    background-color: rgba(var(--text-secondary-rgb), 0.1);
-    color: var(--text-muted);
-}
-
-.status-indicator.inactive::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--text-muted);
-    margin-right: 0.35rem;
-}
-
-@@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 8px rgba(var(--success-rgb), 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0);
-    }
-}
-
-.user-contact {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.6;
-}
-
-.user-contact span {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-contact i {
-    color: var(--primary);
-    opacity: 0.7;
-}
-
-.user-actions {
-    display: flex;
-    align-items: center;
-}
-
-/* Empty States Messages */
-.no-branches-message,
-.no-users-message {
-    background-color: var(--subtle-bg);
-    border-radius: 12px;
-    border: 1.5px dashed var(--border-divider);
-    padding: 2.75rem;
-    text-align: center;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    transition: all 0.3s ease;
-}
-
-.no-branches-message:hover,
-.no-users-message:hover {
-    border-color: var(--border-color);
-    background-color: rgba(var(--primary-rgb), 0.02);
-}
-
-.no-branches-message > i,
-.no-users-message > i {
-    font-size: 2.75rem;
-    color: var(--primary);
-    opacity: 0.2;
-    margin-bottom: 1.25rem;
-    transition: all 0.3s ease;
-}
-
-.no-branches-message:hover i,
-.no-users-message:hover i {
-    opacity: 0.4;
-    transform: scale(1.1);
-}
-
-.no-branches-message p,
-.no-users-message p {
-    margin-bottom: 1.25rem;
-    font-size: 1rem;
-}
-
-/* Loading, Error, Empty States */
-.loading-state,
-.error-state,
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 5rem 2rem;
-    text-align: center;
-    min-height: 60vh;
-}
-
-.error-state i,
-.empty-state .empty-animation i {
-    font-size: 4.5rem;
-    margin-bottom: 1.75rem;
-    transition: all 0.3s ease;
-}
-
-.error-state i {
-    color: var(--danger);
-}
-
-.empty-state .empty-animation {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 1.75rem;
-}
-
-.empty-state .empty-animation i:first-child {
-    color: var(--text-muted);
-    font-size: 4.5rem;
-}
-
-.empty-state .empty-animation i:last-child {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    font-size: 2.5rem;
-    color: var(--primary);
-    background-color: white;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
-    animation: pulse-animation 2s infinite;
-}
-
-@@keyframes pulse-animation {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
-    }
-    50% {
-        transform: scale(1.1);
-        box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
-    }
-}
-
-.loading-state h3,
-.error-state h3,
-.empty-state h3 {
-    font-size: 1.6rem;
-    margin-bottom: 0.85rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.loading-state p,
-.error-state p,
-.empty-state p {
-    max-width: 500px;
-    margin-bottom: 2.25rem;
-    color: var(--text-secondary);
-    font-size: 1.05rem;
-    line-height: 1.6;
-}
-
-.loading-animation {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2.25rem;
-}
-
-.loading-circle {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background-color: var(--primary);
-    opacity: 0.3;
-    animation: loadingPulse 1.5s infinite ease-in-out both;
-}
-
-.loading-circle:nth-child(1) {
-    animation-delay: 0s;
-}
-
-.loading-circle:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.loading-circle:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@@keyframes loadingPulse {
-    0%, 80%, 100% {
-        transform: scale(0.6);
-        opacity: 0.3;
-    }
-    40% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.empty-actions {
-    display: flex;
-    gap: 1.25rem;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.primary-action {
-    min-width: 220px;
-}
-
-.retry-button {
-    min-width: 150px;
-}
-
-/* Animation enhancements */
-@@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Responsive Adjustments */
-@@media (max-width: 1200px) {
-    .company-details {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .dashboard-header {
-        padding: 1.5rem;
-    }
-    
-    .dashboard-content {
-        padding: 1.5rem;
-    }
-}
-
-@@media (max-width: 992px) {
-    .header-container {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .header-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .search-wrapper {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .company-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .company-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-    
-    .users-grid {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
-}
-
-@@media (max-width: 768px) {
-    .dashboard-header {
-        padding: 1.25rem;
-    }
-    
-    .header-title h1 {
-        font-size: 1.5rem;
-    }
-    
-    .dashboard-content {
-        padding: 1.25rem;
-    }
-    
-    .company-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .branch-header {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .branch-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .branch-tabs {
-        padding: 1.25rem;
-    }
-    
-    .users-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .no-branches-message,
-    .no-users-message {
-        padding: 2rem;
-    }
-}
-
-@@media (max-width: 576px) {
-    .dashboard-header {
-        padding: 1rem;
-    }
-    
-    .header-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .search-wrapper {
-        width: 100%;
-    }
-    
-    .dashboard-content {
-        padding: 1rem;
-    }
-    
-    .company-card-header {
-        padding: 1.25rem;
-    }
-    
-    .company-info {
-        width: 100%;
-    }
-    
-    .branch-tabs-header {
-        overflow-x: auto;
-        margin-bottom: 1.25rem;
-    }
-    
-    .branch-tab {
-        padding: 0.6rem 1rem;
-        font-size: 0.85rem;
-    }
-    
-    .user-card {
-        padding: 1rem;
-    }
-}
-
-@@media (max-width: 480px) {
-    .company-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .company-actions {
-        flex-wrap: wrap;
-        gap: 0.6rem;
-    }
-    
-    .btn-icon {
-        width: 36px;
-        height: 36px;
-    }
-    
-    .user-avatar {
-        width: 40px;
-        height: 40px;
-    }
-    
-    .user-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .dashboard-content {
-        padding: 0.75rem;
-    }
-    
-    .no-branches-message,
-    .no-users-message {
-        padding: 1.5rem;
-    }
-}
-
-@@media (max-width: 400px) {
-    .header-title h1 {
-        font-size: 1.3rem;
-    }
-    
-    .header-title p {
-        font-size: 0.85rem;
-    }
-    
-    .company-card-header {
-        padding: 1rem;
-    }
-    
-    .company-details {
-        padding: 1rem;
-    }
-    
-    .branch-tabs {
-        padding: 1rem;
-    }
-    
-    .company-avatar {
-        width: 42px;
-        height: 42px;
-        font-size: 1.3rem;
-    }
-    
-    .company-title h2 {
-        font-size: 1.1rem;
-    }
-    
-    .company-meta {
-        font-size: 0.8rem;
-    }
-    
-    .user-info h4 {
-        font-size: 0.95rem;
-    }
-    
-    .role-badge {
-        font-size: 0.65rem;
-        padding: 0.15rem 0.5rem;
-    }
-    
-    .user-contact {
-        font-size: 0.75rem;
-    }
-}
-</style>
-
 @code {
-    private string searchTerm = string.Empty;
-    private bool isLoading = true;
-    private bool loadError = false;
-    private string errorMessage = string.Empty;
+    // User and Role Management
+    private ApplicationUser? currentUser;
+    private Company? currentUserCompany;
+    private Branch? currentUserBranch;
 
-    // Data
-    private List<Company> companies = new List<Company>();
-    
+    // Data Collections
+    private List<ApplicationUser> users = new List<ApplicationUser>();
+    private List<Company> allCompanies = new List<Company>();
+    private List<Branch> allBranches = new List<Branch>();
+    private List<Branch> filteredBranches = new List<Branch>();
+    private bool isLoading = true;
+
+    // Modal States
+    private bool showUserEditModal = false;
+    private bool showUserDetailsModal = false;
+    private bool showUserRolesModal = false;
+    private bool showStatusConfirmation = false;
+    private string selectedUserId = string.Empty;
+    private ApplicationUser? userToToggle;
+
+    // Filtering
+    private string searchTerm = string.Empty;
+    private int? selectedCompanyId = null;
+    private int? selectedBranchId = null;
+    private string selectedRoleFilter = "all";
+    private string selectedStatusFilter = "all";
+
     // UI State
     private HashSet<int> expandedCompanies = new HashSet<int>();
-    private Dictionary<int, int> activeBranchTabs = new Dictionary<int, int>();
-
-    // Dialog states
-    private bool companyDialogVisible = false;
-    private bool branchDialogVisible = false;
-    private bool userDialogVisible = false;
-    private bool editMode = false;
-
-    // Selected items
-    private Company selectedCompany = new Company();
-    private Branch selectedBranch = new Branch();
-    private ApplicationUser selectedUser = new ApplicationUser();
-    private int selectedCompanyId;
-    private int selectedBranchId;
-
-    private IEnumerable<Company> FilteredCompanies => string.IsNullOrWhiteSpace(searchTerm)
-        ? companies
-        : companies.Where(c =>
-            (c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (c.RegistrationNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (c.EmailAddresses?.Any(e => e.EmailAddress?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
-            (c.ContactNumbers?.Any(n => n.Number?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
-            (c.Branches?.Any(b =>
-                (b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (b.EmailAddresses?.Any(e => e.EmailAddress?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
-                (b.ContactNumbers?.Any(n => n.Number?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ?? false) ||
-                (b.Users?.Any(u =>
-                    (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
-                ) ?? false)
-            ) ?? false)
-        );
+    private HashSet<int> expandedBranches = new HashSet<int>();
+    private string activeTab = "users";
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCompanies();
+        await LoadCurrentUser();
+        await LoadUserHierarchy();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task LoadCurrentUser()
     {
-        if (firstRender)
-        {
-            // Add scroll into view behavior for expanded companies
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                window.scrollElementIntoView = function(elementId) {
-                    const element = document.getElementById(elementId);
-                    if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }
-            ");
-        }
-    }
-
-    private async Task LoadCompanies()
-    {
-        isLoading = true;
-        loadError = false;
-        errorMessage = string.Empty;
-
         try
         {
-            var response = await UserService.GetAllCompanies();
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            if (response.ResponseInfo.Success && response.Response != null)
+            if (!string.IsNullOrEmpty(userId))
             {
-                companies = (List<Company>)response.Response;
-
-                // Load branches and users for each company
-                foreach (var company in companies)
+                var response = await UserService.GetUserById(userId);
+                if (response.ResponseInfo.Success)
                 {
-                    if (company.Branches == null || !company.Branches.Any())
-                    {
-                        var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
-                        if (branchesResponse.ResponseInfo.Success && branchesResponse.Response != null)
-                        {
-                            company.Branches = (List<Branch>)branchesResponse.Response;
+                    currentUser = (ApplicationUser)response.Response;
 
-                            // Load users for each branch
-                            foreach (var branch in company.Branches)
-                            {
-                                var usersResponse = await UserService.GetUsersByBranch(branch.Id);
-                                if (usersResponse.ResponseInfo.Success && usersResponse.Response != null)
-                                {
-                                    branch.Users = (List<ApplicationUser>)usersResponse.Response;
-                                }
-                            }
-                            
-                            // Set active branch tab to first branch
-                            if (company.Branches.Any())
-                            {
-                                activeBranchTabs[company.Id] = company.Branches.First().Id;
-                            }
+                    if (currentUser?.CompanyId.HasValue == true)
+                    {
+                        var companyResponse = await UserService.GetCompanyById(currentUser.CompanyId.Value);
+                        if (companyResponse.ResponseInfo.Success)
+                        {
+                            currentUserCompany = (Company)companyResponse.Response;
                         }
                     }
-                    else if (company.Branches.Any() && !activeBranchTabs.ContainsKey(company.Id))
+
+                    if (currentUser?.BranchId.HasValue == true)
                     {
-                        // Set active branch tab to first branch if not set
-                        activeBranchTabs[company.Id] = company.Branches.First().Id;
+                        var branchResponse = await UserService.GetBranchById(currentUser.BranchId.Value);
+                        if (branchResponse.ResponseInfo.Success)
+                        {
+                            currentUserBranch = (Branch)branchResponse.Response;
+                        }
                     }
                 }
-            }
-            else
-            {
-                loadError = true;
-                errorMessage = response.ResponseInfo.Message ?? "Failed to load companies.";
             }
         }
         catch (Exception ex)
         {
-            loadError = true;
-            errorMessage = $"An error occurred: {ex.Message}";
+            ToastService.ShowError($"Failed to load current user: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadUserHierarchy()
+    {
+        isLoading = true;
+
+        try
+        {
+            // Load users
+            await LoadUsers();
+
+            // Load companies
+            var companiesResponse = await UserService.GetAllCompanies();
+            if (companiesResponse.ResponseInfo.Success)
+            {
+                allCompanies = (List<Company>)companiesResponse.Response;
+            }
+
+            // Load branches
+            allBranches.Clear();
+            foreach (var company in allCompanies)
+            {
+                var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
+                if (branchesResponse.ResponseInfo.Success)
+                {
+                    allBranches.AddRange((List<Branch>)branchesResponse.Response);
+                }
+            }
+
+            filteredBranches = allBranches;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load data: {ex.Message}", "Error");
         }
         finally
         {
             isLoading = false;
-            StateHasChanged();
         }
     }
 
-    private void OnSearchChanged(string value)
+    private async Task LoadUsers()
     {
-        searchTerm = value;
-        StateHasChanged();
-    }
-
-    private void ClearSearch()
-    {
-        searchTerm = string.Empty;
-        StateHasChanged();
-    }
-
-    private bool HasBranches(Company company)
-    {
-        return company.Branches != null && company.Branches.Any();
-    }
-
-    private bool HasUsers(Branch branch)
-    {
-        return branch.Users != null && branch.Users.Any();
-    }
-
-    private string GetRoleIcon(UserRole role)
-    {
-        return role switch
+        try
         {
-            UserRole.GlobalAdmin => "far fa-user-crown",
-            UserRole.CompanyAdmin => "far fa-user-tie",
-            UserRole.BranchManager => "far fa-user-hard-hat",
-            UserRole.StandardUser => "far fa-user",
-            _ => "far fa-user"
-        };
+            isLoading = true;
+
+            var response = await UserService.GetAllUsers();
+            if (response.ResponseInfo.Success)
+            {
+                users = (List<ApplicationUser>)response.Response;
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load users: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private string GetRoleClass(UserRole role)
+    private IEnumerable<Company> filteredCompanies
     {
-        return role switch
+        get
         {
-            UserRole.GlobalAdmin => "global-admin",
-            UserRole.CompanyAdmin => "company-admin",
-            UserRole.BranchManager => "branch-manager",
-            UserRole.StandardUser => "standard-user",
-            _ => "standard-user"
-        };
+            if (currentUser?.Role != SystemRole.GlobalAdmin) return new List<Company>();
+
+            var companies = allCompanies.AsEnumerable();
+
+            // Search filter
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                companies = companies.Where(c =>
+                    c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+            }
+
+            // Company filter
+            if (selectedCompanyId.HasValue)
+            {
+                companies = companies.Where(c => c.Id == selectedCompanyId);
+            }
+
+            return companies;
+        }
     }
 
-    private string GetRoleName(UserRole role)
+    private IEnumerable<ApplicationUser> GetCompanyUsers(int companyId)
     {
-        return role switch
+        var companyUsers = users.Where(u => u.CompanyId == companyId && !u.BranchId.HasValue);
+        return ApplyUserFilters(companyUsers);
+    }
+
+    private IEnumerable<ApplicationUser> GetBranchUsers(int branchId)
+    {
+        var branchUsers = users.Where(u => u.BranchId == branchId);
+        return ApplyUserFilters(branchUsers);
+    }
+
+    private IEnumerable<Branch> GetCompanyBranches(int companyId)
+    {
+        var branches = allBranches.Where(b => b.CompanyId == companyId);
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            UserRole.GlobalAdmin => "Global Admin",
-            UserRole.CompanyAdmin => "Company Admin",
-            UserRole.BranchManager => "Branch Manager",
-            UserRole.StandardUser => "Standard User",
-            _ => "Unknown Role"
-        };
+            branches = branches.Where(b =>
+                b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        // Branch filter
+        if (selectedBranchId.HasValue)
+        {
+            branches = branches.Where(b => b.Id == selectedBranchId);
+        }
+
+        return branches;
     }
-    
-    // UI State Management
-    private bool IsExpanded(int companyId)
+
+    private IEnumerable<ApplicationUser> ApplyUserFilters(IEnumerable<ApplicationUser> userList)
     {
-        return expandedCompanies.Contains(companyId);
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            userList = userList.Where(u =>
+                (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.UserName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        // Role filter
+        if (selectedRoleFilter != "all")
+        {
+            if (Enum.TryParse<SystemRole>(selectedRoleFilter, out var roleEnum))
+            {
+                userList = userList.Where(u => u.Role == roleEnum);
+            }
+        }
+
+        // Status filter
+        if (selectedStatusFilter != "all")
+        {
+            bool isActive = selectedStatusFilter == "active";
+            userList = userList.Where(u => u.IsActive == isActive);
+        }
+
+        return userList;
     }
-    
-    private async Task ToggleCompanyExpansion(int companyId)
+
+    private void ToggleCompany(int companyId)
     {
         if (expandedCompanies.Contains(companyId))
-        {
             expandedCompanies.Remove(companyId);
+        else
+            expandedCompanies.Add(companyId);
+    }
+
+    private void ToggleBranch(int branchId)
+    {
+        if (expandedBranches.Contains(branchId))
+            expandedBranches.Remove(branchId);
+        else
+            expandedBranches.Add(branchId);
+    }
+
+    private void HandleCompanyChange(int? companyId)
+    {
+        selectedCompanyId = companyId;
+        selectedBranchId = null;
+
+        // Update filtered branches
+        if (companyId.HasValue)
+        {
+            filteredBranches = allBranches.Where(b => b.CompanyId == companyId).ToList();
         }
         else
         {
-            expandedCompanies.Add(companyId);
-            
-            // Ensure a branch tab is selected
-            var company = companies.FirstOrDefault(c => c.Id == companyId);
-            if (company?.Branches != null && company.Branches.Any() && !activeBranchTabs.ContainsKey(companyId))
-            {
-                activeBranchTabs[companyId] = company.Branches.First().Id;
-            }
-            
-            // Scroll expanded company into view
-            await Task.Delay(100); // Small delay to let the DOM update
-            await JSRuntime.InvokeVoidAsync("scrollElementIntoView", $"company-{companyId}");
-        }
-    }
-    
-    private void SetActiveBranchTab(int companyId, int branchId)
-    {
-        activeBranchTabs[companyId] = branchId;
-        StateHasChanged();
-    }
-
-    // Company Dialog Methods
-    private void OpenCompanyDialog()
-    {
-        selectedCompany = new Company
-            {
-                Address = new Address(),
-                EmailAddresses = new List<Email>
-                {
-                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Company" }
-                },
-                ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Company", Type = ContactNumberType.Mobile }
-                }
-            };
-        editMode = false;
-        companyDialogVisible = true;
-    }
-
-    private void EditCompany(Company company)
-    {
-        selectedCompany = company;
-
-        // Ensure the company has at least one email and contact number
-        if (selectedCompany.EmailAddresses == null)
-        {
-            selectedCompany.EmailAddresses = new List<Email>();
-        }
-
-        if (!selectedCompany.EmailAddresses.Any(e => e.IsPrimary))
-        {
-            selectedCompany.EmailAddresses.Add(new Email
-                {
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = company.Id
-                });
-        }
-
-        if (selectedCompany.ContactNumbers == null)
-        {
-            selectedCompany.ContactNumbers = new List<ContactNumber>();
-        }
-
-        if (!selectedCompany.ContactNumbers.Any(c => c.IsPrimary))
-        {
-            selectedCompany.ContactNumbers.Add(new ContactNumber
-                {
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = company.Id,
-                    Type = ContactNumberType.Mobile
-                });
-        }
-
-        editMode = true;
-        companyDialogVisible = true;
-    }
-
-    private void CloseCompanyDialog()
-    {
-        companyDialogVisible = false;
-    }
-
-    private async Task SaveCompany(Company company)
-    {
-        isLoading = true;
-
-        try
-        {
-            ResponseModel response;
-
-            // Set audit fields
-            if (editMode)
-            {
-                company.UpdatedDate = DateTime.Now;
-                company.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
-
-                response = await UserService.UpdateCompany(company.Id, company);
-            }
-            else
-            {
-                company.CreatedOn = DateTime.Now;
-                company.IsActive = true;
-
-                // Initialize collections if null
-                if (company.EmailAddresses == null)
-                    company.EmailAddresses = new List<Email>();
-
-                if (company.ContactNumbers == null)
-                    company.ContactNumbers = new List<ContactNumber>();
-
-                // Set primary email
-                if (!company.EmailAddresses.Any(e => e.IsPrimary) && !string.IsNullOrEmpty(company.GetPrimaryEmail()))
-                {
-                    company.EmailAddresses.Add(new Email
-                        {
-                            EmailAddress = company.GetPrimaryEmail(),
-                            IsPrimary = true,
-                            IsActive = true,
-                            RelatedEntityType = "Company",
-                            CreatedOn = DateTime.Now
-                        });
-                }
-
-                // Set primary contact number
-                if (!company.ContactNumbers.Any(c => c.IsPrimary) && !string.IsNullOrEmpty(company.GetPrimaryContactNumber()))
-                {
-                    company.ContactNumbers.Add(new ContactNumber
-                        {
-                            Number = company.GetPrimaryContactNumber(),
-                            IsPrimary = true,
-                            IsActive = true,
-                            RelatedEntityType = "Company",
-                            Type = ContactNumberType.Mobile,
-                            CreatedOn = DateTime.Now
-                        });
-                }
-
-                response = await UserService.CreateCompany(company);
-            }
-
-            if (response.ResponseInfo.Success)
-            {
-                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
-                await LoadCompanies();
-                
-                // Auto-expand newly created company
-                if (!editMode && response.Response != null)
-                {
-                    var newCompany = response.Response as Company;
-                    if (newCompany != null)
-                    {
-                        expandedCompanies.Add(newCompany.Id);
-                    }
-                }
-            }
-            else
-            {
-                ToastService.ShowError(response.ResponseInfo.Message, "Error");
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
-        }
-        finally
-        {
-            isLoading = false;
-            companyDialogVisible = false;
-            StateHasChanged();
+            filteredBranches = allBranches;
         }
     }
 
-    // Branch Dialog Methods
-    private void OpenBranchDialog(int companyId)
+    private void HandleBranchChange(int? branchId)
     {
-        selectedCompanyId = companyId;
-        selectedBranch = new Branch
-            {
-                CompanyId = companyId,
-                Address = new Address(),
-                EmailAddresses = new List<Email>
-                {
-                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch" }
-                },
-                ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "Branch", Type = ContactNumberType.Mobile }
-                }
-            };
-        editMode = false;
-        branchDialogVisible = true;
-    }
-
-    private void EditBranch(Branch branch)
-    {
-        selectedBranch = branch;
-        selectedCompanyId = branch.CompanyId;
-
-        // Ensure the branch has at least one email and contact number
-        if (selectedBranch.EmailAddresses == null)
-        {
-            selectedBranch.EmailAddresses = new List<Email>();
-        }
-
-        if (!selectedBranch.EmailAddresses.Any(e => e.IsPrimary))
-        {
-            selectedBranch.EmailAddresses.Add(new Email
-                {
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Branch",
-                    RelatedEntityId = branch.Id
-                });
-        }
-
-        if (selectedBranch.ContactNumbers == null)
-        {
-            selectedBranch.ContactNumbers = new List<ContactNumber>();
-        }
-
-        if (!selectedBranch.ContactNumbers.Any(c => c.IsPrimary))
-        {
-            selectedBranch.ContactNumbers.Add(new ContactNumber
-                {
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Branch",
-                    RelatedEntityId = branch.Id,
-                    Type = ContactNumberType.Mobile
-                });
-        }
-
-        editMode = true;
-        branchDialogVisible = true;
-    }
-
-    private void CloseBranchDialog()
-    {
-        branchDialogVisible = false;
-    }
-
-    private async Task SaveBranch(Branch branch)
-    {
-        isLoading = true;
-
-        try
-        {
-            ResponseModel response;
-
-            // Set audit fields
-            if (editMode)
-            {
-                branch.UpdatedDate = DateTime.Now;
-                branch.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
-
-                response = await UserService.UpdateBranch(branch.Id, branch);
-            }
-            else
-            {
-                branch.CreatedOn = DateTime.Now;
-                branch.CreatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
-                branch.IsActive = true;
-
-                // Initialize collections if null
-                if (branch.EmailAddresses == null)
-                    branch.EmailAddresses = new List<Email>();
-
-                if (branch.ContactNumbers == null)
-                    branch.ContactNumbers = new List<ContactNumber>();
-
-                // Set primary email
-                if (!branch.EmailAddresses.Any(e => e.IsPrimary) && !string.IsNullOrEmpty(branch.GetPrimaryEmail()))
-                {
-                    branch.EmailAddresses.Add(new Email
-                        {
-                            EmailAddress = branch.GetPrimaryEmail(),
-                            IsPrimary = true,
-                            IsActive = true,
-                            RelatedEntityType = "Branch",
-                            CreatedOn = DateTime.Now
-                        });
-                }
-
-                // Set primary contact number
-                if (!branch.ContactNumbers.Any(c => c.IsPrimary) && !string.IsNullOrEmpty(branch.GetPrimaryContactNumber()))
-                {
-                    branch.ContactNumbers.Add(new ContactNumber
-                        {
-                            Number = branch.GetPrimaryContactNumber(),
-                            IsPrimary = true,
-                            IsActive = true,
-                            RelatedEntityType = "Branch",
-                            Type = ContactNumberType.Mobile,
-                            CreatedOn = DateTime.Now
-                        });
-                }
-
-                response = await UserService.CreateBranch(branch);
-            }
-
-            if (response.ResponseInfo.Success)
-            {
-                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
-                
-                // Ensure company is expanded
-                if (!expandedCompanies.Contains(branch.CompanyId))
-                {
-                    expandedCompanies.Add(branch.CompanyId);
-                }
-                
-                await LoadCompanies();
-                
-                // Set active tab to the new/edited branch
-                if (response.Response != null)
-                {
-                    var updatedBranch = response.Response as Branch;
-                    if (updatedBranch != null)
-                    {
-                        activeBranchTabs[updatedBranch.CompanyId] = updatedBranch.Id;
-                    }
-                }
-            }
-            else
-            {
-                ToastService.ShowError(response.ResponseInfo.Message, "Error");
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
-        }
-        finally
-        {
-            isLoading = false;
-            branchDialogVisible = false;
-            StateHasChanged();
-        }
-    }
-
-    // User Dialog Methods
-    private void OpenUserDialog(int companyId, int branchId)
-    {
-        selectedCompanyId = companyId;
         selectedBranchId = branchId;
-        selectedUser = new ApplicationUser
-            {
-                CompanyId = companyId,
-                BranchId = branchId,
-                Role = UserRole.StandardUser,
-                IsActive = true,
-                EmailAddresses = new List<Email>
-                {
-                    new Email { IsPrimary = true, IsActive = true, RelatedEntityType = "User" }
-                },
-                ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber { IsPrimary = true, IsActive = true, RelatedEntityType = "User", Type = ContactNumberType.Mobile }
-                }
-            };
-        editMode = false;
-        userDialogVisible = true;
     }
 
-    private void EditUser(ApplicationUser user)
+    private void HandleRoleFilterChange(string roleFilter)
     {
-        selectedUser = user;
-        selectedCompanyId = user.CompanyId ?? 0;
-        selectedBranchId = user.BranchId ?? 0;
-
-        // Ensure the user has at least one email and contact number
-        if (selectedUser.EmailAddresses == null)
-        {
-            selectedUser.EmailAddresses = new List<Email>();
-        }
-
-        if (!selectedUser.EmailAddresses.Any(e => e.IsPrimary))
-        {
-            selectedUser.EmailAddresses.Add(new Email
-                {
-                    EmailAddress = user.Email,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "User",
-                    RelatedEntityId = int.Parse(user.Id)
-                });
-        }
-
-        if (selectedUser.ContactNumbers == null)
-        {
-            selectedUser.ContactNumbers = new List<ContactNumber>();
-        }
-
-        if (!selectedUser.ContactNumbers.Any(c => c.IsPrimary))
-        {
-            selectedUser.ContactNumbers.Add(new ContactNumber
-                {
-                    Number = user.PhoneNumber,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "User",
-                    RelatedEntityId = int.Parse(user.Id),
-                    Type = ContactNumberType.Mobile
-                });
-        }
-
-        editMode = true;
-        userDialogVisible = true;
+        selectedRoleFilter = roleFilter;
     }
 
-    private void CloseUserDialog()
+    private void HandleStatusFilterChange(string statusFilter)
     {
-        userDialogVisible = false;
+        selectedStatusFilter = statusFilter;
     }
 
-    private async Task SaveUser(ApplicationUser user)
+    private void HandleSearch(string search)
     {
-        isLoading = true;
+        searchTerm = search;
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = string.Empty;
+        selectedCompanyId = null;
+        selectedBranchId = null;
+        selectedRoleFilter = "all";
+        selectedStatusFilter = "all";
+        filteredBranches = allBranches;
+    }
+
+    private void ShowUserEditModal(string? userId = null)
+    {
+        selectedUserId = userId ?? string.Empty;
+        showUserEditModal = true;
+    }
+
+    private void ShowUserDetailsModal(string userId)
+    {
+        selectedUserId = userId;
+        showUserDetailsModal = true;
+    }
+
+    private void ShowUserRolesModal(string userId)
+    {
+        selectedUserId = userId;
+        showUserRolesModal = true;
+    }
+
+    private void ConfirmToggleUserStatus(ApplicationUser user)
+    {
+        userToToggle = user;
+        showStatusConfirmation = true;
+    }
+
+    private async Task ToggleUserStatus()
+    {
+        if (userToToggle == null) return;
 
         try
         {
-            ResponseModel response;
-
-            // Set common properties
-            user.UserName = user.Email;
-
-            if (editMode)
-            {
-                user.UpdatedDate = DateTime.Now;
-                user.UpdatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
-
-                // Convert string ID to int for the service
-                int userId = int.Parse(user.Id);
-                response = await UserService.UpdateUser(userId, user);
-            }
-            else
-            {
-                user.CreatedDate = DateTime.Now;
-                user.CreatedBy = "CurrentUser"; // Replace with actual logged-in user ID/name
-
-                // In a real app, you would need to create the user with Identity first
-                // This is a simplified example
-                // Here we would typically call UserManager<ApplicationUser> to create the user
-
-                // After creating the user, update company and branch assignments
-                // await UserService.UpdateUserCompanyId(userId, user.CompanyId.Value);
-                // await UserService.UpdateUserBranch(user.Id, user.BranchId.Value);
-
-                // Since we cannot create a user here without Identity, show a toast
-                ToastService.ShowInfo("In production, this would create a new user with Identity", "Demo Mode");
-                response = new ResponseModel
-                    {
-                        ResponseInfo = new ResponseInfo
-                        {
-                            Success = true,
-                            Message = "User creation simulated successfully"
-                        }
-                    };
-            }
+            userToToggle.IsActive = !userToToggle.IsActive;
+            var response = await UserService.UpdateUser(int.Parse(userToToggle.Id), userToToggle);
 
             if (response.ResponseInfo.Success)
             {
-                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
-                
-                // Ensure company is expanded
-                if (!expandedCompanies.Contains(user.CompanyId ?? 0))
-                {
-                    expandedCompanies.Add(user.CompanyId ?? 0);
-                }
-                
-                // Ensure correct branch tab is active
-                if (user.BranchId.HasValue)
-                {
-                    activeBranchTabs[user.CompanyId ?? 0] = user.BranchId.Value;
-                }
-                
-                await LoadCompanies();
+                string message = userToToggle.IsActive
+                    ? $"User '{GetUserDisplayName(userToToggle)}' has been activated"
+                    : $"User '{GetUserDisplayName(userToToggle)}' has been deactivated";
+
+                ToastService.ShowSuccess(message, "Success");
+                await LoadUsers();
             }
             else
             {
@@ -2074,13 +757,59 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
+            ToastService.ShowError($"Failed to update user status: {ex.Message}", "Error");
         }
-        finally
+
+        showStatusConfirmation = false;
+        userToToggle = null;
+    }
+
+    private async Task HandleUserSaved()
+    {
+        showUserEditModal = false;
+        await LoadUsers();
+    }
+
+    private async Task HandleRolesSaved()
+    {
+        showUserRolesModal = false;
+        await LoadUsers();
+    }
+
+    private string GetUserDisplayName(ApplicationUser user)
+    {
+        if (!string.IsNullOrEmpty(user.FullName))
         {
-            isLoading = false;
-            userDialogVisible = false;
-            StateHasChanged();
+            return user.FullName;
         }
+
+        return user.UserName ?? "Unknown User";
+    }
+
+    private void ViewCompany(int companyId)
+    {
+        NavigationManager.NavigateTo($"/companies/{companyId}");
+    }
+
+    private void EditCompany(int companyId)
+    {
+        NavigationManager.NavigateTo($"/companies/edit/{companyId}");
+    }
+
+    private void ViewBranch(int branchId)
+    {
+        NavigationManager.NavigateTo($"/branches/{branchId}");
+    }
+
+    private void EditBranch(int branchId)
+    {
+        NavigationManager.NavigateTo($"/branches/edit/{branchId}");
+    }
+
+    private void ViewBranchUsers(int branchId)
+    {
+        selectedBranchId = branchId;
+        activeTab = "branches";
+        ToggleBranch(branchId);
     }
 }

@@ -171,7 +171,7 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> UpdateUserRole(string userId, UserRole role)
+        public async Task<ResponseModel> UpdateUserRole(string userId, SystemRole role)
         {
             ResponseModel response = new();
 

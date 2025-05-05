@@ -1,0 +1,171 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper
+@using Roovia.Models.Users
+@using Roovia.Security
+@using Roovia.Services
+@inject IPermissionService PermissionService
+@inject ToastService ToastService
+
+<RVModal IsVisible="true"
+         Title="@(isNewRole ? "Create Role" : "Edit Role")"
+         Icon="@(isNewRole ? "fa-light fa-plus" : "fa-light fa-edit")"
+         OnClose="OnClose"
+         OnCancel="OnClose"
+         OnConfirm="SaveRole"
+         ConfirmText="@(isNewRole ? "Create" : "Save")"
+         CancelText="Cancel"
+         Size="md">
+    <ChildContent>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading role details...</h3>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="roleModel" OnValidSubmit="SaveRole">
+                <DataAnnotationsValidator />
+
+                <div class="form-section">
+                    @if (!isNewRole && roleModel.IsPreset)
+                    {
+                        <div class="preset-notice">
+                            <i class="fa-light fa-lock"></i>
+                            <p>This preset role has limited editing options</p>
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label for="roleName">Role Name</label>
+                        <RVTextbox Id="roleName"
+                                   Value="@roleModel.Name"
+                                   ValueChanged="value => roleModel.Name = value"
+                                   Placeholder="Enter role name"
+                                   Disabled="@(roleModel.IsPreset)" />
+                        <ValidationMessage For="@(() => roleModel.Name)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roleDescription">Description</label>
+                        <textarea id="roleDescription"
+                                  class="form-control custom-textarea"
+                                  rows="3"
+                                  @bind="roleModel.Description"
+                                  disabled="@(roleModel.IsPreset)"></textarea>
+                        <ValidationMessage For="@(() => roleModel.Description)" />
+                    </div>
+
+                    @if (!isNewRole)
+                    {
+                        <div class="form-group">
+                            <RVSwitch Label="Active"
+                                      Value="roleModel.IsActive"
+                                      ValueChanged="value => roleModel.IsActive = value"
+                                      Disabled="@roleModel.IsPreset"
+                                      HelperText="Inactive roles do not grant permissions" />
+                        </div>
+                    }
+                </div>
+            </EditForm>
+        }
+    </ChildContent>
+</RVModal>
+
+
+
+@code {
+    [Parameter] public int RoleId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private Role roleModel = new Role();
+    private bool isLoading = true;
+    private bool isNewRole => RoleId == 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoleData();
+    }
+
+    private async Task LoadRoleData()
+    {
+        if (isNewRole)
+        {
+            roleModel = new Role
+                {
+                    IsActive = true,
+                    IsPreset = false
+                };
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            var response = await PermissionService.GetRoleById(RoleId);
+
+            if (response.ResponseInfo.Success)
+            {
+                roleModel = (Role)response.Response;
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                if (OnClose.HasDelegate)
+                    await OnClose.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load role: {ex.Message}", "Error");
+            if (OnClose.HasDelegate)
+                await OnClose.InvokeAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveRole()
+    {
+        try
+        {
+            ResponseModel response;
+
+            if (isNewRole)
+            {
+                roleModel.CreatedOn = DateTime.Now;
+                roleModel.IsActive = true;
+                roleModel.IsPreset = false;
+
+                response = await PermissionService.CreateRole(roleModel);
+            }
+            else
+            {
+                roleModel.UpdatedDate = DateTime.Now;
+
+                response = await PermissionService.UpdateRole(RoleId, roleModel);
+            }
+
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+
+                if (OnSaved.HasDelegate)
+                    await OnSaved.InvokeAsync();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save role: {ex.Message}", "Error");
+        }
+    }
+}

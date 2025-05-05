@@ -1,0 +1,821 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Users
+@using Roovia.Models.Helper
+@using Roovia.Security
+@using Roovia.Services
+@inject IUser UserService
+@inject IPermissionService PermissionService
+@inject ToastService ToastService
+
+<RVModal IsVisible="true"
+         Title="User Details"
+         Icon="fa-light fa-user"
+         OnClose="OnClose"
+         OnCancel="OnClose"
+         DefaultFooter="false"
+         Size="lg">
+    <ChildContent>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading user details...</h3>
+            </div>
+        }
+        else if (user != null)
+        {
+            <div class="user-details-container">
+                <div class="user-header">
+                    <div class="user-avatar-large">
+                        @if (string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName))
+                        {
+                            <span>@(user.UserName?.Substring(0, 1).ToUpper() ?? "?")</span>
+                        }
+                        else
+                        {
+                            <span>@(user.FirstName?.Substring(0, 1).ToUpper() ?? "")@(user.LastName?.Substring(0, 1).ToUpper() ?? "")</span>
+                        }
+                    </div>
+                    <div class="user-header-info">
+                        <h2>@(string.IsNullOrEmpty(user.FullName) ? user.UserName : user.FullName)</h2>
+
+                        <div class="user-badges">
+                            <span class="role-badge @GetRoleBadgeClass(user.Role)">
+                                @GetRoleDisplayName(user.Role)
+                            </span>
+                            <span class="status-badge @(user.IsActive ? "status-active" : "status-inactive")">
+                                @(user.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </div>
+                    </div>
+                    <div class="user-header-actions">
+                        <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit"
+                                  OnClick="HandleEdit" />
+                    </div>
+                </div>
+
+                <div class="user-details-tabs">
+                    <div class="tab-header">
+                        <button type="button" class="tab-button @(activeTab == "info" ? "active" : "")"
+                                @onclick='() => SetActiveTab("info")'>
+                            <i class="fa-light fa-user"></i>
+                            <span>User Info</span>
+                        </button>
+                        <button type="button" class="tab-button @(activeTab == "contact" ? "active" : "")"
+                                @onclick='() => SetActiveTab("contact")'>
+                            <i class="fa-light fa-address-card"></i>
+                            <span>Contact</span>
+                        </button>
+                        <button type="button" class="tab-button @(activeTab == "company" ? "active" : "")"
+                                @onclick='() => SetActiveTab("company")'>
+                            <i class="fa-light fa-building"></i>
+                            <span>Company</span>
+                        </button>
+                        <button type="button" class="tab-button @(activeTab == "roles" ? "active" : "")"
+                                @onclick='() => SetActiveTab(" roles")'>
+                            <i class="fa-light fa-shield-check"></i>
+                            <span>Roles & Permissions</span>
+                        </button>
+                        <button type="button" class="tab-button @(activeTab == "activity" ? "active" : "")"
+                                @onclick='() => SetActiveTab(" activity")'>
+                            <i class="fa-light fa-chart-line"></i>
+                            <span>Activity</span>
+                        </button>
+                    </div>
+
+                    <div class="tab-content">
+                        @if (activeTab == "info")
+                        {
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Basic Information</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="detail-row">
+                                            <div class="detail-label">Username</div>
+                                            <div class="detail-value">@user.UserName</div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">First Name</div>
+                                            <div class="detail-value">@(string.IsNullOrEmpty(user.FirstName) ? "-" : user.FirstName)</div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Last Name</div>
+                                            <div class="detail-value">@(string.IsNullOrEmpty(user.LastName) ? "-" : user.LastName)</div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">User ID</div>
+                                            <div class="detail-value">@user.Id</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Account Status</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="detail-row">
+                                            <div class="detail-label">Account Status</div>
+                                            <div class="detail-value">
+                                                <span class="status-badge @(user.IsActive ? "status-active" : "status-inactive")">
+                                                    @(user.IsActive ? "Active" : "Inactive")
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Email Confirmed</div>
+                                            <div class="detail-value">
+                                                <span class="status-badge @(user.EmailConfirmed ? "status-active" : "status-inactive")">
+                                                    @(user.EmailConfirmed ? "Yes" : "No")
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Two-Factor Auth</div>
+                                            <div class="detail-value">
+                                                <span class="status-badge @(user.TwoFactorEnabled ? "status-active" : "status-inactive")">
+                                                    @(user.TwoFactorEnabled ? "Enabled" : "Disabled")
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Created On</div>
+                                            <div class="detail-value">@(user.CreatedDate?.ToString("dd MMM yyyy, HH:mm") ?? "-")</div>
+                                        </div>
+                                        @if (user.UpdatedDate.HasValue)
+                                        {
+                                            <div class="detail-row">
+                                                <div class="detail-label">Last Updated</div>
+                                                <div class="detail-value">@user.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (activeTab == "contact")
+                        {
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Contact Information</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="detail-row">
+                                            <div class="detail-label">Primary Email</div>
+                                            <div class="detail-value email-value">
+                                                <a href="mailto:@user.Email">@user.Email</a>
+                                            </div>
+                                        </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Primary Phone</div>
+                                            <div class="detail-value phone-value">
+                                                @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                                                {
+                                                    <a href="tel:@user.PhoneNumber">@user.PhoneNumber</a>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Additional Email Addresses</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (user.EmailAddresses != null && user.EmailAddresses.Any(e => !e.IsPrimary))
+                                        {
+                                            <div class="email-list">
+                                                @foreach (var email in user.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label">
+                                                            @(string.IsNullOrEmpty(email.Description) ? "Email" : email.Description)
+                                                        </div>
+                                                        <div class="detail-value email-value">
+                                                            <a href="mailto:@email.EmailAddress">@email.EmailAddress</a>
+                                                            @if (!email.IsActive)
+                                                            {
+                                                                <span class="status-badge status-inactive">Inactive</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <p>No additional email addresses</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Additional Phone Numbers</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (user.ContactNumbers != null && user.ContactNumbers.Any(c => !c.IsPrimary))
+                                        {
+                                            <div class="phone-list">
+                                                @foreach (var phone in user.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label">
+                                                            @if (!string.IsNullOrEmpty(phone.Description))
+                                                            {
+                                                                @phone.Description
+                                                            }
+                                                            else
+                                                            {
+                                                                @phone.Type.ToString()
+                                                            }
+                                                        </div>
+                                                        <div class="detail-value phone-value">
+                                                            <a href="tel:@phone.Number">@phone.Number</a>
+                                                            @if (!phone.IsActive)
+                                                            {
+                                                                <span class="status-badge status-inactive">Inactive</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <p>No additional phone numbers</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (activeTab == "company")
+                        {
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Company & Branch</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="detail-row">
+                                            <div class="detail-label">Company</div>
+                                            <div class="detail-value">
+                                                @if (user.Company != null)
+                                                {
+                                                    <div class="company-info">
+                                                        <span class="company-name">@user.Company.Name</span>
+                                                        @if (!user.Company.IsActive)
+                                                        {
+                                                            <span class="status-badge status-inactive">Inactive</span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="detail-row">
+                                            <div class="detail-label">Branch</div>
+                                            <div class="detail-value">
+                                                @if (user.Branch != null)
+                                                {
+                                                    <div class="branch-info">
+                                                        <span class="branch-name">@user.Branch.Name</span>
+                                                        @if (!user.Branch.IsActive)
+                                                        {
+                                                            <span class="status-badge status-inactive">Inactive</span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (user.Company != null)
+                                {
+                                    <div class="detail-card">
+                                        <div class="card-header">
+                                            <h4>Company Details</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="detail-row">
+                                                <div class="detail-label">Registration Number</div>
+                                                <div class="detail-value">@(string.IsNullOrEmpty(user.Company.RegistrationNumber) ? "-" : user.Company.RegistrationNumber)</div>
+                                            </div>
+                                            <div class="detail-row">
+                                                <div class="detail-label">VAT Number</div>
+                                                <div class="detail-value">@(string.IsNullOrEmpty(user.Company.VatNumber) ? "-" : user.Company.VatNumber)</div>
+                                            </div>
+                                            <div class="detail-row">
+                                                <div class="detail-label">Website</div>
+                                                <div class="detail-value">
+                                                    @if (!string.IsNullOrEmpty(user.Company.Website))
+                                                    {
+                                                        <a href="@user.Company.Website" target="_blank">@user.Company.Website</a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>-</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="detail-row">
+                                                <div class="detail-label">Contact</div>
+                                                <div class="detail-value">
+                                                    @{
+                                                        var primaryEmail = user.Company.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+                                                        var primaryPhone = user.Company.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+                                                    }
+
+                                                    @if (primaryEmail != null || primaryPhone != null)
+                                                    {
+                                                        <div class="contact-info">
+                                                            @if (primaryEmail != null)
+                                                            {
+                                                                <div class="email">
+                                                                    <i class="fa-light fa-envelope"></i>
+                                                                    <a href="mailto:@primaryEmail.EmailAddress">@primaryEmail.EmailAddress</a>
+                                                                </div>
+                                                            }
+
+                                                            @if (primaryPhone != null)
+                                                            {
+                                                                <div class="phone">
+                                                                    <i class="fa-light fa-phone"></i>
+                                                                    <a href="tel:@primaryPhone.Number">@primaryPhone.Number</a>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>-</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (user.Branch != null)
+                                {
+                                    <div class="detail-card">
+                                        <div class="card-header">
+                                            <h4>Branch Address</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            @if (user.Branch.Address != null)
+                                            {
+                                                <div class="address-display">
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.ComplexName))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.ComplexName</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.BuildingName))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.BuildingName</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.UnitNumber))
+                                                    {
+                                                        <div class="address-line">Unit @user.Branch.Address.UnitNumber</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Street))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.Street</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Suburb))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.Suburb</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.City))
+                                                    {
+                                                        <div class="address-line">
+                                                            @user.Branch.Address.City@(!string.IsNullOrEmpty(user.Branch.Address.Province) ? $", {user.Branch.Address.Province}" : "")
+                                                        </div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.PostalCode))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.PostalCode</div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Country))
+                                                    {
+                                                        <div class="address-line">@user.Branch.Address.Country</div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="empty-message">
+                                                    <p>No address information available</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (activeTab == "roles")
+                        {
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>System Role</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="role-detail">
+                                            <div class="role-icon">
+                                                <i class="@GetRoleIcon(user.Role)"></i>
+                                            </div>
+                                            <div class="role-info">
+                                                <div class="role-name">@GetRoleDisplayName(user.Role)</div>
+                                                <div class="role-description">@GetRoleDescription(user.Role)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Custom Roles</h4>
+                                        <div class="card-header-actions">
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check" Text="Manage Roles"
+                                                      OnClick="HandleRolesClick" />
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (isLoadingRoles)
+                                        {
+                                            <div class="loading-indicator">
+                                                <div class="spinner-sm"></div>
+                                                <span>Loading roles...</span>
+                                            </div>
+                                        }
+                                        else if (userRoles != null && userRoles.Any())
+                                        {
+                                            <div class="roles-list">
+                                                @foreach (var roleAssignment in userRoles.OrderBy(r => r.Role?.Name))
+                                                {
+                                                    <div class="role-item">
+                                                        <div class="role-item-header">
+                                                            <div class="role-item-icon">
+                                                                @if (roleAssignment.Role?.IsPreset == true)
+                                                                {
+                                                                    <i class="fa-light fa-shield"></i>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <i class="fa-light fa-user-shield"></i>
+                                                                }
+                                                            </div>
+                                                            <div class="role-item-name">@roleAssignment.Role?.Name</div>
+                                                            <div class="role-item-badges">
+                                                                @if (roleAssignment.Role?.IsPreset == true)
+                                                                {
+                                                                    <span class="role-badge role-preset">System</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="role-badge role-custom">Custom</span>
+                                                                }
+
+                                                                @if (roleAssignment.Role?.IsActive == false)
+                                                                {
+                                                                    <span class="status-badge status-inactive">Inactive</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                        <div class="role-item-description">
+                                                            @roleAssignment.Role?.Description
+                                                        </div>
+                                                        <div class="role-item-meta">
+                                                            <span>Assigned: @roleAssignment.AssignedDate.ToString("dd MMM yyyy")</span>
+                                                            @if (!string.IsNullOrEmpty(roleAssignment.AssignedBy))
+                                                            {
+                                                                <span>by @roleAssignment.AssignedBy</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <p>No custom roles assigned to this user</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Effective Permissions</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (isLoadingPermissions)
+                                        {
+                                            <div class="loading-indicator">
+                                                <div class="spinner-sm"></div>
+                                                <span>Loading permissions...</span>
+                                            </div>
+                                        }
+                                        else if (userPermissions != null && userPermissions.Any())
+                                        {
+                                            <div class="permissions-list">
+                                                @foreach (var category in userPermissionsByCategory.Keys.OrderBy(c => c))
+                                                {
+                                                    <div class="permission-category">
+                                                        <div class="category-name">@category</div>
+                                                        <div class="category-permissions">
+                                                            @foreach (var permission in userPermissionsByCategory[category].OrderBy(p => p))
+                                                            {
+                                                                <div class="permission-item">
+                                                                    <i class="fa-light fa-check-circle"></i>
+                                                                    <span>@permission</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <p>No permissions available for this user</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (activeTab == "activity")
+                        {
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4>Activity Log</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="info-message">
+                                            <i class="fa-light fa-info-circle"></i>
+                                            <span>Recent user activity will be displayed here</span>
+                                        </div>
+
+                                        <div class="empty-message">
+                                            <p>No activity records available</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="user-details-footer">
+                    <RVButton ButtonType="outline" IconLeft="fa-light fa-arrow-left" Text="Back" OnClick="OnClose" />
+                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit User" OnClick="HandleEdit" />
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="error-state">
+                <div class="error-icon">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                </div>
+                <h3>User Not Found</h3>
+                <p>The requested user could not be found or you don't have permission to view this user.</p>
+                <div class="error-actions">
+                    <RVButton ButtonType="primary" Text="Close" OnClick="OnClose" />
+                </div>
+            </div>
+        }
+    </ChildContent>
+</RVModal>
+
+@code {
+    [Parameter] public string UserId { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    private ApplicationUser? user;
+    private bool isLoading = true;
+    private string activeTab = "info";
+
+    // Roles and permissions
+    private List<UserRoleAssignment>? userRoles;
+    private List<string>? userPermissions;
+    private Dictionary<string, List<string>> userPermissionsByCategory = new Dictionary<string, List<string>>();
+    private bool isLoadingRoles = false;
+    private bool isLoadingPermissions = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            isLoading = true;
+
+            var response = await UserService.GetUserById(UserId);
+            if (response.ResponseInfo.Success)
+            {
+                user = (ApplicationUser)response.Response;
+
+                // Pre-load roles and permissions
+                await LoadUserRoles();
+                await LoadUserPermissions();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadUserRoles()
+    {
+        try
+        {
+            isLoadingRoles = true;
+
+            var response = await PermissionService.GetUserRoles(UserId);
+            if (response.ResponseInfo.Success)
+            {
+                userRoles = (List<UserRoleAssignment>)response.Response;
+            }
+            else
+            {
+                userRoles = new List<UserRoleAssignment>();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user roles: {ex.Message}", "Error");
+            userRoles = new List<UserRoleAssignment>();
+        }
+        finally
+        {
+            isLoadingRoles = false;
+        }
+    }
+
+    private async Task LoadUserPermissions()
+    {
+        try
+        {
+            isLoadingPermissions = true;
+
+            userPermissions = await PermissionService.GetUserPermissions(UserId);
+
+            // Group permissions by category
+            userPermissionsByCategory.Clear();
+
+            foreach (var permission in userPermissions)
+            {
+                // Extract category from permission name
+                // Assuming format like "Tenants.View" or "Properties.Edit"
+                var parts = permission.Split('.');
+                var category = parts.Length > 1 ? parts[0] : "General";
+
+                if (!userPermissionsByCategory.ContainsKey(category))
+                {
+                    userPermissionsByCategory[category] = new List<string>();
+                }
+
+                userPermissionsByCategory[category].Add(permission);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user permissions: {ex.Message}", "Error");
+            userPermissions = new List<string>();
+        }
+        finally
+        {
+            isLoadingPermissions = false;
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private async Task HandleEdit()
+    {
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync();
+        }
+    }
+
+    private void HandleRolesClick()
+    {
+        // Switch to roles tab
+        SetActiveTab("roles");
+    }
+
+    private string GetRoleBadgeClass(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "role-admin",
+            SystemRole.CompanyAdmin => "role-company-admin",
+            SystemRole.BranchManager => "role-branch-manager",
+            SystemRole.PropertyManager => "role-property-manager",
+            SystemRole.FinancialOfficer => "role-financial",
+            SystemRole.TenantOfficer => "role-tenant",
+            SystemRole.ReportsViewer => "role-reports",
+            _ => "role-default"
+        };
+    }
+
+    private string GetRoleDisplayName(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "System Admin",
+            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.PropertyManager => "Property Manager",
+            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.ReportsViewer => "Reports Viewer",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetRoleIcon(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "fa-light fa-user-crown",
+            SystemRole.CompanyAdmin => "fa-light fa-user-tie",
+            SystemRole.BranchManager => "fa-light fa-user-hard-hat",
+            SystemRole.PropertyManager => "fa-light fa-user-chart",
+            SystemRole.FinancialOfficer => "fa-light fa-user-chart",
+            SystemRole.TenantOfficer => "fa-light fa-user-headset",
+            SystemRole.ReportsViewer => "fa-light fa-user-chart",
+            _ => "fa-light fa-user"
+        };
+    }
+
+    private string GetRoleDescription(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "Full access to all system features and administration",
+            SystemRole.CompanyAdmin => "Manages company settings, branches, and users within the company",
+            SystemRole.BranchManager => "Manages branch operations, properties, and tenants",
+            SystemRole.PropertyManager => "Manages property listings, viewings, and tenant communication",
+            SystemRole.FinancialOfficer => "Handles financial aspects including payments and reports",
+            SystemRole.TenantOfficer => "Manages tenant relationships and communications",
+            SystemRole.ReportsViewer => "Read-only access to reports and analytics",
+            _ => "Default user role with standard permissions"
+        };
+    }
+}

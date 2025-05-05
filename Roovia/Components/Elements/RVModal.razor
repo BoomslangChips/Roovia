@@ -1,4 +1,4 @@
-﻿@* Modal.razor *@
+﻿@* Modal.razor - Fixed version *@
 @if (IsVisible)
 {
     <div class="roovia-modal-backdrop" @onclick="CloseOnBackdropClick"></div>
@@ -35,12 +35,8 @@
             else if (DefaultFooter)
             {
                 <div class="roovia-modal-footer">
-                    <button type="button" class="roovia-btn roovia-btn-secondary" @onclick="Cancel">
-                        @CancelText
-                    </button>
-                    <button type="button" class="roovia-btn roovia-btn-primary" @onclick="Confirm">
-                        @ConfirmText
-                    </button>
+                    <RVButton ButtonType="secondary" Text="@CancelText" OnClick="Cancel" />
+                    <RVButton ButtonType="primary" Text="@ConfirmText" OnClick="Confirm" />
                 </div>
             }
         </div>
@@ -50,234 +46,187 @@
 <style>
     /* Modal Styles */
     .roovia-modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: var(--overlay-bg);
-    backdrop-filter: blur(2px);
-    z-index: var(--z-modal-backdrop);
-    animation: fadeIn 0.2s ease-in-out forwards;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--overlay-bg);
+        backdrop-filter: blur(2px);
+        z-index: var(--z-modal-backdrop);
+        animation: fadeIn 0.2s ease-in-out forwards;
     }
 
     .roovia-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
-    z-index: var(--z-modal);
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--modal-bg);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-xl);
-    opacity: 0;
-    overflow: auto;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.95);
+        z-index: var(--z-modal);
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--modal-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        opacity: 0;
+        overflow: auto;
+        transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .roovia-modal-visible {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
     }
 
     .roovia-modal-sm {
-    max-width: 400px;
+        max-width: 400px;
     }
 
     .roovia-modal-lg {
-    max-width: 800px;
+        max-width: 800px;
     }
 
     .roovia-modal-xl {
-    max-width: 1000px;
+        max-width: 1000px;
     }
 
     .roovia-modal-fullscreen {
-    width: 95%;
-    max-width: 95%;
-    height: 95%;
-    max-height: 95%;
+        width: 95%;
+        max-width: 95%;
+        height: 95%;
+        max-height: 95%;
     }
 
     .roovia-modal-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
     }
 
     .roovia-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-4);
-    border-bottom: 1px solid var(--border-divider);
-    background-color: var(--subtle-bg);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-4);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
     }
 
     .roovia-modal-title {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+        color: var(--text-primary);
     }
 
     .roovia-modal-icon {
-    color: var(--primary);
-    font-size: 1.25rem;
+        color: var(--primary);
+        font-size: 1.25rem;
     }
 
     .roovia-modal-close {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background-color: transparent;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--hover-transition);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background-color: transparent;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--hover-transition);
     }
 
-    .roovia-modal-close:hover {
-    background-color: var(--primary-light);
-    color: var(--primary);
-    transform: rotate(90deg);
-    }
+        .roovia-modal-close:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            transform: rotate(90deg);
+        }
 
     .roovia-modal-body {
-    padding: var(--spacing-5);
-    overflow-y: auto;
-    flex: 1;
+        padding: var(--spacing-5);
+        overflow-y: auto;
+        flex: 1;
     }
 
     .roovia-modal-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--spacing-3);
-    padding: var(--spacing-4);
-    border-top: 1px solid var(--border-divider);
-    background-color: var(--subtle-bg);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+        padding: var(--spacing-4);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
     }
+
+        /* Modal-specific button adjustments - limited to placement only */
+        .roovia-modal-footer > button:not(:first-child) {
+            margin-left: var(--spacing-2);
+        }
 
     /* Modal animations */
     @@keyframes fadeIn {
-    from
+        from
 
     {
-    opacity: 0;
+        opacity: 0;
     }
 
     to {
-    opacity: 1;
+        opacity: 1;
     }
 
     }
 
     @@media (max-width: 576px) {
-    .roovia-modal
+        .roovia-modal
 
     {
-    width: 95%;
-    max-width: none;
-    max-height: 95vh;
+        width: 95%;
+        max-width: none;
+        max-height: 95vh;
     }
 
     .roovia-modal-header {
-    padding: var(--spacing-3);
+        padding: var(--spacing-3);
     }
 
     .roovia-modal-body {
-    padding: var(--spacing-3);
+        padding: var(--spacing-3);
     }
 
     .roovia-modal-footer {
-    padding: var(--spacing-3);
-    flex-direction: column;
-    width: 100%;
+        padding: var(--spacing-3);
+        flex-direction: column;
+        width: 100%;
     }
 
-    .roovia-modal-footer .roovia-btn {
-    width: 100%;
-    }
-
-    }
-
-    /* Button styles for modals and the entire application */
-    .roovia-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--spacing-2);
-        padding: var(--spacing-3) var(--spacing-5);
-        border-radius: var(--border-radius-md);
-        font-weight: 500;
-        font-size: var(--font-size-base);
-        transition: all 0.3s ease;
-        border: none;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .roovia-btn-primary {
-        background: var(--primary-gradient);
-        color: white;
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
-    }
-
-        .roovia-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+        .roovia-modal-footer button {
+            width: 100%;
+            margin-left: 0 !important;
+            margin-top: var(--spacing-2);
         }
 
-        .roovia-btn-primary:active {
-            transform: translateY(0);
-        }
-
-    .roovia-btn-secondary {
-        background-color: var(--content-bg);
-        border: 1.5px solid var(--border-divider);
-        color: var(--text-secondary);
-    }
-
-        .roovia-btn-secondary:hover {
-            background-color: var(--subtle-bg);
-            color: var(--text-primary);
-            border-color: var(--border-color);
-            transform: translateY(-2px);
-        }
-
-    /* Modal specific button fixes */
-    .error-modal .roovia-modal-footer .roovia-btn {
-        min-width: 100px;
-    }
-
-    .roovia-modal-footer .roovia-btn {
-        margin-left: var(--spacing-2);
     }
 </style>
 
 @code {
     [Parameter] public string Title { get; set; } = "Modal Title";
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public bool ShowHeader { get; set; } = true;
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     [Parameter] public bool DefaultFooter { get; set; } = true;
     [Parameter] public bool CloseOnEsc { get; set; } = true;
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
-    [Parameter] public string CssClass { get; set; }
+    [Parameter] public string? CssClass { get; set; }
     [Parameter] public string Size { get; set; } = "md";
     [Parameter] public string ConfirmText { get; set; } = "Confirm";
     [Parameter] public string CancelText { get; set; } = "Cancel";
@@ -285,7 +234,7 @@
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Inject]
-    protected IJSRuntime JSRuntime { get; set; }
+    protected IJSRuntime? JSRuntime { get; set; }
     private string SizeClass => $"roovia-modal-{Size.ToLowerInvariant()}";
 
     protected override void OnInitialized()
@@ -293,6 +242,7 @@
         // Register ESC key handler when component is initialized
         if (CloseOnEsc)
         {
+            if (JSRuntime != null)
             JSRuntime.InvokeVoidAsync("document.addEventListener", "keydown", DotNetObjectReference.Create(this));
         }
     }
@@ -301,6 +251,7 @@
     {
         if (firstRender && CloseOnEsc)
         {
+            if (JSRuntime != null)
             await JSRuntime.InvokeVoidAsync("window.addModalKeyListener", DotNetObjectReference.Create(this));
         }
     }
@@ -342,25 +293,8 @@
         // Remove event listener when component is disposed
         if (CloseOnEsc)
         {
+            if (JSRuntime != null)
             JSRuntime.InvokeVoidAsync("window.removeModalKeyListener");
         }
     }
-
-    // Note: This component requires the following JavaScript to be added to your _Host.cshtml or app.js:
-    /*
-    window.addModalKeyListener = (dotnetRef) => {
-            window.modalKeyListener = (e) => {
-                if (e.key === 'Escape') {
-                    dotnetRef.invokeMethodAsync('HandleKeyDown', 'Escape');
-                }
-            };
-            document.addEventListener('keydown', window.modalKeyListener);
-        };
-
-        window.removeModalKeyListener = () => {
-            if (window.modalKeyListener) {
-    document.removeEventListener('keydown', window.modalKeyListener);
-    }
-        };
-        */
 }

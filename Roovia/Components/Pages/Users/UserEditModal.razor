@@ -1,0 +1,788 @@
+﻿@using Roovia.Components.Elements.Forms
+@using Roovia.Interfaces
+@using Roovia.Models.Users
+@using Roovia.Models.Helper
+@using Roovia.Security
+@using Roovia.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@inject IUser UserService
+@inject UserManager<ApplicationUser> UserManager
+@inject ToastService ToastService
+
+<RVModal IsVisible="true"
+         Title="@(isNewUser ? "Create User" : "Edit User")"
+         Icon="@(isNewUser ? "fa-light fa-user-plus" : "fa-light fa-user-edit")"
+         OnClose="OnClose"
+         OnCancel="OnClose"
+         OnConfirm="SaveUser"
+         ConfirmText="@(isNewUser ? "Create" : "Save")"
+         CancelText="Cancel"
+         Size="lg">
+    <ChildContent>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading user details...</h3>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="userModel" OnValidSubmit="SaveUser">
+                <DataAnnotationsValidator />
+                <FluentValidationValidator />
+
+                <div class="user-edit-form">
+                    <div class="form-tabs">
+                        <div class="tab-header">
+                            <button type="button" class="tab-button @(activeTab == "basic" ? "active" : "")" 
+                                    @onclick='() => SetActiveTab("basic")'>
+                                <i class="fa-light fa-user"></i>
+                                <span>Basic Info</span>
+                            </button>
+                            <button type="button" class="tab-button @(activeTab == "contact" ? "active" : "")" 
+                                    @onclick='() => SetActiveTab("contact")'>
+                                <i class="fa-light fa-address-card"></i>
+                                <span>Contact Details</span>
+                            </button>
+                            <button type="button" class="tab-button @(activeTab == "company" ? "active" : "")" 
+                                    @onclick='() => SetActiveTab("company")'>
+                                <i class="fa-light fa-building"></i>
+                                <span>Company Access</span>
+                            </button>
+                            @if (!isNewUser)
+                            {
+                                <button type="button" class="tab-button @(activeTab == "security" ? "active" : "")" 
+                                        @onclick='() => SetActiveTab("security")'>
+                                    <i class="fa-light fa-shield-check"></i>
+                                    <span>Security</span>
+                                </button>
+                            }
+                        </div>
+
+                        <div class="tab-content">
+                            @if (activeTab == "basic")
+                            {
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4>User Information</h4>
+                                        <p>Enter the basic information for this user</p>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="firstName">First Name</label>
+                                            <RVTextbox Id="firstName"
+                                                      Value="@userModel.FirstName"
+                                                      ValueChanged="value => userModel.FirstName = value"
+                                                      Placeholder="Enter first name" />
+                                            <ValidationMessage For="@(() => userModel.FirstName)" />
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="lastName">Last Name</label>
+                                            <RVTextbox Id="lastName"
+                                                      Value="@userModel.LastName"
+                                                      ValueChanged="value => userModel.LastName = value"
+                                                      Placeholder="Enter last name" />
+                                            <ValidationMessage For="@(() => userModel.LastName)" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="userName">Username</label>
+                                            <RVTextbox Id="userName"
+                                                      Value="@userModel.UserName"
+                                                      ValueChanged="value => userModel.UserName = value"
+                                                      Placeholder="Enter username"
+                                                      Disabled="@(!isNewUser)" />
+                                            <ValidationMessage For="@(() => userModel.UserName)" />
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="systemRole">System Role</label>
+                                            <RVSelect Id="systemRole"
+                                                     Value="@selectedRole"
+                                                     ValueChanged="value => selectedRole = value"
+                                                     Placeholder="Select role">
+                                                @foreach (var role in Enum.GetValues(typeof(SystemRole)))
+                                                {
+                                                    <option value="@role">@GetRoleDisplayName((SystemRole)role)</option>
+                                                }
+                                            </RVSelect>
+                                            <div class="field-info">
+                                                <i class="fa-light fa-info-circle"></i>
+                                                <span>This defines the user's base system role. Additional roles can be assigned later.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    @if (!isNewUser)
+                                    {
+                                        <div class="form-group">
+                                            <RVSwitch Label="Active"
+                                                      Value="userModel.IsActive"
+                                                      ValueChanged="value => userModel.IsActive = value"
+                                                      HelperText="Inactive users will not be able to log in to the system" />
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            
+                            @if (activeTab == "contact")
+                            {
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4>Contact Information</h4>
+                                        <p>Enter the contact details for this user</p>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="email">Primary Email Address</label>
+                                        <RVTextbox Id="email"
+                                                  Type="email"
+                                                  Value="@userModel.Email"
+                                                  ValueChanged="value => userModel.Email = value"
+                                                  Placeholder="Enter email address" />
+                                        <ValidationMessage For="@(() => userModel.Email)" />
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="phoneNumber">Primary Phone Number</label>
+                                        <RVTextbox Id="phoneNumber"
+                                                  Type="tel"
+                                                  Value="@userModel.PhoneNumber"
+                                                  ValueChanged="value => userModel.PhoneNumber = value"
+                                                  Placeholder="Enter phone number" />
+                                        <ValidationMessage For="@(() => userModel.PhoneNumber)" />
+                                    </div>
+                                    
+                                    <div class="additional-emails">
+                                        <div class="section-subtitle">
+                                            <h5>Additional Email Addresses</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email" 
+                                                      OnClick="AddEmail" CssClass="add-btn" />
+                                        </div>
+                                        
+                                        @if (additionalEmails.Any())
+                                        {
+                                            <div class="email-list">
+                                                @foreach (var email in additionalEmails)
+                                                {
+                                                    <div class="email-item">
+                                                        <div class="email-content">
+                                                            <RVTextbox Value="@email.EmailAddress" 
+                                                                      ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                                      Placeholder="Enter email address" />
+                                                            <RVTextbox Value="@email.Description" 
+                                                                      ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                                      Placeholder="Description (e.g. Work, Personal)" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <p>No additional email addresses added</p>
+                                            </div>
+                                        }
+                                    </div>
+                                    
+                                    <div class="additional-phones">
+                                        <div class="section-subtitle">
+                                            <h5>Additional Phone Numbers</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone" 
+                                                      OnClick="AddPhone" CssClass="add-btn" />
+                                        </div>
+                                        
+                                        @if (additionalPhones.Any())
+                                        {
+                                            <div class="phone-list">
+                                                @foreach (var phone in additionalPhones)
+                                                {
+                                                    <div class="phone-item">
+                                                        <div class="phone-content">
+                                                            <RVTextbox Value="@phone.Number" 
+                                                                      ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                                      Placeholder="Enter phone number" />
+                                                            <RVSelect Value="@phone.Type.ToString()" 
+                                                                     ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                                     Placeholder="Select type">
+                                                                @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                                {
+                                                                    <option value="@type">@type</option>
+                                                                }
+                                                            </RVSelect>
+                                                            <RVTextbox Value="@phone.Description" 
+                                                                      ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                                      Placeholder="Description" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <p>No additional phone numbers added</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            
+                            @if (activeTab == "company")
+                            {
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4>Company Access</h4>
+                                        <p>Assign this user to a company and branch</p>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="company">Company</label>
+                                        <RVSelect Id="company"
+                                                 Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
+                                                 ValueChanged="HandleCompanyChange"
+                                                 Placeholder="Select company">
+                                            <option value="">-- None --</option>
+                                            @if (Companies != null)
+                                            {
+                                                @foreach (var company in Companies.OrderBy(c => c.Name))
+                                                {
+                                                    <option value="@company.Id">@company.Name</option>
+                                                }
+                                            }
+                                        </RVSelect>
+                                        <div class="field-info">
+                                            <i class="fa-light fa-info-circle"></i>
+                                            <span>Assign the user to a company to grant access to company data</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="branch">Branch</label>
+                                        <RVSelect Id="branch"
+                                                 Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
+                                                 ValueChanged="HandleBranchChange"
+                                                 Placeholder="Select branch"
+                                                 Disabled="@(!userModel.CompanyId.HasValue || availableBranches.Count == 0)">
+                                            <option value="">-- None --</option>
+                                            @foreach (var branch in availableBranches.OrderBy(b => b.Name))
+                                            {
+                                                <option value="@branch.Id">@branch.Name</option>
+                                            }
+                                        </RVSelect>
+                                        <div class="field-info">
+                                            <i class="fa-light fa-info-circle"></i>
+                                            <span>Assign the user to a specific branch within the company</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            
+                            @if (activeTab == "security" && !isNewUser)
+                            {
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4>Security Settings</h4>
+                                        <p>Manage password and security options</p>
+                                    </div>
+                                    
+                                    <div class="password-section">
+                                        <div class="section-subtitle">
+                                            <h5>Password Management</h5>
+                                        </div>
+                                        
+                                        <div class="password-options">
+                                            <RVButton ButtonType="primary" IconLeft="fa-light fa-key" Text="Reset Password"
+                                                      OnClick="ShowResetPasswordConfirmation" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="security-options">
+                                        <div class="section-subtitle">
+                                            <h5>Account Security</h5>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <RVSwitch Label="Email Confirmed"
+                                                      Value="userModel.EmailConfirmed"
+                                                      ValueChanged="value => userModel.EmailConfirmed = value"
+                                                      HelperText="Toggle whether the user's email address is confirmed" />
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <RVSwitch Label="Two-Factor Authentication Enabled"
+                                                      Value="userModel.TwoFactorEnabled"
+                                                      ValueChanged="value => userModel.TwoFactorEnabled = value"
+                                                      HelperText="Toggle whether two-factor authentication is enabled for this user" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    @if (isNewUser)
+                    {
+                        <div class="password-section">
+                            <div class="section-title">
+                                <h4>User Password</h4>
+                                <p>Set an initial password for the user</p>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="password">Password</label>
+                                    <RVTextbox Id="password"
+                                              Type="password"
+                                              Value="@password"
+                                              ValueChanged="value => password = value"
+                                              Placeholder="Enter password" />
+                                    @if (!string.IsNullOrEmpty(passwordError))
+                                    {
+                                        <div class="validation-message">@passwordError</div>
+                                    }
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="confirmPassword">Confirm Password</label>
+                                    <RVTextbox Id="confirmPassword"
+                                              Type="password"
+                                              Value="@confirmPassword"
+                                              ValueChanged="value => confirmPassword = value"
+                                              Placeholder="Confirm password" />
+                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
+                                    {
+                                        <div class="validation-message">@confirmPasswordError</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </EditForm>
+        }
+    </ChildContent>
+</RVModal>
+
+@if (showResetPasswordModal)
+{
+    <RVModal IsVisible="true"
+             Title="Reset Password"
+             Icon="fa-light fa-key"
+             OnClose="() => showResetPasswordModal = false"
+             OnCancel="() => showResetPasswordModal = false"
+             OnConfirm="ResetPassword"
+             ConfirmText="Reset Password"
+             CancelText="Cancel"
+             Size="md">
+        <ChildContent>
+            <div class="reset-password-form">
+                <div class="alert alert-warning">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <div class="alert-content">
+                        <p>You are about to reset the password for <strong>@GetUserDisplayName()</strong>.</p>
+                        <p>The user will receive a password reset link via email.</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <RVSwitch Label="Force password change on next login"
+                              Value="forcePasswordChange"
+                              ValueChanged="value => forcePasswordChange = value"
+                              HelperText="The user will be required to change their password when they next log in" />
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+@code {
+    [Parameter] public string? UserId { get; set; }
+    [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private ApplicationUser userModel = new ApplicationUser();
+    private bool isLoading = true;
+    private bool isNewUser => string.IsNullOrEmpty(UserId);
+    private string activeTab = "basic";
+    private List<Email> additionalEmails = new List<Email>();
+    private List<ContactNumber> additionalPhones = new List<ContactNumber>();
+    private List<Branch> availableBranches = new List<Branch>();
+    
+    // Password fields
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string passwordError = string.Empty;
+    private string confirmPasswordError = string.Empty;
+    
+    // Dropdown selections
+    private string selectedRole = SystemRole.PropertyManager.ToString();
+    
+    // Reset password
+    private bool showResetPasswordModal = false;
+    private bool forcePasswordChange = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            
+            if (!isNewUser)
+            {
+                // Load user
+                var response = await UserService.GetUserById(UserId!);
+                if (response.ResponseInfo.Success)
+                {
+                    userModel = (ApplicationUser)response.Response;
+                    selectedRole = userModel.Role?.ToString() ?? SystemRole.PropertyManager.ToString();
+                    
+                    // Load additional emails and phones
+                    if (userModel.EmailAddresses != null)
+                    {
+                        additionalEmails = userModel.EmailAddresses
+                            .Where(e => !e.IsPrimary)
+                            .ToList();
+                    }
+                    
+                    if (userModel.ContactNumbers != null)
+                    {
+                        additionalPhones = userModel.ContactNumbers
+                            .Where(c => !c.IsPrimary)
+                            .ToList();
+                    }
+                }
+                else
+                {
+                    ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                    if (OnClose.HasDelegate)
+                        await OnClose.InvokeAsync();
+                    return;
+                }
+            }
+            else
+            {
+                // New user
+                userModel = new ApplicationUser
+                {
+                    IsActive = true,
+                    Role = SystemRole.PropertyManager,
+                    CreatedDate = DateTime.Now
+                };
+            }
+            
+            // Get branches if company is selected
+            if (userModel.CompanyId.HasValue && Companies != null)
+            {
+                await LoadBranches(userModel.CompanyId.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user: {ex.Message}", "Error");
+            if (OnClose.HasDelegate)
+                await OnClose.InvokeAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task LoadBranches(int companyId)
+    {
+        var company = Companies?.FirstOrDefault(c => c.Id == companyId);
+        if (company != null)
+        {
+            // Get branches for company
+            var response = await UserService.GetBranchesByCompany(companyId);
+            if (response.ResponseInfo.Success)
+            {
+                availableBranches = (List<Branch>)response.Response;
+            }
+            else
+            {
+                availableBranches = new List<Branch>();
+            }
+        }
+        else
+        {
+            availableBranches = new List<Branch>();
+        }
+    }
+    
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+    
+    private void AddEmail()
+    {
+        additionalEmails.Add(new Email
+        {
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "User",
+            CreatedOn = DateTime.Now
+        });
+    }
+    
+    private void RemoveEmail(Email email)
+    {
+        additionalEmails.Remove(email);
+    }
+    
+    private void UpdateEmailAddress(Email email, string value)
+    {
+        email.EmailAddress = value;
+    }
+    
+    private void UpdateEmailDescription(Email email, string value)
+    {
+        email.Description = value;
+    }
+    
+    private void AddPhone()
+    {
+        additionalPhones.Add(new ContactNumber
+        {
+            Type = ContactNumberType.Mobile,
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "User",
+            CreatedOn = DateTime.Now
+        });
+    }
+    
+    private void RemovePhone(ContactNumber phone)
+    {
+        additionalPhones.Remove(phone);
+    }
+    
+    private void UpdatePhoneNumber(ContactNumber phone, string value)
+    {
+        phone.Number = value;
+    }
+    
+    private void UpdatePhoneType(ContactNumber phone, string value)
+    {
+        if (Enum.TryParse<ContactNumberType>(value, out var type))
+        {
+            phone.Type = type;
+        }
+    }
+    
+    private void UpdatePhoneDescription(ContactNumber phone, string value)
+    {
+        phone.Description = value;
+    }
+    
+    private async Task HandleCompanyChange(string companyId)
+    {
+        if (int.TryParse(companyId, out var id))
+        {
+            userModel.CompanyId = id;
+            await LoadBranches(id);
+        }
+        else
+        {
+            userModel.CompanyId = null;
+            userModel.BranchId = null;
+            availableBranches.Clear();
+        }
+    }
+    
+    private void HandleBranchChange(string branchId)
+    {
+        if (int.TryParse(branchId, out var id))
+        {
+            userModel.BranchId = id;
+        }
+        else
+        {
+            userModel.BranchId = null;
+        }
+    }
+    
+    private void ShowResetPasswordConfirmation()
+    {
+        showResetPasswordModal = true;
+    }
+    
+    private async Task ResetPassword()
+    {
+        try
+        {
+            // Implement password reset logic
+            var token = await UserManager.GeneratePasswordResetTokenAsync(userModel);
+            
+            // In a real implementation, you would send an email with the reset link
+            // For now, we'll just show a success message
+            ToastService.ShowSuccess($"Password reset token generated for {GetUserDisplayName()}", "Success");
+            
+            showResetPasswordModal = false;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to reset password: {ex.Message}", "Error");
+        }
+    }
+    
+    private async Task SaveUser()
+    {
+        try
+        {
+            // Validate password for new users
+            if (isNewUser)
+            {
+                if (string.IsNullOrEmpty(password))
+                {
+                    passwordError = "Password is required";
+                    return;
+                }
+                
+                if (password != confirmPassword)
+                {
+                    confirmPasswordError = "Passwords do not match";
+                    return;
+                }
+                
+                // Clear errors
+                passwordError = string.Empty;
+                confirmPasswordError = string.Empty;
+            }
+            
+            // Set role
+            if (Enum.TryParse<SystemRole>(selectedRole, out var role))
+            {
+                userModel.Role = role;
+            }
+            
+            // Add email addresses and contact numbers
+            if (isNewUser)
+            {
+                // For new users, we need to set up email and phone number entities
+                var primaryEmail = new Email
+                {
+                    EmailAddress = userModel.Email,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    CreatedOn = DateTime.Now
+                };
+                
+                var primaryPhone = new ContactNumber
+                {
+                    Number = userModel.PhoneNumber,
+                    Type = ContactNumberType.Mobile,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    CreatedOn = DateTime.Now
+                };
+                
+                userModel.EmailAddresses = new List<Email> { primaryEmail };
+                userModel.EmailAddresses.AddRange(additionalEmails);
+                
+                userModel.ContactNumbers = new List<ContactNumber> { primaryPhone };
+                userModel.ContactNumbers.AddRange(additionalPhones);
+                
+                // Create user
+                var result = await UserManager.CreateAsync(userModel, password);
+                
+                if (result.Succeeded)
+                {
+                    ToastService.ShowSuccess($"User {GetUserDisplayName()} created successfully", "Success");
+                    
+                    if (OnSaved.HasDelegate)
+                        await OnSaved.InvokeAsync();
+                }
+                else
+                {
+                    var errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+                    ToastService.ShowError(errorMessage, "Error");
+                }
+            }
+            else
+            {
+                // For existing users, we need to update the user
+                // Update existing email addresses
+                var primaryEmail = userModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+                if (primaryEmail != null)
+                {
+                    primaryEmail.EmailAddress = userModel.Email;
+                    primaryEmail.UpdatedDate = DateTime.Now;
+                }
+                
+                var primaryPhone = userModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+                if (primaryPhone != null)
+                {
+                    primaryPhone.Number = userModel.PhoneNumber;
+                    primaryPhone.UpdatedDate = DateTime.Now;
+                }
+                
+                // Update user
+                var userId = int.Parse(userModel.Id);
+                var response = await UserService.UpdateUser(userId, userModel);
+                
+                if (response.ResponseInfo.Success)
+                {
+                    ToastService.ShowSuccess($"User {GetUserDisplayName()} updated successfully", "Success");
+                    
+                    if (OnSaved.HasDelegate)
+                        await OnSaved.InvokeAsync();
+                }
+                else
+                {
+                    ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save user: {ex.Message}", "Error");
+        }
+    }
+    
+    private string GetUserDisplayName()
+    {
+        if (!string.IsNullOrEmpty(userModel.FullName))
+        {
+            return userModel.FullName;
+        }
+        
+        return userModel.UserName ?? "New User";
+    }
+    
+    private string GetRoleDisplayName(SystemRole role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "System Admin",
+            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.PropertyManager => "Property Manager",
+            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.ReportsViewer => "Reports Viewer",
+            _ => "Unknown"
+        };
+    }
+}

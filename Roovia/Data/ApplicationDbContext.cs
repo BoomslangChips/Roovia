@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Roovia.Models.Helper;
 using Roovia.Models.Users;
-
 namespace Roovia.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
@@ -13,6 +12,12 @@ namespace Roovia.Data
         public DbSet<ContactNumber> ContactNumbers { get; set; }
         public DbSet<BranchLogo> BranchLogos { get; set; }
         public DbSet<Media> Media { get; set; }
+
+        // Security-related DbSets
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
+        public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -128,6 +133,32 @@ namespace Roovia.Data
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
+            // Configure UserRoleAssignment relationships
+            modelBuilder.Entity<UserRoleAssignment>()
+                .HasOne<ApplicationUser>()
+                .WithMany(u => u.CustomRoles)
+                .HasForeignKey(ur => ur.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserRoleAssignment>()
+                .HasOne(ur => ur.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(ur => ur.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure RolePermission relationships
+            modelBuilder.Entity<RolePermission>()
+                .HasOne(rp => rp.Role)
+                .WithMany(r => r.Permissions)
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RolePermission>()
+                .HasOne(rp => rp.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(rp => rp.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Define table names
             modelBuilder.Entity<Company>().ToTable("Companies");
             modelBuilder.Entity<Branch>().ToTable("Branches");
@@ -135,6 +166,10 @@ namespace Roovia.Data
             modelBuilder.Entity<ContactNumber>().ToTable("ContactNumbers");
             modelBuilder.Entity<BranchLogo>().ToTable("BranchLogos");
             modelBuilder.Entity<Media>().ToTable("Media");
+            modelBuilder.Entity<Permission>().ToTable("Permissions");
+            modelBuilder.Entity<Role>().ToTable("Roles");
+            modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
+            modelBuilder.Entity<UserRoleAssignment>().ToTable("UserRoleAssignments");
         }
     }
 }

@@ -1,0 +1,328 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Users
+@using Roovia.Security
+@using Roovia.Services
+@inject IPermissionService PermissionService
+@inject ToastService ToastService
+
+<RVModal IsVisible="true"
+         Title="Role Permissions"
+         Icon="fa-light fa-shield-check"
+         OnClose="OnClose"
+         OnCancel="OnClose"
+         OnConfirm="SavePermissions"
+         ConfirmText="Save"
+         CancelText="Cancel"
+         DefaultFooter="false"
+         Size="xl">
+    <ChildContent>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading permissions...</h3>
+            </div>
+        }
+        else
+        {
+            <div class="role-info-banner @(role.IsPreset ? "preset" : "custom")">
+                <div class="role-banner-icon">
+                    <i class="@(role.IsPreset ? "fa-light fa-shield" : "fa-light fa-user-shield")"></i>
+                </div>
+                <div class="role-banner-info">
+                    <h2>@role.Name</h2>
+                    <p>@role.Description</p>
+                </div>
+                <div class="role-banner-status">
+                    @if (role.IsPreset)
+                    {
+                        <span class="status-badge preset">System Role</span>
+                    }
+                    @if (!role.IsActive)
+                    {
+                        <span class="status-badge inactive">Inactive</span>
+                    }
+                </div>
+            </div>
+
+            <div class="permissions-search">
+                <div class="search-box">
+                    <i class="fa-light fa-search"></i>
+                    <input type="text" placeholder="Search permissions..." @bind="searchTerm" @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(searchTerm))
+                    {
+                        <button class="clear-search" @onclick="() => searchTerm = string.Empty">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    }
+                </div>
+                <div class="permissions-actions">
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-check-square" Text="Select All" OnClick="SelectAll" />
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-square" Text="Deselect All" OnClick="DeselectAll" />
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-undo" Text="Reset" OnClick="ResetToOriginal" />
+                </div>
+            </div>
+
+            <div class="permissions-grid">
+                @foreach (var category in permissionsByCategory.Keys.OrderBy(c => c))
+                {
+                    if (FilteredPermissionsInCategory(category).Any())
+                    {
+                        <div class="permission-category">
+                            <div class="category-header" @onclick="() => ToggleCategoryExpanded(category)">
+                                <div class="category-name">
+                                    <i class="@GetCategoryIcon(category)"></i>
+                                    <h3>@category</h3>
+                                </div>
+                                <div class="category-toggle">
+                                    <span class="permission-count">@FilteredPermissionsInCategory(category).Count()</span>
+                                    <i class="@(expandedCategories.Contains(category) ? "fa-light fa-chevron-up" : "fa-light fa-chevron-down")"></i>
+                                </div>
+                            </div>
+
+                            @if (expandedCategories.Contains(category))
+                            {
+                                <div class="category-permissions">
+                                    @foreach (var permission in FilteredPermissionsInCategory(category))
+                                    {
+                                        <div class="permission-item">
+                                            <div class="permission-checkbox">
+                                                <RVCheckbox Value="@selectedPermissions.Contains(permission.Id)"
+                                                            ValueChanged="value => TogglePermission(permission.Id, value)" />
+                                            </div>
+                                            <div class="permission-info">
+                                                <div class="permission-name">@permission.Name</div>
+                                                <div class="permission-description">@permission.Description</div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            @if (hasChanges)
+            {
+                <div class="floating-action-bar">
+                    <div class="changes-indicator">
+                        <i class="fa-light fa-exclamation-circle"></i>
+                        <span>You have unsaved changes</span>
+                    </div>
+                    <div class="action-buttons">
+                        <RVButton ButtonType="secondary" IconLeft="fa-light fa-undo" Text="Reset" OnClick="ResetToOriginal" />
+                        <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save"
+                                  Loading="@isSaving" OnClick="SavePermissions" />
+                    </div>
+                </div>
+            }
+        }
+    </ChildContent>
+</RVModal>
+
+
+
+@code {
+    [Parameter] public int RoleId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Role role = new Role();
+    private List<Permission> allPermissions = new List<Permission>();
+    private Dictionary<string, List<Permission>> permissionsByCategory = new Dictionary<string, List<Permission>>();
+
+    private HashSet<int> selectedPermissions = new HashSet<int>();
+    private HashSet<int> originalPermissions = new HashSet<int>();
+    private HashSet<string> expandedCategories = new HashSet<string>();
+
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool hasChanges => !selectedPermissions.SetEquals(originalPermissions);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Load role with permissions
+            var roleResponse = await PermissionService.GetRoleWithPermissions(RoleId);
+            if (!roleResponse.ResponseInfo.Success)
+            {
+                ToastService.ShowError(roleResponse.ResponseInfo.Message, "Error");
+                if (OnClose.HasDelegate)
+                    await OnClose.InvokeAsync();
+                return;
+            }
+
+            role = (Role)roleResponse.Response;
+
+            // Get original permissions
+            originalPermissions = new HashSet<int>(
+                role.Permissions
+                    .Where(rp => rp.IsActive)
+                    .Select(rp => rp.PermissionId)
+            );
+
+            // Initialize selected permissions with original values
+            selectedPermissions = new HashSet<int>(originalPermissions);
+
+            // Load all permissions
+            var permissionsResponse = await PermissionService.GetAllPermissions();
+            if (permissionsResponse.ResponseInfo.Success)
+            {
+                allPermissions = (List<Permission>)permissionsResponse.Response;
+
+                // Group permissions by category
+                permissionsByCategory = allPermissions
+                    .GroupBy(p => p.Category)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // Initialize with empty set - all categories collapsed by default
+                expandedCategories = new HashSet<string>();
+            }
+            else
+            {
+                ToastService.ShowError(permissionsResponse.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load data: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private IEnumerable<Permission> FilteredPermissionsInCategory(string category)
+    {
+        return permissionsByCategory[category]
+            .Where(p => string.IsNullOrEmpty(searchTerm) ||
+                       p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                       p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void TogglePermission(int permissionId, bool value)
+    {
+        if (value)
+        {
+            selectedPermissions.Add(permissionId);
+        }
+        else
+        {
+            selectedPermissions.Remove(permissionId);
+        }
+    }
+
+    private void ToggleCategoryExpanded(string category)
+    {
+        if (expandedCategories.Contains(category))
+        {
+            expandedCategories.Remove(category);
+        }
+        else
+        {
+            expandedCategories.Add(category);
+        }
+    }
+
+    private void SelectAll()
+    {
+        // If filtered, only select visible permissions
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            foreach (var category in permissionsByCategory.Keys)
+            {
+                foreach (var permission in FilteredPermissionsInCategory(category))
+                {
+                    selectedPermissions.Add(permission.Id);
+                }
+            }
+        }
+        else
+        {
+            // Otherwise select all permissions
+            selectedPermissions = new HashSet<int>(allPermissions.Select(p => p.Id));
+        }
+    }
+
+    private void DeselectAll()
+    {
+        // If filtered, only deselect visible permissions
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            foreach (var category in permissionsByCategory.Keys)
+            {
+                foreach (var permission in FilteredPermissionsInCategory(category))
+                {
+                    selectedPermissions.Remove(permission.Id);
+                }
+            }
+        }
+        else
+        {
+            // Otherwise deselect all permissions
+            selectedPermissions.Clear();
+        }
+    }
+
+    private void ResetToOriginal()
+    {
+        selectedPermissions = new HashSet<int>(originalPermissions);
+    }
+
+    private async Task SavePermissions()
+    {
+        try
+        {
+            isSaving = true;
+
+            var response = await PermissionService.UpdateRolePermissions(RoleId, selectedPermissions.ToList());
+
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+
+                // Update original permissions after successful save
+                originalPermissions = new HashSet<int>(selectedPermissions);
+
+                if (OnClose.HasDelegate)
+                    await OnClose.InvokeAsync();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save permissions: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            "Properties" => "fa-light fa-building",
+            "Beneficiaries" => "fa-light fa-hands-helping",
+            "Tenants" => "fa-light fa-users",
+            "Reports" => "fa-light fa-chart-bar",
+            "Bank Statements & Payments" => "fa-light fa-credit-card",
+            "System Settings" => "fa-light fa-cogs",
+            _ => "fa-light fa-folder"
+        };
+    }
+}

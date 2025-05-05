@@ -1,0 +1,387 @@
+﻿/* User Edit Modal - Clean Professional Edition */
+
+.user-edit-form {
+    padding: var(--spacing-1);
+}
+
+/* Form Tabs */
+.form-tabs {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+.tab-header {
+    display: flex;
+    background-color: var(--subtle-bg);
+    border-bottom: 1px solid var(--border-divider);
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+}
+
+    .tab-header::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Edge */
+    }
+
+.tab-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+    .tab-button:hover {
+        color: var(--primary);
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+
+    .tab-button.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+
+    .tab-button i {
+        font-size: var(--font-size-sm);
+    }
+
+.tab-content {
+    background-color: var(--content-bg);
+    min-height: 300px;
+}
+
+/* Form Section Styling */
+.form-section {
+    padding: var(--spacing-4);
+    animation: fade-in 0.25s ease;
+}
+
+.section-title {
+    margin-bottom: var(--spacing-3);
+    padding-bottom: var(--spacing-2);
+    border-bottom: 1px solid var(--border-divider);
+}
+
+    .section-title h4 {
+        margin: 0 0 var(--spacing-1) 0;
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .section-title p {
+        margin: 0;
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+    }
+
+.section-subtitle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: var(--spacing-4) 0 var(--spacing-2) 0;
+}
+
+    .section-subtitle h5 {
+        margin: 0;
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-3);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-3);
+}
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-1);
+    }
+
+.field-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+    .field-info i {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 1px;
+    }
+
+/* Email and Phone Lists */
+.additional-emails, .additional-phones {
+    margin-top: var(--spacing-4);
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+.email-list, .phone-list {
+    padding: var(--spacing-2);
+}
+
+.email-item, .phone-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    animation: slide-in-right 0.25s ease;
+}
+
+    .email-item:last-child, .phone-item:last-child {
+        margin-bottom: 0;
+    }
+
+.email-content, .phone-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex: 1;
+}
+
+.phone-content {
+    flex-wrap: wrap;
+}
+
+.empty-list {
+    padding: var(--spacing-3);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    background-color: var(--subtle-bg);
+}
+
+.add-btn {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+}
+
+.remove-btn {
+    min-width: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+}
+
+/* Password Section */
+.password-section {
+    padding: var(--spacing-4);
+    background-color: var(--subtle-bg);
+    border-top: 1px solid var(--border-divider);
+    animation: fade-in 0.25s ease;
+}
+
+.password-options {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
+}
+
+/* Security Section */
+.security-options {
+    margin-top: var(--spacing-3);
+    padding: var(--spacing-3);
+    background-color: var(--subtle-bg);
+    border-radius: var(--border-radius-sm);
+}
+
+/* Reset Password Modal */
+.reset-password-form {
+    padding: var(--spacing-3);
+}
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    border-radius: var(--border-radius-sm);
+    background-color: rgba(var(--warning-rgb), 0.1);
+    border: 1px solid rgba(var(--warning-rgb), 0.2);
+    margin-bottom: var(--spacing-3);
+}
+
+    .alert i {
+        color: var(--warning);
+        font-size: var(--font-size-lg);
+    }
+
+.alert-content p {
+    margin: 0 0 var(--spacing-1) 0;
+    font-size: var(--font-size-sm);
+}
+
+    .alert-content p:last-child {
+        margin-bottom: 0;
+    }
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-6) var(--spacing-4);
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(var(--primary-rgb), 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+    margin-bottom: var(--spacing-3);
+}
+
+.loading-text {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+}
+
+/* Validation */
+::deep .validation-message {
+    color: var(--danger);
+    font-size: 11px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+    ::deep .validation-message::before {
+        content: '⚠️';
+        font-size: 10px;
+    }
+
+/* Animations */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-2);
+    }
+
+    .form-section, .password-section {
+        padding: var(--spacing-3);
+    }
+
+    .email-content, .phone-content {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .email-item, .phone-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .remove-btn {
+        width: 100% !important;
+        height: 32px !important;
+    }
+
+    .tab-button {
+        padding: var(--spacing-2);
+    }
+
+        .tab-button span {
+            display: none;
+        }
+}
+
+@media (max-width: 480px) {
+    .form-section, .password-section {
+        padding: var(--spacing-2);
+    }
+
+    .password-options {
+        flex-direction: column;
+    }
+
+        .password-options .btn {
+            width: 100%;
+        }
+}
+
+/* Dark Mode Adjustments */
+.theme-dark .tab-header {
+    background-color: var(--subtle-bg);
+}
+
+.theme-dark .tab-button.active {
+    background-color: rgba(var(--primary-rgb), 0.15);
+}
+
+.theme-dark .alert {
+    background-color: rgba(var(--warning-rgb), 0.05);
+}
+
+.theme-dark .empty-list {
+    background-color: var(--content-bg);
+}
+
+.theme-dark .security-options {
+    background-color: var(--subtle-bg);
+}
