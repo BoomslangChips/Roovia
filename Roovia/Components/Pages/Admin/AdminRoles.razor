@@ -3,151 +3,193 @@
 @using Roovia.Models.Users
 @using Roovia.Security
 @using Roovia.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "GlobalAdminOnly")]
 @rendermode InteractiveServer
 @inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
 @inject ToastService ToastService
 
-<div class="page-container admin-roles-container">
-    <div class="page-header admin-header">
+<div class="admin-roles-page">
+    <div class="admin-header-section">
         <div class="admin-header-content">
-            <div class="title-area">
-                <h1><i class="fa-light fa-user-shield"></i> Role Management</h1>
-                <p>Manage system roles and their permissions to control user access</p>
+            <div class="header-text-content">
+                <div class="header-icon">
+                    <i class="fal fa-shield-check"></i>
+                </div>
+                <div class="header-title-group">
+                    <h1 class="header-title">Role Management</h1>
+                    <p class="header-subtitle">Control user permissions and access levels</p>
+                </div>
             </div>
-            <div class="header-actions">
-                <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Create New Role" OnClick="() => ShowRoleEditModal(0)" />
+
+            <div class="header-action-panel">
+                <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Create Role"
+                          OnClick="() => ShowRoleEditModal(0)" CssClass="create-role-btn" />
             </div>
         </div>
-        <div class="header-pattern"></div>
     </div>
 
-    <RVCard>
-        <HeaderActions>
-            <div class="card-toolbar">
-                <div class="search-box">
-                    <i class="fa-light fa-search"></i>
-                    <input type="text" placeholder="Search roles..." @bind="searchTerm" @bind:event="oninput" />
-                    @if (!string.IsNullOrEmpty(searchTerm))
-                    {
-                        <button class="clear-search" @onclick="() => searchTerm = string.Empty">
-                            <i class="fa-light fa-times"></i>
-                        </button>
-                    }
-                </div>
-                <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-right">
-                    <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")" @onclick='() => filterType = "all"'>
-                        <i class="fa-light fa-layer-group"></i>
-                        <span>All Roles</span>
-                    </button>
-                    <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")" @onclick='() => filterType = "preset"'>
-                        <i class="fa-light fa-lock"></i>
-                        <span>Preset Roles</span>
-                    </button>
-                    <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")" @onclick='() => filterType = "custom"'>
-                        <i class="fa-light fa-edit"></i>
-                        <span>Custom Roles</span>
-                    </button>
-                </RVDropdown>
-            </div>
-        </HeaderActions>
-        <ChildContent>
-            @if (isLoading)
-            {
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <h3 class="loading-text">Loading roles...</h3>
-                </div>
-            }
-            else if (filteredRoles.Any())
-            {
-                <div class="role-grid">
-                    @foreach (var role in filteredRoles)
-                    {
-                        <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
-                            <div class="role-header">
-                                <div class="role-title">
-                                    <h3>
-                                        @if (role.IsPreset)
-                                        {
-                                            <i class="fa-light fa-lock role-icon"></i>
-                                        }
-                                        else
-                                        {
-                                            <i class="fa-light fa-users-cog role-icon"></i>
-                                        }
-                                        @role.Name
-                                    </h3>
-                                    <div class="role-badges">
-                                        @if (role.IsPreset)
-                                        {
-                                            <span class="badge preset">Preset</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge custom">Custom</span>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="role-status @(role.IsActive ? "active" : "inactive")">
-                                    @if (role.IsActive)
-                                    {
-                                        <i class="fa-light fa-check-circle"></i>
-                                        <span>Active</span>
-                                    }
-                                    else
-                                    {
-                                        <i class="fa-light fa-times-circle"></i>
-                                        <span>Inactive</span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="role-description">
-                                <p>@role.Description</p>
-                            </div>
-                            <div class="role-actions">
-                                <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => ShowRoleEditModal(role.Id)" />
-                                <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-shield-check" Text="Permissions" OnClick="() => ShowPermissionsModal(role.Id)" />
-                                @if (!role.IsPreset)
-                                {
-                                    <RVButton ButtonType="danger" Size="sm" IconLeft="fa-light fa-trash-alt" Text="Delete" OnClick="() => ConfirmDeleteRole(role)" />
-                                }
-                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-copy" Text="Clone" OnClick="() => CloneRole(role)" />
-                            </div>
+    <div class="admin-main-container">
+        <RVCard CssClass="management-card">
+            <HeaderActions>
+                <div class="management-toolbar">
+                    <div class="search-section">
+                        <div class="search-input-wrapper">
+                            <i class="fa-light fa-search search-icon"></i>
+                            <input type="text" class="custom-search-input" placeholder="Search roles..."
+                                   @bind="searchTerm" @bind:event="oninput" />
+                            @if (!string.IsNullOrEmpty(searchTerm))
+                            {
+                                <button class="clear-search-btn" @onclick="() => searchTerm = string.Empty">
+                                    <i class="fa-light fa-times"></i>
+                                </button>
+                            }
                         </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <i class="fa-light fa-user-shield empty-illustration"></i>
-                    <h3>No Roles Found</h3>
-                    <p>No roles match your current search or filter criteria.</p>
-                    <div class="empty-actions">
-                        <RVButton ButtonType="primary" Text="Clear Filters" OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
-                        <RVButton ButtonType="outline" Text="Create New Role" OnClick="() => ShowRoleEditModal(0)" />
+
+                        <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-right"
+                                    CssClass="filter-dropdown">
+                            <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")"
+                                    @onclick='() => filterType = "all"'>
+                                <i class="fa-light fa-layer-group"></i>
+                                <span>All Roles</span>
+                                @if (filterType == "all")
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                            <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")"
+                                    @onclick='() => filterType = "preset"'>
+                                <i class="fa-light fa-shield"></i>
+                                <span>Preset Roles</span>
+                                @if (filterType == "preset")
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                            <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")"
+                                    @onclick='() => filterType = "custom"'>
+                                <i class="fa-light fa-pencil"></i>
+                                <span>Custom Roles</span>
+                                @if (filterType == "custom")
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                        </RVDropdown>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh"
+                                  OnClick="LoadRoles" />
                     </div>
                 </div>
-            }
-        </ChildContent>
-    </RVCard>
+            </HeaderActions>
+            <ChildContent>
+                @if (isLoading)
+                {
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <h3 class="loading-text">Loading roles...</h3>
+                    </div>
+                }
+                else if (filteredRoles.Any())
+                {
+                    <div class="role-grid">
+                        @foreach (var role in filteredRoles)
+                        {
+                            <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
+                                <div class="role-header">
+                                    <div class="role-icon">
+                                        @if (role.IsPreset)
+                                        {
+                                            <i class="fa-light fa-shield"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="fa-light fa-tools"></i>
+                                        }
+                                    </div>
+                                    <div class="role-title">
+                                        <h3>@role.Name</h3>
+                                        <div class="role-badges">
+                                            @if (role.IsPreset)
+                                            {
+                                                <span class="badge-preset">System</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge-custom">Custom</span>
+                                            }
+                                            <span class="badge-status @(role.IsActive ? "active" : "inactive")">
+                                                @(role.IsActive ? "Active" : "Inactive")
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="role-description">
+                                    <p>@role.Description</p>
+                                </div>
+
+                                <div class="role-actions">
+                                    <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
+                                              OnClick="() => ShowRoleEditModal(role.Id)" CssClass="action-btn" />
+                                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-shield-check" Text="Permissions"
+                                              OnClick="() => ShowPermissionsModal(role.Id)" CssClass="action-btn" />
+                                    @if (!role.IsPreset)
+                                    {
+                                        <RVButton ButtonType="danger" Size="sm" IconLeft="fa-light fa-trash" Text="Delete"
+                                                  OnClick="() => ConfirmDeleteRole(role)" CssClass="action-btn" />
+                                    }
+                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-copy" Text="Clone"
+                                              OnClick="() => CloneRole(role)" CssClass="action-btn" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fa-light fa-user-shield"></i>
+                        </div>
+                        <h3>No Roles Found</h3>
+                        <p>No roles match your current search or filter criteria.</p>
+                        <div class="empty-actions">
+                            <RVButton ButtonType="primary" Text="Clear Filters"
+                                      OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
+                            <RVButton ButtonType="outline" Text="Create New Role"
+                                      OnClick="() => ShowRoleEditModal(0)" />
+                        </div>
+                    </div>
+                }
+            </ChildContent>
+        </RVCard>
+    </div>
 
     @if (showDeleteDialog)
     {
         <RVModal IsVisible="true"
                  Title="Confirm Delete"
-                 Icon="fa-light fa-trash-alt"
+                 Icon="fa-light fa-trash"
                  OnClose="() => showDeleteDialog = false"
+                 OnCancel="() => showDeleteDialog = false"
                  OnConfirm="DeleteRole"
                  ConfirmText="Delete"
                  CancelText="Cancel"
-                 Size="sm">
+                 Size="sm"
+                 CssClass="delete-modal">
             <ChildContent>
-                <div class="alert alert-danger">
-                    <i class="fa-light fa-exclamation-triangle"></i>
-                    <p>Are you sure you want to delete the role <strong>@roleToDelete?.Name</strong>?</p>
-                    <p>This action cannot be undone and may affect users who have this role assigned.</p>
+                <div class="delete-modal-content">
+                    <div class="alert alert-danger">
+                        <i class="fa-light fa-exclamation-triangle"></i>
+                        <div class="alert-content">
+                            <p>Are you sure you want to delete the role <strong>@roleToDelete?.Name</strong>?</p>
+                            <p>This action cannot be undone and may affect users who have this role assigned.</p>
+                        </div>
+                    </div>
                 </div>
             </ChildContent>
         </RVModal>
@@ -159,20 +201,24 @@
                  Title="Clone Role"
                  Icon="fa-light fa-copy"
                  OnClose="() => showCloneDialog = false"
+                 OnCancel="() => showCloneDialog = false"
                  OnConfirm="ConfirmCloneRole"
                  ConfirmText="Clone"
                  CancelText="Cancel"
-                 Size="sm">
+                 Size="sm"
+                 CssClass="clone-modal">
             <ChildContent>
-                <div class="form-group">
-                    <label>New Role Name</label>
-                    <RVTextbox Value="@newRoleName"
-                               ValueChanged="value => newRoleName = value"
-                               Placeholder="Enter name for the cloned role"
-                               IsValid="string.IsNullOrEmpty(cloneErrorMessage)"
-                               ValidationMessage="@cloneErrorMessage" />
+                <div class="clone-modal-content">
+                    <div class="form-group">
+                        <label>New Role Name</label>
+                        <RVTextbox Value="@newRoleName"
+                                   ValueChanged="value => newRoleName = value"
+                                   Placeholder="Enter name for the cloned role"
+                                   IsValid="string.IsNullOrEmpty(cloneErrorMessage)"
+                                   ValidationMessage="@cloneErrorMessage" />
+                    </div>
+                    <p>This will create a new custom role with the same permissions as <strong>@roleToClone?.Name</strong>.</p>
                 </div>
-                <p>This will create a new custom role with the same permissions as <strong>@roleToClone?.Name</strong>.</p>
             </ChildContent>
         </RVModal>
     }
@@ -263,7 +309,7 @@
         };
     }
 
-    // Modal methods - replaces navigation
+    // Modal methods
     private void ShowRoleEditModal(int roleId)
     {
         currentRoleId = roleId;

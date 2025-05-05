@@ -22,7 +22,7 @@ namespace Roovia.Models.Users
 
         public int? CompanyId { get; set; }
         public int? BranchId { get; set; }
-        public SystemRole Role { get; set; } = SystemRole.StandardUser;
+        public SystemRole? Role { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime? CreatedDate { get; set; } = DateTime.Now;
 
@@ -127,10 +127,13 @@ namespace Roovia.Models.Users
 
     public enum SystemRole
     {
-        GlobalAdmin = 1,
-        CompanyAdmin = 2,
-        BranchManager = 3,
-        StandardUser = 4
+        GlobalAdmin = 0,        // System Administrator
+        PropertyManager = 1,       // Property Manager (this is the default role)
+        FinancialOfficer = 2,
+        TenantOfficer = 3,
+        ReportsViewer = 4,        
+        BranchManager = 5,      // Branch Manager
+        CompanyAdmin = 6        // Company Administrator
     }
 
     public class Permission

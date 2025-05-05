@@ -1,0 +1,324 @@
+﻿@using Roovia.Models.Users
+@using Roovia.Models.Helper
+
+<div class="user-filters-panel">
+    <div class="filter-section">
+        <div class="search-input-wrapper">
+            <i class="fa-light fa-search search-icon"></i>
+            <input type="text" class="custom-search-input" placeholder="Search users..."
+                   @bind="searchValue" @bind:event="oninput" @onkeyup="HandleKeyPress" />
+            @if (!string.IsNullOrEmpty(searchValue))
+            {
+                <button class="clear-search-btn" @onclick="ClearSearch">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            }
+        </div>
+
+        <div class="filter-selectors">
+            <div class="filter-group">
+                <RVDropdown TriggerText="@GetCompanyFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown company-dropdown">
+                    <div class="dropdown-header">
+                        <span>Filter by Company</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == null ? "active" : "")"
+                            @onclick="() => HandleCompanySelect(null)">
+                        <i class="fa-light fa-building"></i>
+                        <span>All Companies</span>
+                        @if (SelectedCompanyId == null)
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    @if (Companies != null)
+                    {
+                        @foreach (var company in Companies.OrderBy(c => c.Name))
+                        {
+                            <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == company.Id ? "active" : "")"
+                                    @onclick="() => HandleCompanySelect(company.Id)">
+                                <i class="fa-light fa-building"></i>
+                                <span>@company.Name</span>
+                                @if (SelectedCompanyId == company.Id)
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                        }
+                    }
+                </RVDropdown>
+
+                <RVDropdown TriggerText="@GetBranchFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown branch-dropdown" Disabled="@(SelectedCompanyId == null || Branches == null || !Branches.Any())">
+                    <div class="dropdown-header">
+                        <span>Filter by Branch</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedBranchId == null ? "active" : "")"
+                            @onclick="() => HandleBranchSelect(null)">
+                        <i class="fa-light fa-code-branch"></i>
+                        <span>All Branches</span>
+                        @if (SelectedBranchId == null)
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    @if (Branches != null)
+                    {
+                        @foreach (var branch in Branches.OrderBy(b => b.Name))
+                        {
+                            <button type="button" class="roovia-dropdown-item @(SelectedBranchId == branch.Id ? "active" : "")"
+                                    @onclick="() => HandleBranchSelect(branch.Id)">
+                                <i class="fa-light fa-code-branch"></i>
+                                <span>@branch.Name</span>
+                                @if (SelectedBranchId == branch.Id)
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                        }
+                    }
+                </RVDropdown>
+
+                <RVDropdown TriggerText="@GetRoleFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown role-dropdown">
+                    <div class="dropdown-header">
+                        <span>Filter by Role</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == "all" ? "active" : "")"
+                            @onclick='() => HandleRoleSelect("all")'>
+                        <i class="fa-light fa-users"></i>
+                        <span>All Roles</span>
+                        @if (SelectedRoleFilter == "all")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    @foreach (var role in Enum.GetValues(typeof(SystemRole)))
+                    {
+                        var roleValue = role.ToString();
+                        <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == roleValue ? "active" : "")"
+                                @onclick="() => HandleRoleSelect(roleValue)">
+                            <i class="@GetRoleIcon((SystemRole)role)"></i>
+                            <span>@GetRoleDisplayName((SystemRole)role)</span>
+                            @if (SelectedRoleFilter == roleValue)
+                            {
+                                <i class="fa-light fa-check"></i>
+                            }
+                        </button>
+                    }
+                </RVDropdown>
+
+                <RVDropdown TriggerText="@GetStatusFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown status-dropdown">
+                    <div class="dropdown-header">
+                        <span>Filter by Status</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "all" ? "active" : "")"
+                            @onclick='() => HandleStatusSelect("all")'>
+                        <i class="fa-light fa-users"></i>
+                        <span>All Statuses</span>
+                        @if (SelectedStatusFilter == "all")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
+                            @onclick='() => HandleStatusSelect("active")'>
+                        <i class="fa-light fa-user-check"></i>
+                        <span>Active</span>
+                        @if (SelectedStatusFilter == "active")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
+                            @onclick='() => HandleStatusSelect("inactive")'>
+                        <i class="fa-light fa-user-slash"></i>
+                        <span>Inactive</span>
+                        @if (SelectedStatusFilter == "inactive")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                </RVDropdown>
+            </div>
+
+            <div class="filter-actions">
+                <RVButton ButtonType="secondary" IconLeft="fa-light fa-filter-slash" Text="Clear" OnClick="HandleClearFilters"
+                          Disabled="@(!HasActiveFilters)" CssClass="clear-filters-btn" />
+
+                <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh" OnClick="HandleRefresh" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public int? SelectedCompanyId { get; set; }
+    [Parameter] public EventCallback<int?> OnCompanySelected { get; set; }
+
+    [Parameter] public List<Branch>? Branches { get; set; }
+    [Parameter] public int? SelectedBranchId { get; set; }
+    [Parameter] public EventCallback<int?> OnBranchSelected { get; set; }
+
+    [Parameter] public string SelectedRoleFilter { get; set; } = "all";
+    [Parameter] public EventCallback<string> OnRoleFilterChanged { get; set; }
+
+    [Parameter] public string SelectedStatusFilter { get; set; } = "all";
+    [Parameter] public EventCallback<string> OnStatusFilterChanged { get; set; }
+
+    [Parameter] public string SearchTerm { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private string searchValue = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        searchValue = SearchTerm;
+    }
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrEmpty(SearchTerm) ||
+        SelectedCompanyId.HasValue ||
+        SelectedBranchId.HasValue ||
+        SelectedRoleFilter != "all" ||
+        SelectedStatusFilter != "all";
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await OnSearchChanged.InvokeAsync(searchValue);
+        }
+    }
+
+    private async Task HandleCompanySelect(int? companyId)
+    {
+        if (SelectedCompanyId != companyId)
+        {
+            await OnCompanySelected.InvokeAsync(companyId);
+        }
+    }
+
+    private async Task HandleBranchSelect(int? branchId)
+    {
+        if (SelectedBranchId != branchId)
+        {
+            await OnBranchSelected.InvokeAsync(branchId);
+        }
+    }
+
+    private async Task HandleRoleSelect(string role)
+    {
+        if (SelectedRoleFilter != role)
+        {
+            await OnRoleFilterChanged.InvokeAsync(role);
+        }
+    }
+
+    private async Task HandleStatusSelect(string status)
+    {
+        if (SelectedStatusFilter != status)
+        {
+            await OnStatusFilterChanged.InvokeAsync(status);
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchValue = string.Empty;
+        await OnSearchChanged.InvokeAsync(searchValue);
+    }
+
+    private async Task HandleClearFilters()
+    {
+        await OnClearFilters.InvokeAsync();
+    }
+
+    private async Task HandleRefresh()
+    {
+        await OnRefresh.InvokeAsync();
+    }
+
+    private string GetCompanyFilterText()
+    {
+        if (SelectedCompanyId.HasValue && Companies != null)
+        {
+            var company = Companies.FirstOrDefault(c => c.Id == SelectedCompanyId);
+            return company != null ? $"Company: {company.Name}" : "Company: All";
+        }
+
+        return "Company: All";
+    }
+
+    private string GetBranchFilterText()
+    {
+        if (SelectedBranchId.HasValue && Branches != null)
+        {
+            var branch = Branches.FirstOrDefault(b => b.Id == SelectedBranchId);
+            return branch != null ? $"Branch: {branch.Name}" : "Branch: All";
+        }
+
+        return "Branch: All";
+    }
+
+    private string GetRoleFilterText()
+    {
+        if (SelectedRoleFilter != "all")
+        {
+            if (Enum.TryParse<SystemRole>(SelectedRoleFilter, out var roleEnum))
+            {
+                return $"Role: {GetRoleDisplayName(roleEnum)}";
+            }
+        }
+
+        return "Role: All";
+    }
+
+    private string GetStatusFilterText()
+    {
+        return SelectedStatusFilter switch
+        {
+            "active" => "Status: Active",
+            "inactive" => "Status: Inactive",
+            _ => "Status: All"
+        };
+    }
+
+    private string GetRoleDisplayName(SystemRole role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "System Admin",
+            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.PropertyManager => "Property Manager",
+            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.ReportsViewer => "Reports Viewer",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetRoleIcon(SystemRole role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "fa-light fa-user-crown",
+            SystemRole.CompanyAdmin => "fa-light fa-user-tie",
+            SystemRole.BranchManager => "fa-light fa-user-hard-hat",
+            SystemRole.PropertyManager => "fa-light fa-user-chart",
+            SystemRole.FinancialOfficer => "fa-light fa-user-chart",
+            SystemRole.TenantOfficer => "fa-light fa-user-headset",
+            SystemRole.ReportsViewer => "fa-light fa-user-chart",
+            _ => "fa-light fa-user"
+        };
+    }
+}

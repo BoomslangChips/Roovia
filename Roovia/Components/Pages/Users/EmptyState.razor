@@ -1,0 +1,32 @@
+﻿@inject NavigationManager NavigationManager
+
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <i class="@Icon"></i>
+    </div>
+    <h3>@Title</h3>
+    <p>@Description</p>
+    @if (!string.IsNullOrEmpty(ActionText))
+    {
+        <div class="empty-state-actions">
+            <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="@ActionText"
+                      OnClick="HandleAction" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "fa-light fa-inbox";
+    [Parameter] public string ActionText { get; set; } = "";
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    private async Task HandleAction()
+    {
+        if (OnAction.HasDelegate)
+        {
+            await OnAction.InvokeAsync();
+        }
+    }
+}

@@ -234,7 +234,7 @@
     }
 
 .roovia-sidebar.collapsed .roovia-nav-link {
-    padding: var(--spacing-3) 0;
+    padding: var(--spacing-2) 0;
     justify-content: center;
 }
 

@@ -1,0 +1,107 @@
+﻿@using Roovia.Models.Users
+@inject NavigationManager NavigationManager
+
+<div class="user-card">
+    <div class="user-card-avatar">
+        @if (string.IsNullOrEmpty(User.FirstName) && string.IsNullOrEmpty(User.LastName))
+        {
+            <div class="avatar-initials">@(User.UserName?.Substring(0, 1).ToUpper() ?? "?")</div>
+        }
+        else
+        {
+            <div class="avatar-initials">@(User.FirstName?.Substring(0, 1).ToUpper() ?? "")@(User.LastName?.Substring(0, 1).ToUpper() ?? "")</div>
+        }
+    </div>
+
+    <div class="user-card-info">
+        <div class="user-card-header">
+            <h4>@(string.IsNullOrEmpty(User.FullName) ? User.UserName : User.FullName)</h4>
+            <div class="user-badges">
+                <span class="role-badge @GetRoleBadgeClass(User.Role)">
+                    @GetRoleDisplayName(User.Role)
+                </span>
+                <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
+                    @(User.IsActive ? "Active" : "Inactive")
+                </span>
+            </div>
+        </div>
+
+        <div class="user-card-details">
+            <div class="detail-item">
+                <i class="fa-light fa-envelope"></i>
+                <span>@User.Email</span>
+            </div>
+            @if (!string.IsNullOrEmpty(User.PhoneNumber))
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-phone"></i>
+                    <span>@User.PhoneNumber</span>
+                </div>
+            }
+            @if (User.Company != null)
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-building"></i>
+                    <span>@User.Company.Name</span>
+                </div>
+            }
+            @if (User.Branch != null)
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-code-branch"></i>
+                    <span>@User.Branch.Name</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="user-card-actions">
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye"
+                  OnClick="() => OnView.InvokeAsync(User.Id)" CssClass="action-btn" />
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit"
+                  OnClick="() => OnEdit.InvokeAsync(User.Id)" CssClass="action-btn" />
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
+                  OnClick="() => OnRoles.InvokeAsync(User.Id)" CssClass="action-btn" />
+        <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
+                  Size="xs" IconLeft="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
+                  OnClick="() => OnToggleStatus.InvokeAsync(User)" CssClass="action-btn" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public ApplicationUser User { get; set; } = null!;
+    [Parameter] public EventCallback<string> OnView { get; set; }
+    [Parameter] public EventCallback<string> OnEdit { get; set; }
+    [Parameter] public EventCallback<string> OnRoles { get; set; }
+    [Parameter] public EventCallback<ApplicationUser> OnToggleStatus { get; set; }
+
+    private string GetRoleBadgeClass(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "role-admin",
+            SystemRole.CompanyAdmin => "role-company-admin",
+            SystemRole.BranchManager => "role-branch-manager",
+            SystemRole.PropertyManager => "role-property-manager",
+            SystemRole.FinancialOfficer => "role-financial",
+            SystemRole.TenantOfficer => "role-tenant",
+            SystemRole.ReportsViewer => "role-reports",
+            _ => "role-default"
+        };
+    }
+
+    private string GetRoleDisplayName(SystemRole? role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "System Admin",
+            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.PropertyManager => "Property Manager",
+            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.ReportsViewer => "Reports Viewer",
+            _ => "Unknown"
+        };
+    }
+}

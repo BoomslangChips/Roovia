@@ -7,11 +7,12 @@
 @inject ToastService ToastService
 
 <RVModal IsVisible="true"
-         Title="@(isNewRole ? "Create New Role" : "Edit Role")"
-         Icon="@(isNewRole ? "far fa-plus-circle" : "far fa-edit")"
+         Title="@(isNewRole ? "Create Role" : "Edit Role")"
+         Icon="@(isNewRole ? "fa-light fa-plus" : "fa-light fa-edit")"
          OnClose="OnClose"
+         OnCancel="OnClose"
          OnConfirm="SaveRole"
-         ConfirmText="@(isNewRole ? "Create Role" : "Save Changes")"
+         ConfirmText="@(isNewRole ? "Create" : "Save")"
          CancelText="Cancel"
          Size="md">
     <ChildContent>
@@ -31,8 +32,8 @@
                     @if (!isNewRole && roleModel.IsPreset)
                     {
                         <div class="preset-notice">
-                            <i class="far fa-lock"></i>
-                            <p>This is a preset role with limited editing options</p>
+                            <i class="fa-light fa-lock"></i>
+                            <p>This preset role has limited editing options</p>
                         </div>
                     }
 
@@ -59,11 +60,11 @@
                     @if (!isNewRole)
                     {
                         <div class="form-group">
-                            <RVSwitch Label="Role is active"
+                            <RVSwitch Label="Active"
                                       Value="roleModel.IsActive"
                                       ValueChanged="value => roleModel.IsActive = value"
                                       Disabled="@roleModel.IsPreset"
-                                      HelperText="Inactive roles do not grant permissions to users" />
+                                      HelperText="Inactive roles do not grant permissions" />
                         </div>
                     }
                 </div>

@@ -6,11 +6,12 @@
 @inject ToastService ToastService
 
 <RVModal IsVisible="true"
-         Title="Manage Role Permissions"
-         Icon="far fa-shield-check"
+         Title="Role Permissions"
+         Icon="fa-light fa-shield-check"
          OnClose="OnClose"
+         OnCancel="OnClose"
          OnConfirm="SavePermissions"
-         ConfirmText="Save Changes"
+         ConfirmText="Save"
          CancelText="Cancel"
          DefaultFooter="false"
          Size="xl">
@@ -26,7 +27,7 @@
         {
             <div class="role-info-banner @(role.IsPreset ? "preset" : "custom")">
                 <div class="role-banner-icon">
-                    <i class="@(role.IsPreset ? "far fa-lock" : "far fa-user-shield")"></i>
+                    <i class="@(role.IsPreset ? "fa-light fa-shield" : "fa-light fa-user-shield")"></i>
                 </div>
                 <div class="role-banner-info">
                     <h2>@role.Name</h2>
@@ -35,34 +36,30 @@
                 <div class="role-banner-status">
                     @if (role.IsPreset)
                     {
-                        <span class="preset-badge">
-                            <i class="far fa-lock"></i> Preset Role
-                        </span>
+                        <span class="status-badge preset">System Role</span>
                     }
                     @if (!role.IsActive)
                     {
-                        <span class="inactive-badge">
-                            <i class="far fa-times-circle"></i> Inactive
-                        </span>
+                        <span class="status-badge inactive">Inactive</span>
                     }
                 </div>
             </div>
 
             <div class="permissions-search">
                 <div class="search-box">
-                    <i class="far fa-search"></i>
+                    <i class="fa-light fa-search"></i>
                     <input type="text" placeholder="Search permissions..." @bind="searchTerm" @bind:event="oninput" />
                     @if (!string.IsNullOrEmpty(searchTerm))
                     {
                         <button class="clear-search" @onclick="() => searchTerm = string.Empty">
-                            <i class="far fa-times"></i>
+                            <i class="fa-light fa-times"></i>
                         </button>
                     }
                 </div>
                 <div class="permissions-actions">
-                    <RVButton ButtonType="secondary" Size="sm" IconLeft="far fa-check-square" Text="Select All" OnClick="SelectAll" />
-                    <RVButton ButtonType="secondary" Size="sm" IconLeft="far fa-square" Text="Deselect All" OnClick="DeselectAll" />
-                    <RVButton ButtonType="secondary" Size="sm" IconLeft="far fa-undo" Text="Reset Changes" OnClick="ResetToOriginal" />
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-check-square" Text="Select All" OnClick="SelectAll" />
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-square" Text="Deselect All" OnClick="DeselectAll" />
+                    <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-undo" Text="Reset" OnClick="ResetToOriginal" />
                 </div>
             </div>
 
@@ -78,8 +75,8 @@
                                     <h3>@category</h3>
                                 </div>
                                 <div class="category-toggle">
-                                    <span class="permission-count">@FilteredPermissionsInCategory(category).Count() permissions</span>
-                                    <i class="@(expandedCategories.Contains(category) ? "far fa-chevron-up" : "far fa-chevron-down")"></i>
+                                    <span class="permission-count">@FilteredPermissionsInCategory(category).Count()</span>
+                                    <i class="@(expandedCategories.Contains(category) ? "fa-light fa-chevron-up" : "fa-light fa-chevron-down")"></i>
                                 </div>
                             </div>
 
@@ -110,18 +107,16 @@
             {
                 <div class="floating-action-bar">
                     <div class="changes-indicator">
-                        <i class="far fa-exclamation-circle"></i>
+                        <i class="fa-light fa-exclamation-circle"></i>
                         <span>You have unsaved changes</span>
                     </div>
                     <div class="action-buttons">
-                        <RVButton ButtonType="secondary" IconLeft="far fa-undo" Text="Reset" OnClick="ResetToOriginal" />
-                        <RVButton ButtonType="primary" IconLeft="far fa-save" Text="Save Changes"
+                        <RVButton ButtonType="secondary" IconLeft="fa-light fa-undo" Text="Reset" OnClick="ResetToOriginal" />
+                        <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save"
                                   Loading="@isSaving" OnClick="SavePermissions" />
                     </div>
                 </div>
             }
-
-
         }
     </ChildContent>
 </RVModal>
@@ -189,8 +184,8 @@
                     .GroupBy(p => p.Category)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
-                // Expand all categories initially
-                expandedCategories = new HashSet<string>(permissionsByCategory.Keys);
+                // Initialize with empty set - all categories collapsed by default
+                expandedCategories = new HashSet<string>();
             }
             else
             {
@@ -321,13 +316,13 @@
     {
         return category switch
         {
-            "Properties" => "far fa-building",
-            "Beneficiaries" => "far fa-hands-helping",
-            "Tenants" => "far fa-users",
-            "Reports" => "far fa-chart-bar",
-            "Bank Statements & Payments" => "far fa-credit-card",
-            "System Settings" => "far fa-cogs",
-            _ => "far fa-folder"
+            "Properties" => "fa-light fa-building",
+            "Beneficiaries" => "fa-light fa-hands-helping",
+            "Tenants" => "fa-light fa-users",
+            "Reports" => "fa-light fa-chart-bar",
+            "Bank Statements & Payments" => "fa-light fa-credit-card",
+            "System Settings" => "fa-light fa-cogs",
+            _ => "fa-light fa-folder"
         };
     }
 }

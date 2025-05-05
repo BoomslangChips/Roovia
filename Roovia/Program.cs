@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Roovia.Authentication;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
@@ -44,7 +45,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 builder.Services.AddScoped<ITenant, TenantService>();
 builder.Services.AddScoped<IProperty, PropertyService>();
@@ -57,7 +59,14 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 // Register authorization handlers
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("GlobalAdminOnly", policy =>
+        policy.Requirements.Add(new GlobalAdminRequirement()));
+});
 
+// Register the authorization handler
+builder.Services.AddSingleton<IAuthorizationHandler, GlobalAdminHandler>();
 
 builder.Services.AddScoped<ToastService>();
 
