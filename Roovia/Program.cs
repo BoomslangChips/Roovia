@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using Roovia.Components.Account;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.Users;
+using Roovia.Security;
 using Roovia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,6 +50,14 @@ builder.Services.AddScoped<ITenant, TenantService>();
 builder.Services.AddScoped<IProperty, PropertyService>();
 builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
 builder.Services.AddScoped<IUser, UserService>();
+
+// Register permission service
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// Register authorization handlers
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
 
 builder.Services.AddScoped<ToastService>();
 

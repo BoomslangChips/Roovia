@@ -1,0 +1,490 @@
+﻿@page "/admin/users/roles"
+@using Roovia.Models.Users
+@using Roovia.Interfaces
+@using Roovia.Security
+@using Roovia.Services
+@rendermode InteractiveServer
+@inject IPermissionService PermissionService
+@inject IUser UserService
+@inject ToastService ToastService
+
+
+    <div class="page-container admin-users-container">
+        <div class="page-header admin-header">
+            <div class="admin-header-content">
+                <div class="title-area">
+                    <h1><i class="far fa-users-cog"></i> User Role Assignment</h1>
+                    <p>Assign roles to users to control their access to system features</p>
+                </div>
+            </div>
+            <div class="header-pattern"></div>
+        </div>
+
+        <RVCard>
+            <HeaderActions>
+                <div class="search-box">
+                    <i class="far fa-search"></i>
+                    <input type="text" placeholder="Search users..." @bind="searchTerm" @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(searchTerm))
+                    {
+                        <button class="clear-search" @onclick="() => searchTerm = string.Empty">
+                            <i class="far fa-times"></i>
+                        </button>
+                    }
+                </div>
+            </HeaderActions>
+            <ChildContent>
+                @if (isLoading)
+                {
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <h3 class="loading-text">Loading users...</h3>
+                    </div>
+                }
+                else if (filteredUsers.Any())
+                {
+                    <div class="user-table-container">
+                        <table class="user-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Company</th>
+                                    <th>Branch</th>
+                                    <th>System Role</th>
+                                    <th>Custom Roles</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in filteredUsers)
+                                {
+                                    <tr class="@(user.IsActive ? "" : "inactive-row")">
+                                        <td>
+                                            <div class="user-name">
+                                                <div class="user-avatar">
+                                                    @(user.FirstName[0].ToString().ToUpper() + user.LastName[0].ToString().ToUpper())
+                                                </div>
+                                                <div>
+                                                    <span>@user.FirstName @user.LastName</span>
+                                                    @if (!user.IsActive)
+                                                    {
+                                                        <span class="inactive-badge">Inactive</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@user.Email</td>
+                                        <td>@(user.Company?.Name ?? "-")</td>
+                                        <td>@(user.Branch?.Name ?? "-")</td>
+                                        <td>
+                                            <span class="system-role-badge role-@user.Role.ToString().ToLower()">
+                                                @GetSystemRoleName(user.Role)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="user-custom-roles">
+                                                @{
+                                                    var userRoles = GetUserRoles(user.Id);
+                                                    if (userRoles.Any())
+                                                    {
+                                                        foreach (var userRole in userRoles)
+                                                        {
+                                                            <div class="role-badge @(userRole.Role.IsPreset ? "preset" : "custom")">
+                                                                <span>@userRole.Role.Name</span>
+                                                                <button class="remove-role-btn" @onclick="() => RemoveRole(user.Id, userRole.RoleId)">
+                                                                    <i class="far fa-times"></i>
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="no-roles">No custom roles</span>
+                                                    }
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <RVButton ButtonType="primary" Size="sm" IconLeft="far fa-plus" Text="Assign" OnClick="() => ShowAssignRoleModal(user)" />
+                                                <RVButton ButtonType="secondary" Size="sm" IconLeft="far fa-eye" Text="View" OnClick="() => ViewUserPermissions(user.Id)" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="far fa-users empty-illustration"></i>
+                        <h3>No Users Found</h3>
+                        <p>No users match your current search criteria.</p>
+                        <RVButton ButtonType="primary" Text="Clear Search" OnClick='() => searchTerm = string.Empty' />
+                    </div>
+                }
+            </ChildContent>
+        </RVCard>
+    </div>
+
+    @if (isAssignRoleModalVisible)
+    {
+        <RVModal IsVisible="true"
+                 Title="Assign Role to User"
+                 Icon="far fa-user-plus"
+                 OnClose="CloseAssignRoleModal"
+                 OnConfirm="AssignRole"
+                 ConfirmText="Assign"
+                 CancelText="Cancel"
+                 Size="sm">
+            <ChildContent>
+                <div class="user-info-banner">
+                    <div class="user-info-avatar">
+                        @(selectedUser?.FirstName[0].ToString().ToUpper() + selectedUser?.LastName[0].ToString().ToUpper())
+                    </div>
+                    <div>
+                        <h4>@selectedUser?.FirstName @selectedUser?.LastName</h4>
+                        <p>@selectedUser?.Email</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Role</label>
+                    <select class="form-control custom-select" @bind="selectedRoleId">
+                        <option value="0">-- Select a role --</option>
+                        @foreach (var role in availableRoles)
+                        {
+                            <option value="@role.Id">@role.Name @(role.IsPreset ? "(Preset)" : "")</option>
+                        }
+                    </select>
+                    @if (selectedRoleId > 0)
+                    {
+                        var role = availableRoles.FirstOrDefault(r => r.Id == selectedRoleId);
+                        if (role != null)
+                        {
+                            <div class="role-description">
+                                <p>@role.Description</p>
+                            </div>
+                        }
+                    }
+                </div>
+            </ChildContent>
+        </RVModal>
+    }
+
+    @if (isViewPermissionsModalVisible)
+    {
+        <RVModal IsVisible="true"
+                 Title="User Permissions"
+                 Icon="far fa-shield-check"
+                 OnClose="CloseViewPermissionsModal"
+                 ConfirmText=""
+                 CancelText="Close"
+                 Size="lg"
+                 DefaultFooter="false">
+            <ChildContent>
+                <div class="permissions-container">
+                    <div class="user-info-banner">
+                        <div class="user-info-avatar">
+                            @(viewingUserName.Split(' ')[0][0].ToString().ToUpper() + (viewingUserName.Split(' ').Length > 1 ? viewingUserName.Split(' ')[1][0].ToString().ToUpper() : ""))
+                        </div>
+                        <div>
+                            <h4>@viewingUserName</h4>
+                            <p>Effective permissions from all assigned roles</p>
+                        </div>
+                    </div>
+
+                    @if (isLoadingPermissions)
+                    {
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <h3 class="loading-text">Loading permissions...</h3>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="permissions-by-category">
+                            @foreach (var category in userPermissionsByCategory.Keys.OrderBy(c => c))
+                            {
+                                <div class="permission-category-card">
+                                    <div class="category-header">
+                                        <i class="@GetCategoryIcon(category)"></i>
+                                        <h4>@category</h4>
+                                    </div>
+                                    <div class="category-permissions">
+                                        @foreach (var permission in userPermissionsByCategory[category])
+                                        {
+                                            <div class="permission-item">
+                                                <i class="far fa-check-circle"></i>
+                                                <div>
+                                                    <div class="permission-name">@permission.Name</div>
+                                                    <div class="permission-description">@permission.Description</div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="modal-footer-custom">
+                            <RVButton ButtonType="secondary" Text="Close" OnClick="CloseViewPermissionsModal" />
+                        </div>
+                    }
+                </div>
+            </ChildContent>
+        </RVModal>
+    }
+
+
+
+@code {
+    private List<ApplicationUser> users = new List<ApplicationUser>();
+    private List<Role> roles = new List<Role>();
+    private Dictionary<string, List<UserRoleAssignment>> userRolesMap = new Dictionary<string, List<UserRoleAssignment>>();
+
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+
+    // Assign role modal
+    private bool isAssignRoleModalVisible = false;
+    private ApplicationUser selectedUser;
+    private int selectedRoleId = 0;
+    private List<Role> availableRoles = new List<Role>();
+
+    // View permissions modal
+    private bool isViewPermissionsModalVisible = false;
+    private bool isLoadingPermissions = false;
+    private string viewingUserId;
+    private string viewingUserName;
+    private Dictionary<string, List<Permission>> userPermissionsByCategory = new Dictionary<string, List<Permission>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Load users
+            var userResponse = await UserService.GetAllUsers();
+            if (userResponse.ResponseInfo.Success)
+            {
+                users = (List<ApplicationUser>)userResponse.Response;
+            }
+
+            // Load roles
+            var roleResponse = await PermissionService.GetAllRoles();
+            if (roleResponse.ResponseInfo.Success)
+            {
+                roles = (List<Role>)roleResponse.Response;
+            }
+
+            // Load user roles
+            userRolesMap.Clear();
+            foreach (var user in users)
+            {
+                var userRolesResponse = await PermissionService.GetUserRoles(user.Id);
+                if (userRolesResponse.ResponseInfo.Success)
+                {
+                    userRolesMap[user.Id] = (List<UserRoleAssignment>)userRolesResponse.Response;
+                }
+                else
+                {
+                    userRolesMap[user.Id] = new List<UserRoleAssignment>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load data: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private List<ApplicationUser> filteredUsers => users
+        .Where(u => string.IsNullOrEmpty(searchTerm) ||
+                   u.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   u.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(u => u.LastName)
+        .ThenBy(u => u.FirstName)
+        .ToList();
+
+    private List<UserRoleAssignment> GetUserRoles(string userId)
+    {
+        if (userRolesMap.TryGetValue(userId, out var userRoles))
+        {
+            return userRoles;
+        }
+        return new List<UserRoleAssignment>();
+    }
+
+    private string GetSystemRoleName(SystemRole role)
+    {
+        return role switch
+        {
+            SystemRole.GlobalAdmin => "Global Admin",
+            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.StandardUser => "Standard User",
+            _ => "Unknown"
+        };
+    }
+
+    private void ShowAssignRoleModal(ApplicationUser user)
+    {
+        selectedUser = user;
+        selectedRoleId = 0;
+
+        // Get user's current roles
+        var userRoleIds = GetUserRoles(user.Id).Select(ur => ur.RoleId).ToList();
+
+        // Filter available roles to those the user doesn't already have
+        availableRoles = roles
+            .Where(r => !userRoleIds.Contains(r.Id) && r.IsActive)
+            .OrderBy(r => r.Name)
+            .ToList();
+
+        isAssignRoleModalVisible = true;
+    }
+
+    private void CloseAssignRoleModal()
+    {
+        isAssignRoleModalVisible = false;
+    }
+
+    private async Task AssignRole()
+    {
+        if (selectedUser == null || selectedRoleId <= 0)
+        {
+            ToastService.ShowError("Please select a valid role", "Error");
+            return;
+        }
+
+        try
+        {
+            var response = await PermissionService.AssignRoleToUser(selectedUser.Id, selectedRoleId);
+
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+
+                // Refresh user roles
+                var userRolesResponse = await PermissionService.GetUserRoles(selectedUser.Id);
+                if (userRolesResponse.ResponseInfo.Success)
+                {
+                    userRolesMap[selectedUser.Id] = (List<UserRoleAssignment>)userRolesResponse.Response;
+                }
+
+                CloseAssignRoleModal();
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to assign role: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task RemoveRole(string userId, int roleId)
+    {
+        try
+        {
+            var response = await PermissionService.RemoveRoleFromUser(userId, roleId);
+
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+
+                // Refresh user roles
+                var userRolesResponse = await PermissionService.GetUserRoles(userId);
+                if (userRolesResponse.ResponseInfo.Success)
+                {
+                    userRolesMap[userId] = (List<UserRoleAssignment>)userRolesResponse.Response;
+                }
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to remove role: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task ViewUserPermissions(string userId)
+    {
+        viewingUserId = userId;
+        var user = users.FirstOrDefault(u => u.Id == userId);
+        viewingUserName = $"{user?.FirstName} {user?.LastName}";
+
+        isViewPermissionsModalVisible = true;
+        isLoadingPermissions = true;
+
+        try
+        {
+            // Get all permissions for the user
+            var permissionNames = await PermissionService.GetUserPermissions(userId);
+
+            // Get the full permission details
+            var allPermissionsResponse = await PermissionService.GetAllPermissions();
+            if (allPermissionsResponse.ResponseInfo.Success)
+            {
+                var allPermissions = (List<Permission>)allPermissionsResponse.Response;
+
+                // Filter to only include active permissions the user has
+                var userPermissions = allPermissions
+                    .Where(p => permissionNames.Contains(p.SystemName) && p.IsActive)
+                    .ToList();
+
+                // Group by category
+                userPermissionsByCategory = userPermissions
+                    .GroupBy(p => p.Category)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user permissions: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoadingPermissions = false;
+        }
+    }
+
+    private void CloseViewPermissionsModal()
+    {
+        isViewPermissionsModalVisible = false;
+    }
+
+    private string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            "Properties" => "far fa-building",
+            "Beneficiaries" => "far fa-hands-helping",
+            "Tenants" => "far fa-users",
+            "Reports" => "far fa-chart-bar",
+            "Bank Statements & Payments" => "far fa-credit-card",
+            "System Settings" => "far fa-cogs",
+            _ => "far fa-folder"
+        };
+    }
+}

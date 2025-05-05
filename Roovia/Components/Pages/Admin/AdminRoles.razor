@@ -1,0 +1,370 @@
+﻿@page "/admin/roles"
+@using Roovia.Interfaces
+@using Roovia.Models.Users
+@using Roovia.Security
+@using Roovia.Services
+@rendermode InteractiveServer
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<div class="page-container admin-roles-container">
+    <div class="page-header admin-header">
+        <div class="admin-header-content">
+            <div class="title-area">
+                <h1><i class="fa-light fa-user-shield"></i> Role Management</h1>
+                <p>Manage system roles and their permissions to control user access</p>
+            </div>
+            <div class="header-actions">
+                <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Create New Role" OnClick="() => ShowRoleEditModal(0)" />
+            </div>
+        </div>
+        <div class="header-pattern"></div>
+    </div>
+
+    <RVCard>
+        <HeaderActions>
+            <div class="card-toolbar">
+                <div class="search-box">
+                    <i class="fa-light fa-search"></i>
+                    <input type="text" placeholder="Search roles..." @bind="searchTerm" @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(searchTerm))
+                    {
+                        <button class="clear-search" @onclick="() => searchTerm = string.Empty">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    }
+                </div>
+                <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-right">
+                    <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")" @onclick='() => filterType = "all"'>
+                        <i class="fa-light fa-layer-group"></i>
+                        <span>All Roles</span>
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")" @onclick='() => filterType = "preset"'>
+                        <i class="fa-light fa-lock"></i>
+                        <span>Preset Roles</span>
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")" @onclick='() => filterType = "custom"'>
+                        <i class="fa-light fa-edit"></i>
+                        <span>Custom Roles</span>
+                    </button>
+                </RVDropdown>
+            </div>
+        </HeaderActions>
+        <ChildContent>
+            @if (isLoading)
+            {
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <h3 class="loading-text">Loading roles...</h3>
+                </div>
+            }
+            else if (filteredRoles.Any())
+            {
+                <div class="role-grid">
+                    @foreach (var role in filteredRoles)
+                    {
+                        <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
+                            <div class="role-header">
+                                <div class="role-title">
+                                    <h3>
+                                        @if (role.IsPreset)
+                                        {
+                                            <i class="fa-light fa-lock role-icon"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="fa-light fa-users-cog role-icon"></i>
+                                        }
+                                        @role.Name
+                                    </h3>
+                                    <div class="role-badges">
+                                        @if (role.IsPreset)
+                                        {
+                                            <span class="badge preset">Preset</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge custom">Custom</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="role-status @(role.IsActive ? "active" : "inactive")">
+                                    @if (role.IsActive)
+                                    {
+                                        <i class="fa-light fa-check-circle"></i>
+                                        <span>Active</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-light fa-times-circle"></i>
+                                        <span>Inactive</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="role-description">
+                                <p>@role.Description</p>
+                            </div>
+                            <div class="role-actions">
+                                <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => ShowRoleEditModal(role.Id)" />
+                                <RVButton ButtonType="secondary" Size="sm" IconLeft="fa-light fa-shield-check" Text="Permissions" OnClick="() => ShowPermissionsModal(role.Id)" />
+                                @if (!role.IsPreset)
+                                {
+                                    <RVButton ButtonType="danger" Size="sm" IconLeft="fa-light fa-trash-alt" Text="Delete" OnClick="() => ConfirmDeleteRole(role)" />
+                                }
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-copy" Text="Clone" OnClick="() => CloneRole(role)" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="fa-light fa-user-shield empty-illustration"></i>
+                    <h3>No Roles Found</h3>
+                    <p>No roles match your current search or filter criteria.</p>
+                    <div class="empty-actions">
+                        <RVButton ButtonType="primary" Text="Clear Filters" OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
+                        <RVButton ButtonType="outline" Text="Create New Role" OnClick="() => ShowRoleEditModal(0)" />
+                    </div>
+                </div>
+            }
+        </ChildContent>
+    </RVCard>
+
+    @if (showDeleteDialog)
+    {
+        <RVModal IsVisible="true"
+                 Title="Confirm Delete"
+                 Icon="fa-light fa-trash-alt"
+                 OnClose="() => showDeleteDialog = false"
+                 OnConfirm="DeleteRole"
+                 ConfirmText="Delete"
+                 CancelText="Cancel"
+                 Size="sm">
+            <ChildContent>
+                <div class="alert alert-danger">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <p>Are you sure you want to delete the role <strong>@roleToDelete?.Name</strong>?</p>
+                    <p>This action cannot be undone and may affect users who have this role assigned.</p>
+                </div>
+            </ChildContent>
+        </RVModal>
+    }
+
+    @if (showCloneDialog)
+    {
+        <RVModal IsVisible="true"
+                 Title="Clone Role"
+                 Icon="fa-light fa-copy"
+                 OnClose="() => showCloneDialog = false"
+                 OnConfirm="ConfirmCloneRole"
+                 ConfirmText="Clone"
+                 CancelText="Cancel"
+                 Size="sm">
+            <ChildContent>
+                <div class="form-group">
+                    <label>New Role Name</label>
+                    <RVTextbox Value="@newRoleName"
+                               ValueChanged="value => newRoleName = value"
+                               Placeholder="Enter name for the cloned role"
+                               IsValid="string.IsNullOrEmpty(cloneErrorMessage)"
+                               ValidationMessage="@cloneErrorMessage" />
+                </div>
+                <p>This will create a new custom role with the same permissions as <strong>@roleToClone?.Name</strong>.</p>
+            </ChildContent>
+        </RVModal>
+    }
+
+    @if (showRoleEditModal)
+    {
+        <RoleEditModal RoleId="@currentRoleId"
+                       OnClose="CloseRoleEditModal"
+                       OnSaved="RoleEditedHandler" />
+    }
+
+    @if (showPermissionsModal)
+    {
+        <RolePermissionsModal RoleId="@currentRoleId"
+                              OnClose="ClosePermissionsModal" />
+    }
+</div>
+
+@code {
+    private List<Role> roles = new List<Role>();
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private string filterType = "all";
+
+    // Delete confirmation
+    private bool showDeleteDialog = false;
+    private Role roleToDelete;
+
+    // Clone dialog
+    private bool showCloneDialog = false;
+    private Role roleToClone;
+    private string newRoleName = string.Empty;
+    private string cloneErrorMessage = string.Empty;
+
+    // Modals
+    private bool showRoleEditModal = false;
+    private bool showPermissionsModal = false;
+    private int currentRoleId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            isLoading = true;
+            var response = await PermissionService.GetAllRoles();
+
+            if (response.ResponseInfo.Success)
+            {
+                roles = (List<Role>)response.Response;
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load roles: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private List<Role> filteredRoles => roles
+        .Where(r => (string.IsNullOrEmpty(searchTerm) ||
+                    r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+        .Where(r => filterType == "all" ||
+                   (filterType == "preset" && r.IsPreset) ||
+                   (filterType == "custom" && !r.IsPreset))
+        .OrderBy(r => r.Name)
+        .ToList();
+
+    private string GetFilterText()
+    {
+        return filterType switch
+        {
+            "preset" => "Preset Roles",
+            "custom" => "Custom Roles",
+            _ => "All Roles"
+        };
+    }
+
+    // Modal methods - replaces navigation
+    private void ShowRoleEditModal(int roleId)
+    {
+        currentRoleId = roleId;
+        showRoleEditModal = true;
+    }
+
+    private void CloseRoleEditModal()
+    {
+        showRoleEditModal = false;
+    }
+
+    private async Task RoleEditedHandler()
+    {
+        await LoadRoles();
+        showRoleEditModal = false;
+    }
+
+    private void ShowPermissionsModal(int roleId)
+    {
+        currentRoleId = roleId;
+        showPermissionsModal = true;
+    }
+
+    private void ClosePermissionsModal()
+    {
+        showPermissionsModal = false;
+    }
+
+    private void ConfirmDeleteRole(Role role)
+    {
+        roleToDelete = role;
+        showDeleteDialog = true;
+    }
+
+    private async Task DeleteRole()
+    {
+        if (roleToDelete != null)
+        {
+            try
+            {
+                var response = await PermissionService.DeleteRole(roleToDelete.Id);
+
+                if (response.ResponseInfo.Success)
+                {
+                    ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                    await LoadRoles();
+                }
+                else
+                {
+                    ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Failed to delete role: {ex.Message}", "Error");
+            }
+
+            showDeleteDialog = false;
+        }
+    }
+
+    private void CloneRole(Role role)
+    {
+        roleToClone = role;
+        newRoleName = $"Copy of {role.Name}";
+        cloneErrorMessage = string.Empty;
+        showCloneDialog = true;
+    }
+
+    private async Task ConfirmCloneRole()
+    {
+        if (string.IsNullOrWhiteSpace(newRoleName))
+        {
+            cloneErrorMessage = "Role name is required.";
+            return;
+        }
+
+        if (roles.Any(r => r.Name == newRoleName))
+        {
+            cloneErrorMessage = "A role with this name already exists.";
+            return;
+        }
+
+        try
+        {
+            var response = await PermissionService.CloneRole(roleToClone.Id, newRoleName);
+
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success");
+                await LoadRoles();
+                showCloneDialog = false;
+            }
+            else
+            {
+                cloneErrorMessage = response.ResponseInfo.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            cloneErrorMessage = $"Failed to clone role: {ex.Message}";
+        }
+    }
+}

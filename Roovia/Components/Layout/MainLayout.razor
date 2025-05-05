@@ -12,53 +12,21 @@
 <CascadingValue Value="CurrentUser">
     <div class="roovia-page" id="app-container">
         <div class="roovia-sidebar" id="sidebarContainer">
-            <NavMenu />
-
-            <!-- New bottom sidebar toggle -->
-            <div class="roovia-sidebar-footer">
-                <button class="roovia-sidebar-bottom-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
-                    <i class="fal fa-chevron-left" id="sidebar-toggle-icon"></i>
-                    <span>Collapse Sidebar</span>
-                </button>
-            </div>
+            <NavMenu CurrentUser="@CurrentUser" />
         </div>
 
         <main class="roovia-main">
-            <div class="roovia-topbar">
-                <div class="roovia-topbar-content">
-                    <!-- Mobile menu toggle integrated directly in topbar -->
-                    <div class="roovia-menu-toggle-wrapper">
-                        <button id="mobile-menu-toggle" class="roovia-mobile-menu-toggle" onclick="toggleMobileMenu(event)">
-                            <i class="fal fa-bars"></i>
-                        </button>
-                    </div>
-
-                    <div class="roovia-logo">
-                        <i class="fal fa-building"></i>
-                        <span>Roovia</span>
-                    </div>
-
-                    <div class="roovia-topbar-actions">
-                        <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
-                            <i class="fal fa-user"></i>
-                            <span>@(CurrentUser?.FullName ?? "Account")</span>
-                        </button>
-                        <button class="roovia-btn roovia-btn-sm roovia-btn-secondary">
-                            <i class="fal fa-cog"></i>
-                        </button>
-                        <button id="theme-toggle-btn" class="roovia-btn roovia-btn-sm roovia-btn-secondary" onclick="toggleTheme()">
-                            <i class="fal fa-moon" id="theme-toggle-icon"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div class="roovia-content">
                 <div class="roovia-content-container">
                     @Body
                 </div>
             </div>
         </main>
+
+        <!-- Mobile menu toggle button - MOVED OUTSIDE SIDEBAR -->
+        <button id="mobile-menu-toggle" class="roovia-mobile-menu-button" onclick="toggleMobileMenu(event)">
+            <i class="fal fa-bars"></i>
+        </button>
     </div>
 </CascadingValue>
 
@@ -125,7 +93,7 @@
 }
 
 <script>
-    // Theme Toggle - Applied directly to HTML root element
+    // ====== Theme Toggle ======
     function toggleTheme() {
         const container = document.documentElement; // Use HTML root element
         const icon = document.getElementById('theme-toggle-icon');
@@ -147,7 +115,45 @@
         }
     }
 
-    // Toggle mobile menu
+    // ====== Toggle sidebar collapsed state ======
+    function toggleSidebar(event) {
+        if (event) event.stopPropagation();
+
+        const sidebarContainer = document.getElementById('sidebarContainer');
+        const icon = document.getElementById('desktop-toggle-icon');
+        const externalIcon = document.getElementById('sidebar-toggle-icon');
+
+        if (!sidebarContainer) return;
+
+        if (sidebarContainer.classList.contains('collapsed')) {
+            sidebarContainer.classList.remove('collapsed');
+            localStorage.setItem('sidebar_state', 'expanded');
+            if (icon) {
+                icon.classList.remove('fa-angle-double-right');
+                icon.classList.add('fa-angle-double-left');
+            }
+            if (externalIcon) {
+                externalIcon.classList.remove('fa-angle-double-right');
+                externalIcon.classList.add('fa-angle-double-left');
+            }
+        } else {
+            sidebarContainer.classList.add('collapsed');
+            localStorage.setItem('sidebar_state', 'collapsed');
+            if (icon) {
+                icon.classList.remove('fa-angle-double-left');
+                icon.classList.add('fa-angle-double-right');
+            }
+            if (externalIcon) {
+                externalIcon.classList.remove('fa-angle-double-left');
+                externalIcon.classList.add('fa-angle-double-right');
+            }
+        }
+
+        // Close user menu when sidebar state changes
+        closeUserMenu();
+    }
+
+    // ====== Toggle mobile menu ======
     function toggleMobileMenu(event) {
         if (event) event.stopPropagation();
 
@@ -159,6 +165,9 @@
         } else {
             sidebarContainer.classList.add('mobile-open');
         }
+
+        // Close user menu when mobile menu toggles
+        closeUserMenu();
     }
 
     // Function for NavMenu to close mobile menu
@@ -169,42 +178,65 @@
         if (!sidebarContainer) return;
 
         sidebarContainer.classList.remove('mobile-open');
+
+        // Close user menu when mobile menu closes
+        closeUserMenu();
     }
 
-    // Toggle sidebar collapsed state
-    function toggleSidebar(event) {
+    // ====== User Menu Functions ======
+    function toggleUserMenu(event) {
         if (event) event.stopPropagation();
 
-        const sidebarContainer = document.getElementById('sidebarContainer');
-        const icon = document.getElementById('sidebar-toggle-icon');
-        const textSpan = icon ? icon.nextElementSibling : null;
+        const userMenu = document.getElementById('userMenu');
+        const userDropdownIcon = document.querySelector('.roovia-user-dropdown-icon');
 
-        if (!sidebarContainer) return;
+        if (!userMenu) return;
 
-        if (sidebarContainer.classList.contains('collapsed')) {
-            sidebarContainer.classList.remove('collapsed');
-            localStorage.setItem('sidebar_state', 'expanded');
-            if (icon) {
-                icon.classList.remove('fa-chevron-right');
-                icon.classList.add('fa-chevron-left');
-            }
-            if (textSpan) {
-                textSpan.textContent = 'Collapse Sidebar';
-            }
+        if (userMenu.classList.contains('show')) {
+            userMenu.classList.remove('show');
+            userDropdownIcon?.classList.remove('active');
+            removeUserMenuBackdrop();
         } else {
-            sidebarContainer.classList.add('collapsed');
-            localStorage.setItem('sidebar_state', 'collapsed');
-            if (icon) {
-                icon.classList.remove('fa-chevron-left');
-                icon.classList.add('fa-chevron-right');
-            }
-            if (textSpan) {
-                textSpan.textContent = 'Expand';
-            }
+            userMenu.classList.add('show');
+            userDropdownIcon?.classList.add('active');
+            createUserMenuBackdrop();
         }
     }
 
-    // Initialize theme from localStorage
+    function createUserMenuBackdrop() {
+        // Remove any existing backdrop
+        removeUserMenuBackdrop();
+
+        // Create new backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'roovia-user-menu-backdrop show';
+        backdrop.id = 'userMenuBackdrop';
+        backdrop.addEventListener('click', closeUserMenu);
+
+        document.body.appendChild(backdrop);
+    }
+
+    function removeUserMenuBackdrop() {
+        const backdrop = document.getElementById('userMenuBackdrop');
+        if (backdrop) {
+            backdrop.removeEventListener('click', closeUserMenu);
+            backdrop.remove();
+        }
+    }
+
+    function closeUserMenu() {
+        const userMenu = document.getElementById('userMenu');
+        const userDropdownIcon = document.querySelector('.roovia-user-dropdown-icon');
+
+        if (userMenu) {
+            userMenu.classList.remove('show');
+            userDropdownIcon?.classList.remove('active');
+        }
+
+        removeUserMenuBackdrop();
+    }
+
+    // ====== Page Initialization ======
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize theme
         const savedTheme = localStorage.getItem('theme');
@@ -218,20 +250,21 @@
             }
         }
 
-        // Initialize sidebar state from localStorage
+        // Initialize sidebar state from localStorage ONLY on desktop
         const savedSidebarState = localStorage.getItem('sidebar_state');
         const sidebarContainer = document.getElementById('sidebarContainer');
-        const sidebarIcon = document.getElementById('sidebar-toggle-icon');
-        const textSpan = sidebarIcon ? sidebarIcon.nextElementSibling : null;
+        const icon = document.getElementById('desktop-toggle-icon');
+        const externalIcon = document.getElementById('sidebar-toggle-icon');
 
-        if (savedSidebarState === 'collapsed' && sidebarContainer) {
+        if (window.innerWidth > 991 && savedSidebarState === 'collapsed' && sidebarContainer) {
             sidebarContainer.classList.add('collapsed');
-            if (sidebarIcon) {
-                sidebarIcon.classList.remove('fa-chevron-left');
-                sidebarIcon.classList.add('fa-chevron-right');
+            if (icon) {
+                icon.classList.remove('fa-angle-double-left');
+                icon.classList.add('fa-angle-double-right');
             }
-            if (textSpan) {
-                textSpan.textContent = 'Expand';
+            if (externalIcon) {
+                externalIcon.classList.remove('fa-angle-double-left');
+                externalIcon.classList.add('fa-angle-double-right');
             }
         }
 
@@ -250,15 +283,57 @@
 
                 sidebarContainer.classList.remove('mobile-open');
             }
+
+            // Close user menu when clicking outside
+            const userMenu = document.getElementById('userMenu');
+            const userProfile = document.querySelector('.roovia-user-profile');
+
+            if (userMenu &&
+                userMenu.classList.contains('show') &&
+                !userMenu.contains(e.target) &&
+                !userProfile.contains(e.target)) {
+                closeUserMenu();
+            }
+        });
+
+        // Close menus on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeUserMenu();
+
+                const sidebarContainer = document.getElementById('sidebarContainer');
+                if (sidebarContainer && sidebarContainer.classList.contains('mobile-open')) {
+                    sidebarContainer.classList.remove('mobile-open');
+                }
+            }
         });
     });
 
     // Responsive behavior
     window.addEventListener('resize', function() {
         const sidebarContainer = document.getElementById('sidebarContainer');
+
         // Auto-close mobile menu on resize to desktop
         if (window.innerWidth > 991 && sidebarContainer && sidebarContainer.classList.contains('mobile-open')) {
             sidebarContainer.classList.remove('mobile-open');
         }
+
+        // Reset sidebar state on mobile
+        if (window.innerWidth <= 991 && sidebarContainer && sidebarContainer.classList.contains('collapsed')) {
+            sidebarContainer.classList.remove('collapsed');
+            const icon = document.getElementById('desktop-toggle-icon');
+            const externalIcon = document.getElementById('sidebar-toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-angle-double-right');
+                icon.classList.add('fa-angle-double-left');
+            }
+            if (externalIcon) {
+                externalIcon.classList.remove('fa-angle-double-right');
+                externalIcon.classList.add('fa-angle-double-left');
+            }
+        }
+
+        // Close user menu on resize
+        closeUserMenu();
     });
 </script>
