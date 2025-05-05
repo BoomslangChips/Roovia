@@ -150,7 +150,7 @@
                                                             <span class="badge bg-warning-light">Vacant</span>
                                                         }
                                                     </td>
-                                                    <td>@prop.LeaseEndDate.ToShortDateString()</td>
+                                                    <td>@prop.LeaseEndDate.Value.ToShortDateString()</td>
                                                     <td>
                                                         <div class="d-flex gap-2">
                                                             <button class="btn-primary btn-sm rounded-md" @onclick="() => ViewProperty(prop)">
@@ -188,7 +188,7 @@
             <div>
                 @if (selectedOwner.Id != 0)
                 {
-                    <span class="text-muted">ID: @selectedOwner.Id</span>
+                    <span class="text-muted">Owner: @selectedOwner.FirstName @selectedOwner.LastName</span>
                 }
             </div>
             <div>
@@ -203,12 +203,26 @@
     </FooterContent>
 </RVModal>
 
+@if (addPropertyClicked)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="PropertyOwner" Value="selectedOwner">
+            <CascadingValue TValue="int" Value="ownerId">
+                <Roovia.Components.Pages.Properties.CreatePropertyModal OnModalClosed="AddPropertyModalClosed"></Roovia.Components.Pages.Properties.CreatePropertyModal>
+            </CascadingValue>
+        </CascadingValue>
+    </CascadingValue>
+}
+
+
 @code {
     [CascadingParameter]
     ApplicationUser? CurrentUser { get; set; }
 
     [CascadingParameter]
     PropertyOwner? selectedOwner { get; set; }
+
+    int ownerId = 0;
 
     [Parameter]
     public EventCallback<bool> OnModalClosed { get; set; }
@@ -219,14 +233,24 @@
     [Inject]
     public ToastService ToastService { get; set; }
 
+    [Inject]
+    public IProperty PropertyService { get; set; }
+
+    bool addPropertyClicked = false;
+
     bool IsVisible = true;
     int ActiveTab = 1;
 
+    protected override async Task OnInitializedAsync()
+    {
+        ownerId = selectedOwner.Id;
+    }
+
     private string GetTabClass(int tabNumber)
     {
-        return "px-4 py-3 cursor-pointer " + (ActiveTab == tabNumber
-            ? "border-bottom-2 border-primary text-primary fw-semibold"
-            : "text-secondary hover:bg-gray-100");
+        return tabNumber == ActiveTab
+            ? "tab-item tab-active"
+            : "tab-item tab-inactive";
     }
 
     private string GetPropertyAddress(Property property)
@@ -294,15 +318,66 @@
         ToastService.ShowInfo($"Editing property at {GetPropertyAddress(property)}", "Edit Property");
     }
 
-    private void AddNewProperty()
+    private async void AddNewProperty()
     {
-        // Implement add new property functionality
-        ToastService.ShowInfo("Adding new property", "Add Property");
+        IsVisible = false;
+        addPropertyClicked = true;
+        await InvokeAsync(() => StateHasChanged());
     }
 
     private async Task CloseModal()
     {
-        IsVisible = false;
-        await OnModalClosed.InvokeAsync(true);
+        OnModalClosed.InvokeAsync();
+        await InvokeAsync(() => StateHasChanged());
+
+    }
+
+    private async Task AddPropertyModalClosed()
+    {
+
+        addPropertyClicked = false;
+        IsVisible = true;
+        await InvokeAsync(() => StateHasChanged());
+        var responseModel = await PropertyService.GetPropertiesByOwner(selectedOwner.Id);
+        if (responseModel.ResponseInfo.Success)
+        {
+            selectedOwner.Properties = responseModel.Response as List<Property>;
+        }
+        else
+        {
+            ToastService.ShowError($"{responseModel.ResponseInfo.Message}", "Error!");
+        }
     }
 }
+
+<style>
+    /* Custom tab styling */
+    .tab-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .tab-active {
+        color: var(--primary) !important;
+        font-weight: 600;
+        background-color: var(--primary-lighter);
+        border-bottom: 2px solid var(--primary);
+    }
+
+    .tab-inactive {
+        color: var(--text-secondary);
+    }
+
+        .tab-inactive:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+        }
+
+    @@media (min-width: 1000px) {
+        .roovia-modal {
+            max-width: 60em !important;
+        }
+    }
+</style>

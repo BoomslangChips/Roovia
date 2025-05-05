@@ -1,134 +1,354 @@
 ﻿@page "/properties"
+@using Roovia.Models.Properties
+@using Roovia.Models.Users
+@using Roovia.Services
+@using Roovia.Interfaces
+@inject IProperty PropertyService
 
-<h3>Properties Detail</h3>
+@rendermode InteractiveServer
 
-<div class="search-container">
-    <input type="text" placeholder="Search properties..." @bind="searchTerm" class="search-input" />
-</div>
+<div class="roovia-section">
+    <div class="roovia-section-header">
+        <h2 class="roovia-section-title">Properties</h2>
+        <div class="d-flex gap-3">
+            <button class="auth-button" @onclick="AddNewProperty">
+                <i class="bi bi-plus-circle"></i> Add Property
+            </button>
+        </div>
+    </div>
 
-<div class="properties-grid">
-    @foreach (var property in FilteredProperties)
-    {
-        <div class="property-card">
-            <img src="@property.ImageUrl" alt="Image of @property.Name" class="property-image" />
-            <div class="property-details">
-                <h4>@property.Name</h4>
-                <p class="property-address">@property.Address</p>
+    <div class="roovia-panel mb-4">
+        <div class="roovia-panel-body" style="overflow-y: auto !important;    max-height: 80vh;">
+            <div class="d-flex flex-column justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div class="position-relative">
+                    <input type="text"
+                           class="form-control ps-4"
+                           placeholder="Search properties..."
+                           @bind-value="searchTerm"
+                           @bind-value:event="oninput"
+                           style="min-width: 280px; border-radius: var(--border-radius-md);">
+                    <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                </div>
+                @if (isLoading)
+                {
+                    <div class="d-flex justify-content-center py-5">
+                        <div class="loading-spinner"></div>
+                    </div>
+                }
+                else if (filteredProperties.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-illustration">
+                            <i class="bi bi-house-x"></i>
+                        </div>
+                        <h3>No Properties Found</h3>
+                        <p>We couldn't find any properties matching your search criteria.</p>
+                        <div class="empty-actions">
+                            <button class="btn btn-primary" @onclick="ClearFilters">Clear Filters</button>
+                            <button class="btn btn-outline-primary" @onclick="AddNewProperty">Add Property</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="roovia-card-deck flex-wrap d-flex justify-content-around flex-row gap-4">
+                        @foreach (var property in filteredProperties)
+                        {
+                            <div class="card hover-lift">
+                                <div class="card-body p-0">
+                                    <div class="property-image-container">
+                                        <div class="property-placeholder bg-subtle-bg d-flex align-items-center justify-content-center" style="height: 180px;">
+                                            <i class="fas fa-house-user text-light" style="font-size: 4rem;"></i>
+                                        </div>
+                                        @if (property.HasTenant)
+                                        {
+                                            <div class="status-badge status-online position-absolute" style="top: 12px; right: 12px;">
+                                                <i class="bi bi-person-check me-1"></i> Tenant
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="status-badge status-offline position-absolute" style="top: 12px; right: 12px;">
+                                                <i class="bi bi-person-dash me-1"></i> Vacant
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="p-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h5 class="card-title mb-0">
+                                                @(property.Address?.ComplexName ?? "Property")
+                                                @if (!string.IsNullOrEmpty(property.Address?.UnitNumber))
+                                                {
+                                                    <span>Unit @property.Address.UnitNumber</span>
+                                                }
+                                            </h5>
+                                            <span class="badge badge-primary">
+                                                @($"R{property.RentalAmount:N0}/mo")
+                                            </span>
+                                        </div>
+                                        <p class="text-secondary mb-3">
+                                            @GetFormattedAddress(property)
+                                        </p>
+
+                                        @if (property.HasTenant && property.CurrentLeaseStartDate != DateTime.MinValue)
+                                        {
+                                            <div class="lease-info mb-3">
+                                                <div class="d-flex align-items-center mb-1">
+                                                    <i class="bi bi-calendar-check text-primary me-2"></i>
+                                                    <small class="text-muted">Lease Started: <strong>@(property.CurrentLeaseStartDate.Value.ToString("MMM d, yyyy"))</strong></small>
+                                                </div>
+                                                @if (property.LeaseEndDate != DateTime.MinValue)
+                                                {
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="bi bi-calendar-event text-primary me-2"></i>
+                                                        <small class="text-muted">Lease Ends: <strong>@property.LeaseEndDate.Value.ToString("MMM d, yyyy")</strong></small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="d-flex justify-content-between mt-3">
+                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewProperty(property.Id)">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditProperty(property.Id)">
+                                                <i class="bi bi-pencil me-1"></i> Edit
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
-    }
+    </div>
 </div>
 
-@code {
-    private string searchTerm = "";
+@if (showAddPropertyModal)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <Roovia.Components.Pages.Properties.CreatePropertyModal OnModalClosed="AddPropertyModalClosed"></Roovia.Components.Pages.Properties.CreatePropertyModal>
+    </CascadingValue>
+}
 
-    public class Property
+@code {
+    [CascadingParameter]
+    public ApplicationUser CurrentUser { get; set; } = new();
+
+    private List<Property> properties = new List<Property>();
+    private List<Property> filteredProperties = new List<Property>();
+    private string searchTerm = "";
+    private bool isLoading = true;
+    private string filterOption = "All";
+    private string sortOption = "AddressAsc";
+    bool showAddPropertyModal = false;
+
+    protected override async Task OnInitializedAsync()
     {
-        public string Name { get; set; }
-        public string Address { get; set; }
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
+        await LoadProperties();
     }
 
-    List<Property> properties = new List<Property>
+    private async Task LoadProperties()
     {
-        new Property
-        {
-            Name = "Greenwood Estate",
-            Address = "1234 Oak St, Springfield",
-            ImageUrl = "images/property1.jpg"
-        },
-        new Property
-        {
-            Name = "Riverfront Villa",
-            Address = "789 River Rd, Shelbyville",
-            ImageUrl = "images/property2.jpg"
-        }
-        // Add more properties as needed
-    };
+        isLoading = true;
+        var response = await PropertyService.GetAllProperties();
 
-    IEnumerable<Property> FilteredProperties => string.IsNullOrWhiteSpace(searchTerm)
-        ? properties
-        : properties.Where(p =>
-            (!string.IsNullOrEmpty(p.Name) && p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-            (!string.IsNullOrEmpty(p.Description) && p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-            (!string.IsNullOrEmpty(p.Address) && p.Address.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-        );
+        if (response.ResponseInfo.Success && response.Response != null)
+        {
+            properties = (List<Property>)response.Response;
+            ApplyFiltersAndSort();
+        }
+
+        isLoading = false;
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        // First apply search term filter
+        var result = properties.Where(p =>
+        string.IsNullOrWhiteSpace(searchTerm) ||
+        (
+        (!string.IsNullOrEmpty(p.Address?.Street) && p.Address.Street.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+        (!string.IsNullOrEmpty(p.Address?.ComplexName) && p.Address.ComplexName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+        (!string.IsNullOrEmpty(p.Address?.City) && p.Address.City.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+        (!string.IsNullOrEmpty(p.Address?.Suburb) && p.Address.Suburb.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        )
+        ).ToList();
+
+        // Then apply tenant filter
+        switch (filterOption)
+        {
+            case "HasTenant":
+                result = result.Where(p => p.HasTenant).ToList();
+                break;
+            case "NoTenant":
+                result = result.Where(p => !p.HasTenant).ToList();
+                break;
+            default:
+                // "All" option - no filtering needed
+                break;
+        }
+
+        // Finally apply sorting
+        switch (sortOption)
+        {
+            case "AddressAsc":
+                result = result.OrderBy(p => GetFormattedAddress(p)).ToList();
+                break;
+            case "AddressDesc":
+                result = result.OrderByDescending(p => GetFormattedAddress(p)).ToList();
+                break;
+            case "RentalAsc":
+                result = result.OrderBy(p => p.RentalAmount).ToList();
+                break;
+            case "RentalDesc":
+                result = result.OrderByDescending(p => p.RentalAmount).ToList();
+                break;
+        }
+
+        filteredProperties = result;
+    }
+
+    // Event handlers for the search, filter, and sort controls
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        ApplyFiltersAndSort();
+    }
+
+    private void FilterBy(string option)
+    {
+        filterOption = option;
+        ApplyFiltersAndSort();
+    }
+
+    private void SortBy(string option)
+    {
+        sortOption = option;
+        ApplyFiltersAndSort();
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        filterOption = "All";
+        sortOption = "AddressAsc";
+        ApplyFiltersAndSort();
+    }
+
+    // Navigation methods
+    private void ViewProperty(int id)
+    {
+        // Navigate to property details
+    }
+
+    private void EditProperty(int id)
+    {
+        // Navigate to property edit
+    }
+
+    private void AddNewProperty()
+    {
+        showAddPropertyModal = true;
+    }
+
+    // Helper method to format the address
+    private string GetFormattedAddress(Property property)
+    {
+        if (property.Address == null)
+            return "Address not available";
+
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(property.Address.Street))
+            parts.Add(property.Address.Street);
+
+        if (!string.IsNullOrEmpty(property.Address.Suburb))
+            parts.Add(property.Address.Suburb);
+
+        if (!string.IsNullOrEmpty(property.Address.City))
+            parts.Add(property.Address.City);
+
+        if (!string.IsNullOrEmpty(property.Address.Province))
+            parts.Add(property.Address.Province);
+
+        if (!string.IsNullOrEmpty(property.Address.PostalCode))
+            parts.Add(property.Address.PostalCode);
+
+        return string.Join(", ", parts);
+    }
+
+    public async Task AddPropertyModalClosed()
+    {
+        showAddPropertyModal = false;
+        await LoadProperties();
+    }
 }
 
 <style>
-    h3 {
-        text-align: center;
-        margin-top: 20px;
-        color: #333;
-    }
-
-    .search-container {
-        display: flex;
-        justify-content: center;
-        margin: 20px 0;
-    }
-
-    .search-input {
-        width: 50%;
-        padding: 10px 15px;
-        border: 1px solid #ccc;
-        border-radius: 25px;
-        font-size: 1rem;
-        transition: border-color 0.3s ease;
-    }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-    .properties-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-        padding: 0 20px 20px;
-    }
-
-    .property-card {
-        background-color: #fff;
-        border: 1px solid #eaeaea;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    /* Property Card Styles */
+    .property-image-container {
+        position: relative;
         overflow: hidden;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
-        .property-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
+    .property-placeholder {
+        transition: all 0.3s ease;
+    }
 
-    .property-image {
+    .card:hover .property-placeholder {
+        transform: scale(1.05);
+    }
+
+    /* Set max width on cards so they are all the same size */
+    .card {
+        max-width: 320px;
+    }
+
+    /* Date Fix for the Current Lease Start Date */
+    .custom-datetime-input {
+        background-color: var(--input-bg);
+        border: 1.5px solid var(--border-divider);
+        border-radius: var(--border-radius-md);
+        color: var(--text-primary);
+        font-size: var(--font-size-base);
+        padding: var(--spacing-3);
         width: 100%;
-        height: 200px;
-        object-fit: cover;
+        transition: all 0.2s ease;
     }
 
-    .property-details {
-        padding: 15px;
-    }
-
-        .property-details h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 1.25rem;
-            color: var(--primary);
+        .custom-datetime-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+            outline: none;
         }
 
-    .property-address,
-    .property-description {
-        margin: 0;
-        font-size: 0.95rem;
-        color: #666;
+    /* Status Badge Animations */
+    .status-badge {
+        transition: transform 0.3s ease;
     }
 
-    .property-address {
-        margin-bottom: 8px;
+    .card:hover .status-badge {
+        transform: translateY(-2px);
     }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .roovia-card-deck {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .roovia-card-deck {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .roovia-content {
+        overflow: hidden;
+    }
+
 </style>

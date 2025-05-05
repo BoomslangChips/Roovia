@@ -10,5 +10,6 @@ namespace Roovia.Interfaces
         Task<ResponseModel> UpdateProperty(int id, Property updatedProperty);
         Task<ResponseModel> DeleteProperty(int id);
         Task<ResponseModel> GetAllProperties();
+        Task<ResponseModel> GetPropertiesByOwner(int ownerId);
     }
 }

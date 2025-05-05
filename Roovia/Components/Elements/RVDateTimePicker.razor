@@ -547,13 +547,17 @@
 
     private void SetCurrentDateValues()
     {
-        var dateToUse = SelectedDate ?? DateTime.Now;
+        // Check if SelectedDate is null or DateTime.MinValue
+        var dateToUse = (SelectedDate.HasValue && SelectedDate.Value != DateTime.MinValue)
+            ? SelectedDate.Value
+            : DateTime.Now;
 
         CurrentYear = dateToUse.Year;
         CurrentMonth = dateToUse.Month - 1;
         CurrentHour = dateToUse.Hour;
         CurrentMinute = dateToUse.Minute;
     }
+
 
     private void GenerateCalendarDays()
     {
@@ -564,7 +568,8 @@
 
         // Calculate days from previous month to show
         int daysFromPrevMonth = ((int)firstDayOfMonth.DayOfWeek);
-        var startDate = firstDayOfMonth.AddDays(-daysFromPrevMonth);
+        // Adjusted to ensure proper handling of negative days and edge cases
+               var startDate = firstDayOfMonth.AddDays(-daysFromPrevMonth);
 
         // Generate 42 days (6 weeks) to ensure we have enough for any month
         for (int i = 0; i < 42; i++)

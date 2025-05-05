@@ -11,16 +11,34 @@ namespace Roovia.Models.Properties
 
         public decimal RentalAmount { get; set; }
         public bool HasTenant { get; set; }
-        public DateTime LeaseOriginalStartDate { get; set; }
-        public DateTime CurrentLeaseStartDate { get; set; }
-        public DateTime LeaseEndDate { get; set; }
+        public DateTime? LeaseOriginalStartDate { get; set; } = DateTime.Now;
+        public DateTime? CurrentLeaseStartDate { get; set; } = DateTime.Now;
+        public DateTime? LeaseEndDate { get; set; } = DateTime.Now;
+
+        public void EnsureValidDates()
+        {
+            if (LeaseOriginalStartDate == DateTime.MinValue)
+            {
+                LeaseOriginalStartDate = DateTime.Now;
+            }
+
+            if (CurrentLeaseStartDate == DateTime.MinValue)
+            {
+                CurrentLeaseStartDate = DateTime.Now;
+            }
+
+            if (LeaseEndDate == DateTime.MinValue)
+            {
+                LeaseEndDate = DateTime.Now;
+            }
+        }
         public Guid CurrentTenantId { get; set; }
         public DateTime CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
 
         public DateTime UpdatedDate { get; set; }
 
-        public DateTime UpdatedBy { get; set; }
+        public Guid UpdatedBy { get; set; }
     }
 
     public class PropertyValidator : AbstractValidator<Property>

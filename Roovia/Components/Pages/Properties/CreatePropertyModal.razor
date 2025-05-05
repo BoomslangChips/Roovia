@@ -1,0 +1,451 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper
+@using Roovia.Models.Properties
+@using Roovia.Models.Users
+@using Roovia.Models
+
+@using Roovia.Services
+@using System.Globalization
+
+@rendermode InteractiveServer
+@page "/createproperty"
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-home" IsVisible="@IsVisible" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <!-- Property Details Section -->
+                <div class="roovia-panel mb-4">
+                    <div class="roovia-panel-header">
+                        <h5 class="roovia-panel-title"><i class="fas fa-building me-2"></i>Property Details</h5>
+                    </div>
+                    <div class="roovia-panel-body">
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
+                            <!-- Address Information -->
+                            <div class="roovia-col-md-6">
+                                <h6 class="text-primary mb-3">Location Information</h6>
+                                <div class="mb-3">
+                                    <RVTextbox Label="Street"
+                                    Value="@Property.Address.Street"
+                                    @onchange="(e => Property.Address.Street = e.Value.ToString())"
+                                    Placeholder="Enter street address">
+                                    </RVTextbox>
+                                </div>
+                                <div class="roovia-grid-cols-2 roovia-grid gap-3">
+                                    <div>
+                                        <RVTextbox Label="Unit Number"
+                                        Value="@Property.Address.UnitNumber"
+                                        @onchange="(e => Property.Address.UnitNumber = e.Value.ToString())"
+                                        Placeholder="Unit #">
+                                        </RVTextbox>
+                                    </div>
+                                    <div>
+                                        <RVTextbox Label="Floor"
+                                        Value="@Property.Address.Floor"
+                                        @onchange="(e => Property.Address.Floor = e.Value.ToString())"
+                                        Placeholder="Floor level">
+                                        </RVTextbox>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <RVTextbox Label="Complex Name"
+                                    Value="@Property.Address.ComplexName"
+                                    @onchange="(e => Property.Address.ComplexName = e.Value.ToString())"
+                                    Placeholder="Name of complex (if applicable)">
+                                    </RVTextbox>
+                                </div>
+                                <div class="mb-3">
+                                    <RVTextbox Label="Building Name"
+                                    Value="@Property.Address.BuildingName"
+                                    @onchange="(e => Property.Address.BuildingName = e.Value.ToString())"
+                                    Placeholder="Name of building (if applicable)">
+                                    </RVTextbox>
+                                </div>
+                            </div>
+
+                            <!-- City/Region Information -->
+                            <div class="roovia-col-md-6">
+                                <h6 class="text-primary mb-3">City/Region Information</h6>
+                                <div class="roovia-grid-cols-2 roovia-grid gap-3">
+                                    <div>
+                                        <RVTextbox Label="City"
+                                        Value="@Property.Address.City"
+                                        @onchange="(e => Property.Address.City = e.Value.ToString())"
+                                        Placeholder="City">
+                                        </RVTextbox>
+                                    </div>
+                                    <div>
+                                        <RVTextbox Label="Suburb"
+                                        Value="@Property.Address.Suburb"
+                                        @onchange="(e => Property.Address.Suburb = e.Value.ToString())"
+                                        Placeholder="Suburb">
+                                        </RVTextbox>
+                                    </div>
+                                </div>
+                                <div class="roovia-grid-cols-2 roovia-grid gap-3 mt-3">
+                                    <div>
+                                        <RVTextbox Label="Province"
+                                        Value="@Property.Address.Province"
+                                        @onchange="(e => Property.Address.Province = e.Value.ToString())"
+                                        Placeholder="Province/State">
+                                        </RVTextbox>
+                                    </div>
+                                    <div>
+                                        <RVTextbox Label="Postal Code"
+                                        Value="@Property.Address.PostalCode"
+                                        @onchange="(e => Property.Address.PostalCode = e.Value.ToString())"
+                                        Placeholder="Postal/ZIP Code">
+                                        </RVTextbox>
+                                    </div>
+                                </div>
+                                <div class="mb-3 mt-3">
+                                    <RVTextbox Label="Country"
+                                    Value="@Property.Address.Country"
+                                    @onchange="(e => Property.Address.Country = e.Value.ToString())"
+                                    Placeholder="Country">
+                                    </RVTextbox>
+                                </div>
+                                <div class="mb-3">
+                                    <RVCheckbox Label="Is Residential"
+                                    Value="@Property.Address.IsResidential"
+                                    @onchange="(e => Property.Address.IsResidential = e.Value is bool value && value)">
+                                    </RVCheckbox>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Access Information Section -->
+                        <div class="roovia-panel-subsection mt-4">
+                            <h6 class="text-primary mb-3">Access Information</h6>
+                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3">
+                                <div>
+                                    <RVTextbox Label="Gate Code"
+                                    Value="@Property.Address.GateCode"
+                                    @onchange="(e => Property.Address.GateCode = e.Value.ToString())"
+                                    Placeholder="Access code for gate/door">
+                                    </RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Delivery Instructions"
+                                    Value="@Property.Address.DeliveryInstructions"
+                                    @onchange="(e => Property.Address.DeliveryInstructions = e.Value.ToString())"
+                                    Placeholder="Special delivery instructions">
+                                    </RVTextbox>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lease Information Section -->
+                        <div class="roovia-panel-subsection mt-4">
+                            <h6 class="text-primary mb-3">Lease Information</h6>
+                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-3 roovia-grid gap-3">
+                                <div>
+                                    <RVTextbox Label="Rental Amount"
+                                    Type="decimal"
+                                    Value="@Property.RentalAmount.ToString()"
+                                    @onchange="(e => Property.RentalAmount = decimal.TryParse(e.Value?.ToString(), out var val) ? val : Property.RentalAmount)"
+                                    Placeholder="Monthly rent amount">
+                                    </RVTextbox>
+
+                                </div>
+                                <div>
+                                    <div class="form-floating mb-3">
+                                        <div class="form-floating mb-3">
+                                            <div class="rv-form-group">
+                                                <label for="leaseOriginalStartDate" class="form-label">Lease Original Start Date</label>
+                                                <input type="datetime-local" id="leaseOriginalStartDate"
+                                                class="custom-datetime-input" @bind-value="Property.LeaseOriginalStartDate" />
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <br />
+                                <div>
+                                    <RVCheckbox Label="Has Tenant"
+                                    Value="@Property.HasTenant"
+                                    @onchange="(e => Property.HasTenant = (bool)e.Value)">
+                                    </RVCheckbox>
+                                </div>
+                            </div>
+
+                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3 mt-3">
+                                <div>
+                                    <div>
+                                        <div class="form-floating mb-3">
+                                            <div class="rv-form-group">
+                                                <label for="currentLeaseStartDate" class="roovia-textbox-label">Current Lease Start Date</label>
+                                                <input type="datetime-local" id="currentLeaseStartDate"
+                                                class="custom-datetime-input"
+                                                @bind-value="Property.CurrentLeaseStartDate" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="form-floating mb-3">
+                                            <div class="rv-form-group">
+                                                <label for="leaseEndDate" class="roovia-textbox-label">Lease End Date</label>
+                                                <input type="datetime-local" id="leaseEndDate"
+                                                class="custom-datetime-input"
+                                                @bind-value="Property.LeaseEndDate" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (Property.Id != 0)
+                {
+                    <span class="text-muted">ID: @Property.Id</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="SaveProperty">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter]
+    ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+
+    [Parameter]
+    public Property Property { get; set; } = new Property();
+
+    [CascadingParameter]
+    int ownerId { get; set; } = 0;
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public IProperty PropertyService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    bool IsVisible = true;
+
+    protected override void OnInitialized()
+    {
+        if (Property.Id == 0)
+        {
+            InitializeNewProperty();
+        }
+    }
+
+    private void InitializeNewProperty()
+    {
+        Property.Address = new Address(); // Initialize Address object
+        Property.RentalAmount = 0; // Default value for RentalAmount
+        Property.HasTenant = false; // Default value for HasTenant
+        Property.LeaseOriginalStartDate = DateTime.MinValue; // Default value for LeaseOriginalStartDate
+        Property.CurrentLeaseStartDate = DateTime.MinValue; // Default value for CurrentLeaseStartDate
+        Property.LeaseEndDate = DateTime.MinValue; // Default value for LeaseEndDate
+    }
+
+    private async Task SaveProperty()
+    {
+        try
+        {
+            Property.OwnerId = ownerId;
+            Property.CreatedBy = Guid.Parse(CurrentUser.Id);
+            Property.UpdatedBy = Guid.Parse(CurrentUser.Id);
+            Property.CreatedOn = DateTime.UtcNow;
+            Property.UpdatedDate = DateTime.UtcNow;
+            var response = await PropertyService.CreateProperty(Property);
+
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            }
+            else
+            {
+                Property = response.Response as Property;
+                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                await CloseModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    /* Custom styling for the form */
+    .rv-modal-custom {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+
+
+    .roovia-panel {
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-divider);
+        overflow: hidden;
+        transition: var(--card-transition);
+    }
+
+    .roovia-panel-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-panel-body {
+        padding: 1.5rem;
+    }
+
+    .roovia-panel-subsection {
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .rv-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .rv-form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .rv-datepicker {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--text-primary);
+        background-color: var(--content-bg);
+        background-clip: padding-box;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+        .rv-datepicker:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.25);
+            outline: 0;
+        }
+
+    .roovia-btn-primary {
+        color: #fff;
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+        .roovia-btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+    .roovia-btn-secondary {
+        color: var(--text-primary);
+        background-color: var(--subtle-bg);
+        border-color: var(--border-divider);
+    }
+
+        .roovia-btn-secondary:hover {
+            background-color: var(--border-divider);
+        }
+
+    /* Grid system */
+    .roovia-grid {
+        display: grid;
+    }
+
+    .roovia-grid-cols-1 {
+        grid-template-columns: 1fr;
+    }
+
+    .gap-3 {
+        gap: 0.75rem;
+    }
+
+    .gap-4 {
+        gap: 1rem;
+    }
+
+    /* Responsive adjustments */
+    @@media (min-width: 768px) {
+        .roovia-grid-cols-md-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .roovia-grid-cols-md-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .roovia-col-md-6 {
+            grid-column: span 1;
+        }
+    }
+
+    @@media (min-width: 1000px) {
+        .roovia-modal {
+            max-width: 60em !important;
+        }
+    }
+
+    @@media (max-width: 991px) {
+        .rv-modal-custom {
+            max-width: 90vw;
+        }
+    }
+
+    @@media (max-width: 767px) {
+        .rv-modal-custom {
+            max-width: 95vw;
+        }
+
+        .roovia-panel-body {
+            padding: 1rem;
+        }
+    }
+
+    .custom-datetime-input {
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.25rem;
+        font-size: 1rem;
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+        .custom-datetime-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px var(--primary);
+        }
+</style>
