@@ -14,47 +14,79 @@ namespace Roovia.Services
         public TenantService(IConfiguration configuration)
         {
             _configuration = configuration;
-            _connectionString = _configuration.GetConnectionString("DefaultConnection");
+            _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
         }
 
         public async Task<ResponseModel> CreateTenant(PropertyTenant tenant)
         {
             ResponseModel response = new();
             string sql = @"  
-                          INSERT INTO Tenants   
-                          (  
-                              FirstName,   
-                              LastName,   
-                              EmailAddress,   
-                              MobileNumber,   
-                              StreetAddress,   
-                              City,   
-                              Province,   
-                              PostalCode,   
-                              BankName,   
-                              AccountNumber,   
-                              AccountType,   
-                              BranchCode,  
-                              CreatedOn,   
-                              CreatedBy  
-                          )   
-                          VALUES   
-                          (  
-                              @FirstName,   
-                              @LastName,   
-                              @EmailAddress,   
-                              @MobileNumber,   
-                              @StreetAddress,   
-                              @City,   
-                              @Province,   
-                              @PostalCode,   
-                              @BankName,   
-                              @AccountNumber,   
-                              @AccountType,   
-                              @BranchCode,  
-                              @CreatedOn,   
-                              @CreatedBy  
-                          );";
+                                INSERT INTO [PropertyTenants]   
+                                (  
+                                    PropertyId,  
+                                    FirstName,   
+                                    LastName,   
+                                    IdNumber,  
+                                    EmailAddress,   
+                                    IsEmailNotificationsEnabled,  
+                                    MobileNumber,   
+                                    IsSmsNotificationsEnabled,  
+                                    BankAccount_AccountType,   
+                                    BankAccount_AccountNumber,   
+                                    BankAccount_BankName,   
+                                    BankAccount_BranchCode,  
+                                    Address_Street,  
+                                    Address_UnitNumber,  
+                                    Address_ComplexName,  
+                                    Address_BuildingName,  
+                                    Address_Floor,  
+                                    Address_City,  
+                                    Address_Suburb,  
+                                    Address_Province,  
+                                    Address_PostalCode,  
+                                    Address_Country,  
+                                    Address_GateCode,  
+                                    Address_IsResidential,  
+                                    Address_Latitude,  
+                                    Address_Longitude,  
+                                    Address_DeliveryInstructions,  
+                                    DebitDayOfMonth,  
+                                    CreatedOn,   
+                                    CreatedBy  
+                                )   
+                                VALUES   
+                                (  
+                                    @PropertyId,  
+                                    @FirstName,   
+                                    @LastName,   
+                                    @IdNumber,  
+                                    @EmailAddress,   
+                                    @IsEmailNotificationsEnabled,  
+                                    @MobileNumber,   
+                                    @IsSmsNotificationsEnabled,  
+                                    @AccountType,   
+                                    @AccountNumber,   
+                                    @BankName,   
+                                    @BranchCode,  
+                                    @Street,  
+                                    @UnitNumber,  
+                                    @ComplexName,  
+                                    @BuildingName,  
+                                    @Floor,  
+                                    @City,  
+                                    @Suburb,  
+                                    @Province,  
+                                    @PostalCode,  
+                                    @Country,  
+                                    @GateCode,  
+                                    @IsResidential,  
+                                    @Latitude,  
+                                    @Longitude,  
+                                    @DeliveryInstructions,  
+                                    @DebitDayOfMonth,  
+                                    @CreatedOn,   
+                                    @CreatedBy  
+                                );";
 
             try
             {
@@ -62,18 +94,34 @@ namespace Roovia.Services
                 {
                     var result = await conn.ExecuteAsync(sql, new
                     {
+                        tenant.PropertyId,
                         tenant.FirstName,
                         tenant.LastName,
+                        tenant.IdNumber,
                         tenant.EmailAddress,
+                        tenant.IsEmailNotificationsEnabled,
                         tenant.MobileNumber,
-                        StreetAddress = tenant.Address.Street,
+                        tenant.IsSmsNotificationsEnabled,
+                        AccountType = tenant.BankAccount.AccountType,
+                        AccountNumber = tenant.BankAccount.AccountNumber,
+                        BankName = tenant.BankAccount.BankName,
+                        BranchCode = tenant.BankAccount.BranchCode,
+                        Street = tenant.Address.Street,
+                        UnitNumber = tenant.Address.UnitNumber,
+                        ComplexName = tenant.Address.ComplexName,
+                        BuildingName = tenant.Address.BuildingName,
+                        Floor = tenant.Address.Floor,
                         City = tenant.Address.City,
+                        Suburb = tenant.Address.Suburb,
                         Province = tenant.Address.Province,
                         PostalCode = tenant.Address.PostalCode,
-                        BankName = tenant.BankAccount.BankName,
-                        AccountNumber = tenant.BankAccount.AccountNumber,
-                        AccountType = tenant.BankAccount.AccountType,
-                        BranchCode = tenant.BankAccount.BranchCode,
+                        Country = tenant.Address.Country,
+                        GateCode = tenant.Address.GateCode,
+                        IsResidential = tenant.Address.IsResidential,
+                        Latitude = tenant.Address.Latitude,
+                        Longitude = tenant.Address.Longitude,
+                        DeliveryInstructions = tenant.Address.DeliveryInstructions,
+                        tenant.DebitDayOfMonth,
                         tenant.CreatedOn,
                         tenant.CreatedBy
                     });
@@ -94,7 +142,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetTenantById(int id)
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM Tenants WHERE Id = @Id";
+            string sql = @"SELECT * FROM [PropertyTenants] WHERE Id = @Id";
 
             try
             {
@@ -126,24 +174,40 @@ namespace Roovia.Services
         public async Task<ResponseModel> UpdateTenant(int id, PropertyTenant updatedTenant)
         {
             ResponseModel response = new();
-            string sql = @"
-                    UPDATE Tenants 
-                    SET 
-                        FirstName = @FirstName, 
-                        LastName = @LastName, 
-                        EmailAddress = @EmailAddress, 
-                        MobileNumber = @MobileNumber, 
-                        StreetAddress = @StreetAddress, 
-                        City = @City, 
-                        Province = @Province, 
-                        PostalCode = @PostalCode, 
-                        BankName = @BankName, 
-                        AccountNumber = @AccountNumber, 
-                        AccountType = @AccountType, 
-                        BranchCode = @BranchCode, 
-                        UpdatedDate = @UpdatedDate, 
-                        UpdatedBy = @UpdatedBy
-                    WHERE Id = @Id";
+            string sql = @"  
+                          UPDATE [PropertyTenants]   
+                          SET   
+                              PropertyId = @PropertyId,  
+                              FirstName = @FirstName,   
+                              LastName = @LastName,   
+                              IdNumber = @IdNumber,  
+                              EmailAddress = @EmailAddress,   
+                              IsEmailNotificationsEnabled = @IsEmailNotificationsEnabled,  
+                              MobileNumber = @MobileNumber,   
+                              IsSmsNotificationsEnabled = @IsSmsNotificationsEnabled,  
+                              BankAccount_AccountType = @AccountType,   
+                              BankAccount_AccountNumber = @AccountNumber,   
+                              BankAccount_BankName = @BankName,   
+                              BankAccount_BranchCode = @BranchCode,  
+                              Address_Street = @Street,  
+                              Address_UnitNumber = @UnitNumber,  
+                              Address_ComplexName = @ComplexName,  
+                              Address_BuildingName = @BuildingName,  
+                              Address_Floor = @Floor,  
+                              Address_City = @City,  
+                              Address_Suburb = @Suburb,  
+                              Address_Province = @Province,  
+                              Address_PostalCode = @PostalCode,  
+                              Address_Country = @Country,  
+                              Address_GateCode = @GateCode,  
+                              Address_IsResidential = @IsResidential,  
+                              Address_Latitude = @Latitude,  
+                              Address_Longitude = @Longitude,  
+                              Address_DeliveryInstructions = @DeliveryInstructions,  
+                              DebitDayOfMonth = @DebitDayOfMonth,  
+                              UpdatedDate = @UpdatedDate,   
+                              UpdatedBy = @UpdatedBy  
+                          WHERE Id = @Id";
 
             try
             {
@@ -152,18 +216,34 @@ namespace Roovia.Services
                     var result = await conn.ExecuteAsync(sql, new
                     {
                         Id = id,
+                        updatedTenant.PropertyId,
                         updatedTenant.FirstName,
                         updatedTenant.LastName,
+                        updatedTenant.IdNumber,
                         updatedTenant.EmailAddress,
+                        updatedTenant.IsEmailNotificationsEnabled,
                         updatedTenant.MobileNumber,
-                        StreetAddress = updatedTenant.Address.Street,
+                        updatedTenant.IsSmsNotificationsEnabled,
+                        AccountType = updatedTenant.BankAccount.AccountType,
+                        AccountNumber = updatedTenant.BankAccount.AccountNumber,
+                        BankName = updatedTenant.BankAccount.BankName,
+                        BranchCode = updatedTenant.BankAccount.BranchCode,
+                        Street = updatedTenant.Address.Street,
+                        UnitNumber = updatedTenant.Address.UnitNumber,
+                        ComplexName = updatedTenant.Address.ComplexName,
+                        BuildingName = updatedTenant.Address.BuildingName,
+                        Floor = updatedTenant.Address.Floor,
                         City = updatedTenant.Address.City,
+                        Suburb = updatedTenant.Address.Suburb,
                         Province = updatedTenant.Address.Province,
                         PostalCode = updatedTenant.Address.PostalCode,
-                        BankName = updatedTenant.BankAccount.BankName,
-                        AccountNumber = updatedTenant.BankAccount.AccountNumber,
-                        AccountType = updatedTenant.BankAccount.AccountType,
-                        BranchCode = updatedTenant.BankAccount.BranchCode,
+                        Country = updatedTenant.Address.Country,
+                        GateCode = updatedTenant.Address.GateCode,
+                        IsResidential = updatedTenant.Address.IsResidential,
+                        Latitude = updatedTenant.Address.Latitude,
+                        Longitude = updatedTenant.Address.Longitude,
+                        DeliveryInstructions = updatedTenant.Address.DeliveryInstructions,
+                        updatedTenant.DebitDayOfMonth,
                         UpdatedDate = DateTime.UtcNow,
                         updatedTenant.UpdatedBy
                     });
@@ -192,7 +272,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> DeleteTenant(int id)
         {
             ResponseModel response = new();
-            string sql = "DELETE FROM Tenants WHERE Id = @Id";
+            string sql = "DELETE FROM [PropertyTenants] WHERE Id = @Id";
 
             try
             {
@@ -224,7 +304,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetAllTenants()
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM Tenants";
+            string sql = "SELECT * FROM [PropertyTenants]";
 
             try
             {
@@ -232,6 +312,30 @@ namespace Roovia.Services
                 {
                     var result = await conn.QueryAsync<PropertyTenant>(sql);
                     response.Response = result.ToList();
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Tenants retrieved successfully.";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetTenantWithPropertyId(int PropertyId)
+        {
+            ResponseModel response = new();
+            string sql = "SELECT * FROM [PropertyTenants] WHERE PropertyId = @PropertyId";
+
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    var result = await conn.QueryFirstOrDefaultAsync<PropertyTenant>(sql, new { PropertyId });
+                    response.Response = result;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Tenants retrieved successfully.";
                 }

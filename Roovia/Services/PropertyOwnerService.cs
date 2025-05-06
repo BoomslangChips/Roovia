@@ -148,7 +148,7 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> GetPropertyById(int companyId, int id)
+        public async Task<ResponseModel> GetPropertyOwnerById(int companyId, int id)
         {
             ResponseModel response = new();
             string sql = @"SELECT * FROM PropertyOwners WHERE Id = @Id AND CompanyId = @CompanyId";
@@ -356,7 +356,7 @@ namespace Roovia.Services
                     if (result > 0)
                     {
                         // Get the updated property owner with all the details
-                        var getResponse = await GetPropertyById(updatedProperty.CompanyId, id);
+                        var getResponse = await GetPropertyOwnerById(updatedProperty.CompanyId, id);
                         if (getResponse.ResponseInfo.Success)
                         {
                             response.Response = getResponse.Response;

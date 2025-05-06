@@ -1,0 +1,301 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models
+@using Roovia.Models.Helper
+@using Roovia.Models.Properties
+@using Roovia.Models.Tenant
+@using Roovia.Models.Users
+@using Roovia.Services
+@using static Roovia.Components.Elements.RVDropdown
+
+@rendermode InteractiveServer
+@page "/createtenant"
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Title="Create Tenant" Icon="fas fa-user-plus" IsVisible="@IsVisible" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <!-- Tenant Details Section -->
+                <div class="roovia-panel mb-4">
+                    <div class="roovia-panel-header">
+                        <h5 class="roovia-panel-title"><i class="fas fa-user me-2"></i>Tenant Details</h5>
+                    </div>
+                    <div class="roovia-panel-body">
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
+                            <div>
+                                <RVTextbox Label="First Name"
+                                Value="@Tenant.FirstName"
+                                @onchange="(e => Tenant.FirstName = e.Value?.ToString())"
+                                Placeholder="Enter first name">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Last Name"
+                                Value="@Tenant.LastName"
+                                @onchange="(e => Tenant.LastName = e.Value?.ToString())"
+                                Placeholder="Enter last name">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="ID Number"
+                                Value="@Tenant.IdNumber"
+                                @onchange="(e => Tenant.IdNumber = e.Value?.ToString())"
+                                Placeholder="Enter ID number">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Email Address"
+                                Value="@Tenant.EmailAddress"
+                                @onchange="(e => Tenant.EmailAddress = e.Value?.ToString())"
+                                Placeholder="Enter email address">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="Mobile Number"
+                                Value="@Tenant.MobileNumber"
+                                @onchange="(e => Tenant.MobileNumber = e.Value?.ToString())"
+                                Placeholder="Enter mobile number">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Type="int" Label="Debit Day of Month"
+                                Value="@Tenant.DebitDayOfMonth.ToString()"
+                                @onchange="(e => Tenant.DebitDayOfMonth = int.TryParse(e.Value?.ToString(), out var day) ? day : Tenant.DebitDayOfMonth)"
+                                Placeholder="Enter debit day of month">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <RVCheckbox Label="Enable Email Notifications"
+                            Value="@(Tenant.IsEmailNotificationsEnabled?.ToLower() == "true")"
+                            @onchange="(e => Tenant.IsEmailNotificationsEnabled = e.Value?.ToString())">
+                            </RVCheckbox>
+                            <RVCheckbox Label="Enable SMS Notifications"
+                            Value="@(Tenant.IsSmsNotificationsEnabled?.ToLower() == "true")"
+                            @onchange="(e => Tenant.IsSmsNotificationsEnabled = e.Value?.ToString())">
+                            </RVCheckbox>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Banking Details Section -->
+            <div class="roovia-panel mb-4">
+                <div class="roovia-panel-header">
+                    <h5 class="roovia-panel-title"><i class="fas fa-university me-2"></i>Banking Details</h5>
+                </div>
+                <div class="roovia-panel-body">
+                    <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVDropdown Items="banks"
+                                SelectedValue="@selectedBank"
+                                OnSelect="(e => OnBankSelected(e))">
+                                </RVDropdown>
+                            </div>
+                        </div>
+                        <div>
+                            <RVDropdown Items="banks"
+                            SelectedValue="@Tenant.BankAccount.BankName.ToString()"
+                            OnSelect="(e => Tenant.BankAccount.BankName = Enum.TryParse<BankName>(e.ToString(), out var bank) ? bank : BankName.Absa)">
+                            </RVDropdown>
+                        </div>
+                    </div>
+                    <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
+                        <div>
+                            <RVTextbox Label="Account Number"
+                            Value="@Tenant.BankAccount.AccountNumber"
+                            @onchange="(e => Tenant.BankAccount.AccountNumber = e.Value?.ToString())"
+                            Placeholder="Enter account number">
+                            </RVTextbox>
+                        </div>
+                    </div>
+                    <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                        <div>
+                            <div>
+                                <RVTextbox Label="Branch Code"
+                                Value="@Tenant.BankAccount.BranchCode"
+                                @onchange="(e => Tenant.BankAccount.BranchCode = e.Value?.ToString())"
+                                Placeholder="Enter branch code">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (Tenant.Id != 0)
+                {
+                    <span class="text-muted">ID: @Tenant.Id</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="SaveTenant">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [Parameter]
+    public PropertyTenant Tenant { get; set; } = new PropertyTenant
+        {
+            BankAccount = new BankAccount()
+        };
+
+    string selectedBank = "";
+
+    [CascadingParameter]
+    public ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+
+    [CascadingParameter]
+    public Property Property { get; set; } = new Property();
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public ITenant TenantService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    bool IsVisible = true;
+
+    List<DropdownItem> banks = new();
+
+    protected override void OnInitialized()
+    {
+        if (Tenant.Id == 0)
+        {
+            InitializeNewTenant();
+        }
+        InitializeBanks();
+
+    }
+
+    private void InitializeNewTenant()
+    {
+        Tenant = new();
+    }
+
+    private void OnBankSelected(object? selectedValue)
+    {
+        if (selectedValue is not null && Enum.TryParse<BankName>(selectedValue.ToString(), out var bank))
+        {
+            Tenant.BankAccount.BankName = bank;
+            selectedBank = bank.ToString();
+        }
+    }
+
+    private void InitializeBanks()
+    {
+        foreach (var bank in Enum.GetValues(typeof(BankName)).Cast<BankName>())
+        {
+            banks.Add(new DropdownItem
+                {
+                    Value = bank.ToString(),
+                    Text = bank.ToString()
+                });
+        }
+    }
+
+    private async Task SaveTenant()
+    {
+        try
+        {
+            Tenant.CreatedBy = Guid.Parse(CurrentUser.Id);
+            Tenant.UpdatedBy = Guid.Parse(CurrentUser.Id);
+            Tenant.CreatedOn = DateTime.UtcNow;
+            Tenant.UpdatedDate = DateTime.UtcNow;
+            Tenant.Address.Street = Property.Address.Street;
+            Tenant.Address.Suburb = Property.Address.Suburb;
+            Tenant.Address.City = Property.Address.City;
+            Tenant.Address.Province = Property.Address.Province;
+            Tenant.Address.UnitNumber = Property.Address.UnitNumber;
+            Tenant.Address.ComplexName = Property.Address.ComplexName;
+            Tenant.Address.BuildingName = Property.Address.BuildingName;
+            Tenant.Address.Floor = Property.Address.Floor;
+            Tenant.PropertyId = Property.Id;
+
+            var response = await TenantService.CreateTenant(Tenant);
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            }
+            else
+            {
+                Tenant = response.Response as PropertyTenant;
+                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                await CloseModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    .rv-modal-custom {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .roovia-panel {
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-divider);
+        overflow: hidden;
+        transition: var(--card-transition);
+    }
+
+    .roovia-panel-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-panel-body {
+        padding: 1.5rem;
+    }
+
+    .rv-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .custom-datetime-input {
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.25rem;
+        font-size: 1rem;
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+        .custom-datetime-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px var(--primary);
+        }
+</style>
