@@ -1,0 +1,37 @@
+﻿@page "/upload-image"
+@using Roovia.Interfaces
+@rendermode InteractiveServer
+@inject ICdnService CdnService
+
+<h3>Image Upload</h3>
+
+<div class="card">
+    <div class="card-body">
+        <CdnFileUpload Category="images"
+                       Title="Upload Images"
+                       Description="Drag and drop images here, or click to browse"
+                       FileTypeHint="Accepted file types: JPG, PNG, GIF"
+                       AcceptedFileTypes=".jpg,.jpeg,.png,.gif"
+                       OnFileUploaded="HandleImageUploaded"
+                       MaxFileSize="5242880" />
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(uploadedImageUrl))
+{
+    <div class="mt-3">
+        <h4>Uploaded Image Preview</h4>
+        <div class="image-preview">
+            <img src="@uploadedImageUrl" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+        </div>
+    </div>
+}
+
+@code {
+    private string uploadedImageUrl;
+
+    private void HandleImageUploaded(CdnFileUpload.UploadedFileInfo fileInfo)
+    {
+        uploadedImageUrl = fileInfo.Url;
+    }
+}

@@ -107,7 +107,9 @@ builder.Services.AddAuthorization(options =>
             context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("settings"))));
 });
-
+builder.Services.AddScoped<ICdnService, CdnService>();
+builder.Services.AddHttpClient();
+builder.Services.AddControllers();
 // Register authorization handler providers - IMPORTANT: Fixed lifetime issues
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
@@ -139,7 +141,7 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
-
+app.MapControllers();
 // Optional: Seed permissions and roles
 if (app.Environment.IsDevelopment())
 {

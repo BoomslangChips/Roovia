@@ -1,0 +1,422 @@
+﻿@using System.Net.Http.Headers
+@using Roovia.Interfaces
+@inject ICdnService CdnService
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="cdn-file-upload @(IsCompact ? "compact" : "")">
+    <div class="file-upload-container @(_isDragging ? "dragging" : "") @(IsUploading ? "uploading" : "")">
+        <InputFile OnChange="HandleFileSelected"
+                   class="file-input"
+                   accept="@AcceptedFileTypes"
+                   multiple="@Multiple"
+                   disabled="@IsUploading" />
+
+        <div class="upload-prompt">
+            @if (!IsUploading)
+            {
+                <div class="upload-icon">
+                    <i class="fa-light fa-cloud-arrow-up fa-2x"></i>
+                </div>
+                <div class="upload-instructions">
+                    <h4>@Title</h4>
+                    <p>@Description</p>
+                    <span class="file-hint">@FileTypeHint</span>
+                </div>
+            }
+            else
+            {
+                <div class="upload-progress">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <span>Uploading file... @UploadProgress%</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (UploadedFiles.Any() && !HideFileList)
+    {
+        <div class="uploaded-files">
+            <h5>Uploaded Files</h5>
+            <div class="file-list">
+                @foreach (var file in UploadedFiles)
+                {
+                    <div class="file-item">
+                        <div class="file-icon">
+                            @if (file.ContentType.StartsWith("image/"))
+                            {
+                                <i class="fa-light fa-image"></i>
+                            }
+                            else if (file.ContentType.Contains("pdf"))
+                            {
+                                <i class="fa-light fa-file-pdf"></i>
+                            }
+                            else if (file.ContentType.Contains("word"))
+                            {
+                                <i class="fa-light fa-file-word"></i>
+                            }
+                            else if (file.ContentType.Contains("excel") || file.ContentType.Contains("sheet"))
+                            {
+                                <i class="fa-light fa-file-excel"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-light fa-file"></i>
+                            }
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name">@file.FileName</div>
+                            <div class="file-size">@FormatFileSize(file.Size)</div>
+                        </div>
+                        <div class="file-actions">
+                            <button @onclick="() => OpenFile(file.Url)" class="btn btn-sm btn-outline-primary" title="View file">
+                                <i class="fa-light fa-eye"></i>
+                            </button>
+                            @if (AllowDelete)
+                            {
+                                <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
+                                    <i class="fa-light fa-trash"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Upload Files";
+    [Parameter] public string Description { get; set; } = "Drag and drop files here, or click to browse";
+    [Parameter] public string FileTypeHint { get; set; } = "Accepted file types: JPG, PNG, PDF, DOC, XLSX";
+    [Parameter] public string Category { get; set; } = "documents";
+    [Parameter] public string AcceptedFileTypes { get; set; } = ".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
+    [Parameter] public bool Multiple { get; set; } = false;
+    [Parameter] public long MaxFileSize { get; set; } = 20 * 1024 * 1024; // 20MB
+    [Parameter] public bool IsCompact { get; set; } = false;
+    [Parameter] public bool HideFileList { get; set; } = false;
+    [Parameter] public bool AllowDelete { get; set; } = true;
+    [Parameter] public EventCallback<UploadedFileInfo> OnFileUploaded { get; set; }
+    [Parameter] public EventCallback<List<UploadedFileInfo>> OnFilesUploaded { get; set; }
+    [Parameter] public EventCallback<UploadedFileInfo> OnFileDeleted { get; set; }
+
+    private bool _isDragging = false;
+    private bool IsUploading { get; set; } = false;
+    private int UploadProgress { get; set; } = 0;
+    private List<UploadedFileInfo> UploadedFiles { get; set; } = new List<UploadedFileInfo>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        await JSRuntime.InvokeVoidAsync("addDragDropListeners", DotNetObjectReference.Create(this));
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            IsUploading = true;
+            UploadProgress = 0;
+
+            var uploadedFiles = new List<UploadedFileInfo>();
+
+            foreach (var file in e.GetMultipleFiles(Multiple ? 10 : 1))
+            {
+                if (file.Size > MaxFileSize)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"File {file.Name} exceeds the maximum file size of {FormatFileSize(MaxFileSize)}");
+                    continue;
+                }
+
+                // Update progress as we upload
+                UploadProgress = 10;
+                StateHasChanged();
+
+                // Create HTTP client
+                var httpClient = HttpClientFactory.CreateClient();
+
+                // Create multipart form content
+                using var content = new MultipartFormDataContent();
+                var fileContent = new StreamContent(file.OpenReadStream(MaxFileSize));
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+                content.Add(fileContent, "file", file.Name);
+                content.Add(new StringContent(Category), "category");
+
+                // Upload through API
+                var apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
+                var response = await httpClient.PostAsync(apiUrl, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    UploadProgress = 100;
+                    StateHasChanged();
+
+                    var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>();
+
+                    if (responseContent != null && responseContent.success)
+                    {
+                        var fileInfo = new UploadedFileInfo
+                            {
+                                FileName = file.Name,
+                                Url = responseContent.url,
+                                ContentType = file.ContentType,
+                                Size = file.Size,
+                                Category = Category
+                            };
+
+                        // Add to local list and trigger event
+                        UploadedFiles.Add(fileInfo);
+                        uploadedFiles.Add(fileInfo);
+                        await OnFileUploaded.InvokeAsync(fileInfo);
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    await JSRuntime.InvokeVoidAsync("console.error", "Upload failed", errorContent);
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error.");
+                }
+            }
+
+            // Notify if multiple files were uploaded
+            if (uploadedFiles.Count > 0)
+            {
+                await OnFilesUploaded.InvokeAsync(uploadedFiles);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error during upload", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred during upload. Please try again.");
+        }
+        finally
+        {
+            IsUploading = false;
+            UploadProgress = 0;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteFile(UploadedFileInfo file)
+    {
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient();
+            var apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/delete?path=" + Uri.EscapeDataString(file.Url);
+            var response = await httpClient.DeleteAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+
+                if (responseContent != null && responseContent.success)
+                {
+                    UploadedFiles.Remove(file);
+                    await OnFileDeleted.InvokeAsync(file);
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Delete failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete file. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error deleting file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the file. Please try again.");
+        }
+    }
+
+    private async Task OpenFile(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
+    }
+
+    [JSInvokable]
+    public void OnDragEnter()
+    {
+        _isDragging = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDragLeave()
+    {
+        _isDragging = false;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    public class UploadedFileInfo
+    {
+        public string FileName { get; set; }
+        public string Url { get; set; }
+        public string ContentType { get; set; }
+        public long Size { get; set; }
+        public string Category { get; set; }
+    }
+
+    private class UploadResponse
+    {
+        public bool success { get; set; }
+        public string url { get; set; }
+        public string fileName { get; set; }
+        public string contentType { get; set; }
+        public long size { get; set; }
+        public string category { get; set; }
+    }
+
+    private class DeleteResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+    }
+}
+<style>
+    /* cdn-file-upload.css */
+    .cdn-file-upload {
+        margin-bottom: 1.5rem;
+    }
+
+    .file-upload-container {
+        position: relative;
+        border: 2px dashed #ccc;
+        border-radius: 6px;
+        padding: 2rem;
+        text-align: center;
+        background-color: #f9f9f9;
+        transition: all 0.2s ease;
+    }
+
+        .file-upload-container.dragging {
+            background-color: #e9f7fe;
+            border-color: #0d6efd;
+        }
+
+        .file-upload-container.uploading {
+            background-color: #f8f9fa;
+            border-color: #6c757d;
+        }
+
+    .file-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .upload-prompt {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .upload-instructions h4 {
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+    }
+
+    .upload-instructions p {
+        margin-bottom: 0.5rem;
+        color: #6c757d;
+    }
+
+    .file-hint {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .upload-progress {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .progress {
+        height: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .compact .file-upload-container {
+        padding: 1rem;
+    }
+
+    .compact .upload-instructions h4 {
+        font-size: 1rem;
+    }
+
+    .uploaded-files {
+        margin-top: 1.5rem;
+    }
+
+    .file-list {
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+    .file-icon {
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        color: #6c757d;
+        width: 32px;
+        text-align: center;
+    }
+
+    .file-details {
+        flex: 1;
+    }
+
+    .file-name {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        word-break: break-all;
+    }
+
+    .file-size {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .file-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
