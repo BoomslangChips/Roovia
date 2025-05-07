@@ -38,7 +38,7 @@
                     <span>Properties</span>
                 </NavLink>
 
-                <Roovia.Security.PermissionAuthorizeView Permission="properties.budgets">
+@*                 <Roovia.Security.PermissionAuthorizeView Permission="properties.budgets">
                     <NavLink class="roovia-nav-link" href="properties/budgets" title="Property Budgets">
                         <i class="fal fa-wallet"></i>
                         <span>Budgets</span>
@@ -48,7 +48,7 @@
                 <NavLink class="roovia-nav-link" href="properties/maintenance" title="Maintenance">
                     <i class="fal fa-tools"></i>
                     <span>Maintenance</span>
-                </NavLink>
+                </NavLink> *@
             </div>
         </div>
     </Roovia.Security.PermissionAuthorizeView>
@@ -66,7 +66,7 @@
                     <span>Tenants</span>
                 </NavLink>
 
-                <Roovia.Security.PermissionAuthorizeView Permission="tenants.invoices">
+@*                 <Roovia.Security.PermissionAuthorizeView Permission="tenants.invoices">
                     <NavLink class="roovia-nav-link" href="tenants/invoices" title="Tenant Invoices">
                         <i class="fal fa-file-invoice-dollar"></i>
                         <span>Invoices</span>
@@ -85,7 +85,7 @@
                         <i class="fal fa-credit-card"></i>
                         <span>TPN Reports</span>
                     </NavLink>
-                </Roovia.Security.PermissionAuthorizeView>
+                </Roovia.Security.PermissionAuthorizeView> *@
             </div>
         </div>
     </Roovia.Security.PermissionAuthorizeView>
@@ -103,18 +103,18 @@
                     <span>Owners</span>
                 </NavLink>
 
-                <Roovia.Security.PermissionAuthorizeView Permission="beneficiaries.payments">
+@*                 <Roovia.Security.PermissionAuthorizeView Permission="beneficiaries.payments">
                     <NavLink class="roovia-nav-link" href="beneficiaries/payments" title="Owner Payments">
                         <i class="fal fa-money-check-alt"></i>
                         <span>Payments</span>
                     </NavLink>
-                </Roovia.Security.PermissionAuthorizeView>
+                </Roovia.Security.PermissionAuthorizeView> *@
             </div>
         </div>
     </Roovia.Security.PermissionAuthorizeView>
 
     <!-- Financial Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="payments">
+ @*    <Roovia.Security.PermissionAuthorizeView Category="payments">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Financial Management</span>
@@ -141,10 +141,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Reports Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="reports">
+    @* <Roovia.Security.PermissionAuthorizeView Category="reports">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Reports</span>
@@ -194,7 +194,7 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Administration Section -->
     <Roovia.Security.PermissionAuthorizeView Category="settings">
@@ -218,28 +218,28 @@
                     </NavLink>
                 </Roovia.Security.PermissionAuthorizeView>
 
-                <AuthorizeView Roles="GlobalAdmin,CompanyAdmin,BranchManager">
-                    <NavLink class="roovia-nav-link" href="admin/companies" title="Companies">
+@*        
+                    <NavLink class="roovia-nav-link" href="companies" title="Companies">
                         <i class="fal fa-building"></i>
                         <span>Companies</span>
                     </NavLink>
-                </AuthorizeView>
 
-                <AuthorizeView Roles="GlobalAdmin,CompanyAdmin">
-                    <NavLink class="roovia-nav-link" href="admin/branches" title="Branches">
+
+               
+                    <NavLink class="roovia-nav-link" href="branches" title="Branches">
                         <i class="fal fa-code-branch"></i>
                         <span>Branches</span>
                     </NavLink>
-                </AuthorizeView>
-
+  *@
+@* 
                 <Roovia.Security.PermissionAuthorizeView Permission="settings.application">
                     <NavLink class="roovia-nav-link" href="settings" title="Settings">
                         <i class="fal fa-gear"></i>
                         <span>Settings</span>
                     </NavLink>
-                </Roovia.Security.PermissionAuthorizeView>
+                </Roovia.Security.PermissionAuthorizeView> *@
 
-                <Roovia.Security.PermissionAuthorizeView Permission="settings.import">
+@*                 <Roovia.Security.PermissionAuthorizeView Permission="settings.import">
                     <NavLink class="roovia-nav-link" href="admin/import" title="Import Data">
                         <i class="fal fa-file-import"></i>
                         <span>Import Data</span>
@@ -251,19 +251,23 @@
                         <i class="fal fa-file-export"></i>
                         <span>Export Data</span>
                     </NavLink>
-                </Roovia.Security.PermissionAuthorizeView>
+                </Roovia.Security.PermissionAuthorizeView> *@
             </div>
         </div>
     </Roovia.Security.PermissionAuthorizeView>
 
     <!-- Development Tools Section - Only visible to Global Admins -->
-    <AuthorizeView Roles="GlobalAdmin">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Dev Tools</span>
                 <span class="roovia-nav-section-title-abbreviated">Dev</span>
             </div>
             <div class="roovia-nav-links">
+
+            <NavLink class="roovia-nav-link" href="admin/cdn-config" title="CDN">
+                <i class="fal fa-table"></i>
+                <span>CDN</span>
+            </NavLink>
                 <NavLink class="roovia-nav-link" href="components" title="Components">
                     <i class="fal fa-puzzle-piece"></i>
                     <span>Components</span>
@@ -275,7 +279,7 @@
                 </NavLink>
             </div>
         </div>
-    </AuthorizeView>
+
 </div>
 
 <div class="roovia-desktop-toggle-wrapper">

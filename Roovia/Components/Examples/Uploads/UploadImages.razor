@@ -2,6 +2,8 @@
 @using Roovia.Interfaces
 @rendermode InteractiveServer
 @inject ICdnService CdnService
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JSRuntime
 
 <h3>Image Upload</h3>
 
@@ -13,18 +15,24 @@
                        FileTypeHint="Accepted file types: JPG, PNG, GIF"
                        AcceptedFileTypes=".jpg,.jpeg,.png,.gif"
                        OnFileUploaded="HandleImageUploaded"
+                       OnFileDeleted="HandleImageDeleted"
+                       Multiple="true"
+                       AllowDelete="true"
                        MaxFileSize="5242880" />
     </div>
 </div>
 
 @if (!string.IsNullOrEmpty(uploadedImageUrl))
 {
-    <div class="mt-3">
-        <h4>Uploaded Image Preview</h4>
-        <div class="image-preview">
-            <img src="@uploadedImageUrl" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+        <div class="mt-3">
+            <h4>Recently Uploaded Image Preview</h4>
+            <div class="image-preview">
+                <img src="@uploadedImageUrl" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+                <div class="mt-2">
+                    <button @onclick="ViewImage" class="btn btn-primary">View Full Size</button>
+                </div>
+            </div>
         </div>
-    </div>
 }
 
 @code {
@@ -33,5 +41,24 @@
     private void HandleImageUploaded(CdnFileUpload.UploadedFileInfo fileInfo)
     {
         uploadedImageUrl = fileInfo.Url;
+        StateHasChanged();
+    }
+
+    private void HandleImageDeleted(CdnFileUpload.UploadedFileInfo fileInfo)
+    {
+        if (fileInfo.Url == uploadedImageUrl)
+        {
+            uploadedImageUrl = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewImage()
+    {
+        if (!string.IsNullOrEmpty(uploadedImageUrl))
+        {
+            var apiKey = CdnService.GetApiKey();
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", uploadedImageUrl, apiKey);
+        }
     }
 }

@@ -1,0 +1,3297 @@
+﻿@page "/cdn-dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using Roovia.Interfaces
+@using Roovia.Models.CDN
+@using System.IO
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "AdminAccess")]
+@inject ICdnService CdnService
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="rv-cdn-dash-container">
+    <div class="rv-cdn-dash-header">
+        <div class="rv-cdn-dash-title-section">
+            <h2 class="rv-cdn-dash-title">
+                <i class="far fa-server rv-cdn-dash-title-icon"></i>
+                CDN System Dashboard
+            </h2>
+            <p class="rv-cdn-dash-subtitle">Manage your Content Delivery Network files and storage</p>
+        </div>
+    </div>
+
+    <div class="rv-cdn-dash-stats">
+        <!-- Storage Usage Card -->
+        <div class="rv-cdn-dash-stat-card">
+            <div class="rv-cdn-dash-stat-content">
+                <div class="rv-cdn-dash-stat-header">
+                    <div>
+                        <h3 class="rv-cdn-dash-stat-title">Total Storage Used</h3>
+                        <div class="rv-cdn-dash-stat-value">@FormatFileSize(totalStorageUsed)</div>
+                    </div>
+                    <div class="rv-cdn-dash-stat-icon rv-cdn-dash-primary-icon">
+                        <i class="far fa-hard-drive"></i>
+                    </div>
+                </div>
+                <div class="rv-cdn-dash-progress-container">
+                    <div class="rv-cdn-dash-progress">
+                        <div class="rv-cdn-dash-progress-bar" style="width: @storagePercentage%"></div>
+                    </div>
+                    <span class="rv-cdn-dash-progress-text">@storagePercentage% of allocated space</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Count Card -->
+        <div class="rv-cdn-dash-stat-card">
+            <div class="rv-cdn-dash-stat-content">
+                <div class="rv-cdn-dash-stat-header">
+                    <div>
+                        <h3 class="rv-cdn-dash-stat-title">Total Files</h3>
+                        <div class="rv-cdn-dash-stat-value">@totalFileCount</div>
+                    </div>
+                    <div class="rv-cdn-dash-stat-icon rv-cdn-dash-success-icon">
+                        <i class="far fa-files"></i>
+                    </div>
+                </div>
+                <div class="rv-cdn-dash-category-list">
+                    @foreach (var category in categoryStats.Keys)
+                    {
+                        <div class="rv-cdn-dash-category-item">
+                            <span class="rv-cdn-dash-category-name">@category</span>
+                            <span class="rv-cdn-dash-category-count">@categoryStats[category].FileCount</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Upload Card -->
+        <div class="rv-cdn-dash-stat-card">
+            <div class="rv-cdn-dash-stat-content">
+                <div class="rv-cdn-dash-stat-header">
+                    <div>
+                        <h3 class="rv-cdn-dash-stat-title">Last Upload</h3>
+                        <div class="rv-cdn-dash-stat-value">@(lastUploadTime.HasValue ? lastUploadTime.Value.ToString("HH:mm") : "--:--")</div>
+                    </div>
+                    <div class="rv-cdn-dash-stat-icon rv-cdn-dash-info-icon">
+                        <i class="far fa-clock"></i>
+                    </div>
+                </div>
+                <div class="rv-cdn-dash-upload-info">
+                    @if (lastUploadTime.HasValue)
+                    {
+                        <div class="rv-cdn-dash-upload-detail">
+                            <span class="rv-cdn-dash-upload-label">Date:</span>
+                            <span class="rv-cdn-dash-upload-value">@lastUploadTime.Value.ToString("yyyy-MM-dd")</span>
+                        </div>
+                        <div class="rv-cdn-dash-upload-detail">
+                            <span class="rv-cdn-dash-upload-label">File:</span>
+                            <span class="rv-cdn-dash-upload-value rv-cdn-dash-truncate">@(lastUploadedFile ?? "Unknown")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="rv-cdn-dash-no-uploads">No recent uploads</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- CDN Status Card -->
+        <div class="rv-cdn-dash-stat-card">
+            <div class="rv-cdn-dash-stat-content">
+                <div class="rv-cdn-dash-stat-header">
+                    <div>
+                        <h3 class="rv-cdn-dash-stat-title">CDN Status</h3>
+                        <div class="rv-cdn-dash-stat-value @(isCdnOnline ? "rv-cdn-dash-status-online" : "rv-cdn-dash-status-offline")">
+                            @(isCdnOnline ? "Online" : "Offline")
+                        </div>
+                    </div>
+                    <div class="rv-cdn-dash-stat-icon rv-cdn-dash-warning-icon">
+                        <i class="far fa-cloud @(isCdnOnline ? "rv-cdn-dash-icon-online" : "rv-cdn-dash-icon-offline")"></i>
+                    </div>
+                </div>
+                <div class="rv-cdn-dash-status-details">
+                    <div class="rv-cdn-dash-status-item">
+                        <span class="rv-cdn-dash-status-label">Direct Access</span>
+                        <span class="rv-cdn-dash-status-value">@(isDirectAccessAvailable ? "Available" : "Not Available")</span>
+                    </div>
+                    <div class="rv-cdn-dash-status-item">
+                        <span class="rv-cdn-dash-status-label">URL</span>
+                        <span class="rv-cdn-dash-status-value rv-cdn-dash-truncate">@(cdnBaseUrl ?? "Not configured")</span>
+                    </div>
+                    <div class="rv-cdn-dash-status-action">
+                        <button @onclick="CheckCdnStatus" class="rv-cdn-dash-btn rv-cdn-dash-btn-sm rv-cdn-dash-btn-outline">
+                            <i class="far fa-refresh rv-cdn-dash-btn-icon"></i>
+                            <span>Check Status</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Manager Section -->
+    <div class="rv-cdn-dash-card rv-cdn-dash-file-manager">
+        <div class="rv-cdn-dash-card-header">
+            <h3 class="rv-cdn-dash-card-title">File Manager</h3>
+            <div class="rv-cdn-dash-search-controls">
+                <div class="rv-cdn-dash-search-wrapper">
+                    <div class="rv-cdn-dash-search-input-group">
+                        <div class="rv-cdn-dash-search-icon">
+                            <i class="far fa-search"></i>
+                        </div>
+                        <input type="text" class="rv-cdn-dash-search-input" 
+                            placeholder="Search files..." 
+                            @bind="searchTerm" 
+                            @bind:event="oninput" 
+                            @onkeyup="HandleSearchKeyUp" />
+                        <button class="rv-cdn-dash-search-button" @onclick="SearchFiles">
+                            <i class="far fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="rv-cdn-dash-category-select">
+                        <select class="rv-cdn-dash-select" @bind="selectedCategory" @oninput="ChangeCategory">
+                            @foreach (var category in availableCategories)
+                            {
+                                <option value="@category">@category</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rv-cdn-dash-card-body">
+            <!-- Breadcrumb navigation -->
+            <div class="rv-cdn-dash-breadcrumb">
+                <div class="rv-cdn-dash-breadcrumb-item">
+                    <a href="javascript:void(0)" @onclick='() => NavigateToFolder("")' class="rv-cdn-dash-breadcrumb-link">Root</a>
+                </div>
+                @if (!string.IsNullOrEmpty(currentFolder))
+                {
+                    var folders = currentFolder.Split('/');
+                    var path = "";
+
+                    @for (int i = 0; i < folders.Length; i++)
+                    {
+                        if (string.IsNullOrEmpty(folders[i])) continue;
+
+                        path += folders[i] + "/";
+                        var navigatePath = path;
+
+                        <div class="rv-cdn-dash-breadcrumb-separator">
+                            <i class="far fa-chevron-right"></i>
+                        </div>
+
+                        @if (i == folders.Length - 1)
+                        {
+                            <div class="rv-cdn-dash-breadcrumb-item rv-cdn-dash-breadcrumb-active">
+                                @folders[i]
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rv-cdn-dash-breadcrumb-item">
+                                <a href="javascript:void(0)" @onclick="() => NavigateToFolder(navigatePath)" class="rv-cdn-dash-breadcrumb-link">@folders[i]</a>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+
+            <div class="rv-cdn-dash-file-container">
+                @if (IsLoading)
+                {
+                    <div class="rv-cdn-dash-loading">
+                        <div class="rv-cdn-dash-spinner"></div>
+                        <p class="rv-cdn-dash-loading-text">Loading files...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rv-cdn-dash-table-container">
+                        <table class="rv-cdn-dash-table">
+                            <thead>
+                                <tr>
+                                    <th class="rv-cdn-dash-th-checkbox">
+                                        <div class="rv-cdn-dash-checkbox">
+                                            <input type="checkbox" id="selectAll" @bind="selectAllFiles" @oninput="ToggleSelectAll" class="rv-cdn-dash-checkbox-input" />
+                                            <label for="selectAll" class="rv-cdn-dash-checkbox-label"></label>
+                                        </div>
+                                    </th>
+                                    <th>Name</th>
+                                    <th class="rv-cdn-dash-th-size">Size</th>
+                                    <th class="rv-cdn-dash-th-date">Modified</th>
+                                    <th class="rv-cdn-dash-th-type">Type</th>
+                                    <th class="rv-cdn-dash-th-actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (showFolders && folders.Any())
+                                {
+                                    @foreach (var folder in folders)
+                                    {
+                                        <tr class="rv-cdn-dash-folder-row">
+                                            <td></td>
+                                            <td>
+                                                <a href="javascript:void(0)" class="rv-cdn-dash-folder-link" @onclick="() => NavigateToFolder(folder.Path)">
+                                                    <i class="far fa-folder rv-cdn-dash-folder-icon"></i>
+                                                    <span>@folder.Name</span>
+                                                </a>
+                                            </td>
+                                            <td>-</td>
+                                            <td>@folder.ModifiedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>
+                                                <span class="rv-cdn-dash-badge rv-cdn-dash-badge-folder">Folder</span>
+                                            </td>
+                                            <td>
+                                                <div class="rv-cdn-dash-action-group">
+                                                    <button @onclick="() => NavigateToFolder(folder.Path)" class="rv-cdn-dash-action-btn" title="Open folder">
+                                                        <i class="far fa-folder-open"></i>
+                                                    </button>
+                                                    <button @onclick="() => RenameFolder(folder)" class="rv-cdn-dash-action-btn" title="Rename folder">
+                                                        <i class="far fa-edit"></i>
+                                                    </button>
+                                                    <button @onclick="() => DeleteFolder(folder)" class="rv-cdn-dash-action-btn rv-cdn-dash-action-danger" title="Delete folder">
+                                                        <i class="far fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+
+                                @if (files.Any())
+                                {
+                                    @foreach (var file in files)
+                                    {
+                                        <tr class="rv-cdn-dash-file-row">
+                                            <td>
+                                                <div class="rv-cdn-dash-checkbox">
+                                                    <input type="checkbox" id="file-@file.GetHashCode()" @bind="file.IsSelected" class="rv-cdn-dash-checkbox-input" />
+                                                    <label for="file-@file.GetHashCode()" class="rv-cdn-dash-checkbox-label"></label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <a href="javascript:void(0)" class="rv-cdn-dash-file-link" @onclick="() => PreviewFile(file)">
+                                                    @if (file.ContentType.StartsWith("image/"))
+                                                    {
+                                                        <i class="far fa-image rv-cdn-dash-file-icon rv-cdn-dash-file-image"></i>
+                                                    }
+                                                    else if (file.ContentType.Contains("pdf"))
+                                                    {
+                                                        <i class="far fa-file-pdf rv-cdn-dash-file-icon rv-cdn-dash-file-pdf"></i>
+                                                    }
+                                                    else if (file.ContentType.Contains("word"))
+                                                    {
+                                                        <i class="far fa-file-word rv-cdn-dash-file-icon rv-cdn-dash-file-word"></i>
+                                                    }
+                                                    else if (file.ContentType.Contains("excel") || file.ContentType.Contains("sheet"))
+                                                    {
+                                                        <i class="far fa-file-excel rv-cdn-dash-file-icon rv-cdn-dash-file-excel"></i>
+                                                    }
+                                                    else if (file.ContentType.StartsWith("video/"))
+                                                    {
+                                                        <i class="far fa-file-video rv-cdn-dash-file-icon rv-cdn-dash-file-video"></i>
+                                                    }
+                                                    else if (file.ContentType.StartsWith("audio/"))
+                                                    {
+                                                        <i class="far fa-file-audio rv-cdn-dash-file-icon rv-cdn-dash-file-audio"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="far fa-file rv-cdn-dash-file-icon"></i>
+                                                    }
+                                                    <span class="rv-cdn-dash-file-name">@file.FileName</span>
+                                                </a>
+                                            </td>
+                                            <td>@FormatFileSize(file.Size)</td>
+                                            <td>@file.UploadDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>
+                                                <span class="rv-cdn-dash-badge @GetBadgeClass(file.ContentType)">@GetFileTypeDisplay(file.ContentType)</span>
+                                            </td>
+                                            <td>
+                                                <div class="rv-cdn-dash-action-group">
+                                                    <button @onclick="() => ViewFile(file)" class="rv-cdn-dash-action-btn" title="View file">
+                                                        <i class="far fa-eye"></i>
+                                                    </button>
+                                                    <button @onclick="() => RenameFile(file)" class="rv-cdn-dash-action-btn" title="Rename file">
+                                                        <i class="far fa-edit"></i>
+                                                    </button>
+                                                    <button @onclick="() => DeleteFile(file)" class="rv-cdn-dash-action-btn rv-cdn-dash-action-danger" title="Delete file">
+                                                        <i class="far fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+
+                                @if (!folders.Any() && !files.Any())
+                                {
+                                    <tr>
+                                        <td colspan="6" class="rv-cdn-dash-empty-state">
+                                            <div class="rv-cdn-dash-empty-content">
+                                                <div class="rv-cdn-dash-empty-icon">
+                                                    <i class="far fa-folder-open"></i>
+                                                </div>
+                                                <p class="rv-cdn-dash-empty-text">No files found in this location</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <!-- Bulk actions toolbar -->
+            @if (files.Any(f => f.IsSelected))
+            {
+                <div class="rv-cdn-dash-bulk-actions">
+                    <div class="rv-cdn-dash-bulk-info">
+                        <span>@files.Count(f => f.IsSelected) files selected</span>
+                    </div>
+                    <div class="rv-cdn-dash-bulk-controls">
+                        <button @onclick="DownloadSelectedFiles" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary rv-cdn-dash-btn-sm">
+                            <i class="far fa-download rv-cdn-dash-btn-icon"></i>
+                            <span>Download</span>
+                        </button>
+                        <button @onclick="MoveSelectedFiles" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary rv-cdn-dash-btn-sm">
+                            <i class="far fa-folder-arrow-down rv-cdn-dash-btn-icon"></i>
+                            <span>Move</span>
+                        </button>
+                        <button @onclick="DeleteSelectedFiles" class="rv-cdn-dash-btn rv-cdn-dash-btn-danger rv-cdn-dash-btn-sm">
+                            <i class="far fa-trash rv-cdn-dash-btn-icon"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="rv-cdn-dash-card-footer">
+            <div class="rv-cdn-dash-main-actions">
+                <button @onclick="() => showUploadDialog = true" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary">
+                    <i class="far fa-upload rv-cdn-dash-btn-icon"></i>
+                    <span>Upload Files</span>
+                </button>
+                <button @onclick="CreateNewFolder" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary">
+                    <i class="far fa-folder-plus rv-cdn-dash-btn-icon"></i>
+                    <span>New Folder</span>
+                </button>
+            </div>
+            <div>
+                <button @onclick="RefreshFiles" class="rv-cdn-dash-btn rv-cdn-dash-btn-outline">
+                    <i class="far fa-refresh rv-cdn-dash-btn-icon"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Section -->
+    <div class="rv-cdn-dash-card">
+        <div class="rv-cdn-dash-card-header">
+            <h3 class="rv-cdn-dash-card-title">System Maintenance</h3>
+        </div>
+        <div class="rv-cdn-dash-card-body">
+            <div class="rv-cdn-dash-maintenance-grid">
+                <div class="rv-cdn-dash-maintenance-card">
+                    <div class="rv-cdn-dash-maintenance-header">
+                        <div class="rv-cdn-dash-maintenance-icon">
+                            <i class="far fa-broom"></i>
+                        </div>
+                        <h4 class="rv-cdn-dash-maintenance-title">Clean Orphaned Files</h4>
+                    </div>
+                    <p class="rv-cdn-dash-maintenance-desc">Remove files that are no longer referenced in the database.</p>
+                    <button class="rv-cdn-dash-btn rv-cdn-dash-btn-primary rv-cdn-dash-btn-block" @onclick="CleanOrphanedFiles">
+                        <i class="far fa-broom rv-cdn-dash-btn-icon"></i>
+                        <span>Clean Files</span>
+                    </button>
+                </div>
+
+                <div class="rv-cdn-dash-maintenance-card">
+                    <div class="rv-cdn-dash-maintenance-header">
+                        <div class="rv-cdn-dash-maintenance-icon">
+                            <i class="far fa-network-wired"></i>
+                        </div>
+                        <h4 class="rv-cdn-dash-maintenance-title">Test CDN Connectivity</h4>
+                    </div>
+                    <p class="rv-cdn-dash-maintenance-desc">Verify the CDN system is working correctly.</p>
+                    <button class="rv-cdn-dash-btn rv-cdn-dash-btn-primary rv-cdn-dash-btn-block" @onclick="TestCdnConnectivity">
+                        <i class="far fa-network-wired rv-cdn-dash-btn-icon"></i>
+                        <span>Test Connectivity</span>
+                    </button>
+                </div>
+
+                <div class="rv-cdn-dash-maintenance-card">
+                    <div class="rv-cdn-dash-maintenance-header">
+                        <div class="rv-cdn-dash-maintenance-icon">
+                            <i class="far fa-hard-drive"></i>
+                        </div>
+                        <h4 class="rv-cdn-dash-maintenance-title">Optimize Storage</h4>
+                    </div>
+                    <p class="rv-cdn-dash-maintenance-desc">Run storage optimization routines.</p>
+                    <button class="rv-cdn-dash-btn rv-cdn-dash-btn-primary rv-cdn-dash-btn-block" @onclick="OptimizeStorage">
+                        <i class="far fa-hard-drive rv-cdn-dash-btn-icon"></i>
+                        <span>Optimize</span>
+                    </button>
+                </div>
+
+                <div class="rv-cdn-dash-maintenance-card">
+                    <div class="rv-cdn-dash-maintenance-header">
+                        <div class="rv-cdn-dash-maintenance-icon">
+                            <i class="far fa-trash-can"></i>
+                        </div>
+                        <h4 class="rv-cdn-dash-maintenance-title">Clear Cache</h4>
+                    </div>
+                    <p class="rv-cdn-dash-maintenance-desc">Clear CDN cache for improved performance.</p>
+                    <button class="rv-cdn-dash-btn rv-cdn-dash-btn-primary rv-cdn-dash-btn-block" @onclick="ClearCache">
+                        <i class="far fa-trash-can rv-cdn-dash-btn-icon"></i>
+                        <span>Clear Cache</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Dialog -->
+@if (showUploadDialog)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showUploadDialog = false"></div>
+    <div class="rv-cdn-dash-modal rv-cdn-dash-modal-lg">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">Upload Files to @GetCurrentPath()</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showUploadDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <CdnFileUpload Category="@selectedCategory"
+                    Title="Upload Files"
+                    Description="Drag and drop files here, or click to browse"
+                    FileTypeHint="@GetFileTypeHint()"
+                    AcceptedFileTypes="@GetAcceptedFileTypes()"
+                    OnFileUploaded="HandleFileUploaded"
+                    OnFilesUploaded="HandleFilesUploaded"
+                    OnFileDeleted="HandleFileDeleted"
+                    Multiple="true"
+                    MaxFileSize="209715200" />
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showUploadDialog = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- New Folder Dialog -->
+@if (showNewFolderDialog)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showNewFolderDialog = false"></div>
+    <div class="rv-cdn-dash-modal">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">Create New Folder</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showNewFolderDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <div class="rv-cdn-dash-form-group">
+                    <label for="folderName" class="rv-cdn-dash-form-label">Folder Name</label>
+                    <input type="text" class="rv-cdn-dash-input" id="folderName" @bind="newFolderName" placeholder="Enter folder name" />
+                    <div class="rv-cdn-dash-form-hint">Enter a name for the new folder.</div>
+                </div>
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showNewFolderDialog = false">Cancel</button>
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary" @onclick="CreateFolder">Create</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Rename Folder Dialog -->
+@if (showRenameFolderDialog)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showRenameFolderDialog = false"></div>
+    <div class="rv-cdn-dash-modal">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">Rename Folder</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showRenameFolderDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <div class="rv-cdn-dash-form-group">
+                    <label for="renameFolderName" class="rv-cdn-dash-form-label">New Folder Name</label>
+                    <input type="text" class="rv-cdn-dash-input" id="renameFolderName" @bind="renameFolderName" placeholder="Enter new folder name" />
+                </div>
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showRenameFolderDialog = false">Cancel</button>
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary" @onclick="RenameFolderConfirm">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Rename File Dialog -->
+@if (showRenameFileDialog)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showRenameFileDialog = false"></div>
+    <div class="rv-cdn-dash-modal">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">Rename File</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showRenameFileDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <div class="rv-cdn-dash-form-group">
+                    <label for="renameFileName" class="rv-cdn-dash-form-label">New File Name</label>
+                    <input type="text" class="rv-cdn-dash-input" id="renameFileName" @bind="renameFileName" placeholder="Enter new file name" />
+                    <div class="rv-cdn-dash-form-hint">Enter the new name without extension.</div>
+                </div>
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showRenameFileDialog = false">Cancel</button>
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary" @onclick="RenameFileConfirm">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- File Preview Dialog -->
+@if (showPreviewDialog && selectedFile != null)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showPreviewDialog = false"></div>
+    <div class="rv-cdn-dash-modal rv-cdn-dash-modal-lg">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">@selectedFile.FileName</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showPreviewDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <CdnFilePreview 
+                    FileUrl="@selectedFile.Url" 
+                    FileName="@selectedFile.FileName" 
+                    ContentType="@selectedFile.ContentType" 
+                    FileSize="@selectedFile.Size" 
+                    EnableRename="true"
+                    EnableDelete="true"
+                    OnRename="() => RenameFile(selectedFile)"
+                    OnDelete="() => DeleteFile(selectedFile)" />
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showPreviewDialog = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Move Files Dialog -->
+@if (showMoveDialog)
+{
+    <div class="rv-cdn-dash-modal-backdrop" @onclick="() => showMoveDialog = false"></div>
+    <div class="rv-cdn-dash-modal">
+        <div class="rv-cdn-dash-modal-content">
+            <div class="rv-cdn-dash-modal-header">
+                <h4 class="rv-cdn-dash-modal-title">Move Files</h4>
+                <button type="button" class="rv-cdn-dash-modal-close" @onclick="() => showMoveDialog = false">
+                    <i class="far fa-times"></i>
+                </button>
+            </div>
+            <div class="rv-cdn-dash-modal-body">
+                <div class="rv-cdn-dash-form-group">
+                    <label for="targetFolder" class="rv-cdn-dash-form-label">Target Folder</label>
+                    <select class="rv-cdn-dash-select" id="targetFolder" @bind="targetMoveFolder">
+                        <option value="">/</option>
+                        @foreach (var folder in allFolders)
+                        {
+                            <option value="@folder.Path">@folder.Path</option>
+                        }
+                    </select>
+                </div>
+                <div class="rv-cdn-dash-selected-files">
+                    <h5 class="rv-cdn-dash-selected-files-title">Selected Files (@files.Count(f => f.IsSelected))</h5>
+                    <div class="rv-cdn-dash-selected-files-list">
+                        @foreach (var file in files.Where(f => f.IsSelected).Take(5))
+                        {
+                            <div class="rv-cdn-dash-selected-file">
+                                <i class="far fa-file rv-cdn-dash-selected-file-icon"></i>
+                                <span class="rv-cdn-dash-selected-file-name">@file.FileName</span>
+                            </div>
+                        }
+                        @if (files.Count(f => f.IsSelected) > 5)
+                        {
+                            <div class="rv-cdn-dash-selected-file rv-cdn-dash-more-files">
+                                And @(files.Count(f => f.IsSelected) - 5) more files...
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="rv-cdn-dash-modal-footer">
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-secondary" @onclick="() => showMoveDialog = false">Cancel</button>
+                <button type="button" class="rv-cdn-dash-btn rv-cdn-dash-btn-primary" @onclick="MoveFilesConfirm">Move Files</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+/* CDN Dashboard Styles - Custom namespace to avoid conflicts */
+:root {
+    /* Using Roovia color system but scope it to our namespace */
+    --rv-cdn-dash-primary: var(--primary, #377f80);
+    --rv-cdn-dash-primary-rgb: var(--primary-rgb, 55, 127, 128);
+    --rv-cdn-dash-primary-hover: var(--primary-hover, #2d6869);
+    --rv-cdn-dash-primary-light: var(--primary-light, rgba(55, 127, 128, 0.1));
+    --rv-cdn-dash-primary-lighter: var(--primary-lighter, rgba(55, 127, 128, 0.05));
+    
+    --rv-cdn-dash-secondary: var(--secondary, #142a39);
+    --rv-cdn-dash-secondary-rgb: var(--secondary-rgb, 20, 42, 57);
+    --rv-cdn-dash-secondary-light: var(--secondary-light, rgba(20, 42, 57, 0.1));
+    
+    --rv-cdn-dash-success: var(--success, #278e63);
+    --rv-cdn-dash-success-rgb: var(--success-rgb, 39, 142, 99);
+    --rv-cdn-dash-success-hover: var(--success-hover, #1f7550);
+    --rv-cdn-dash-success-light: var(--success-light, rgba(39, 142, 99, 0.1));
+    
+    --rv-cdn-dash-warning: var(--warning, #f5a623);
+    --rv-cdn-dash-warning-rgb: var(--warning-rgb, 245, 166, 35);
+    --rv-cdn-dash-warning-hover: var(--warning-hover, #e09612);
+    --rv-cdn-dash-warning-light: var(--warning-light, rgba(245, 166, 35, 0.1));
+    
+    --rv-cdn-dash-danger: var(--danger, #d14141);
+    --rv-cdn-dash-danger-rgb: var(--danger-rgb, 209, 65, 65);
+    --rv-cdn-dash-danger-hover: var(--danger-hover, #b63636);
+    --rv-cdn-dash-danger-light: var(--danger-light, rgba(209, 65, 65, 0.1));
+    
+    --rv-cdn-dash-info: var(--info, #3080a7);
+    --rv-cdn-dash-info-rgb: var(--info-rgb, 48, 128, 167);
+    --rv-cdn-dash-info-hover: var(--info-hover, #266a8b);
+    --rv-cdn-dash-info-light: var(--info-light, rgba(48, 128, 167, 0.1));
+    
+    /* Neutral Backgrounds */
+    --rv-cdn-dash-body-bg: var(--body-bg, #f4f8f8);
+    --rv-cdn-dash-content-bg: var(--content-bg, #ffffff);
+    --rv-cdn-dash-subtle-bg: var(--subtle-bg, #f8fafa);
+    
+    /* Text Colors */
+    --rv-cdn-dash-text-primary: var(--text-primary, #142a39);
+    --rv-cdn-dash-text-secondary: var(--text-secondary, #3a4f5e);
+    --rv-cdn-dash-text-muted: var(--text-muted, #6e7e8a);
+    
+    /* Borders */
+    --rv-cdn-dash-border-color: var(--border-color, rgba(55, 127, 128, 0.15));
+    --rv-cdn-dash-border-divider: var(--border-divider, #e5eef0);
+    
+    /* Shadows */
+    --rv-cdn-dash-shadow-sm: var(--shadow-sm, 0 2px 4px rgba(20, 42, 57, 0.05));
+    --rv-cdn-dash-shadow-md: var(--shadow-md, 0 4px 8px rgba(20, 42, 57, 0.08));
+    --rv-cdn-dash-shadow-lg: var(--shadow-lg, 0 8px 16px rgba(20, 42, 57, 0.12));
+    
+    /* Border Radius */
+    --rv-cdn-dash-border-radius-sm: var(--border-radius-sm, 0.25rem);
+    --rv-cdn-dash-border-radius-md: var(--border-radius-md, 0.5rem);
+    --rv-cdn-dash-border-radius-lg: var(--border-radius-lg, 0.75rem);
+    
+    /* Animation */
+    --rv-cdn-dash-transition: var(--hover-transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* Base Layout */
+.rv-cdn-dash-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    width: 100%;
+}
+
+.rv-cdn-dash-header {
+    margin-bottom: 1.5rem;
+    animation: rv-cdn-dash-fade-in 0.5s ease;
+}
+
+.rv-cdn-dash-title-section {
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+    padding-bottom: 1rem;
+}
+
+.rv-cdn-dash-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.rv-cdn-dash-title-icon {
+    margin-right: 0.75rem;
+    color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-subtitle {
+    color: var(--rv-cdn-dash-text-secondary);
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Stat Cards */
+.rv-cdn-dash-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.rv-cdn-dash-stat-card {
+    background-color: var(--rv-cdn-dash-content-bg);
+    border-radius: var(--rv-cdn-dash-border-radius-lg);
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    overflow: hidden;
+    box-shadow: var(--rv-cdn-dash-shadow-sm);
+    transition: var(--rv-cdn-dash-transition);
+    animation: rv-cdn-dash-slide-up 0.5s ease;
+    animation-fill-mode: both;
+}
+
+.rv-cdn-dash-stat-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.rv-cdn-dash-stat-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.rv-cdn-dash-stat-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.rv-cdn-dash-stat-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.rv-cdn-dash-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--rv-cdn-dash-shadow-md);
+}
+
+.rv-cdn-dash-stat-content {
+    padding: 1.25rem;
+}
+
+.rv-cdn-dash-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.rv-cdn-dash-stat-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--rv-cdn-dash-text-muted);
+    margin: 0 0 0.5rem 0;
+}
+
+.rv-cdn-dash-stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.rv-cdn-dash-primary-icon {
+    background-color: var(--rv-cdn-dash-primary-light);
+    color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-success-icon {
+    background-color: var(--rv-cdn-dash-success-light);
+    color: var(--rv-cdn-dash-success);
+}
+
+.rv-cdn-dash-warning-icon {
+    background-color: var(--rv-cdn-dash-warning-light);
+    color: var(--rv-cdn-dash-warning);
+}
+
+.rv-cdn-dash-info-icon {
+    background-color: var(--rv-cdn-dash-info-light);
+    color: var(--rv-cdn-dash-info);
+}
+
+.rv-cdn-dash-icon-online {
+    color: var(--rv-cdn-dash-success);
+}
+
+.rv-cdn-dash-icon-offline {
+    color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-status-online {
+    color: var(--rv-cdn-dash-success);
+}
+
+.rv-cdn-dash-status-offline {
+    color: var(--rv-cdn-dash-danger);
+}
+
+/* Progress Bar */
+.rv-cdn-dash-progress-container {
+    margin-top: 1rem;
+}
+
+.rv-cdn-dash-progress {
+    height: 6px;
+    background-color: var(--rv-cdn-dash-primary-lighter);
+    border-radius: var(--rv-cdn-dash-border-radius-pill);
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.rv-cdn-dash-progress-bar {
+    height: 100%;
+    background-color: var(--rv-cdn-dash-primary);
+    border-radius: var(--rv-cdn-dash-border-radius-pill);
+    transition: width 0.6s ease;
+}
+
+.rv-cdn-dash-progress-text {
+    color: var(--rv-cdn-dash-text-muted);
+    font-size: 0.75rem;
+}
+
+/* Category List */
+.rv-cdn-dash-category-list {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rv-cdn-dash-category-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
+
+.rv-cdn-dash-category-name {
+    color: var(--rv-cdn-dash-text-muted);
+}
+
+.rv-cdn-dash-category-count {
+    color: var(--rv-cdn-dash-text-primary);
+    font-weight: 500;
+}
+
+/* Upload Info */
+.rv-cdn-dash-upload-info {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rv-cdn-dash-upload-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
+
+.rv-cdn-dash-upload-label {
+    color: var(--rv-cdn-dash-text-muted);
+}
+
+.rv-cdn-dash-upload-value {
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-no-uploads {
+    color: var(--rv-cdn-dash-text-muted);
+    font-size: 0.8125rem;
+}
+
+/* Status Details */
+.rv-cdn-dash-status-details {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rv-cdn-dash-status-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
+
+.rv-cdn-dash-status-label {
+    color: var(--rv-cdn-dash-text-muted);
+}
+
+.rv-cdn-dash-status-value {
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-status-action {
+    margin-top: 0.5rem;
+}
+
+/* Card */
+.rv-cdn-dash-card {
+    background-color: var(--rv-cdn-dash-content-bg);
+    border-radius: var(--rv-cdn-dash-border-radius-lg);
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    overflow: hidden;
+    box-shadow: var(--rv-cdn-dash-shadow-sm);
+    transition: var(--rv-cdn-dash-transition);
+    margin-bottom: 1.5rem;
+    animation: rv-cdn-dash-fade-in 0.5s ease;
+}
+
+.rv-cdn-dash-card:hover {
+    box-shadow: var(--rv-cdn-dash-shadow-md);
+}
+
+.rv-cdn-dash-card-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.rv-cdn-dash-card-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-card-body {
+    padding: 0;
+}
+
+.rv-cdn-dash-card-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--rv-cdn-dash-border-divider);
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* Search Controls */
+.rv-cdn-dash-search-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.rv-cdn-dash-search-wrapper {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.rv-cdn-dash-search-input-group {
+    position: relative;
+    width: 260px;
+}
+
+.rv-cdn-dash-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--rv-cdn-dash-text-muted);
+    font-size: 0.875rem;
+}
+
+.rv-cdn-dash-search-input {
+    width: 100%;
+    padding: 0.5rem 2.5rem 0.5rem 2rem;
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    font-size: 0.875rem;
+    background-color: var(--rv-cdn-dash-content-bg);
+    color: var(--rv-cdn-dash-text-primary);
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-search-input:focus {
+    outline: none;
+    border-color: var(--rv-cdn-dash-primary);
+    box-shadow: 0 0 0 3px rgba(var(--rv-cdn-dash-primary-rgb), 0.15);
+}
+
+.rv-cdn-dash-search-button {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: var(--rv-cdn-dash-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--rv-cdn-dash-border-radius-sm);
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-search-button:hover {
+    background-color: var(--rv-cdn-dash-primary-light);
+}
+
+.rv-cdn-dash-category-select {
+    width: 150px;
+}
+
+.rv-cdn-dash-select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    font-size: 0.875rem;
+    background-color: var(--rv-cdn-dash-content-bg);
+    color: var(--rv-cdn-dash-text-primary);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'%3E%3Cpath fill='none' d='M0 0h24v24H0z'/%3E%3Cpath d='M12 15l-4.243-4.243 1.415-1.414L12 12.172l2.828-2.829 1.415 1.414z' fill='%236e7e8a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    cursor: pointer;
+    transition: var(--rv-cdn-dash-transition);
+    width: 100%;
+}
+
+.rv-cdn-dash-select:focus {
+    outline: none;
+    border-color: var(--rv-cdn-dash-primary);
+    box-shadow: 0 0 0 3px rgba(var(--rv-cdn-dash-primary-rgb), 0.15);
+}
+
+/* Breadcrumb */
+.rv-cdn-dash-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+}
+
+.rv-cdn-dash-breadcrumb-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.rv-cdn-dash-breadcrumb-separator {
+    color: var(--rv-cdn-dash-text-muted);
+    font-size: 0.75rem;
+}
+
+.rv-cdn-dash-breadcrumb-link {
+    color: var(--rv-cdn-dash-primary);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--rv-cdn-dash-border-radius-sm);
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-breadcrumb-link:hover {
+    background-color: var(--rv-cdn-dash-primary-light);
+    text-decoration: none;
+}
+
+.rv-cdn-dash-breadcrumb-active {
+    color: var(--rv-cdn-dash-text-primary);
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+}
+
+/* File Container */
+.rv-cdn-dash-file-container {
+    position: relative;
+}
+
+/* Loading State */
+.rv-cdn-dash-loading {
+    padding: 3rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.rv-cdn-dash-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid rgba(var(--rv-cdn-dash-primary-rgb), 0.1);
+    border-radius: 50%;
+    border-top-color: var(--rv-cdn-dash-primary);
+    animation: rv-cdn-dash-spin 1s infinite linear;
+}
+
+.rv-cdn-dash-loading-text {
+    margin-top: 1rem;
+    color: var(--rv-cdn-dash-text-secondary);
+    font-size: 0.9375rem;
+}
+
+/* Table */
+.rv-cdn-dash-table-container {
+    overflow-x: auto;
+}
+
+.rv-cdn-dash-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9375rem;
+}
+
+.rv-cdn-dash-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.rv-cdn-dash-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+    color: var(--rv-cdn-dash-text-secondary);
+    vertical-align: middle;
+}
+
+.rv-cdn-dash-th-checkbox {
+    width: 48px;
+}
+
+.rv-cdn-dash-th-size {
+    width: 100px;
+}
+
+.rv-cdn-dash-th-date {
+    width: 180px;
+}
+
+.rv-cdn-dash-th-type {
+    width: 120px;
+}
+
+.rv-cdn-dash-th-actions {
+    width: 150px;
+}
+
+.rv-cdn-dash-folder-row, .rv-cdn-dash-file-row {
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-folder-row:hover, .rv-cdn-dash-file-row:hover {
+    background-color: var(--rv-cdn-dash-primary-lighter);
+}
+
+.rv-cdn-dash-folder-link, .rv-cdn-dash-file-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--rv-cdn-dash-text-primary);
+    text-decoration: none;
+    max-width: 100%;
+}
+
+.rv-cdn-dash-folder-link:hover, .rv-cdn-dash-file-link:hover {
+    color: var(--rv-cdn-dash-primary);
+    text-decoration: none;
+}
+
+.rv-cdn-dash-folder-icon {
+    color: var(--rv-cdn-dash-warning);
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+.rv-cdn-dash-file-icon {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+    color: var(--rv-cdn-dash-text-secondary);
+}
+
+.rv-cdn-dash-file-image {
+    color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-file-pdf {
+    color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-file-word {
+    color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-file-excel {
+    color: var(--rv-cdn-dash-success);
+}
+
+.rv-cdn-dash-file-video {
+    color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-file-audio {
+    color: var(--rv-cdn-dash-warning);
+}
+
+.rv-cdn-dash-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+}
+
+/* Badges */
+.rv-cdn-dash-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--rv-cdn-dash-border-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rv-cdn-dash-badge-folder {
+    background-color: var(--rv-cdn-dash-warning-light);
+    color: var(--rv-cdn-dash-warning);
+}
+
+.rv-cdn-dash-badge-image {
+    background-color: var(--rv-cdn-dash-primary-light);
+    color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-badge-pdf {
+    background-color: var(--rv-cdn-dash-danger-light);
+    color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-badge-document {
+    background-color: var(--rv-cdn-dash-info-light);
+    color: var(--rv-cdn-dash-info);
+}
+
+.rv-cdn-dash-badge-spreadsheet {
+    background-color: var(--rv-cdn-dash-success-light);
+    color: var(--rv-cdn-dash-success);
+}
+
+.rv-cdn-dash-badge-other {
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    color: var(--rv-cdn-dash-text-secondary);
+}
+
+/* Checkbox */
+.rv-cdn-dash-checkbox {
+    position: relative;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+}
+
+.rv-cdn-dash-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.rv-cdn-dash-checkbox-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background-color: var(--rv-cdn-dash-content-bg);
+    border: 1.5px solid var(--rv-cdn-dash-border-divider);
+    border-radius: var(--rv-cdn-dash-border-radius-sm);
+    cursor: pointer;
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-checkbox-input:checked + .rv-cdn-dash-checkbox-label {
+    background-color: var(--rv-cdn-dash-primary);
+    border-color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-checkbox-input:checked + .rv-cdn-dash-checkbox-label::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.rv-cdn-dash-checkbox-input:focus + .rv-cdn-dash-checkbox-label {
+    box-shadow: 0 0 0 3px rgba(var(--rv-cdn-dash-primary-rgb), 0.15);
+}
+
+/* Actions */
+.rv-cdn-dash-action-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rv-cdn-dash-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    background-color: var(--rv-cdn-dash-content-bg);
+    color: var(--rv-cdn-dash-text-secondary);
+    cursor: pointer;
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-action-btn:hover {
+    background-color: var(--rv-cdn-dash-primary-light);
+    color: var(--rv-cdn-dash-primary);
+    border-color: var(--rv-cdn-dash-primary-light);
+}
+
+.rv-cdn-dash-action-danger:hover {
+    background-color: var(--rv-cdn-dash-danger-light);
+    color: var(--rv-cdn-dash-danger);
+    border-color: var(--rv-cdn-dash-danger-light);
+}
+
+/* Empty State */
+.rv-cdn-dash-empty-state {
+    padding: 3rem 1rem;
+}
+
+.rv-cdn-dash-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.rv-cdn-dash-empty-icon {
+    font-size: 2.5rem;
+    color: var(--rv-cdn-dash-text-muted);
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.rv-cdn-dash-empty-text {
+    color: var(--rv-cdn-dash-text-muted);
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Bulk Actions */
+.rv-cdn-dash-bulk-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    border-top: 1px solid var(--rv-cdn-dash-border-divider);
+    animation: rv-cdn-dash-fade-in 0.3s ease;
+}
+
+.rv-cdn-dash-bulk-info {
+    color: var(--rv-cdn-dash-text-primary);
+    font-weight: 500;
+}
+
+.rv-cdn-dash-bulk-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Main Actions */
+.rv-cdn-dash-main-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Buttons */
+.rv-cdn-dash-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--rv-cdn-dash-transition);
+    text-decoration: none;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.rv-cdn-dash-btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.rv-cdn-dash-btn-icon {
+    font-size: 0.875rem;
+}
+
+.rv-cdn-dash-btn-primary {
+    background-color: var(--rv-cdn-dash-primary);
+    color: white;
+    border-color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-btn-primary:hover {
+    background-color: var(--rv-cdn-dash-primary-hover);
+    border-color: var(--rv-cdn-dash-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(var(--rv-cdn-dash-primary-rgb), 0.25);
+}
+
+.rv-cdn-dash-btn-secondary {
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    color: var(--rv-cdn-dash-text-primary);
+    border-color: var(--rv-cdn-dash-border-divider);
+}
+
+.rv-cdn-dash-btn-secondary:hover {
+    background-color: var(--rv-cdn-dash-content-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.rv-cdn-dash-btn-danger {
+    background-color: var(--rv-cdn-dash-danger);
+    color: white;
+    border-color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-btn-danger:hover {
+    background-color: var(--rv-cdn-dash-danger-hover);
+    border-color: var(--rv-cdn-dash-danger-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(var(--rv-cdn-dash-danger-rgb), 0.25);
+}
+
+.rv-cdn-dash-btn-outline {
+    background-color: transparent;
+    color: var(--rv-cdn-dash-primary);
+    border-color: var(--rv-cdn-dash-primary);
+}
+
+.rv-cdn-dash-btn-outline:hover {
+    background-color: var(--rv-cdn-dash-primary-light);
+    transform: translateY(-2px);
+}
+
+.rv-cdn-dash-btn-block {
+    display: flex;
+    width: 100%;
+}
+
+/* Maintenance Section */
+.rv-cdn-dash-maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.rv-cdn-dash-maintenance-card {
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    border-radius: var(--rv-cdn-dash-border-radius-lg);
+    padding: 1.25rem;
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-maintenance-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--rv-cdn-dash-shadow-sm);
+    background-color: var(--rv-cdn-dash-content-bg);
+}
+
+.rv-cdn-dash-maintenance-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.rv-cdn-dash-maintenance-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: var(--rv-cdn-dash-primary-light);
+    color: var(--rv-cdn-dash-primary);
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+.rv-cdn-dash-maintenance-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+    margin: 0.5rem 0 0 0;
+}
+
+.rv-cdn-dash-maintenance-desc {
+    color: var(--rv-cdn-dash-text-secondary);
+    font-size: 0.875rem;
+    margin: 0 0 1rem 0;
+    flex-grow: 1;
+}
+
+/* Modals */
+.rv-cdn-dash-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    animation: rv-cdn-dash-fade-in 0.3s ease;
+}
+
+.rv-cdn-dash-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background-color: var(--rv-cdn-dash-content-bg);
+    border-radius: var(--rv-cdn-dash-border-radius-lg);
+    box-shadow: var(--rv-cdn-dash-shadow-lg);
+    z-index: 1001;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    animation: rv-cdn-dash-scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    display: flex;
+    flex-direction: column;
+}
+
+.rv-cdn-dash-modal-lg {
+    max-width: 800px;
+}
+
+.rv-cdn-dash-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.rv-cdn-dash-modal-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--rv-cdn-dash-border-divider);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--rv-cdn-dash-subtle-bg);
+}
+
+.rv-cdn-dash-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-modal-close {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--rv-cdn-dash-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--rv-cdn-dash-transition);
+    font-size: 1rem;
+}
+
+.rv-cdn-dash-modal-close:hover {
+    background-color: var(--rv-cdn-dash-primary-light);
+    color: var(--rv-cdn-dash-primary);
+    transform: rotate(90deg);
+}
+
+.rv-cdn-dash-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.rv-cdn-dash-modal-footer {
+    padding: 1.25rem;
+    border-top: 1px solid var(--rv-cdn-dash-border-divider);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background-color: var(--rv-cdn-dash-subtle-bg);
+}
+
+/* Form Elements */
+.rv-cdn-dash-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.rv-cdn-dash-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    font-size: 0.875rem;
+    background-color: var(--rv-cdn-dash-content-bg);
+    color: var(--rv-cdn-dash-text-primary);
+    transition: var(--rv-cdn-dash-transition);
+}
+
+.rv-cdn-dash-input:focus {
+    outline: none;
+    border-color: var(--rv-cdn-dash-primary);
+    box-shadow: 0 0 0 3px rgba(var(--rv-cdn-dash-primary-rgb), 0.15);
+}
+
+.rv-cdn-dash-form-hint {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--rv-cdn-dash-text-muted);
+}
+
+/* Selected Files */
+.rv-cdn-dash-selected-files {
+    margin-top: 1.5rem;
+    background-color: var(--rv-cdn-dash-subtle-bg);
+    border-radius: var(--rv-cdn-dash-border-radius-md);
+    padding: 1rem;
+}
+
+.rv-cdn-dash-selected-files-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--rv-cdn-dash-text-primary);
+}
+
+.rv-cdn-dash-selected-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rv-cdn-dash-selected-file {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    border-radius: var(--rv-cdn-dash-border-radius-sm);
+    background-color: var(--rv-cdn-dash-content-bg);
+    border: 1px solid var(--rv-cdn-dash-border-divider);
+}
+
+.rv-cdn-dash-selected-file-icon {
+    color: var(--rv-cdn-dash-text-muted);
+}
+
+.rv-cdn-dash-selected-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.rv-cdn-dash-more-files {
+    color: var(--rv-cdn-dash-text-muted);
+    font-style: italic;
+    text-align: center;
+}
+
+/* Utilities */
+.rv-cdn-dash-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+}
+
+/* Animations */
+@@keyframes rv-cdn-dash-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@@keyframes rv-cdn-dash-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@@keyframes rv-cdn-dash-scale-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@@keyframes rv-cdn-dash-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive styles */
+@@media (max-width: 1200px) {
+    .rv-cdn-dash-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .rv-cdn-dash-maintenance-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@@media (max-width: 992px) {
+    .rv-cdn-dash-file-name {
+        max-width: 200px;
+    }
+}
+
+@@media (max-width: 768px) {
+    .rv-cdn-dash-container {
+        padding: 1rem;
+    }
+    
+    .rv-cdn-dash-card-header, 
+    .rv-cdn-dash-card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .rv-cdn-dash-search-wrapper {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .rv-cdn-dash-search-input-group,
+    .rv-cdn-dash-category-select {
+        width: 100%;
+    }
+    
+    .rv-cdn-dash-bulk-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .rv-cdn-dash-main-actions {
+        width: 100%;
+    }
+    
+    .rv-cdn-dash-main-actions .rv-cdn-dash-btn {
+        flex: 1;
+    }
+    
+    .rv-cdn-dash-card-footer > div:last-child {
+        width: 100%;
+    }
+    
+    .rv-cdn-dash-card-footer > div:last-child .rv-cdn-dash-btn {
+        width: 100%;
+    }
+    
+    .rv-cdn-dash-file-name {
+        max-width: 150px;
+    }
+    
+    .rv-cdn-dash-th-type {
+        display: none;
+    }
+    
+    .rv-cdn-dash-table td:nth-child(5) {
+        display: none;
+    }
+}
+
+@@media (max-width: 576px) {
+    .rv-cdn-dash-container {
+        padding: 0.75rem;
+    }
+    
+    .rv-cdn-dash-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .rv-cdn-dash-maintenance-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .rv-cdn-dash-title {
+        font-size: 1.5rem;
+    }
+    
+    .rv-cdn-dash-subtitle {
+        font-size: 0.875rem;
+    }
+    
+    .rv-cdn-dash-card-title {
+        font-size: 1.125rem;
+    }
+    
+    .rv-cdn-dash-breadcrumb {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .rv-cdn-dash-th-date {
+        display: none;
+    }
+    
+    .rv-cdn-dash-table td:nth-child(4) {
+        display: none;
+    }
+    
+    .rv-cdn-dash-modal {
+        width: 95%;
+    }
+    
+    .rv-cdn-dash-modal-footer {
+        flex-direction: column;
+    }
+    
+    .rv-cdn-dash-modal-footer .rv-cdn-dash-btn {
+        width: 100%;
+    }
+    
+    .rv-cdn-dash-file-name {
+        max-width: 120px;
+    }
+    
+    .rv-cdn-dash-action-group {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+}
+
+@@media (max-width: 400px) {
+    .rv-cdn-dash-container {
+        padding: 0.5rem;
+    }
+    
+    .rv-cdn-dash-stat-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .rv-cdn-dash-stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .rv-cdn-dash-breadcrumb-link, 
+    .rv-cdn-dash-breadcrumb-active {
+        padding: 0.25rem;
+    }
+    
+    .rv-cdn-dash-file-name {
+        max-width: 90px;
+    }
+    
+    .rv-cdn-dash-action-btn {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .rv-cdn-dash-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+    
+    .rv-cdn-dash-btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .rv-cdn-dash-th-size {
+        display: none;
+    }
+    
+    .rv-cdn-dash-table td:nth-child(3) {
+        display: none;
+    }
+}
+
+/* Special Badge Classes */
+.rv-cdn-dash-badge-video {
+    background-color: var(--rv-cdn-dash-danger-light);
+    color: var(--rv-cdn-dash-danger);
+}
+
+.rv-cdn-dash-badge-audio {
+    background-color: var(--rv-cdn-dash-warning-light);
+    color: var(--rv-cdn-dash-warning);
+}
+</style>
+
+
+
+@code {
+    // Dashboard data
+    private long totalStorageUsed = 0;
+    private int totalFileCount = 0;
+    private int storagePercentage = 0;
+    private Dictionary<string, CategoryStats> categoryStats = new();
+    private List<FileInfo> files = new();
+    private List<FolderInfo> folders = new();
+    private List<FolderInfo> allFolders = new();
+    private DateTime? lastUploadTime;
+    private string lastUploadedFile;
+    private bool isCdnOnline = false;
+    private bool isDirectAccessAvailable = false;
+    private string cdnBaseUrl;
+    private string apiKey;
+    private bool IsLoading { get; set; } = false;
+
+    // File manager state
+    private string selectedCategory = "documents";
+    private string currentFolder = "";
+    private string searchTerm = "";
+    private bool selectAllFiles = false;
+    private bool showFolders = true;
+
+    // UI dialog states
+    private bool showUploadDialog = false;
+    private bool showNewFolderDialog = false;
+    private bool showRenameFolderDialog = false;
+    private bool showRenameFileDialog = false;
+    private bool showPreviewDialog = false;
+    private bool showMoveDialog = false;
+
+    // Dialog input fields
+    private string newFolderName = "";
+    private string renameFolderName = "";
+    private string renameFileName = "";
+    private string targetMoveFolder = "";
+
+    // Selected items
+    private FileInfo selectedFile;
+    private FolderInfo selectedFolder;
+
+    // Available categories and file types
+    private List<string> availableCategories = new List<string> { "documents", "images", "hr", "weighbridge", "lab" };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            apiKey = CdnService.GetApiKey();
+            cdnBaseUrl = CdnService.GetCdnUrl("").TrimEnd('/');
+            isDirectAccessAvailable = CdnService.IsDirectAccessAvailable();
+
+            // Initialize category stats
+            categoryStats = new Dictionary<string, CategoryStats>();
+            foreach (var category in availableCategories)
+            {
+                categoryStats[category] = new CategoryStats { Category = category, FileCount = 0, StorageUsed = 0 };
+            }
+
+            await LoadDashboardData();
+        }
+
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            await CheckCdnStatus();
+            await LoadCategoryStats();
+            await LoadFiles();
+            
+            // Calculate totals from category stats
+            totalStorageUsed = categoryStats.Values.Sum(s => s.StorageUsed);
+            totalFileCount = categoryStats.Values.Sum(s => s.FileCount);
+            
+            // Calculate storage percentage (based on configured limit or mock value)
+            // Mock: 5% per GB used, capped at 100%
+            storagePercentage = Math.Min(100, (int)(totalStorageUsed / 1073741824 * 5));
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error loading dashboard data", ex.Message);
+        }
+    }
+
+    private async Task CheckCdnStatus()
+    {
+        try
+        {
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+            // Test connectivity to CDN base URL
+            var testUrl = $"{cdnBaseUrl}?key={apiKey}";
+            var response = await httpClient.GetAsync(testUrl);
+            isCdnOnline = response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            isCdnOnline = false;
+        }
+    }
+
+    private async Task LoadCategoryStats()
+    {
+        if (!isCdnOnline)
+            return;
+
+        try
+        {
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            // Reset stats
+            foreach (var category in categoryStats.Keys.ToList())
+            {
+                categoryStats[category].FileCount = 0;
+                categoryStats[category].StorageUsed = 0;
+            }
+
+            // Load stats for each category
+            foreach (var category in categoryStats.Keys.ToList())
+            {
+                var apiUrl = $"{baseUrl}/api/cdn/files?category={category}&key={apiKey}";
+                var response = await httpClient.GetAsync(apiUrl);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<FilesResponse>();
+                    
+                    if (result != null && result.success)
+                    {
+                        var files = result.files;
+                        categoryStats[category].FileCount = files.Count;
+                        categoryStats[category].StorageUsed = files.Sum(f => f.Size);
+
+                        // Update last upload time
+                        var mostRecentFile = files.OrderByDescending(f => f.UploadDate).FirstOrDefault();
+                        if (mostRecentFile != null)
+                        {
+                            var fileTime = mostRecentFile.UploadDate;
+                            if (!lastUploadTime.HasValue || fileTime > lastUploadTime.Value)
+                            {
+                                lastUploadTime = fileTime;
+                                lastUploadedFile = mostRecentFile.FileName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error loading category stats", ex.Message);
+        }
+    }
+
+    private async Task LoadFiles()
+    {
+        if (!isCdnOnline)
+            return;
+
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            // Prepare the API URL with current folder and search parameters
+            var apiUrl = $"{baseUrl}/api/cdn/files?category={selectedCategory}&key={apiKey}";
+            
+            if (!string.IsNullOrEmpty(currentFolder))
+            {
+                apiUrl += $"&folder={Uri.EscapeDataString(currentFolder)}";
+            }
+            
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                apiUrl += $"&search={Uri.EscapeDataString(searchTerm)}";
+                showFolders = false; // Don't show folders when searching
+            }
+            else
+            {
+                showFolders = true;
+            }
+
+            var response = await httpClient.GetAsync(apiUrl);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<FilesResponse>();
+                
+                if (result != null && result.success)
+                {
+                    // Update file list
+                    files = result.files.Select(f => new FileInfo
+                    {
+                        FileName = f.FileName,
+                        Url = f.Url,
+                        ContentType = f.ContentType,
+                        Size = f.Size,
+                        Category = f.Category,
+                        IsSelected = false,
+                        UploadDate = f.UploadDate
+                    }).ToList();
+
+                    // Update folder list if we're not searching
+                    if (showFolders)
+                    {
+                        folders = result.folders?.Select(f => new FolderInfo
+                        {
+                            Name = f.Name,
+                            Path = f.Path,
+                            ModifiedDate = f.ModifiedDate
+                        }).ToList() ?? new List<FolderInfo>();
+                    }
+                    else
+                    {
+                        folders.Clear();
+                    }
+
+                    // Load all available folders for move operation
+                    await LoadAllFolders();
+                }
+                else
+                {
+                    files.Clear();
+                    folders.Clear();
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Failed to load files", errorContent);
+                files.Clear();
+                folders.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error loading files", ex.Message);
+            files.Clear();
+            folders.Clear();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAllFolders()
+    {
+        try
+        {
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            // Call API to get all folders
+            var apiUrl = $"{baseUrl}/api/cdn/folders?category={selectedCategory}&key={apiKey}";
+            var response = await httpClient.GetAsync(apiUrl);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<FoldersResponse>();
+                
+                if (result != null && result.success)
+                {
+                    allFolders = result.folders.Select(f => new FolderInfo
+                    {
+                        Name = f.Name,
+                        Path = f.Path,
+                        ModifiedDate = f.ModifiedDate
+                    }).ToList();
+                }
+                else
+                {
+                    allFolders.Clear();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error loading all folders", ex.Message);
+            allFolders.Clear();
+        }
+    }
+
+    private async Task RefreshFiles()
+    {
+        await LoadFiles();
+    }
+
+    private async Task NavigateToFolder(string folderPath)
+    {
+        currentFolder = folderPath;
+        searchTerm = "";
+        await LoadFiles();
+    }
+
+    private async Task ChangeCategory(ChangeEventArgs e)
+    {
+        selectedCategory = e.Value.ToString();
+        currentFolder = "";
+        searchTerm = "";
+        await LoadFiles();
+    }
+
+    private async Task HandleSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchFiles();
+        }
+    }
+
+    private async Task SearchFiles()
+    {
+        await LoadFiles();
+    }
+
+    private void ToggleSelectAll()
+    {
+        foreach (var file in files)
+        {
+            file.IsSelected = selectAllFiles;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ViewFile(FileInfo file)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", file.Url, apiKey);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error viewing file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to view file. Please try again.");
+        }
+    }
+
+    private void PreviewFile(FileInfo file)
+    {
+        selectedFile = file;
+        showPreviewDialog = true;
+        StateHasChanged();
+    }
+
+    private void RenameFile(FileInfo file)
+    {
+        selectedFile = file;
+        renameFileName = Path.GetFileNameWithoutExtension(file.FileName);
+        showRenameFileDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task RenameFileConfirm()
+    {
+        if (selectedFile == null || string.IsNullOrWhiteSpace(renameFileName))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please enter a valid file name.");
+            return;
+        }
+
+        try
+        {
+            // Call API to rename file
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var requestData = new
+            {
+                Path = selectedFile.Url,
+                NewName = renameFileName
+            };
+
+            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/rename", requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<RenameResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Close dialog
+                    showRenameFileDialog = false;
+                    
+                    // Update local list with new filename
+                    var index = files.IndexOf(selectedFile);
+                    if (index >= 0)
+                    {
+                        files[index].FileName = Path.GetFileName(result.url);
+                        files[index].Url = result.url;
+                    }
+                    
+                    // Refresh selected file reference if preview is open
+                    if (showPreviewDialog && selectedFile != null)
+                    {
+                        selectedFile = files[index];
+                    }
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", "File renamed successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to rename file: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Rename failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to rename file. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error renaming file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while renaming the file. Please try again.");
+        }
+    }
+    private string GetBadgeClass(string contentType)
+    {
+        if (string.IsNullOrEmpty(contentType))
+            return "rv-cdn-dash-badge-other";
+
+        if (contentType.StartsWith("image/"))
+            return "rv-cdn-dash-badge-image";
+        if (contentType.Contains("pdf"))
+            return "rv-cdn-dash-badge-pdf";
+        if (contentType.Contains("word") || contentType.Contains("document"))
+            return "rv-cdn-dash-badge-document";
+        if (contentType.Contains("excel") || contentType.Contains("sheet"))
+            return "rv-cdn-dash-badge-spreadsheet";
+        if (contentType.StartsWith("video/"))
+            return "rv-cdn-dash-badge-video";
+        if (contentType.StartsWith("audio/"))
+            return "rv-cdn-dash-badge-audio";
+
+        return "rv-cdn-dash-badge-other";
+    }
+    private async Task DeleteFile(FileInfo file)
+    {
+        try
+        {
+            // Confirm deletion
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{file.FileName}'?");
+            if (!confirmed)
+                return;
+
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+            // Use full API URL with the API key in headers
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            var apiUrl = $"{baseUrl}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}";
+            var response = await httpClient.DeleteAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Remove from list
+                    files.Remove(file);
+                    
+                    // Close preview if open
+                    if (showPreviewDialog && selectedFile == file)
+                    {
+                        showPreviewDialog = false;
+                    }
+                    
+                    // Update stats
+                    if (categoryStats.ContainsKey(file.Category))
+                    {
+                        categoryStats[file.Category].FileCount--;
+                        categoryStats[file.Category].StorageUsed -= file.Size;
+                    }
+                    
+                    totalFileCount--;
+                    totalStorageUsed -= file.Size;
+                    storagePercentage = Math.Min(100, (int)(totalStorageUsed / 1073741824 * 5));
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete file: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Delete failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete file. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error deleting file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the file. Please try again.");
+        }
+    }
+
+    private async Task DeleteSelectedFiles()
+    {
+        var selectedFiles = files.Where(f => f.IsSelected).ToList();
+        if (!selectedFiles.Any())
+            return;
+
+        try
+        {
+            // Confirm deletion
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {selectedFiles.Count} files?");
+            if (!confirmed)
+                return;
+
+            // Create HTTP client and set API key
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            // Delete each file
+            foreach (var file in selectedFiles)
+            {
+                var apiUrl = $"{baseUrl}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}";
+                var response = await httpClient.DeleteAsync(apiUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+
+                    if (result != null && result.success)
+                    {
+                        // Remove from list
+                        files.Remove(file);
+                        
+                        // Update stats
+                        if (categoryStats.ContainsKey(file.Category))
+                        {
+                            categoryStats[file.Category].FileCount--;
+                            categoryStats[file.Category].StorageUsed -= file.Size;
+                        }
+                        
+                        totalFileCount--;
+                        totalStorageUsed -= file.Size;
+                    }
+                }
+            }
+            
+            // Update percentage
+            storagePercentage = Math.Min(100, (int)(totalStorageUsed / 1073741824 * 5));
+            
+            // Reset select all
+            selectAllFiles = false;
+            
+            StateHasChanged();
+            await JSRuntime.InvokeVoidAsync("alert", "Files deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error deleting files", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the files. Please try again.");
+        }
+    }
+
+    private void CreateNewFolder()
+    {
+        newFolderName = "";
+        showNewFolderDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task CreateFolder()
+    {
+        if (string.IsNullOrWhiteSpace(newFolderName))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please enter a valid folder name.");
+            return;
+        }
+
+        try
+        {
+            // Call API to create folder
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var folderPath = string.IsNullOrEmpty(currentFolder) 
+                ? newFolderName 
+                : $"{currentFolder.TrimEnd('/')}/{newFolderName}";
+
+            var requestData = new
+            {
+                Category = selectedCategory,
+                Path = folderPath
+            };
+
+            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/folder", requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<FolderResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Close dialog
+                    showNewFolderDialog = false;
+                    
+                    // Add to list
+                    folders.Add(new FolderInfo
+                    {
+                        Name = newFolderName,
+                        Path = result.path,
+                        ModifiedDate = DateTime.Now
+                    });
+                    
+                    // Sort folders
+                    folders = folders.OrderBy(f => f.Name).ToList();
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", "Folder created successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to create folder: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Folder creation failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to create folder. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error creating folder", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while creating the folder. Please try again.");
+        }
+    }
+
+    private void RenameFolder(FolderInfo folder)
+    {
+        selectedFolder = folder;
+        renameFolderName = folder.Name;
+        showRenameFolderDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task RenameFolderConfirm()
+    {
+        if (selectedFolder == null || string.IsNullOrWhiteSpace(renameFolderName))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please enter a valid folder name.");
+            return;
+        }
+
+        try
+        {
+            // Call API to rename folder
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var requestData = new
+            {
+                Category = selectedCategory,
+                Path = selectedFolder.Path,
+                NewName = renameFolderName
+            };
+
+            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/folder/rename", requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<FolderResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Close dialog
+                    showRenameFolderDialog = false;
+                    
+                    // Update in list
+                    var index = folders.IndexOf(selectedFolder);
+                    if (index >= 0)
+                    {
+                        folders[index].Name = renameFolderName;
+                        folders[index].Path = result.path;
+                    }
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", "Folder renamed successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to rename folder: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Folder rename failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to rename folder. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error renaming folder", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while renaming the folder. Please try again.");
+        }
+    }
+
+    private async Task DeleteFolder(FolderInfo folder)
+    {
+        try
+        {
+            // Confirm deletion
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete folder '{folder.Name}' and all its contents?");
+            if (!confirmed)
+                return;
+
+            // Call API to delete folder
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var apiUrl = $"{baseUrl}/api/cdn/folder?category={selectedCategory}&path={Uri.EscapeDataString(folder.Path)}";
+            var response = await httpClient.DeleteAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Remove from list
+                    folders.Remove(folder);
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", "Folder and its contents deleted successfully");
+                    
+                    // Refresh stats
+                    await LoadCategoryStats();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete folder: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Folder deletion failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete folder. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error deleting folder", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the folder. Please try again.");
+        }
+    }
+
+    private void MoveSelectedFiles()
+    {
+        var selectedFiles = files.Where(f => f.IsSelected).ToList();
+        if (!selectedFiles.Any())
+            return;
+
+        targetMoveFolder = "";
+        showMoveDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task MoveFilesConfirm()
+    {
+        var selectedFiles = files.Where(f => f.IsSelected).ToList();
+        if (!selectedFiles.Any())
+            return;
+
+        try
+        {
+            // Call API to move files
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var requestData = new
+            {
+                Category = selectedCategory,
+                Files = selectedFiles.Select(f => f.Url).ToList(),
+                TargetFolder = targetMoveFolder
+            };
+
+            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/move", requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MoveResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Close dialog
+                    showMoveDialog = false;
+                    
+                    // Remove moved files from list
+                    foreach (var file in selectedFiles)
+                    {
+                        files.Remove(file);
+                    }
+                    
+                    // Reset select all
+                    selectAllFiles = false;
+                    
+                    StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("alert", $"{selectedFiles.Count} files moved successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to move files: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Move failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to move files. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error moving files", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while moving the files. Please try again.");
+        }
+    }
+
+    private async Task DownloadSelectedFiles()
+    {
+        var selectedFiles = files.Where(f => f.IsSelected).ToList();
+        if (!selectedFiles.Any())
+            return;
+
+        // If only one file is selected, download it directly
+        if (selectedFiles.Count == 1)
+        {
+            await ViewFile(selectedFiles[0]);
+            return;
+        }
+
+        try
+        {
+            // Call API to create ZIP archive of selected files
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var requestData = new
+            {
+                Files = selectedFiles.Select(f => f.Url).ToList(),
+                ArchiveName = "download.zip"
+            };
+
+            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/archive", requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ArchiveResponse>();
+
+                if (result != null && result.success)
+                {
+                    // Download the archive
+                    await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", result.url, apiKey, true);
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to create download archive: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Archive creation failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to create download archive. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error creating download archive", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while creating the download archive. Please try again.");
+        }
+    }
+
+    private void HandleFileUploaded(CdnFileUpload.UploadedFileInfo uploadedFile)
+    {
+        // Add to list if in the same category and folder
+        if (uploadedFile.Category == selectedCategory && 
+            (string.IsNullOrEmpty(currentFolder) || uploadedFile.Url.Contains($"/{currentFolder}/")))
+        {
+            files.Add(new FileInfo
+            {
+                FileName = uploadedFile.FileName,
+                Url = uploadedFile.Url,
+                ContentType = uploadedFile.ContentType,
+                Size = uploadedFile.Size,
+                Category = uploadedFile.Category,
+                UploadDate = DateTime.Now,
+                IsSelected = false
+            });
+            
+            // Update stats
+            if (categoryStats.ContainsKey(uploadedFile.Category))
+            {
+                categoryStats[uploadedFile.Category].FileCount++;
+                categoryStats[uploadedFile.Category].StorageUsed += uploadedFile.Size;
+            }
+            
+            totalFileCount++;
+            totalStorageUsed += uploadedFile.Size;
+            storagePercentage = Math.Min(100, (int)(totalStorageUsed / 1073741824 * 5));
+            
+            // Update last upload info
+            lastUploadTime = DateTime.Now;
+            lastUploadedFile = uploadedFile.FileName;
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleFilesUploaded(List<CdnFileUpload.UploadedFileInfo> uploadedFiles)
+    {
+        // Refresh the file list
+        showUploadDialog = false;
+        await LoadFiles();
+        await LoadCategoryStats();
+    }
+
+    private void HandleFileDeleted(CdnFileUpload.UploadedFileInfo fileInfo)
+    {
+        // Remove from list if present
+        var fileToRemove = files.FirstOrDefault(f => f.Url == fileInfo.Url);
+        if (fileToRemove != null)
+        {
+            files.Remove(fileToRemove);
+            
+            // Update stats
+            if (categoryStats.ContainsKey(fileToRemove.Category))
+            {
+                categoryStats[fileToRemove.Category].FileCount--;
+                categoryStats[fileToRemove.Category].StorageUsed -= fileToRemove.Size;
+            }
+            
+            totalFileCount--;
+            totalStorageUsed -= fileToRemove.Size;
+            storagePercentage = Math.Min(100, (int)(totalStorageUsed / 1073741824 * 5));
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task CleanOrphanedFiles()
+    {
+        try
+        {
+            // Call API to clean orphaned files
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var response = await httpClient.PostAsync($"{baseUrl}/api/cdn/maintenance/clean", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MaintenanceResponse>();
+
+                if (result != null && result.success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Cleaned {result.count} orphaned files, freeing {FormatFileSize(result.bytesFreed)} of space");
+                    
+                    // Refresh stats
+                    await LoadCategoryStats();
+                    await LoadFiles();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to clean orphaned files: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Clean failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to clean orphaned files. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error cleaning orphaned files", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while cleaning orphaned files. Please try again.");
+        }
+    }
+
+    private async Task TestCdnConnectivity()
+    {
+        await CheckCdnStatus();
+        await JSRuntime.InvokeVoidAsync("alert", isCdnOnline 
+            ? "CDN connectivity test successful. The CDN is online and responding correctly." 
+            : "CDN connectivity test failed. Please check your CDN configuration and server status.");
+    }
+
+    private async Task OptimizeStorage()
+    {
+        try
+        {
+            // Call API to optimize storage
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var response = await httpClient.PostAsync($"{baseUrl}/api/cdn/maintenance/optimize", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MaintenanceResponse>();
+
+                if (result != null && result.success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Storage optimization completed. Optimized {result.count} files, saving {FormatFileSize(result.bytesFreed)} of space");
+                    
+                    // Refresh stats
+                    await LoadCategoryStats();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to optimize storage: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Optimization failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to optimize storage. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error optimizing storage", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while optimizing storage. Please try again.");
+        }
+    }
+
+    private async Task ClearCache()
+    {
+        try
+        {
+            // Call API to clear cache
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+            var response = await httpClient.PostAsync($"{baseUrl}/api/cdn/maintenance/clearcache", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MaintenanceResponse>();
+
+                if (result != null && result.success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "CDN cache cleared successfully");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to clear cache: {result?.message}");
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("console.error", "Cache clear failed", errorContent);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to clear cache. Server returned an error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error clearing cache", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while clearing cache. Please try again.");
+        }
+    }
+
+    private string GetCurrentPath()
+    {
+        return string.IsNullOrEmpty(currentFolder) ? $"/{selectedCategory}" : $"/{selectedCategory}/{currentFolder}";
+    }
+
+    private string GetFileTypeHint()
+    {
+        return selectedCategory switch
+        {
+            "images" => "Accepted file types: JPG, PNG, GIF, WEBP",
+            "documents" => "Accepted file types: PDF, DOC, DOCX, XLS, XLSX, CSV, TXT",
+            "hr" => "Accepted file types: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG",
+            "weighbridge" => "Accepted file types: PDF, XLS, XLSX, CSV, JPG, PNG",
+            "lab" => "Accepted file types: PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, PNG",
+            _ => "Accepted file types: JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, CSV, TXT"
+        };
+    }
+
+    private string GetAcceptedFileTypes()
+    {
+        return selectedCategory switch
+        {
+            "images" => ".jpg,.jpeg,.png,.gif,.webp,.svg",
+            "documents" => ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt",
+            "hr" => ".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png",
+            "weighbridge" => ".pdf,.xls,.xlsx,.csv,.jpg,.jpeg,.png",
+            "lab" => ".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png",
+            _ => ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+        };
+    }
+
+    private string GetFileTypeDisplay(string contentType)
+    {
+        var type = GetFileType(contentType);
+        return type;
+    }
+
+    private string GetFileType(string contentType)
+    {
+        if (string.IsNullOrEmpty(contentType))
+            return "Other";
+            
+        if (contentType.StartsWith("image/"))
+            return "Image";
+        if (contentType.Contains("pdf"))
+            return "PDF";
+        if (contentType.Contains("word") || contentType.Contains("document"))
+            return "Document";
+        if (contentType.Contains("excel") || contentType.Contains("sheet"))
+            return "Spreadsheet";
+        if (contentType.StartsWith("video/"))
+            return "Video";
+        if (contentType.StartsWith("audio/"))
+            return "Audio";
+            
+        return "Other";
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    public class CategoryStats
+    {
+        public string Category { get; set; }
+        public int FileCount { get; set; }
+        public long StorageUsed { get; set; }
+    }
+
+    public class FileInfo
+    {
+        public string FileName { get; set; }
+        public string Url { get; set; }
+        public string ContentType { get; set; }
+        public long Size { get; set; }
+        public string Category { get; set; }
+        public DateTime UploadDate { get; set; }
+        public bool IsSelected { get; set; }
+    }
+
+    public class FolderInfo
+    {
+        public string Name { get; set; }
+        public string Path { get; set; }
+        public DateTime ModifiedDate { get; set; }
+    }
+
+    private class FilesResponse
+    {
+        public bool success { get; set; }
+        public List<FileItem> files { get; set; }
+        public List<FolderItem> folders { get; set; }
+        public string message { get; set; }
+    }
+
+    private class FoldersResponse
+    {
+        public bool success { get; set; }
+        public List<FolderItem> folders { get; set; }
+        public string message { get; set; }
+    }
+
+    private class FileItem
+    {
+        public string FileName { get; set; }
+        public string Url { get; set; }
+        public string ContentType { get; set; }
+        public long Size { get; set; }
+        public string Category { get; set; }
+        public DateTime UploadDate { get; set; }
+    }
+
+    private class FolderItem
+    {
+        public string Name { get; set; }
+        public string Path { get; set; }
+        public DateTime ModifiedDate { get; set; }
+    }
+
+    private class DeleteResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+    }
+
+    private class RenameResponse
+    {
+        public bool success { get; set; }
+        public string url { get; set; }
+        public string message { get; set; }
+    }
+
+    private class FolderResponse
+    {
+        public bool success { get; set; }
+        public string path { get; set; }
+        public string message { get; set; }
+    }
+
+    private class MoveResponse
+    {
+        public bool success { get; set; }
+        public int count { get; set; }
+        public string message { get; set; }
+    }
+
+    private class ArchiveResponse
+    {
+        public bool success { get; set; }
+        public string url { get; set; }
+        public string message { get; set; }
+    }
+
+    private class MaintenanceResponse
+    {
+        public bool success { get; set; }
+        public int count { get; set; }
+        public long bytesFreed { get; set; }
+        public string message { get; set; }
+    }
+}

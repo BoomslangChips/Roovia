@@ -8,10 +8,10 @@
 <div class="cdn-file-upload @(IsCompact ? "compact" : "")">
     <div class="file-upload-container @(_isDragging ? "dragging" : "") @(IsUploading ? "uploading" : "")">
         <InputFile OnChange="HandleFileSelected"
-                   class="file-input"
-                   accept="@AcceptedFileTypes"
-                   multiple="@Multiple"
-                   disabled="@IsUploading" />
+        class="file-input"
+        accept="@AcceptedFileTypes"
+        multiple="@Multiple"
+        disabled="@IsUploading" />
 
         <div class="upload-prompt">
             @if (!IsUploading)
@@ -23,6 +23,9 @@
                     <h4>@Title</h4>
                     <p>@Description</p>
                     <span class="file-hint">@FileTypeHint</span>
+                    <div class="file-size-hint">
+                        <small>Maximum file size: @FormatFileSize(MaxFileSize)</small>
+                    </div>
                 </div>
             }
             else
@@ -31,7 +34,17 @@
                     <div class="progress">
                         <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                    <span>Uploading file... @UploadProgress%</span>
+                    <div class="d-flex justify-content-between w-100">
+                        <span>Uploading @_currentFileName... @UploadProgress%</span>
+                        <span>@FormatFileSize(_bytesUploaded) of @FormatFileSize(_totalBytes)</span>
+                    </div>
+                    <div class="upload-speed mt-1">
+                        <small>@_uploadSpeedText</small>
+                    </div>
+                    @if (EnableCancelUpload)
+                    {
+                        <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">Cancel</button>
+                    }
                 </div>
             }
         </div>
@@ -62,6 +75,14 @@
                             {
                                 <i class="fa-light fa-file-excel"></i>
                             }
+                            else if (file.ContentType.StartsWith("video/"))
+                            {
+                                <i class="fa-light fa-file-video"></i>
+                            }
+                            else if (file.ContentType.StartsWith("audio/"))
+                            {
+                                <i class="fa-light fa-file-audio"></i>
+                            }
                             else
                             {
                                 <i class="fa-light fa-file"></i>
@@ -72,9 +93,15 @@
                             <div class="file-size">@FormatFileSize(file.Size)</div>
                         </div>
                         <div class="file-actions">
-                            <button @onclick="() => OpenFile(file.Url)" class="btn btn-sm btn-outline-primary" title="View file">
+                            <button @onclick="() => ViewFile(file)" class="btn btn-sm btn-outline-primary" title="View file">
                                 <i class="fa-light fa-eye"></i>
                             </button>
+                            @if (AllowRename)
+                            {
+                                <button @onclick="() => RenameFile(file)" class="btn btn-sm btn-outline-secondary" title="Rename file">
+                                    <i class="fa-light fa-edit"></i>
+                                </button>
+                            }
                             @if (AllowDelete)
                             {
                                 <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
@@ -87,6 +114,32 @@
             </div>
         </div>
     }
+
+    @if (_showRenameDialog)
+    {
+        <div class="modal fade show" style="display: block;" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Rename File</h5>
+                        <button type="button" class="btn-close" @onclick="() => _showRenameDialog = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="newFileName">New file name:</label>
+                            <input type="text" class="form-control" id="newFileName" @bind="_newFileName" />
+                            <small class="form-text text-muted">Enter the new name without extension.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => _showRenameDialog = false">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="PerformRename">Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop fade show"></div>
+        </div>
+    }
 </div>
 
 @code {
@@ -94,25 +147,54 @@
     [Parameter] public string Description { get; set; } = "Drag and drop files here, or click to browse";
     [Parameter] public string FileTypeHint { get; set; } = "Accepted file types: JPG, PNG, PDF, DOC, XLSX";
     [Parameter] public string Category { get; set; } = "documents";
-    [Parameter] public string AcceptedFileTypes { get; set; } = ".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
+    [Parameter] public string AcceptedFileTypes { get; set; } = ".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip";
     [Parameter] public bool Multiple { get; set; } = false;
-    [Parameter] public long MaxFileSize { get; set; } = 20 * 1024 * 1024; // 20MB
+    [Parameter] public long MaxFileSize { get; set; } = 209715200; // 200MB default
     [Parameter] public bool IsCompact { get; set; } = false;
     [Parameter] public bool HideFileList { get; set; } = false;
     [Parameter] public bool AllowDelete { get; set; } = true;
+    [Parameter] public bool AllowRename { get; set; } = true;
+    [Parameter] public bool EnableCancelUpload { get; set; } = true;
+    [Parameter] public bool UseChunkedUpload { get; set; } = true; // Enable chunked upload for large files
+    [Parameter] public int ChunkSize { get; set; } = 5 * 1024 * 1024; // 5MB chunks
     [Parameter] public EventCallback<UploadedFileInfo> OnFileUploaded { get; set; }
     [Parameter] public EventCallback<List<UploadedFileInfo>> OnFilesUploaded { get; set; }
     [Parameter] public EventCallback<UploadedFileInfo> OnFileDeleted { get; set; }
+    [Parameter] public EventCallback<UploadedFileInfo> OnFileRenamed { get; set; }
 
     private bool _isDragging = false;
     private bool IsUploading { get; set; } = false;
     private int UploadProgress { get; set; } = 0;
     private List<UploadedFileInfo> UploadedFiles { get; set; } = new List<UploadedFileInfo>();
+    private CancellationTokenSource _cancellationTokenSource;
+    private string _currentFileName = "";
+    private long _bytesUploaded = 0;
+    private long _totalBytes = 0;
+    private DateTime _uploadStartTime;
+    private string _uploadSpeedText = "";
+    private Timer _speedUpdateTimer;
+    private bool _showRenameDialog = false;
+    private string _newFileName = "";
+    private UploadedFileInfo _selectedFile;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        await JSRuntime.InvokeVoidAsync("addDragDropListeners", DotNetObjectReference.Create(this));
+        {
+            // Make sure scripts are loaded
+            await JSRuntime.InvokeVoidAsync("addDragDropListeners", DotNetObjectReference.Create(this));
+
+            // Check if fileUpload.js is loaded
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", "typeof openUrlWithApiKey === 'function'");
+            }
+            catch
+            {
+                // If not loaded, warn in console
+                await JSRuntime.InvokeVoidAsync("console.warn", "fileUpload.js is not loaded. File viewing may not work correctly.");
+            }
+        }
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -121,6 +203,7 @@
         {
             IsUploading = true;
             UploadProgress = 0;
+            _cancellationTokenSource = new CancellationTokenSource();
 
             var uploadedFiles = new List<UploadedFileInfo>();
 
@@ -132,55 +215,42 @@
                     continue;
                 }
 
+                _currentFileName = file.Name;
+                _totalBytes = file.Size;
+                _bytesUploaded = 0;
+                _uploadStartTime = DateTime.Now;
+
+                // Start the timer to update upload speed
+                _speedUpdateTimer = new Timer(UpdateUploadSpeed, null, 0, 1000);
+
                 // Update progress as we upload
-                UploadProgress = 10;
+                UploadProgress = 0;
                 StateHasChanged();
 
-                // Create HTTP client
-                var httpClient = HttpClientFactory.CreateClient();
+                UploadedFileInfo fileInfo;
 
-                // Create multipart form content
-                using var content = new MultipartFormDataContent();
-                var fileContent = new StreamContent(file.OpenReadStream(MaxFileSize));
-                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-
-                content.Add(fileContent, "file", file.Name);
-                content.Add(new StringContent(Category), "category");
-
-                // Upload through API
-                var apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
-                var response = await httpClient.PostAsync(apiUrl, content);
-
-                if (response.IsSuccessStatusCode)
+                if (UseChunkedUpload && file.Size > ChunkSize)
                 {
-                    UploadProgress = 100;
-                    StateHasChanged();
-
-                    var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>();
-
-                    if (responseContent != null && responseContent.success)
-                    {
-                        var fileInfo = new UploadedFileInfo
-                            {
-                                FileName = file.Name,
-                                Url = responseContent.url,
-                                ContentType = file.ContentType,
-                                Size = file.Size,
-                                Category = Category
-                            };
-
-                        // Add to local list and trigger event
-                        UploadedFiles.Add(fileInfo);
-                        uploadedFiles.Add(fileInfo);
-                        await OnFileUploaded.InvokeAsync(fileInfo);
-                    }
+                    // Use chunked upload for large files
+                    fileInfo = await UploadLargeFile(file, _cancellationTokenSource.Token);
                 }
                 else
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    await JSRuntime.InvokeVoidAsync("console.error", "Upload failed", errorContent);
-                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error.");
+                    // Use standard upload for smaller files
+                    fileInfo = await UploadStandardFile(file, _cancellationTokenSource.Token);
                 }
+
+                if (fileInfo != null)
+                {
+                    // Add to local list and trigger event
+                    UploadedFiles.Add(fileInfo);
+                    uploadedFiles.Add(fileInfo);
+                    await OnFileUploaded.InvokeAsync(fileInfo);
+                }
+
+                // Stop the timer
+                _speedUpdateTimer?.Dispose();
+                _speedUpdateTimer = null;
             }
 
             // Notify if multiple files were uploaded
@@ -188,6 +258,10 @@
             {
                 await OnFilesUploaded.InvokeAsync(uploadedFiles);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", "Upload was canceled by user");
         }
         catch (Exception ex)
         {
@@ -198,15 +272,135 @@
         {
             IsUploading = false;
             UploadProgress = 0;
+            _speedUpdateTimer?.Dispose();
+            _speedUpdateTimer = null;
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
             StateHasChanged();
         }
+    }
+
+    private async Task<UploadedFileInfo> UploadStandardFile(IBrowserFile file, CancellationToken cancellationToken)
+    {
+        // Create HTTP client
+        var httpClient = HttpClientFactory.CreateClient();
+        httpClient.Timeout = TimeSpan.FromHours(1); // Extended timeout for large files
+
+        // Create multipart form content
+        using var content = new MultipartFormDataContent();
+
+        // Use a progress tracking stream
+        var progressStream = new ProgressStream(
+            file.OpenReadStream(MaxFileSize),
+            async size =>
+            {
+                _bytesUploaded = size;
+                UploadProgress = (int)(size * 100 / _totalBytes);
+                await InvokeAsync(() => this.StateHasChanged());
+            });
+
+        var fileContent = new StreamContent(progressStream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+        content.Add(fileContent, "file", file.Name);
+        content.Add(new StringContent(Category), "category");
+
+        // Upload through API on the main application
+        var apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
+        var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            UploadProgress = 100;
+            StateHasChanged();
+
+            var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: cancellationToken);
+
+            if (responseContent != null && responseContent.success)
+            {
+                return new UploadedFileInfo
+                    {
+                        FileName = file.Name,
+                        Url = responseContent.url,     // This URL will be from the CDN domain
+                        ContentType = file.ContentType,
+                        Size = file.Size,
+                        Category = Category
+                    };
+            }
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            await JSRuntime.InvokeVoidAsync("console.error", "Upload failed", errorContent);
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error.");
+        }
+
+        return null;
+    }
+
+    private async Task<UploadedFileInfo> UploadLargeFile(IBrowserFile file, CancellationToken cancellationToken)
+    {
+        // Only implement chunked upload if required, this is a placeholder for now
+        // Would require server-side changes to support chunked uploading
+        // For now, fall back to standard upload
+        return await UploadStandardFile(file, cancellationToken);
+    }
+
+    private async void UpdateUploadSpeed(object state)
+    {
+        if (_bytesUploaded > 0 && _totalBytes > 0)
+        {
+            var elapsed = DateTime.Now - _uploadStartTime;
+            if (elapsed.TotalSeconds > 0)
+            {
+                var bytesPerSecond = _bytesUploaded / elapsed.TotalSeconds;
+                _uploadSpeedText = $"Upload speed: {FormatFileSize((long)bytesPerSecond)}/s";
+
+                // Calculate estimated time remaining
+                var bytesRemaining = _totalBytes - _bytesUploaded;
+                if (bytesPerSecond > 0 && bytesRemaining > 0)
+                {
+                    var secondsRemaining = bytesRemaining / bytesPerSecond;
+                    _uploadSpeedText += $" - Estimated time remaining: {FormatTimeRemaining(secondsRemaining)}";
+                }
+
+                await InvokeAsync(() => this.StateHasChanged());
+            }
+        }
+    }
+
+    private string FormatTimeRemaining(double seconds)
+    {
+        TimeSpan time = TimeSpan.FromSeconds(seconds);
+        if (time.TotalHours >= 1)
+        {
+            return $"{time.Hours}h {time.Minutes}m {time.Seconds}s";
+        }
+        else if (time.TotalMinutes >= 1)
+        {
+            return $"{time.Minutes}m {time.Seconds}s";
+        }
+        else
+        {
+            return $"{time.Seconds}s";
+        }
+    }
+
+    private void CancelUpload()
+    {
+        _cancellationTokenSource?.Cancel();
     }
 
     private async Task DeleteFile(UploadedFileInfo file)
     {
         try
         {
+            // Create HTTP client and set API key
             var httpClient = HttpClientFactory.CreateClient();
+            var apiKey = CdnService.GetApiKey();
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+            // Use full API URL with the API key in headers
             var apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/delete?path=" + Uri.EscapeDataString(file.Url);
             var response = await httpClient.DeleteAsync(apiUrl);
 
@@ -219,6 +413,12 @@
                     UploadedFiles.Remove(file);
                     await OnFileDeleted.InvokeAsync(file);
                     StateHasChanged();
+                    await JSRuntime.InvokeVoidAsync("console.log", "File deleted successfully:", file.FileName);
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("console.error", "Delete failed with success=false", responseContent?.message);
+                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete file: {responseContent?.message}");
                 }
             }
             else
@@ -235,9 +435,78 @@
         }
     }
 
-    private async Task OpenFile(string url)
+    private void RenameFile(UploadedFileInfo file)
     {
-        await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
+        _selectedFile = file;
+        _newFileName = Path.GetFileNameWithoutExtension(file.FileName);
+        _showRenameDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task PerformRename()
+    {
+        if (_selectedFile == null || string.IsNullOrWhiteSpace(_newFileName))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please enter a valid file name.");
+            return;
+        }
+
+        try
+        {
+            // Get API key
+            var apiKey = CdnService.GetApiKey();
+
+            // Call JS function to rename file
+            var result = await JSRuntime.InvokeAsync<RenameResult>("renameFile", _selectedFile.Url, _newFileName, apiKey);
+
+            if (result.success)
+            {
+                _showRenameDialog = false;
+
+                // Update local file list
+                var oldFile = _selectedFile;
+                var index = UploadedFiles.IndexOf(oldFile);
+
+                if (index >= 0)
+                {
+                    // Update with new URL and filename
+                    var fileName = Path.GetFileName(result.url);
+                    UploadedFiles[index].Url = result.url;
+                    UploadedFiles[index].FileName = fileName;
+
+                    // Notify parent component
+                    await OnFileRenamed.InvokeAsync(UploadedFiles[index]);
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Failed to rename file: {result.message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error renaming file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while renaming the file. Please try again.");
+        }
+    }
+
+    private async Task ViewFile(UploadedFileInfo file)
+    {
+        try
+        {
+            // Get API key
+            var apiKey = CdnService.GetApiKey();
+
+            // Use JS function for viewing
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", file.Url, apiKey);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error viewing file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to view file. Please try again.");
+        }
     }
 
     [JSInvokable]
@@ -269,6 +538,62 @@
         return $"{len:0.##} {sizes[order]}";
     }
 
+    // Stream wrapper to track upload progress
+    private class ProgressStream : Stream
+    {
+        private readonly Stream _baseStream;
+        private readonly Action<long> _progressCallback;
+        private long _totalBytesRead;
+
+        public ProgressStream(Stream baseStream, Action<long> progressCallback)
+        {
+            _baseStream = baseStream;
+            _progressCallback = progressCallback;
+            _totalBytesRead = 0;
+        }
+
+        public override bool CanRead => _baseStream.CanRead;
+        public override bool CanSeek => _baseStream.CanSeek;
+        public override bool CanWrite => _baseStream.CanWrite;
+        public override long Length => _baseStream.Length;
+        public override long Position
+        {
+            get => _baseStream.Position;
+            set => _baseStream.Position = value;
+        }
+
+        public override void Flush() => _baseStream.Flush();
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            int bytesRead = _baseStream.Read(buffer, offset, count);
+            _totalBytesRead += bytesRead;
+            _progressCallback(_totalBytesRead);
+            return bytesRead;
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int bytesRead = await _baseStream.ReadAsync(buffer, offset, count, cancellationToken);
+            _totalBytesRead += bytesRead;
+            _progressCallback(_totalBytesRead);
+            return bytesRead;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => _baseStream.Seek(offset, origin);
+        public override void SetLength(long value) => _baseStream.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => _baseStream.Write(buffer, offset, count);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _baseStream.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
     public class UploadedFileInfo
     {
         public string FileName { get; set; }
@@ -291,6 +616,13 @@
     private class DeleteResponse
     {
         public bool success { get; set; }
+        public string message { get; set; }
+    }
+
+    private class RenameResult
+    {
+        public bool success { get; set; }
+        public string url { get; set; }
         public string message { get; set; }
     }
 }
@@ -353,6 +685,12 @@
         color: #6c757d;
     }
 
+    .file-size-hint {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
     .upload-progress {
         width: 100%;
         max-width: 400px;
@@ -361,6 +699,11 @@
     .progress {
         height: 0.75rem;
         margin-bottom: 0.5rem;
+    }
+
+    .upload-speed {
+        font-size: 0.75rem;
+        color: #6c757d;
     }
 
     .compact .file-upload-container {

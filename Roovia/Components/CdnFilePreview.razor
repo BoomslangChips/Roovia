@@ -1,0 +1,281 @@
+﻿@using Roovia.Interfaces
+@using System.Threading.Tasks
+@inject ICdnService CdnService
+@inject IJSRuntime JSRuntime
+
+<div class="cdn-file-preview">
+    @if (IsLoading)
+    {
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading preview...</p>
+        </div>
+    }
+    else if (string.IsNullOrEmpty(FileUrl))
+    {
+        <div class="text-center p-4">
+            <p class="text-muted">No file selected for preview.</p>
+        </div>
+    }
+    else
+    {
+        <div class="preview-container">
+            @if (IsImage)
+            {
+                <div class="image-preview">
+                    <img src="@FileUrlWithKey" alt="@FileName" class="img-fluid" />
+                </div>
+            }
+            else if (IsPdf)
+            {
+                <div class="pdf-preview">
+                    <div class="ratio ratio-16x9">
+                        <iframe src="@FileUrlWithKey" allowfullscreen></iframe>
+                    </div>
+                </div>
+            }
+            else if (IsVideo)
+            {
+                <div class="video-preview">
+                    <div class="ratio ratio-16x9">
+                        <video controls>
+                            <source src="@FileUrlWithKey" type="@ContentType">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+            }
+            else if (IsAudio)
+            {
+                <div class="audio-preview">
+                    <audio controls class="w-100">
+                        <source src="@FileUrlWithKey" type="@ContentType">
+                        Your browser does not support the audio tag.
+                    </audio>
+                </div>
+            }
+            else if (IsText)
+            {
+                @if (TextContent != null)
+                {
+                    <div class="text-preview">
+                        <pre class="text-preview-content">@TextContent</pre>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center p-4">
+                        <button @onclick="LoadTextContent" class="btn btn-primary">Load Text Content</button>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="generic-preview text-center">
+                    <div class="file-icon mb-3">
+                        @if (ContentType?.Contains("word") == true)
+                        {
+                            <i class="fa-light fa-file-word fa-4x text-primary"></i>
+                        }
+                        else if (ContentType?.Contains("excel") == true || ContentType?.Contains("sheet") == true)
+                        {
+                            <i class="fa-light fa-file-excel fa-4x text-success"></i>
+                        }
+                        else if (ContentType?.Contains("zip") == true || ContentType?.Contains("archive") == true)
+                        {
+                            <i class="fa-light fa-file-archive fa-4x text-warning"></i>
+                        }
+                        else
+                        {
+                            <i class="fa-light fa-file fa-4x text-secondary"></i>
+                        }
+                    </div>
+                    <h4>@FileName</h4>
+                    <p>@FormatFileSize(FileSize)</p>
+                    <p class="text-muted">Preview not available for this file type.</p>
+                    <button @onclick="DownloadFile" class="btn btn-primary mt-2">
+                        <i class="fa-light fa-download me-2"></i>Download File
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div class="preview-actions mt-3 d-flex justify-content-between">
+            <div>
+                <h5>@FileName</h5>
+                <p class="text-muted mb-0">@FormatFileSize(FileSize)</p>
+            </div>
+            <div>
+                <button @onclick="DownloadFile" class="btn btn-primary">
+                    <i class="fa-light fa-download me-2"></i>Download
+                </button>
+                @if (EnableRename && OnRename.HasDelegate)
+                {
+                    <button @onclick="RenameFile" class="btn btn-outline-secondary ms-2">
+                        <i class="fa-light fa-edit me-2"></i>Rename
+                    </button>
+                }
+                @if (EnableDelete && OnDelete.HasDelegate)
+                {
+                    <button @onclick="DeleteFile" class="btn btn-outline-danger ms-2">
+                        <i class="fa-light fa-trash me-2"></i>Delete
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string FileUrl { get; set; }
+    [Parameter] public string FileName { get; set; }
+    [Parameter] public string ContentType { get; set; }
+    [Parameter] public long FileSize { get; set; }
+    [Parameter] public bool EnableRename { get; set; } = true;
+    [Parameter] public bool EnableDelete { get; set; } = true;
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnRename { get; set; }
+
+    private bool IsLoading { get; set; } = false;
+    private string ApiKey { get; set; }
+    private string FileUrlWithKey => string.IsNullOrEmpty(FileUrl) ? "" : $"{FileUrl}{(FileUrl.Contains("?") ? "&" : "?")}key={ApiKey}";
+    private string TextContent { get; set; }
+
+    private bool IsImage => ContentType?.StartsWith("image/") ?? false;
+    private bool IsPdf => ContentType?.Contains("pdf") ?? false;
+    private bool IsVideo => ContentType?.StartsWith("video/") ?? false;
+    private bool IsAudio => ContentType?.StartsWith("audio/") ?? false;
+    private bool IsText => ContentType?.StartsWith("text/") ?? false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiKey = CdnService.GetApiKey();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reset text content when file changes
+        if (IsText)
+        {
+            TextContent = null;
+        }
+    }
+
+    private async Task LoadTextContent()
+    {
+        if (!IsText || string.IsNullOrEmpty(FileUrl))
+            return;
+
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            // Use our JavaScript helper function to fetch the text content
+            TextContent = await JSRuntime.InvokeAsync<string>("fetchTextContent", FileUrlWithKey);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error loading text content", ex.Message);
+            TextContent = "Error loading text content. Please try downloading the file instead.";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFile()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", FileUrl, ApiKey, true);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", "Error downloading file", ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to download file. Please try again.");
+        }
+    }
+
+    private async Task RenameFile()
+    {
+        await OnRename.InvokeAsync();
+    }
+
+    private async Task DeleteFile()
+    {
+        await OnDelete.InvokeAsync();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+
+<style>
+    .cdn-file-preview {
+        margin-bottom: 1.5rem;
+    }
+
+    .preview-container {
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+        background-color: #f8f9fa;
+    }
+
+    .image-preview {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        background-color: #ffffff;
+    }
+
+        .image-preview img {
+            max-height: 500px;
+            object-fit: contain;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+    .pdf-preview, .video-preview {
+        min-height: 500px;
+    }
+
+    .text-preview {
+        padding: 1rem;
+        max-height: 500px;
+        overflow-y: auto;
+        background-color: #ffffff;
+    }
+
+    .text-preview-content {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
+
+    .generic-preview {
+        padding: 3rem;
+    }
+
+    .file-icon {
+        margin-bottom: 1rem;
+    }
+</style>

@@ -22,6 +22,14 @@ namespace Roovia.Data
 
         public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
         public DbSet<UserPermissionOverride> UserPermissionOverrides { get; set; }
+
+
+        public DbSet<Roovia.Models.CDN.CdnConfiguration> CdnConfigurations { get; set; }
+        public DbSet<Roovia.Models.CDN.CdnApiKey> CdnApiKeys { get; set; }
+        public DbSet<Roovia.Models.CDN.CdnUsageStatistic> CdnUsageStatistics { get; set; }
+        public DbSet<Roovia.Models.CDN.CdnFileMetadata> CdnFileMetadata { get; set; }
+        public DbSet<Roovia.Models.CDN.CdnAccessLog> CdnAccessLogs { get; set; }
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
@@ -187,6 +195,12 @@ namespace Roovia.Data
             modelBuilder.Entity<Role>().ToTable("Roles");
             modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
             modelBuilder.Entity<UserRoleAssignment>().ToTable("UserRoleAssignments");
+            // Configure CDN entities
+            modelBuilder.Entity<Roovia.Models.CDN.CdnConfiguration>().ToTable("CdnConfigurations");
+            modelBuilder.Entity<Roovia.Models.CDN.CdnApiKey>().ToTable("CdnApiKeys");
+            modelBuilder.Entity<Roovia.Models.CDN.CdnUsageStatistic>().ToTable("CdnUsageStatistics");
+            modelBuilder.Entity<Roovia.Models.CDN.CdnFileMetadata>().ToTable("CdnFileMetadata");
+            modelBuilder.Entity<Roovia.Models.CDN.CdnAccessLog>().ToTable("CdnAccessLogs");
 
         }
     }
