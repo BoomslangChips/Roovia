@@ -1,0 +1,154 @@
+@using Roovia.Interfaces
+@using Roovia.Models
+@using Roovia.Models.Tenants
+@using Roovia.Models.Users
+@using Roovia.Services
+@using System.Globalization
+
+@rendermode InteractiveServer
+@page "/createtenant"
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user-plus" IsVisible="@IsVisible" Size="ModalSize.Medium">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <!-- Tenant Details Section -->
+                <div class="roovia-panel mb-4">
+                    <div class="roovia-panel-header">
+                        <h5 class="roovia-panel-title"><i class="fas fa-user me-2"></i>Tenant Details</h5>
+                    </div>
+                    <div class="roovia-panel-body">
+                        <div class="mb-3">
+                            <RVTextbox Label="First Name"
+                                       Value="@Tenant.FirstName"
+                                       @onchange="(e => Tenant.FirstName = e.Value?.ToString())"
+                                       Placeholder="Enter first name">
+                            </RVTextbox>
+                        </div>
+                        <div class="mb-3">
+                            <RVTextbox Label="Last Name"
+                                       Value="@Tenant.LastName"
+                                       @onchange="(e => Tenant.LastName = e.Value?.ToString())"
+                                       Placeholder="Enter last name">
+                            </RVTextbox>
+                        </div>
+                        <div class="mb-3">
+                            <RVTextbox Label="Email"
+                                       Value="@Tenant.Email"
+                                       @onchange="(e => Tenant.Email = e.Value?.ToString())"
+                                       Placeholder="Enter email address">
+                            </RVTextbox>
+                        </div>
+                        <div class="mb-3">
+                            <RVTextbox Label="Phone Number"
+                                       Value="@Tenant.PhoneNumber"
+                                       @onchange="(e => Tenant.PhoneNumber = e.Value?.ToString())"
+                                       Placeholder="Enter phone number">
+                            </RVTextbox>
+                        </div>
+                        <div class="mb-3">
+                            <RVCheckbox Label="Is Active"
+                                        Value="@Tenant.IsActive"
+                                        @onchange="(e => Tenant.IsActive = (bool)e.Value)">
+                            </RVCheckbox>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (Tenant.Id != 0)
+                {
+                    <span class="text-muted">ID: @Tenant.Id</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="SaveTenant">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter]
+    public ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+
+    [Parameter]
+    public Tenant Tenant { get; set; } = new Tenant();
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public ITenantService TenantService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    bool IsVisible = true;
+
+    private async Task SaveTenant()
+    {
+        try
+        {
+            // Assign created by using the current user
+            Tenant.CreatedBy = CurrentUser.Id;
+            Tenant.UpdatedBy = CurrentUser.Id;
+            Tenant.CreatedOn = DateTime.UtcNow;
+            Tenant.UpdatedOn = DateTime.UtcNow;
+
+            var response = await TenantService.CreateTenant(Tenant);
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error!");
+            }
+            else
+            {
+                Tenant = response.Response as Tenant;
+                ToastService.ShowSuccess(response.ResponseInfo.Message, "Success!");
+                await CloseModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    .rv-modal-custom {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    .roovia-panel {
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-divider);
+        overflow: hidden;
+        transition: var(--card-transition);
+    }
+    .roovia-panel-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+    .roovia-panel-body {
+        padding: 1.5rem;
+    }
+</style>

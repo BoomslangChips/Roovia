@@ -8,7 +8,7 @@ namespace Roovia.Interfaces
     {
         Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner);
 
-        Task<ResponseModel> GetPropertyById(int companyId, int id);
+        Task<ResponseModel> GetPropertyOwnerById(int companyId, int id);
 
         Task<ResponseModel> UpdatePropertyOwner(int id, PropertyOwner updatedPropertyOwner);
 

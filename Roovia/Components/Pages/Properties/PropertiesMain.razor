@@ -109,10 +109,10 @@
                                         }
 
                                         <div class="d-flex justify-content-between mt-3">
-                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewProperty(property.Id)">
+                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewProperty(property)">
                                                 <i class="bi bi-eye me-1"></i> View
                                             </button>
-                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditProperty(property.Id)">
+                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditProperty(property)">
                                                 <i class="bi bi-pencil me-1"></i> Edit
                                             </button>
                                         </div>
@@ -134,6 +134,24 @@
     </CascadingValue>
 }
 
+@if (viewPropertyModal)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="Property" Value="selectedProperty">
+            <Roovia.Components.Pages.Properties.ViewPropertyModal OnModalClosed="ViewPropertyClosed"></Roovia.Components.Pages.Properties.ViewPropertyModal>
+        </CascadingValue>
+    </CascadingValue>
+}
+
+@if (editPropertyModal)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="Property" Value="selectedProperty">
+            <Roovia.Components.Pages.Properties.EditPropertyModal OnModalClosed="EditPropertyClosed"></Roovia.Components.Pages.Properties.EditPropertyModal>
+        </CascadingValue>
+    </CascadingValue>
+}
+
 @code {
     [CascadingParameter]
     private ApplicationUser? CurrentUser { get; set; }
@@ -145,8 +163,11 @@
     private string filterOption = "All";
     private string sortOption = "AddressAsc";
     bool showAddPropertyModal = false;
+    bool viewPropertyModal = false;
+    public Property selectedProperty = new();
+    bool editPropertyModal = false;
 
-            protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (CurrentUser == null)
         {
@@ -181,7 +202,7 @@
                 ApplyFiltersAndSort();
             }
         }
-      
+
 
         isLoading = false;
     }
@@ -261,14 +282,30 @@
     }
 
     // Navigation methods
-    private void ViewProperty(int id)
+    private async Task ViewProperty(Property property)
     {
-        // Navigate to property details
+        selectedProperty = property;
+        viewPropertyModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void EditProperty(int id)
+    private async Task ViewPropertyClosed()
     {
-        // Navigate to property edit
+        viewPropertyModal = false;
+        await InvokeAsync(() => this.StateHasChanged());
+    }
+
+    private async Task EditProperty(Property property)
+    {
+        selectedProperty = property;
+        editPropertyModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
+    }
+
+    private async Task EditPropertyClosed()
+    {
+        editPropertyModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private void AddNewProperty()
