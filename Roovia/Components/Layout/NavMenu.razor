@@ -1,6 +1,8 @@
 ﻿@using Roovia.Models.Users
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject Roovia.Interfaces.IPermissionService PermissionService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="roovia-nav-header">
     <div class="roovia-nav-brand">
@@ -8,86 +10,280 @@
     </div>
 </div>
 
-
-
 <div class="roovia-nav-menu" id="roovia-nav-menu">
+    <!-- Dashboard Section - Available to everyone -->
     <div class="roovia-nav-section">
         <div class="roovia-nav-section-title">
-        <span class="roovia-nav-section-title-full">Management</span>
-        <span class="roovia-nav-section-title-abbreviated">Manage</span>
+            <span class="roovia-nav-section-title-full">Dashboard</span>
+            <span class="roovia-nav-section-title-abbreviated">Dash</span>
         </div>
         <div class="roovia-nav-links">
             <NavLink class="roovia-nav-link" href="" Match="NavLinkMatch.All" title="Dashboard">
                 <i class="fal fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </NavLink>
-
-            <NavLink class="roovia-nav-link" href="tenants" title="Tenants">
-                <i class="fal fa-people-roof"></i>
-                <span>Tenants</span>
-            </NavLink>
-
-            <NavLink class="roovia-nav-link" href="properties" title="Properties">
-                <i class="fal fa-house"></i>
-                <span>Properties</span>
-                <span class="roovia-nav-badge">12</span>
-            </NavLink>
-
-            <NavLink class="roovia-nav-link" href="beneficiaries" title="Owners">
-                <i class="fal fa-users"></i>
-                <span>Owners</span>
-            </NavLink>
         </div>
     </div>
 
-    <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">
-        <span class="roovia-nav-section-title-full">Administration</span>
-        <span class="roovia-nav-section-title-abbreviated">Admin</span>
-        </div>
-        <div class="roovia-nav-links">
-            <NavLink class="roovia-nav-link" href="users" title="Users">
-                <i class="fal fa-people-group"></i>
-                <span>Users</span>
-            </NavLink>
-
-            <Roovia.Security.PermissionAuthorizeView Permission="settings.permissions">
-                <NavLink class="roovia-nav-link" href="admin/roles" title="Role Management">
-                    <i class="fal fa-shield-check"></i>
-                    <span>Role Management</span>
+    <!-- Property Management Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="properties">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Property Management</span>
+                <span class="roovia-nav-section-title-abbreviated">Properties</span>
+            </div>
+            <div class="roovia-nav-links">
+                <NavLink class="roovia-nav-link" href="properties" title="Properties">
+                    <i class="fal fa-house"></i>
+                    <span>Properties</span>
                 </NavLink>
-            </Roovia.Security.PermissionAuthorizeView>
 
-            <NavLink class="roovia-nav-link" href="settings" title="Settings">
-                <i class="fal fa-gear"></i>
-                <span>Settings</span>
-            </NavLink>
-        </div>
-    </div>
+                <Roovia.Security.PermissionAuthorizeView Permission="properties.budgets">
+                    <NavLink class="roovia-nav-link" href="properties/budgets" title="Property Budgets">
+                        <i class="fal fa-wallet"></i>
+                        <span>Budgets</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
 
-    <div class="roovia-nav-section">
-        <div class="roovia-nav-section-title">
-        <span class="roovia-nav-section-title-full">Dev Tutorial</span>
-        <span class="roovia-nav-section-title-abbreviated">Dev</span>
+                <NavLink class="roovia-nav-link" href="properties/maintenance" title="Maintenance">
+                    <i class="fal fa-tools"></i>
+                    <span>Maintenance</span>
+                </NavLink>
+            </div>
         </div>
-        <div class="roovia-nav-links">
-            <NavLink class="roovia-nav-link" href="components" title="Components">
-                <i class="fal fa-puzzle-piece"></i>
-                <span>Components</span>
-            </NavLink>
+    </Roovia.Security.PermissionAuthorizeView>
 
-            <NavLink class="roovia-nav-link" href="Components-Grid" title="Grid">
-                <i class="fal fa-table"></i>
-                <span>Grid</span>
-            </NavLink>
+    <!-- Tenant Management Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="tenants">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Tenant Management</span>
+                <span class="roovia-nav-section-title-abbreviated">Tenants</span>
+            </div>
+            <div class="roovia-nav-links">
+                <NavLink class="roovia-nav-link" href="tenants" title="Tenants">
+                    <i class="fal fa-people-roof"></i>
+                    <span>Tenants</span>
+                </NavLink>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="tenants.invoices">
+                    <NavLink class="roovia-nav-link" href="tenants/invoices" title="Tenant Invoices">
+                        <i class="fal fa-file-invoice-dollar"></i>
+                        <span>Invoices</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="tenants.arrears.view">
+                    <NavLink class="roovia-nav-link" href="tenants/arrears" title="Tenant Arrears">
+                        <i class="fal fa-hand-holding-usd"></i>
+                        <span>Arrears</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="tenants.tpn.view">
+                    <NavLink class="roovia-nav-link" href="tenants/tpn" title="TPN Reports">
+                        <i class="fal fa-credit-card"></i>
+                        <span>TPN Reports</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+            </div>
         </div>
-    </div>
+    </Roovia.Security.PermissionAuthorizeView>
+
+    <!-- Beneficiary Management Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="beneficiaries">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Owner Management</span>
+                <span class="roovia-nav-section-title-abbreviated">Owners</span>
+            </div>
+            <div class="roovia-nav-links">
+                <NavLink class="roovia-nav-link" href="beneficiaries" title="Owners">
+                    <i class="fal fa-users"></i>
+                    <span>Owners</span>
+                </NavLink>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="beneficiaries.payments">
+                    <NavLink class="roovia-nav-link" href="beneficiaries/payments" title="Owner Payments">
+                        <i class="fal fa-money-check-alt"></i>
+                        <span>Payments</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+            </div>
+        </div>
+    </Roovia.Security.PermissionAuthorizeView>
+
+    <!-- Financial Management Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="payments">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Financial Management</span>
+                <span class="roovia-nav-section-title-abbreviated">Finance</span>
+            </div>
+            <div class="roovia-nav-links">
+                <NavLink class="roovia-nav-link" href="finance/transactions" title="Transactions">
+                    <i class="fal fa-exchange-alt"></i>
+                    <span>Transactions</span>
+                </NavLink>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="payments.deposits.view">
+                    <NavLink class="roovia-nav-link" href="finance/deposits" title="Direct Deposits">
+                        <i class="fal fa-money-bill-wave"></i>
+                        <span>Direct Deposits</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="payments.approve">
+                    <NavLink class="roovia-nav-link" href="finance/approvals" title="Payment Approvals">
+                        <i class="fal fa-file-signature"></i>
+                        <span>Payment Approvals</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+            </div>
+        </div>
+    </Roovia.Security.PermissionAuthorizeView>
+
+    <!-- Reports Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="reports">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Reports</span>
+                <span class="roovia-nav-section-title-abbreviated">Reports</span>
+            </div>
+            <div class="roovia-nav-links">
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.commission">
+                    <NavLink class="roovia-nav-link" href="reports/commission" title="Commission Reports">
+                        <i class="fal fa-percentage"></i>
+                        <span>Commission</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.transactions">
+                    <NavLink class="roovia-nav-link" href="reports/transactions" title="Transaction Reports">
+                        <i class="fal fa-chart-line"></i>
+                        <span>Transactions</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.payments">
+                    <NavLink class="roovia-nav-link" href="reports/payments" title="Payment Reports">
+                        <i class="fal fa-file-invoice"></i>
+                        <span>Payments</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.statements">
+                    <NavLink class="roovia-nav-link" href="reports/statements" title="Statements">
+                        <i class="fal fa-file-alt"></i>
+                        <span>Statements</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.management">
+                    <NavLink class="roovia-nav-link" href="reports/management" title="Management Reports">
+                        <i class="fal fa-chart-pie"></i>
+                        <span>Management</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="reports.audit">
+                    <NavLink class="roovia-nav-link" href="reports/audit" title="Audit Logs">
+                        <i class="fal fa-clipboard-list-check"></i>
+                        <span>Audit Logs</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+            </div>
+        </div>
+    </Roovia.Security.PermissionAuthorizeView>
+
+    <!-- Administration Section -->
+    <Roovia.Security.PermissionAuthorizeView Category="settings">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Administration</span>
+                <span class="roovia-nav-section-title-abbreviated">Admin</span>
+            </div>
+            <div class="roovia-nav-links">
+                <Roovia.Security.PermissionAuthorizeView Permission="settings.users">
+                    <NavLink class="roovia-nav-link" href="users" title="Users">
+                        <i class="fal fa-people-group"></i>
+                        <span>Users</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="settings.permissions">
+                    <NavLink class="roovia-nav-link" href="admin/roles" title="Role Management">
+                        <i class="fal fa-shield-check"></i>
+                        <span>Role Management</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <AuthorizeView Roles="GlobalAdmin,CompanyAdmin,BranchManager">
+                    <NavLink class="roovia-nav-link" href="admin/companies" title="Companies">
+                        <i class="fal fa-building"></i>
+                        <span>Companies</span>
+                    </NavLink>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="GlobalAdmin,CompanyAdmin">
+                    <NavLink class="roovia-nav-link" href="admin/branches" title="Branches">
+                        <i class="fal fa-code-branch"></i>
+                        <span>Branches</span>
+                    </NavLink>
+                </AuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="settings.application">
+                    <NavLink class="roovia-nav-link" href="settings" title="Settings">
+                        <i class="fal fa-gear"></i>
+                        <span>Settings</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="settings.import">
+                    <NavLink class="roovia-nav-link" href="admin/import" title="Import Data">
+                        <i class="fal fa-file-import"></i>
+                        <span>Import Data</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+
+                <Roovia.Security.PermissionAuthorizeView Permission="settings.export">
+                    <NavLink class="roovia-nav-link" href="admin/export" title="Export Data">
+                        <i class="fal fa-file-export"></i>
+                        <span>Export Data</span>
+                    </NavLink>
+                </Roovia.Security.PermissionAuthorizeView>
+            </div>
+        </div>
+    </Roovia.Security.PermissionAuthorizeView>
+
+    <!-- Development Tools Section - Only visible to Global Admins -->
+    <AuthorizeView Roles="GlobalAdmin">
+        <div class="roovia-nav-section">
+            <div class="roovia-nav-section-title">
+                <span class="roovia-nav-section-title-full">Dev Tools</span>
+                <span class="roovia-nav-section-title-abbreviated">Dev</span>
+            </div>
+            <div class="roovia-nav-links">
+                <NavLink class="roovia-nav-link" href="components" title="Components">
+                    <i class="fal fa-puzzle-piece"></i>
+                    <span>Components</span>
+                </NavLink>
+
+                <NavLink class="roovia-nav-link" href="Components-Grid" title="Grid">
+                    <i class="fal fa-table"></i>
+                    <span>Grid</span>
+                </NavLink>
+            </div>
+        </div>
+    </AuthorizeView>
 </div>
+
 <div class="roovia-desktop-toggle-wrapper">
     <button class="roovia-desktop-menu-toggle" onclick="toggleSidebar(event)" title="Toggle sidebar">
         <i class="fal fa-angle-double-left" id="desktop-toggle-icon"></i>
     </button>
 </div>
+
 <div class="roovia-sidebar-footer">
     <div class="roovia-user-profile" onclick="toggleUserMenu()">
         <div class="roovia-user-avatar">

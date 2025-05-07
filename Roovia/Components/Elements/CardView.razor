@@ -1,0 +1,19 @@
+﻿@namespace Roovia.Components
+
+<div class="card-view @CssClass">
+    @if (HeaderActions != null)
+    {
+        <div class="card-header">
+            @HeaderActions
+        </div>
+    }
+    <div class="card-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string CssClass { get; set; } = "";
+}

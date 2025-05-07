@@ -1,0 +1,387 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper
+@using Roovia.Models.Users
+@using Roovia.Services
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IPermissionService PermissionService
+@inject ToastService ToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="permissions-panel">
+    <div class="section-title">
+        <h4><i class="fa-light fa-shield-check"></i> User Permissions</h4>
+        <p>Manage specific permissions for this user</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading permissions...</div>
+        </div>
+    }
+    else
+    {
+        @if (availablePermissions.Any())
+        {
+            <div class="permissions-search">
+                <RVTextbox Value="@searchTerm"
+                           ValueChanged="value => FilterPermissions(value)"
+                           Placeholder="Search permissions..."
+                           IconLeft="fa-light fa-search" />
+            </div>
+
+            <div class="permission-categories">
+                @foreach (var category in filteredPermissions.Select(p => p.Category).Distinct().OrderBy(c => c))
+                {
+                    <div class="category-section">
+                        <div class="category-header">
+                            <h5><i class="fa-light fa-folder"></i> @category</h5>
+                            <div class="category-actions">
+                                <RVButton ButtonType="outline"
+                                          Type="button"
+                                          Size="xs"
+                                          Text="Grant All"
+                                          OnClick="() => SetCategoryPermissions(category, true)"
+                                          CssClass="category-btn" />
+                                <RVButton ButtonType="outline-danger"
+                                          Type="button"
+                                          Size="xs"
+                                          Text="Reset All"
+                                          OnClick="() => ResetCategoryPermissions(category)"
+                                          CssClass="category-btn" />
+                            </div>
+                        </div>
+                        <div class="permissions-list">
+                            @foreach (var permission in filteredPermissions.Where(p => p.Category == category).OrderBy(p => p.Name))
+                            {
+                                <div class="permission-item">
+                                    <div class="permission-status-indicator @GetStatusClass(permission.Id)"></div>
+                                    <div class="permission-info">
+                                        <div class="permission-name">@permission.Name</div>
+                                        <div class="permission-description">@permission.Description</div>
+                                    </div>
+                                    <div class="permission-controls">
+                                        <RVSelect Value="@GetPermissionStatus(permission.Id)"
+                                                  ValueChanged="value => SetPermissionOverride(permission.Id, value)"
+                                                  Placeholder="Status"
+                                                  Size="sm">
+                                            <option value="inherit">Inherit from Role</option>
+                                            <option value="grant">Explicitly Grant</option>
+                                            <option value="deny">Explicitly Deny</option>
+                                        </RVSelect>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="explanation-section">
+                <div class="info-box">
+                    <div class="info-icon"><i class="fa-light fa-info-circle"></i></div>
+                    <div class="info-content">
+                        <h5>Understanding Permissions</h5>
+                        <p><strong>Inherit from Role:</strong> The user will have this permission if any of their assigned roles grant it.</p>
+                        <p><strong>Explicitly Grant:</strong> The user will always have this permission regardless of their roles.</p>
+                        <p><strong>Explicitly Deny:</strong> The user will never have this permission regardless of their roles.</p>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fa-light fa-shield-slash"></i>
+                <h5>No Permissions Found</h5>
+                <p>No permissions are available in the system.</p>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string UserId { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private List<Permission> availablePermissions = new List<Permission>();
+    private List<Permission> filteredPermissions = new List<Permission>();
+    private List<UserPermissionOverride> userOverrides = new List<UserPermissionOverride>();
+    private List<string> userRolePermissions = new List<string>();
+    private HashSet<string> effectivePermissions = new HashSet<string>();
+    private bool isLoading = true;
+    private string searchTerm = "";
+    private string currentUserId = "System"; // Default value
+
+    // Track permission changes
+    private Dictionary<int, string> pendingPermissionChanges = new Dictionary<int, string>();
+    private Dictionary<string, List<int>> pendingCategoryChanges = new Dictionary<string, List<int>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUserId();
+        await LoadPermissionsData();
+    }
+
+    public async Task<bool> SavePendingChanges()
+    {
+        try
+        {
+            bool success = true;
+
+            // Save individual permission changes
+            foreach (var change in pendingPermissionChanges)
+            {
+                int permissionId = change.Key;
+                string status = change.Value;
+                ResponseModel response;
+
+                if (status == "inherit")
+                {
+                    // Remove any override
+                    response = await PermissionService.RemoveUserPermissionOverride(UserId, permissionId);
+                }
+                else
+                {
+                    // Set override (grant or deny)
+                    bool isGranted = status == "grant";
+                    response = await PermissionService.SetUserPermissionOverride(UserId, permissionId, isGranted, currentUserId);
+                }
+
+                if (!response.ResponseInfo.Success)
+                {
+                    success = false;
+                    ToastService.ShowError($"Failed to update permission: {response.ResponseInfo.Message}", "Error");
+                }
+            }
+
+            // Clear pending changes if successful
+            if (success)
+            {
+                pendingPermissionChanges.Clear();
+                pendingCategoryChanges.Clear();
+
+                // Reload permissions data to reflect new state
+                await LoadPermissionsData();
+
+                if (OnSaved.HasDelegate)
+                {
+                    await OnSaved.InvokeAsync();
+                }
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save permissions: {ex.Message}", "Error");
+            return false;
+        }
+    }
+
+    public void DiscardPendingChanges()
+    {
+        pendingPermissionChanges.Clear();
+        pendingCategoryChanges.Clear();
+        StateHasChanged();
+    }
+
+    private async Task GetCurrentUserId()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = userIdClaim.Value;
+            }
+        }
+        catch
+        {
+            // If there's an error, we'll fall back to the default "System"
+        }
+    }
+
+    private async Task LoadPermissionsData()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Get all available permissions
+            var permissionsResponse = await PermissionService.GetAllPermissions();
+            if (permissionsResponse.ResponseInfo.Success)
+            {
+                availablePermissions = (List<Permission>)permissionsResponse.Response;
+                filteredPermissions = availablePermissions;
+            }
+
+            // Get user's current permission overrides
+            var overridesResponse = await PermissionService.GetUserPermissionOverrides(UserId);
+            if (overridesResponse.ResponseInfo.Success)
+            {
+                userOverrides = (List<UserPermissionOverride>)overridesResponse.Response;
+            }
+
+            // Get permissions from user's roles (for reference)
+            userRolePermissions = await PermissionService.GetUserPermissions(UserId);
+            effectivePermissions = new HashSet<string>(userRolePermissions);
+
+            // Add any explicitly granted permissions
+            foreach (var Override in userOverrides.Where(o => o.IsGranted))
+            {
+                var permission = availablePermissions.FirstOrDefault(p => p.Id == Override.PermissionId);
+                if (permission != null && !effectivePermissions.Contains(permission.SystemName))
+                {
+                    effectivePermissions.Add(permission.SystemName);
+                }
+            }
+
+            // Remove any explicitly denied permissions
+            foreach (var Override in userOverrides.Where(o => !o.IsGranted))
+            {
+                var permission = availablePermissions.FirstOrDefault(p => p.Id == Override.PermissionId);
+                if (permission != null && effectivePermissions.Contains(permission.SystemName))
+                {
+                    effectivePermissions.Remove(permission.SystemName);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load permissions: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterPermissions(string value)
+    {
+        searchTerm = value;
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredPermissions = availablePermissions;
+        }
+        else
+        {
+            filteredPermissions = availablePermissions
+                .Where(p =>
+                    p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private string GetPermissionStatus(int permissionId)
+    {
+        // Check if there's a pending change
+        if (pendingPermissionChanges.TryGetValue(permissionId, out var pendingStatus))
+        {
+            return pendingStatus;
+        }
+
+        // Otherwise, return the current status
+        var Override = userOverrides.FirstOrDefault(o => o.PermissionId == permissionId);
+        if (Override != null)
+        {
+            return Override.IsGranted ? "grant" : "deny";
+        }
+        return "inherit";
+    }
+
+    private string GetStatusClass(int permissionId)
+    {
+        var permissionSystemName = availablePermissions.FirstOrDefault(p => p.Id == permissionId)?.SystemName;
+
+        // Check if there's a pending change
+        if (pendingPermissionChanges.TryGetValue(permissionId, out var pendingStatus))
+        {
+            return pendingStatus switch
+            {
+                "grant" => "granted pending-change",
+                "deny" => "denied pending-change",
+                _ => "inherit pending-change"
+            };
+        }
+
+        // Otherwise, show current status
+        var Override = userOverrides.FirstOrDefault(o => o.PermissionId == permissionId);
+
+        if (Override != null)
+        {
+            return Override.IsGranted ? "granted" : "denied";
+        }
+
+        if (permissionSystemName != null && userRolePermissions.Contains(permissionSystemName))
+        {
+            return "inherited";
+        }
+
+        return "unavailable";
+    }
+
+    private void SetPermissionOverride(int permissionId, string status)
+    {
+        // Store the change in the pending changes dictionary
+        pendingPermissionChanges[permissionId] = status;
+
+        // Update UI
+        StateHasChanged();
+    }
+
+    private void SetCategoryPermissions(string category, bool isGranted)
+    {
+        var permissions = availablePermissions.Where(p => p.Category == category);
+
+        foreach (var permission in permissions)
+        {
+            // Store in pending changes
+            pendingPermissionChanges[permission.Id] = isGranted ? "grant" : "deny";
+        }
+
+        // Track this category change
+        if (!pendingCategoryChanges.ContainsKey(category))
+        {
+            pendingCategoryChanges[category] = new List<int>();
+        }
+
+        pendingCategoryChanges[category] = permissions.Select(p => p.Id).ToList();
+
+        // Update UI
+        StateHasChanged();
+    }
+
+    private void ResetCategoryPermissions(string category)
+    {
+        var permissions = availablePermissions.Where(p => p.Category == category);
+
+        foreach (var permission in permissions)
+        {
+            // Store in pending changes
+            pendingPermissionChanges[permission.Id] = "inherit";
+        }
+
+        // Track this category change
+        if (!pendingCategoryChanges.ContainsKey(category))
+        {
+            pendingCategoryChanges[category] = new List<int>();
+        }
+
+        pendingCategoryChanges[category] = permissions.Select(p => p.Id).ToList();
+
+        // Update UI
+        StateHasChanged();
+    }
+
+    public bool HasPendingChanges()
+    {
+        return pendingPermissionChanges.Count > 0;
+    }
+}

@@ -21,7 +21,7 @@ public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Appli
     {
         var identity = await base.GenerateClaimsAsync(user);
 
-        // This line is commented out - SystemRole not being added as claim
+        // Add system role claim
         identity.AddClaim(new Claim("Role", user.Role.ToString()));
 
         // Get custom roles from database
@@ -34,7 +34,7 @@ public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Appli
             }
         }
 
-        // Get permissions and add them as claims
+        // Get permissions and add them as claims - this now includes overrides
         var permissions = await _permissionService.GetUserPermissions(user.Id);
         foreach (var permission in permissions)
         {

@@ -12,7 +12,7 @@ namespace Roovia.Interfaces
         Task<ResponseModel> CreatePermission(Permission permission);
         Task<ResponseModel> UpdatePermission(int id, Permission permission);
         Task<ResponseModel> DeletePermission(int id);
-
+      
         // Role operations
         Task<ResponseModel> GetAllRoles();
         Task<ResponseModel> GetRoleById(int id);
@@ -31,6 +31,11 @@ namespace Roovia.Interfaces
         Task<ResponseModel> AssignRoleToUser(string userId, int roleId);
         Task<ResponseModel> RemoveRoleFromUser(string userId, int roleId);
         Task<ResponseModel> GetUserRoles(string userId);
+
+        // User-Permission operations
+        Task<ResponseModel> GetUserPermissionOverrides(string userId);
+        Task<ResponseModel> SetUserPermissionOverride(string userId, int permissionId, bool isGranted, string currentUserId);
+        Task<ResponseModel> RemoveUserPermissionOverride(string userId, int permissionId);
 
         // Permission check
         Task<bool> UserHasPermission(string userId, string permissionName);

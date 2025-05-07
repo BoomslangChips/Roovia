@@ -1,8 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Azure;
+using Microsoft.EntityFrameworkCore;
+using Roovia.Components.Pages.Users;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Users;
+using System.Security;
 
 namespace Roovia.Services
 {
@@ -20,7 +23,136 @@ namespace Roovia.Services
         }
 
         #region Permission Operations
+        // Add this method to IPermissionService interface
+        public async Task<ResponseModel> SetUserPermissionOverride(string userId, int permissionId, bool isGranted, string currentUserId)
+        {
+            ResponseModel response = new();
 
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                // Check if user exists
+                var user = await context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "User not found.";
+                    return response;
+                }
+
+                // Check if permission exists
+                var permission = await context.Permissions.FindAsync(permissionId);
+                if (permission == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Permission not found.";
+                    return response;
+                }
+
+                // Check if override already exists
+                var existingOverride = await context.UserPermissionOverrides
+                    .FirstOrDefaultAsync(upo => upo.UserId == userId && upo.PermissionId == permissionId);
+
+                if (existingOverride != null)
+                {
+                    // Update existing
+                    existingOverride.IsGranted = isGranted;
+                    existingOverride.UpdatedDate = DateTime.Now;
+                    existingOverride.UpdatedBy = currentUserId;
+                }
+                else
+                {
+                    // Create new
+                    var newOverride = new UserPermissionOverride
+                    {
+                        UserId = userId,
+                        PermissionId = permissionId,
+                        IsGranted = isGranted,
+                        CreatedDate = DateTime.Now,
+                        CreatedBy = currentUserId
+                    };
+                    await context.UserPermissionOverrides.AddAsync(newOverride);
+                }
+
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "User permission override set successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while setting user permission override: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        // Keep backward compatibility with existing method
+        public async Task<ResponseModel> SetUserPermissionOverride(string userId, int permissionId, bool isGranted)
+        {
+            // Default to "System" if no current user ID is provided
+            return await SetUserPermissionOverride(userId, permissionId, isGranted, "System");
+        }
+
+        public async Task<ResponseModel> RemoveUserPermissionOverride(string userId, int permissionId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var OverRide = await context.UserPermissionOverrides.FirstOrDefaultAsync(upo => upo.UserId == userId && upo.PermissionId == permissionId);
+
+                if (OverRide == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Permission override not found.";
+                    return response;
+                }
+
+                context.UserPermissionOverrides.Remove(OverRide);
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "User permission override removed successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while removing user permission override: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetUserPermissionOverrides(string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var overrides = await context.UserPermissionOverrides
+                    .Include(upo => upo.Permission)
+                    .Where(upo => upo.UserId == userId)
+                    .ToListAsync();
+
+                response.Response = overrides;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "User permission overrides retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving user permission overrides: " + ex.Message;
+            }
+
+            return response;
+        }
         public async Task<ResponseModel> GetAllPermissions()
         {
             ResponseModel response = new();
@@ -865,6 +997,31 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
+                // First check for an explicit override (deny takes precedence)
+                var permission = await context.Permissions
+                    .FirstOrDefaultAsync(p => p.SystemName == permissionName);
+
+                if (permission != null)
+                {
+                    var Override = await context.UserPermissionOverrides
+                        .FirstOrDefaultAsync(upo =>
+
+                            upo.UserId == userId &&
+
+                            upo.PermissionId == permission.Id);
+
+                    if (Override != null)
+                    {
+                        // If there's an explicit override, respect it
+                        return Override.IsGranted;
+                    }
+                }
+                else
+                {
+                    // Permission doesn't exist
+                    return false;
+                }
+
                 // Get user roles
                 var userRoles = await context.UserRoleAssignments
                     .Where(ur => ur.UserId == userId)
@@ -905,23 +1062,49 @@ namespace Roovia.Services
                     .Select(ur => ur.RoleId)
                     .ToListAsync();
 
-                if (!userRoles.Any())
-                {
-                    return new List<string>();
-                }
-
-                // Get all active permissions from all user roles
-                var permissions = await context.RolePermissions
+                // Get all permissions from user roles
+                var permissionsFromRoles = await context.RolePermissions
                     .Include(rp => rp.Permission)
                     .Where(rp =>
                         userRoles.Contains(rp.RoleId) &&
                         rp.IsActive &&
                         rp.Permission.IsActive)
-                    .Select(rp => rp.Permission.SystemName)
-                    .Distinct()
+                    .Select(rp => new
+                    {
+                        PermissionId = rp.PermissionId,
+                        SystemName = rp.Permission.SystemName
+                    })
                     .ToListAsync();
 
-                return permissions;
+                // Get all user overrides
+                var userOverrides = await context.UserPermissionOverrides
+                    .Include(upo => upo.Permission)
+                    .Where(upo => upo.UserId == userId)
+                    .ToListAsync();
+
+                var resultPermissions = new List<string>();
+
+                // Add permissions from roles that aren't explicitly denied
+                foreach (var perm in permissionsFromRoles)
+                {
+                    var Override = userOverrides.FirstOrDefault(upo => upo.PermissionId == perm.PermissionId);
+
+                    if (Override == null || Override.IsGranted)
+                    {
+                        resultPermissions.Add(perm.SystemName);
+                    }
+                }
+
+                // Add explicitly granted permissions that weren't already included
+                foreach (var grantedOverride in userOverrides.Where(upo => upo.IsGranted))
+                {
+                    if (!resultPermissions.Contains(grantedOverride.Permission.SystemName))
+                    {
+                        resultPermissions.Add(grantedOverride.Permission.SystemName);
+                    }
+                }
+
+                return resultPermissions.Distinct().ToList();
             }
             catch
             {
@@ -930,5 +1113,7 @@ namespace Roovia.Services
         }
 
         #endregion
+
+
     }
 }

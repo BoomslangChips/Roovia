@@ -1,1471 +1,1002 @@
-﻿@using Roovia.Models.Helper
+﻿@using Roovia.Components.Elements.Forms
+@using Roovia.Interfaces
 @using Roovia.Models.Users
+@using Roovia.Models.Helper
 @using Roovia.Services
-@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Forms
+@inject IUser UserService
+@inject ToastService ToastService
 
-<RVModal IsVisible="@IsVisible"
-         Title="@(IsEdit ? "Edit Company" : "Add New Company")"
-         OnClose="CloseModal"
-         OnConfirm="HandleValidSubmit"
-         ConfirmText="@(CurrentStep == TotalSteps ? "Save" : "Next")"
-         CancelText="@(CurrentStep == 1 ? "Cancel" : "Back")"
-         Size="md"
-         CssClass="company-wizard-modal">
+<RVModal IsVisible="true"
+Title="@GetDialogTitle()"
+Icon="@GetDialogIcon()"
+OnClose="OnCancel"
+OnCancel="OnCancel"
+         OnConfirm="HandleConfirmAction"
+         ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
+CancelText="@(IsEditMode ? "Cancel" : "Close")"
+Size="lg">
     <ChildContent>
-        <div class="company-wizard">
-            <div class="wizard-progress">
-                @foreach (var step in Steps)
-                {
-                    <div class="wizard-step @(CurrentStep == step.Number ? "active" : "") @(CurrentStep > step.Number ? "completed" : "")">
-                        <div class="step-indicator">
-                            @if (CurrentStep > step.Number)
-                            {
-                                <i class="far fa-check"></i>
-                            }
-                            else
-                            {
-                                <span>@step.Number</span>
-                            }
-                        </div>
-                        <div class="step-label">@step.Label</div>
-                    </div>
-                }
-            </div>
-
-            <div class="wizard-content">
-                <EditForm Model="CompanyModel" OnValidSubmit="HandleValidSubmit">
-                    <div class="wizard-panel @(CurrentStep == 1 ? "active" : "")">
-                        <div class="section-header">
-                            <h3><i class="far fa-building"></i> Company Information</h3>
-                            <p>Enter the basic details about your company</p>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Company Name"
-                                           Id="companyName"
-                                           Value="@CompanyModel.Name"
-                                           ValueChanged="@((string val) => CompanyModel.Name = val)"
-                                           IsValid="@(!string.IsNullOrEmpty(CompanyModel.Name))"
-                                           ValidationMessage="Company name is required"
-                                           IconLeft="far fa-building"
-                                           CssClass="modern-input" />
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <RVTextbox Label="Registration Number"
-                                               Id="registrationNumber"
-                                               Value="@CompanyModel.RegistrationNumber"
-                                               ValueChanged="@((string val) => CompanyModel.RegistrationNumber = val)"
-                                               IconLeft="far fa-id-card"
-                                               CssClass="modern-input" />
-                                </div>
-
-                                <div class="form-group">
-                                    <RVTextbox Label="VAT Number (optional)"
-                                               Id="vatNumber"
-                                               Value="@CompanyModel.VatNumber"
-                                               ValueChanged="@((string val) => CompanyModel.VatNumber = val)"
-                                               IconLeft="far fa-file-invoice"
-                                               CssClass="modern-input" />
-                                </div>
-                            </div>
-
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Website (optional)"
-                                           Id="website"
-                                           Value="@CompanyModel.Website"
-                                           ValueChanged="@((string val) => CompanyModel.Website = val)"
-                                           IconLeft="far fa-globe"
-                                           Placeholder="https://www.yourcompany.com"
-                                           CssClass="modern-input" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="wizard-panel @(CurrentStep == 2 ? "active" : "")">
-                        <div class="section-header">
-                            <h3><i class="far fa-address-card"></i> Contact Information</h3>
-                            <p>Add primary contact information for your company</p>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Primary Email"
-                                           Id="primaryEmail"
-                                           Type="email"
-                                           Value="@PrimaryEmail"
-                                           ValueChanged="@((string val) => UpdatePrimaryEmail(val))"
-                                           IsValid="@(!string.IsNullOrEmpty(PrimaryEmail) && IsValidEmail(PrimaryEmail))"
-                                           ValidationMessage="Valid primary email is required"
-                                           IconLeft="far fa-envelope"
-                                           Placeholder="contact@yourcompany.com"
-                                           CssClass="modern-input" />
-                            </div>
-
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Primary Contact Number"
-                                           Id="primaryContactNumber"
-                                           Value="@PrimaryContactNumber"
-                                           ValueChanged="@((string val) => UpdatePrimaryContactNumber(val))"
-                                           IsValid="@(!string.IsNullOrEmpty(PrimaryContactNumber))"
-                                           ValidationMessage="Primary contact number is required"
-                                           IconLeft="far fa-phone"
-                                           Placeholder="+27 12 345 6789"
-                                           CssClass="modern-input" />
-                            </div>
-
-                            @if (IsEdit && AdditionalEmails.Any())
-                            {
-                                <div class="section-header with-actions">
-                                    <div>
-                                        <h4><i class="far fa-envelope-open"></i> Additional Email Addresses</h4>
-                                        <p>Other contact emails for this company</p>
-                                    </div>
-                                    <button type="button" class="add-item-btn" @onclick="AddEmail">
-                                        <i class="far fa-plus"></i>
-                                        <span>Add Email</span>
-                                    </button>
-                                </div>
-
-                                <div class="contact-items">
-                                    @foreach (var email in AdditionalEmails)
-                                    {
-                                        <div class="contact-item">
-                                            <div class="contact-item-icon">
-                                                <i class="far fa-envelope"></i>
-                                            </div>
-                                            <div class="contact-item-details">
-                                                <div class="contact-item-primary">@email.EmailAddress</div>
-                                                @if (!string.IsNullOrEmpty(email.Description))
-                                                {
-                                                    <div class="contact-item-secondary">@email.Description</div>
-                                                }
-                                            </div>
-                                            <div class="contact-item-actions">
-                                                <button type="button" class="item-action edit" @onclick="() => EditEmail(email)">
-                                                    <i class="far fa-edit"></i>
-                                                </button>
-                                                <button type="button" class="item-action delete" @onclick="() => RemoveEmail(email)">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else if (IsEdit)
-                            {
-                                <div class="section-header with-actions">
-                                    <div>
-                                        <h4><i class="far fa-envelope-open"></i> Additional Email Addresses</h4>
-                                        <p>Other contact emails for this company</p>
-                                    </div>
-                                    <button type="button" class="add-item-btn" @onclick="AddEmail">
-                                        <i class="far fa-plus"></i>
-                                        <span>Add Email</span>
-                                    </button>
-                                </div>
-                                <div class="no-items-message">
-                                    <i class="far fa-envelope-open"></i>
-                                    <p>No additional email addresses have been added</p>
-                                </div>
-                            }
-
-                            @if (IsEdit && AdditionalContactNumbers.Any())
-                            {
-                                <div class="section-header with-actions">
-                                    <div>
-                                        <h4><i class="far fa-phone-alt"></i> Additional Contact Numbers</h4>
-                                        <p>Other phone numbers for this company</p>
-                                    </div>
-                                    <button type="button" class="add-item-btn" @onclick="AddContactNumber">
-                                        <i class="far fa-plus"></i>
-                                        <span>Add Number</span>
-                                    </button>
-                                </div>
-
-                                <div class="contact-items">
-                                    @foreach (var contact in AdditionalContactNumbers)
-                                    {
-                                        <div class="contact-item">
-                                            <div class="contact-item-icon contact-@contact.Type.ToString().ToLower()">
-                                                <i class="@GetContactTypeIcon(contact.Type)"></i>
-                                            </div>
-                                            <div class="contact-item-details">
-                                                <div class="contact-item-primary">@contact.Number</div>
-                                                <div class="contact-item-secondary">
-                                                    <span class="contact-type">@contact.Type</span>
-                                                    @if (!string.IsNullOrEmpty(contact.Description))
-                                                    {
-                                                        <span class="contact-description">@contact.Description</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="contact-item-actions">
-                                                <button type="button" class="item-action edit" @onclick="() => EditContactNumber(contact)">
-                                                    <i class="far fa-edit"></i>
-                                                </button>
-                                                <button type="button" class="item-action delete" @onclick="() => RemoveContactNumber(contact)">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else if (IsEdit)
-                            {
-                                <div class="section-header with-actions">
-                                    <div>
-                                        <h4><i class="far fa-phone-alt"></i> Additional Contact Numbers</h4>
-                                        <p>Other phone numbers for this company</p>
-                                    </div>
-                                    <button type="button" class="add-item-btn" @onclick="AddContactNumber">
-                                        <i class="far fa-plus"></i>
-                                        <span>Add Number</span>
-                                    </button>
-                                </div>
-                                <div class="no-items-message">
-                                    <i class="far fa-phone"></i>
-                                    <p>No additional contact numbers have been added</p>
-                                </div>
-                            }
-
-                            @if (!IsEdit)
-                            {
-                                <div class="additional-contacts-actions">
-                                    <button type="button" class="add-contact-btn" @onclick="AddEmail">
-                                        <i class="far fa-envelope-plus"></i> Add Email Address
-                                    </button>
-                                    <button type="button" class="add-contact-btn" @onclick="AddContactNumber">
-                                        <i class="far fa-phone-plus"></i> Add Contact Number
-                                    </button>
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="wizard-panel @(CurrentStep == 3 ? "active" : "")">
-                        <div class="section-header">
-                            <h3><i class="far fa-map-marker-alt"></i> Company Address</h3>
-                            <p>Enter the physical address of your company</p>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Street Address"
-                                           Id="addressStreet"
-                                           Value="@CompanyModel.Address.Street"
-                                           ValueChanged="@((string val) => CompanyModel.Address.Street = val)"
-                                           IconLeft="far fa-road"
-                                           CssClass="modern-input" />
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <RVTextbox Label="Unit/Suite Number"
-                                               Id="addressUnitNumber"
-                                               Value="@CompanyModel.Address.UnitNumber"
-                                               ValueChanged="@((string val) => CompanyModel.Address.UnitNumber = val)"
-                                               IconLeft="far fa-door-open"
-                                               CssClass="modern-input" />
-                                </div>
-
-                                <div class="form-group">
-                                    <RVTextbox Label="Complex/Estate Name"
-                                               Id="addressComplexName"
-                                               Value="@CompanyModel.Address.ComplexName"
-                                               ValueChanged="@((string val) => CompanyModel.Address.ComplexName = val)"
-                                               IconLeft="far fa-building"
-                                               CssClass="modern-input" />
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <RVTextbox Label="City"
-                                               Id="addressCity"
-                                               Value="@CompanyModel.Address.City"
-                                               ValueChanged="@((string val) => CompanyModel.Address.City = val)"
-                                               IconLeft="far fa-city"
-                                               CssClass="modern-input" />
-                                </div>
-
-                                <div class="form-group">
-                                    <RVTextbox Label="Suburb"
-                                               Id="addressSuburb"
-                                               Value="@CompanyModel.Address.Suburb"
-                                               ValueChanged="@((string val) => CompanyModel.Address.Suburb = val)"
-                                               IconLeft="far fa-map"
-                                               CssClass="modern-input" />
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <RVTextbox Label="Province"
-                                               Id="addressProvince"
-                                               Value="@CompanyModel.Address.Province"
-                                               ValueChanged="@((string val) => CompanyModel.Address.Province = val)"
-                                               IconLeft="far fa-map"
-                                               CssClass="modern-input" />
-                                </div>
-
-                                <div class="form-group">
-                                    <RVTextbox Label="Postal Code"
-                                               Id="addressPostalCode"
-                                               Value="@CompanyModel.Address.PostalCode"
-                                               ValueChanged="@((string val) => CompanyModel.Address.PostalCode = val)"
-                                               IconLeft="far fa-mailbox"
-                                               CssClass="modern-input" />
-                                </div>
-                            </div>
-
-                            <div class="form-group full-width">
-                                <RVTextbox Label="Country"
-                                           Id="addressCountry"
-                                           Value="@CompanyModel.Address.Country"
-                                           ValueChanged="@((string val) => CompanyModel.Address.Country = val)"
-                                           IconLeft="far fa-globe"
-                                           CssClass="modern-input" />
-                            </div>
-                        </div>
-                    </div>
-                </EditForm>
-            </div>
-        </div>
-    </ChildContent>
-</RVModal>
-
-@if (emailDialogVisible)
-{
-    <RVModal IsVisible="true"
-             Title="@(editingEmail.Id == 0 ? "Add Email Address" : "Edit Email Address")"
-             OnClose="CloseEmailDialog"
-             OnConfirm="SaveEmail"
-             ConfirmText="Save"
-             CancelText="Cancel"
-             Size="sm"
-             CssClass="contact-dialog-modal">
-        <ChildContent>
-            <div class="form-section">
-                <div class="form-group full-width">
-                    <RVTextbox Label="Email Address"
-                               Id="emailAddress"
-                               Type="email"
-                               Value="@editingEmail.EmailAddress"
-                               ValueChanged="@((string val) => editingEmail.EmailAddress = val)"
-                               IsValid="@(!string.IsNullOrEmpty(editingEmail.EmailAddress) && IsValidEmail(editingEmail.EmailAddress))"
-                               ValidationMessage="Valid email address is required"
-                               IconLeft="far fa-envelope"
-                               CssClass="modern-input" />
-                </div>
-
-                <div class="form-group full-width">
-                    <RVTextbox Label="Description (Optional)"
-                               Id="emailDescription"
-                               Value="@editingEmail.Description"
-                               ValueChanged="@((string val) => editingEmail.Description = val)"
-                               Placeholder="e.g. Billing, Support, Sales"
-                               IconLeft="far fa-tag"
-                               CssClass="modern-input" />
-                </div>
-
-                <div class="modern-checkbox">
-                    <label class="checkbox-container">
-                        <input type="checkbox" @bind="editingEmail.IsActive" id="emailActive" />
-                        <span class="checkmark"></span>
-                        <span class="checkbox-label">Is Active</span>
-                    </label>
-                </div>
-            </div>
-        </ChildContent>
-    </RVModal>
-}
-
-@if (contactDialogVisible)
-{
-    <RVModal IsVisible="true"
-             Title="@(editingContact.Id == 0 ? "Add Contact Number" : "Edit Contact Number")"
-             OnClose="CloseContactDialog"
-             OnConfirm="SaveContactNumber"
-             ConfirmText="Save"
-             CancelText="Cancel"
-             Size="sm"
-             CssClass="contact-dialog-modal">
-        <ChildContent>
-            <div class="form-section">
-                <div class="form-group full-width">
-                    <RVTextbox Label="Phone Number"
-                               Id="phoneNumber"
-                               Value="@editingContact.Number"
-                               ValueChanged="@((string val) => editingContact.Number = val)"
-                               IsValid="@(!string.IsNullOrEmpty(editingContact.Number))"
-                               ValidationMessage="Phone number is required"
-                               IconLeft="far fa-phone"
-                               CssClass="modern-input" />
-                </div>
-
-                <div class="form-group full-width">
-                    <label class="modern-label">Contact Type</label>
-                    <div class="contact-type-selector">
-                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
-                        {
-                            <div class="contact-type-option @(editingContact.Type.ToString() == type.ToString() ? "selected" : "")"
-                                 @onclick="() => editingContact.Type = (ContactNumberType)type">
-                                <i class="@GetContactTypeIcon((ContactNumberType)type)"></i>
-                                <span>@type</span>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="form-group full-width">
-                    <RVTextbox Label="Description (Optional)"
-                               Id="contactDescription"
-                               Value="@editingContact.Description"
-                               ValueChanged="@((string val) => editingContact.Description = val)"
-                               Placeholder="e.g. Reception, Support Desk, Manager"
-                               IconLeft="far fa-tag"
-                               CssClass="modern-input" />
-                </div>
-
-                <div class="modern-checkbox">
-                    <label class="checkbox-container">
-                        <input type="checkbox" @bind="editingContact.IsActive" id="contactActive" />
-                        <span class="checkmark"></span>
-                        <span class="checkbox-label">Is Active</span>
-                    </label>
-                </div>
-            </div>
-        </ChildContent>
-    </RVModal>
-}
-
-<style>
-    /* Company Wizard Dialog Styling */
-    .company-wizard-modal :deep(.roovia-modal-content) {
-        max-height: 85vh;
-        overflow-y: auto;
-    }
-
-    .company-wizard-modal :deep(.roovia-modal-header) {
-        background: var(--subtle-bg);
-        border-bottom: 1px solid var(--border-divider);
-    }
-
-    .company-wizard-modal :deep(.roovia-modal-title h3) {
-        font-weight: 600;
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .company-wizard-modal :deep(.roovia-modal-footer) {
-        background: var(--subtle-bg);
-        border-top: 1px solid var(--border-divider);
-    }
-
-    .contact-dialog-modal {
-        --modal-width: 450px;
-    }
-
-    .company-wizard {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    /* Wizard Progress Bar */
-    .wizard-progress {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 1rem;
-        position: relative;
-        margin-bottom: 1rem;
-    }
-
-        .wizard-progress::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 8%;
-            right: 8%;
-            height: 2px;
-            background-color: var(--border-divider);
-            transform: translateY(-50%);
-            z-index: 1;
-        }
-
-        .wizard-progress::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 8%;
-            height: 2px;
-            background: var(--primary-gradient);
-            transform: translateY(-50%);
-            z-index: 2;
-            width: calc((84% / (var(--total-steps) - 1)) * (var(--current-step) - 1));
-            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-    .wizard-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        position: relative;
-        z-index: 3;
-    }
-
-    .step-indicator {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: var(--content-bg);
-        border: 2px solid var(--border-divider);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        color: var(--text-secondary);
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .wizard-step.active .step-indicator {
-        border-color: var(--primary);
-        background-color: var(--primary-light);
-        color: var(--primary);
-        transform: scale(1.1);
-        box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.15);
-    }
-
-    .wizard-step.completed .step-indicator {
-        background-color: var(--primary);
-        border-color: var(--primary);
-        color: white;
-    }
-
-    .step-label {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        white-space: nowrap;
-    }
-
-    .wizard-step.active .step-label {
-        color: var(--primary);
-        font-weight: 600;
-    }
-
-    .wizard-step.completed .step-label {
-        color: var(--text-primary);
-    }
-
-    /* Wizard Content */
-    .wizard-content {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .wizard-panel {
-        display: none;
-        animation: fadePanel 0.4s ease;
-    }
-
-        .wizard-panel.active {
-            display: block;
-        }
-
-    @@keyframes fadePanel {
-        from
-
-    {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    }
-
-    .section-header {
-        margin-bottom: 1.5rem;
-    }
-
-        .section-header h3 {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .section-header h4 {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .section-header p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin: 0;
-        }
-
-        .section-header.with-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-    .form-section {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-
-    .form-group {
-        margin-bottom: 0.5rem;
-    }
-
-        .form-group.full-width {
-            width: 100%;
-        }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        width: 100%;
-    }
-
-    .modern-input:deep(.form-control) {
-        border-radius: 10px;
-        padding: 0.75rem 1rem 0.75rem 2.5rem;
-        border: 1.5px solid var(--border-divider);
-        background-color: var(--input-bg);
-        transition: all 0.2s ease;
-    }
-
-    .modern-input:deep(.form-control:focus) {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-    }
-
-    .modern-input:deep(.input-icon) {
-        left: 1rem;
-        color: var(--primary);
-        opacity: 0.7;
-    }
-
-    .modern-input:deep(.form-label) {
-        font-weight: 500;
-        font-size: 0.9rem;
-        color: var(--text-primary);
-        margin-bottom: 0.4rem;
-    }
-
-    .modern-input:deep(.input-validation-message) {
-        margin-top: 0.35rem;
-        font-size: 0.8rem;
-    }
-
-    .modern-label {
-        font-weight: 500;
-        font-size: 0.9rem;
-        color: var(--text-primary);
-        margin-bottom: 0.4rem;
-        display: block;
-    }
-
-    /* Additional contacts styling */
-    .additional-contacts-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-top: 0.5rem;
-    }
-
-    .add-contact-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1rem;
-        border: 1.5px dashed var(--border-divider);
-        background-color: var(--subtle-bg);
-        color: var(--text-secondary);
-        border-radius: 10px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        flex: 1;
-        justify-content: center;
-    }
-
-        .add-contact-btn:hover {
-            border-color: var(--primary);
-            background-color: var(--primary-lighter);
-            color: var(--primary);
-        }
-
-    .add-item-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        border: none;
-        background-color: var(--primary-light);
-        color: var(--primary);
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-        .add-item-btn:hover {
-            background-color: var(--primary);
-            color: white;
-        }
-
-    .contact-items {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .contact-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.75rem 1rem;
-        border-radius: 10px;
-        background-color: var(--content-bg);
-        border: 1px solid var(--border-divider);
-        transition: all 0.2s ease;
-    }
-
-        .contact-item:hover {
-            border-color: var(--border-color);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-            transform: translateY(-2px);
-        }
-
-    .contact-item-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        background-color: var(--primary-light);
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-    }
-
-        .contact-item-icon.contact-mobile {
-            background-color: rgba(14, 165, 233, 0.1);
-            color: #0ea5e9;
-        }
-
-        .contact-item-icon.contact-landline {
-            background-color: rgba(245, 158, 11, 0.1);
-            color: #f59e0b;
-        }
-
-        .contact-item-icon.contact-fax {
-            background-color: rgba(168, 85, 247, 0.1);
-            color: #a855f7;
-        }
-
-        .contact-item-icon.contact-whatsapp {
-            background-color: rgba(34, 197, 94, 0.1);
-            color: #22c55e;
-        }
-
-    .contact-item-details {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .contact-item-primary {
-        font-weight: 500;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .contact-item-secondary {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .contact-type {
-        padding: 0.15rem 0.4rem;
-        border-radius: 4px;
-        background-color: var(--primary-lighter);
-        color: var(--primary);
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-
-    .contact-description {
-        color: var(--text-muted);
-    }
-
-    .contact-item-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .item-action {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: transparent;
-        border: 1px solid var(--border-divider);
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-        .item-action.edit:hover {
-            background-color: var(--primary-light);
-            color: var(--primary);
-            border-color: var(--primary-light);
-        }
-
-        .item-action.delete:hover {
-            background-color: var(--danger-light);
-            color: var(--danger);
-            border-color: var(--danger-light);
-        }
-
-    .no-items-message {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem;
-        background-color: var(--subtle-bg);
-        border-radius: 10px;
-        border: 1.5px dashed var(--border-divider);
-        color: var(--text-muted);
-    }
-
-        .no-items-message i {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .no-items-message p {
-            margin: 0;
-            color: var(--text-secondary);
-        }
-
-    /* Contact type selector */
-    .contact-type-selector {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6rem;
-    }
-
-    .contact-type-option {
-        flex: 1;
-        min-width: 80px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.75rem;
-        border-radius: 8px;
-        border: 1.5px solid var(--border-divider);
-        background-color: var(--content-bg);
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-        .contact-type-option:hover {
-            border-color: var(--primary-light);
-            background-color: var(--primary-lighter);
-            color: var(--primary);
-        }
-
-        .contact-type-option.selected {
-            border-color: var(--primary);
-            background-color: var(--primary-light);
-            color: var(--primary);
-        }
-
-        .contact-type-option i {
-            font-size: 1.2rem;
-        }
-
-        .contact-type-option span {
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-    /* Modern checkbox */
-    .modern-checkbox {
-        margin-top: 0.5rem;
-    }
-
-    .checkbox-container {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
-        position: relative;
-        user-select: none;
-    }
-
-        .checkbox-container input {
-            position: absolute;
-            opacity: 0;
-            height: 0;
-            width: 0;
-        }
-
-    .checkmark {
-        height: 20px;
-        width: 20px;
-        border-radius: 6px;
-        border: 1.5px solid var(--border-divider);
-        background-color: var(--content-bg);
-        position: relative;
-        transition: all 0.2s ease;
-    }
-
-    .checkbox-container input:checked ~ .checkmark {
-        background-color: var(--primary);
-        border-color: var(--primary);
-    }
-
-    .checkmark:after {
-        content: "";
-        position: absolute;
-        display: none;
-        left: 6px;
-        top: 2px;
-        width: 5px;
-        height: 10px;
-        border: solid white;
-        border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
-    }
-
-    .checkbox-container input:checked ~ .checkmark:after {
-        display: block;
-    }
-
-    .checkbox-label {
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-    }
-
-    /* Responsive adjustments */
-    @@media (max-width: 768px) {
-        .wizard-step .step-label
-
-    {
-        display: none;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .section-header.with-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-        align-items: flex-start;
-    }
-
-    .add-item-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .contact-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .contact-item-actions {
-        width: 100%;
-        justify-content: flex-end;
-        margin-top: 0.5rem;
-    }
-
-    .additional-contacts-actions {
-        flex-direction: column;
-    }
-
-    }
-
-    @@media (max-width: 480px) {
-        .wizard-progress
-
-    {
-        padding: 0.5rem 0;
-    }
-
-    .step-indicator {
-        width: 30px;
-        height: 30px;
-        font-size: 0.8rem;
-    }
-
-    .contact-type-selector {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    }
-
-    @@media (max-width: 400px) {
-        .contact-type-selector
-
-    {
-        grid-template-columns: 1fr;
-    }
-
-    }
-</style>
-
-@code {
-    [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public bool IsEdit { get; set; }
-    [Parameter] public Company CompanyModel { get; set; } = new Company();
-    [Parameter] public EventCallback<Company> OnSave { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
-
-    [Inject] private ToastService ToastService { get; set; }
-
-    // Wizard State
-    private int CurrentStep = 1;
-    private const int TotalSteps = 3;
-    private List<(int Number, string Label)> Steps = new List<(int Number, string Label)> {
-        (1, "Company Info"),
-        (2, "Contact Details"),
-        (3, "Address")
-    };
-
-    // Contact and email management
-    private string PrimaryEmail
-    {
-        get => CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress ?? string.Empty;
-    }
-
-    private string PrimaryContactNumber
-    {
-        get => CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number ?? string.Empty;
-    }
-
-    private IEnumerable<Email> AdditionalEmails =>
-        CompanyModel.EmailAddresses?.Where(e => !e.IsPrimary) ?? Enumerable.Empty<Email>();
-
-    private IEnumerable<ContactNumber> AdditionalContactNumbers =>
-        CompanyModel.ContactNumbers?.Where(c => !c.IsPrimary) ?? Enumerable.Empty<ContactNumber>();
-
-    // Email dialog
-    private bool emailDialogVisible = false;
-    private Email editingEmail = new Email();
-
-    // Contact dialog
-    private bool contactDialogVisible = false;
-    private ContactNumber editingContact = new ContactNumber();
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (!IsEdit)
+        @if (isLoading)
         {
-            CompanyModel = new Company
-                {
-                    Address = new Address(),
-                    EmailAddresses = new List<Email>
-                {
-                    new Email
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Company"
-                    }
-                },
-                    ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Company",
-                        Type = ContactNumberType.Mobile
-                    }
-                }
-                };
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading company details...</h3>
+            </div>
         }
         else
         {
-            // Ensure collections exist
-            if (CompanyModel.EmailAddresses == null)
-            {
-                CompanyModel.EmailAddresses = new List<Email>
+            <div class="company-dialog">
+                @if (IsViewMode)
                 {
-                    new Email
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Company",
-                        RelatedEntityId = CompanyModel.Id
-                    }
-                };
-            }
+                    <div class="view-mode">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <i class="fa-light fa-building"></i>
+                            </div>
+                            <div class="detail-title">
+                                <h2>@CompanyModel.Name</h2>
+                                <div class="company-status">
+                                    <span class="status-badge @(CompanyModel.IsActive ? "active" : "inactive")">
+                                        @(CompanyModel.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </div>
+                            </div>
+                            @if (CanEdit)
+                            {
+                                <div class="detail-actions">
+                                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit" 
+                                    OnClick="SwitchToEditMode" CssClass="edit-btn" />
+                                </div>
+                            }
+                        </div>
 
-            if (CompanyModel.ContactNumbers == null)
-            {
-                CompanyModel.ContactNumbers = new List<ContactNumber>
+                        <div class="detail-sections">
+                            <div class="detail-section">
+                                <h3><i class="fa-light fa-info-circle"></i> Basic Information</h3>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Registration Number</span>
+                                        <span class="detail-value">@CompanyModel.RegistrationNumber</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">VAT Number</span>
+                                        <span class="detail-value">@(string.IsNullOrEmpty(CompanyModel.VatNumber) ? "Not provided" : CompanyModel.VatNumber)</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Website</span>
+                                        <span class="detail-value">
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Website))
+                                            {
+                                                <a href="@CompanyModel.Website" target="_blank">@CompanyModel.Website</a>
+                                            }
+                                            else
+                                            {
+                                                <span>Not provided</span>
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fa-light fa-address-card"></i> Contact Information</h3>
+                                <div class="detail-grid">
+                                    @if (CompanyModel.EmailAddresses?.Any() == true)
+                                    {
+                                        var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                        <div class="detail-item">
+                                            <span class="detail-label">Primary Email</span>
+                                            <span class="detail-value">
+                                                @if (primaryEmail != null)
+                                                {
+                                                    <a href="mailto:@primaryEmail.EmailAddress">@primaryEmail.EmailAddress</a>
+                                                }
+                                                else
+                                                {
+                                                    <span>Not provided</span>
+                                                }
+                                            </span>
+                                        </div>
+                                    }
+                                    @if (CompanyModel.ContactNumbers?.Any() == true)
+                                    {
+                                        var primaryContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                        <div class="detail-item">
+                                            <span class="detail-label">Primary Contact</span>
+                                            <span class="detail-value">
+                                                @if (primaryContact != null)
+                                                {
+                                                    <a href="tel:@primaryContact.Number">@primaryContact.Number</a>
+                                                }
+                                                else
+                                                {
+                                                    <span>Not provided</span>
+                                                }
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (CompanyModel.EmailAddresses?.Count > 1)
+                                {
+                                    <div class="additional-emails mt-3">
+                                        <h4>Additional Email Addresses</h4>
+                                        <div class="contact-list">
+                                            @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
+                                            {
+                                                <div class="contact-item">
+                                                    <div class="contact-type">
+                                                        @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                    </div>
+                                                    <div class="contact-value">
+                                                        <a href="mailto:@email.EmailAddress">@email.EmailAddress</a>
+                                                    </div>
+                                                    <div class="contact-status">
+                                                        @if (!email.IsActive)
+                                                        {
+                                                            <span class="status-badge status-inactive">Inactive</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (CompanyModel.ContactNumbers?.Count > 1)
+                                {
+                                    <div class="additional-contacts mt-3">
+                                        <h4>Additional Contact Numbers</h4>
+                                        <div class="contact-list">
+                                            @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
+                                            {
+                                                <div class="contact-item">
+                                                    <div class="contact-type">
+                                                        @(!string.IsNullOrEmpty(phone.Description) ? phone.Description : phone.Type.ToString())
+                                                    </div>
+                                                    <div class="contact-value">
+                                                        <a href="tel:@phone.Number">@phone.Number</a>
+                                                    </div>
+                                                    <div class="contact-status">
+                                                        @if (!phone.IsActive)
+                                                        {
+                                                            <span class="status-badge status-inactive">Inactive</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fa-light fa-map-marker-alt"></i> Address</h3>
+                                <div class="address-display">
+                                    @if (CompanyModel.Address != null)
+                                    {
+                                        <p>
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Street))
+                                            {
+                                                @CompanyModel.Address.Street<br />
+                                            }
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.UnitNumber))
+                                            {
+                                                @:Unit @CompanyModel.Address.UnitNumber
+                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
+                                                {
+                                                    @:, @CompanyModel.Address.ComplexName
+                                                }
+                                                <br />
+                                            }
+                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
+                                            {
+                                                @CompanyModel.Address.ComplexName<br />
+                                            }
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.BuildingName))
+                                            {
+                                                @CompanyModel.Address.BuildingName<br />
+                                            }
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Suburb))
+                                            {
+                                                @CompanyModel.Address.Suburb
+                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.City))
+                                                {
+                                                    @:, @CompanyModel.Address.City
+                                                }
+                                                <br />
+                                            }
+                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.City))
+                                            {
+                                                @CompanyModel.Address.City<br />
+                                            }
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Province))
+                                            {
+                                                @CompanyModel.Address.Province
+                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
+                                                {
+                                                    @:, @CompanyModel.Address.PostalCode
+                                                }
+                                                <br />
+                                            }
+                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
+                                            {
+                                                @CompanyModel.Address.PostalCode<br />
+                                            }
+                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Country))
+                                            {
+                                                @CompanyModel.Address.Country
+                                            }
+                                        </p>
+                                    }
+                                    else
+                                    {
+                                        <p>No address information provided</p>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3><i class="fa-light fa-image"></i> Company Logo</h3>
+                                <div class="logo-display">
+                                    @if (!string.IsNullOrEmpty(companyLogoPath))
+                                    {
+                                        <div class="logo-container">
+                                            <img src="@companyLogoPath" alt="Company Logo" class="company-logo" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="empty-logo">
+                                            <i class="fa-light fa-building fa-4x"></i>
+                                            <p>No logo uploaded</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (IsEditMode)
                 {
-                    new ContactNumber
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Company",
-                        RelatedEntityId = CompanyModel.Id,
-                        Type = ContactNumberType.Mobile
-                    }
-                };
-            }
+                    <EditForm Model="CompanyModel" OnValidSubmit="Save" FormName="editCompany" class="company-edit-form">
+                        <DataAnnotationsValidator />
+                        <FluentValidationValidator />
+
+                        <RVTab Tabs="formTabs" Size="sm" OnTabChange="HandleTabChange">
+                            <RVTabPanel TabId="basic" IsActive='activeTab == "basic"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-building"></i> Basic Information</h4>
+                                        <p>Enter the basic details for this company</p>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="name">Company Name</label>
+                                        <RVTextbox Id="name" 
+                                        Value="@CompanyModel.Name"
+                                        ValueChanged="value => CompanyModel.Name = value"
+                                        Placeholder="Enter company name"
+                                        IconLeft="fa-light fa-building" />
+                                        <ValidationMessage For="@(() => CompanyModel.Name)" />
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="registrationNumber">Registration Number</label>
+                                            <RVTextbox Id="registrationNumber"
+                                            Value="@CompanyModel.RegistrationNumber"
+                                            ValueChanged="value => CompanyModel.RegistrationNumber = value"
+                                            Placeholder="Enter registration number"
+                                            IconLeft="fa-light fa-id-card" />
+                                            <ValidationMessage For="@(() => CompanyModel.RegistrationNumber)" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="vatNumber">VAT Number</label>
+                                            <RVTextbox Id="vatNumber"
+                                            Value="@CompanyModel.VatNumber"
+                                            ValueChanged="value => CompanyModel.VatNumber = value"
+                                            Placeholder="Enter VAT number (optional)"
+                                            IconLeft="fa-light fa-receipt" />
+                                            <ValidationMessage For="@(() => CompanyModel.VatNumber)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="website">Website</label>
+                                        <RVTextbox Id="website"
+                                        Value="@CompanyModel.Website"
+                                        ValueChanged="value => CompanyModel.Website = value"
+                                        Placeholder="Enter website URL (optional)"
+                                        IconLeft="fa-light fa-globe" />
+                                        <ValidationMessage For="@(() => CompanyModel.Website)" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <RVSwitch Label="Active"
+                                        Value="CompanyModel.IsActive"
+                                        ValueChanged="value => CompanyModel.IsActive = value"
+                                        HelperText="Inactive companies will not be accessible to users" />
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="contact" IsActive='activeTab == "contact"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
+                                        <p>Manage the company's contact details</p>
+                                    </div>
+
+                                    <!-- Primary Email -->
+                                    <div class="form-group">
+                                        <label for="primaryEmail">Primary Email Address</label>
+                                        <RVTextbox Id="primaryEmail"
+                                        Type="email"
+                                        Value="@GetPrimaryEmail()"
+                                        ValueChanged="UpdatePrimaryEmail"
+                                        Placeholder="Enter primary email address"
+                                        IconLeft="fa-light fa-envelope" />
+                                    </div>
+
+                                    <!-- Primary Phone -->
+                                    <div class="form-group">
+                                        <label for="primaryPhone">Primary Phone Number</label>
+                                        <RVTextbox Id="primaryPhone"
+                                        Type="tel"
+                                        Value="@GetPrimaryPhone()"
+                                        ValueChanged="UpdatePrimaryPhone"
+                                        Placeholder="Enter primary phone number"
+                                        IconLeft="fa-light fa-phone" />
+                                    </div>
+
+                                    <!-- Additional Email Addresses Section -->
+                                    <div class="additional-contacts">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
+                                            OnClick="AddEmail" CssClass="add-btn" />
+                                        </div>
+
+                                        @if (CompanyModel.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
+                                        {
+                                            <div class="email-list">
+                                                @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
+                                                {
+                                                    <div class="email-item">
+                                                        <div class="email-content">
+                                                            <RVTextbox Value="@email.EmailAddress"
+                                                            ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                            Placeholder="Enter email address"
+                                                            IconLeft="fa-light fa-envelope"
+                                                            Size="sm" />
+                                                            <RVTextbox Value="@email.Description"
+                                                            ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                            Placeholder="Description (e.g. Work, Support)"
+                                                            IconLeft="fa-light fa-tag"
+                                                            Size="sm" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                        OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <i class="fa-light fa-inbox-empty"></i>
+                                                <p>No additional email addresses</p>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <!-- Additional Phone Numbers Section -->
+                                    <div class="additional-contacts">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
+                                            OnClick="AddPhone" CssClass="add-btn" />
+                                        </div>
+
+                                        @if (CompanyModel.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
+                                        {
+                                            <div class="phone-list">
+                                                @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
+                                                {
+                                                    <div class="phone-item">
+                                                        <div class="phone-content">
+                                                            <RVTextbox Value="@phone.Number"
+                                                            ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                            Placeholder="Enter phone number"
+                                                            IconLeft="fa-light fa-phone"
+                                                            Size="sm" />
+                                                            <RVSelect Value="@phone.Type.ToString()"
+                                                            ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                            Placeholder="Select type"
+                                                            IconLeft="fa-light fa-phone-office"
+                                                            Size="sm">
+                                                                @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                                {
+                                                                    <option value="@type">@type</option>
+                                                                }
+                                                            </RVSelect>
+                                                            <RVTextbox Value="@phone.Description"
+                                                            ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                            Placeholder="Description"
+                                                            IconLeft="fa-light fa-tag"
+                                                            Size="sm" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                        OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <i class="fa-light fa-phone-slash"></i>
+                                                <p>No additional phone numbers</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="address" IsActive='activeTab == "address"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-map-marker-alt"></i> Address Information</h4>
+                                        <p>Enter the company's address details</p>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="street">Street</label>
+                                            <RVTextbox Id="street"
+                                            Value="@CompanyModel.Address.Street"
+                                            ValueChanged="value => CompanyModel.Address.Street = value"
+                                            Placeholder="Enter street address"
+                                            IconLeft="fa-light fa-road" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="unitNumber">Unit Number</label>
+                                            <RVTextbox Id="unitNumber"
+                                            Value="@CompanyModel.Address.UnitNumber"
+                                            ValueChanged="value => CompanyModel.Address.UnitNumber = value"
+                                            Placeholder="Enter unit number (optional)"
+                                            IconLeft="fa-light fa-door-closed" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="complexName">Complex Name</label>
+                                            <RVTextbox Id="complexName"
+                                            Value="@CompanyModel.Address.ComplexName"
+                                            ValueChanged="value => CompanyModel.Address.ComplexName = value"
+                                            Placeholder="Enter complex name (optional)"
+                                            IconLeft="fa-light fa-building" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="buildingName">Building Name</label>
+                                            <RVTextbox Id="buildingName"
+                                            Value="@CompanyModel.Address.BuildingName"
+                                            ValueChanged="value => CompanyModel.Address.BuildingName = value"
+                                            Placeholder="Enter building name (optional)"
+                                            IconLeft="fa-light fa-building" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="suburb">Suburb</label>
+                                            <RVTextbox Id="suburb"
+                                            Value="@CompanyModel.Address.Suburb"
+                                            ValueChanged="value => CompanyModel.Address.Suburb = value"
+                                            Placeholder="Enter suburb"
+                                            IconLeft="fa-light fa-map" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="city">City</label>
+                                            <RVTextbox Id="city"
+                                            Value="@CompanyModel.Address.City"
+                                            ValueChanged="value => CompanyModel.Address.City = value"
+                                            Placeholder="Enter city"
+                                            IconLeft="fa-light fa-city" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="province">Province</label>
+                                            <RVTextbox Id="province"
+                                            Value="@CompanyModel.Address.Province"
+                                            ValueChanged="value => CompanyModel.Address.Province = value"
+                                            Placeholder="Enter province"
+                                            IconLeft="fa-light fa-map-marked" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="postalCode">Postal Code</label>
+                                            <RVTextbox Id="postalCode"
+                                            Value="@CompanyModel.Address.PostalCode"
+                                            ValueChanged="value => CompanyModel.Address.PostalCode = value"
+                                            Placeholder="Enter postal code"
+                                            IconLeft="fa-light fa-mailbox" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="country">Country</label>
+                                        <RVTextbox Id="country"
+                                        Value="@CompanyModel.Address.Country"
+                                        ValueChanged="value => CompanyModel.Address.Country = value"
+                                        Placeholder="Enter country"
+                                        IconLeft="fa-light fa-globe" />
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="logo" IsActive='activeTab == "logo"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-image"></i> Company Logo</h4>
+                                        <p>Upload your company logo</p>
+                                    </div>
+
+                                    <div class="logo-upload-section">
+                                        <div class="current-logo">
+                                            <h5>Current Logo</h5>
+                                            @if (!string.IsNullOrEmpty(companyLogoPath))
+                                            {
+                                                <div class="logo-preview">
+                                                    <img src="@companyLogoPath" alt="Company Logo" class="logo-image" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="empty-logo">
+                                                    <i class="fa-light fa-image fa-3x"></i>
+                                                    <p>No logo uploaded yet</p>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <div class="upload-area">
+                                            <h5>Upload New Logo</h5>
+                                            <InputFile OnChange="OnLogoInputChange" class="upload-input" accept="image/*" />
+                                            <div class="upload-placeholder @(isUploading ? "d-none" : "")">
+                                                <i class="fa-light fa-cloud-upload fa-2x"></i>
+                                                <p>Drag and drop your logo here, or click to browse</p>
+                                                <span class="file-hint">Recommended size: 512x512px, JPG or PNG format</span>
+                                            </div>
+                                            @if (isUploading)
+                                            {
+                                                <div class="upload-progress">
+                                                    <div class="loading-spinner sm"></div>
+                                                    <span>Uploading logo... @uploadProgress%</span>
+                                                </div>
+                                            }
+                                            @if (logoPreview != null)
+                                            {
+                                                <div class="logo-preview-new">
+                                                    <img src="@logoPreview" alt="New Logo Preview" class="preview-image" />
+                                                    <div class="preview-actions">
+                                                        <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-times"
+                                                        Text="Remove" OnClick="CancelLogoUpload" />
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+                        </RVTab>
+                    </EditForm>
+                }
+            </div>
+        }
+    </ChildContent>
+</RVModal>
+
+
+@code {
+    [Parameter] public Company CompanyModel { get; set; } = new Company();
+    [Parameter] public bool IsEdit { get; set; } = false;
+    [Parameter] public bool IsView { get; set; } = false;
+    [Parameter] public bool CanEdit { get; set; } = true;
+    [Parameter] public EventCallback<Company> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool isLoading = false;
+    private string activeTab = "basic";
+    private bool IsEditMode => (IsEdit || isInEditMode) && !IsView;
+    private bool isInEditMode = false;
+    private bool IsViewMode => IsView || !IsEditMode;
+
+    // Logo handling
+    private string companyLogoPath = string.Empty;
+    private string logoPreview = string.Empty;
+    private IBrowserFile logoFile;
+    private bool isUploading = false;
+    private int uploadProgress = 0;
+    private long maxFileSize = 1024 * 1024 * 5; // 5MB
+
+    // Form tabs
+    private List<RVTab.RVTabItem> formTabs = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "basic", Title = "Basic Information", Icon = "fa-light fa-building" },
+        new RVTab.RVTabItem { Id = "contact", Title = "Contact Details", Icon = "fa-light fa-address-card" },
+        new RVTab.RVTabItem { Id = "address", Title = "Address", Icon = "fa-light fa-map-marker-alt" },
+        new RVTab.RVTabItem { Id = "logo", Title = "Company Logo", Icon = "fa-light fa-image" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CompanyModel.Id != 0)
+        {
+            await LoadCompanyData();
+        }
+        else
+        {
+            InitializeNewCompany();
         }
 
-        // Set CSS variables for the progress bar
-        await JSRuntime.InvokeVoidAsync("eval", @"
-            document.documentElement.style.setProperty('--current-step', " + CurrentStep + @");
-            document.documentElement.style.setProperty('--total-steps', " + TotalSteps + @");
-        ");
+        // For new companies, start in edit mode
+        if (CompanyModel.Id == 0)
+        {
+            isInEditMode = true;
+        }
+        else if (IsView) 
+        {
+            isInEditMode = false;
+        }
     }
 
-    private async Task HandleValidSubmit()
+    private void InitializeNewCompany()
     {
-        if (CurrentStep < TotalSteps)
+        CompanyModel = new Company
         {
-            // Validate current step
-            if (!ValidateCurrentStep())
+            IsActive = true,
+            Address = new Address { Country = "South Africa" },
+            EmailAddresses = new List<Email>(),
+            ContactNumbers = new List<ContactNumber>(),
+            CreatedOn = DateTime.Now
+        };
+    }
+    private async Task HandleConfirmAction()
+    {
+        if (IsView)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else if (IsEditMode)
+        {
+            await OnSave.InvokeAsync(CompanyModel);
+        }
+        else
+        {
+            SwitchToEditMode();
+        }
+    }
+    private async Task LoadCompanyData()
+    {
+        isLoading = true;
+
+        try
+        {
+            var response = await UserService.GetCompanyById(CompanyModel.Id);
+            if (response.ResponseInfo.Success)
             {
-                return;
+                CompanyModel = (Company)response.Response;
+
+                // Initialize the logo if available
+                // In a real app, you'd likely have a field in the Company model for the logo path
+                // Since we don't have that in the model, I'm simulating it with a local variable
+                companyLogoPath = $"/company-logos/{CompanyModel.Id}.png"; // This path would be replaced with real logic
             }
-
-            // Move to next step
-            CurrentStep++;
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                document.documentElement.style.setProperty('--current-step', " + CurrentStep + @");
-            ");
-            return;
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
         }
-
-        // On final step, submit the form
-        if (!ValidateCurrentStep())
+        catch (Exception ex)
         {
-            return;
+            ToastService.ShowError($"Error loading company: {ex.Message}", "Error");
         }
-
-        // Set entity relationships if not already set
-        foreach (var email in CompanyModel.EmailAddresses)
+        finally
         {
-            email.RelatedEntityType = "Company";
-            email.RelatedEntityId = CompanyModel.Id;
-        }
-
-        foreach (var contact in CompanyModel.ContactNumbers)
-        {
-            contact.RelatedEntityType = "Company";
-            contact.RelatedEntityId = CompanyModel.Id;
-        }
-
-        await OnSave.InvokeAsync(CompanyModel);
-        CloseModal();
-    }
-
-    private bool ValidateCurrentStep()
-    {
-        switch (CurrentStep)
-        {
-            case 1: // Company Information
-                if (string.IsNullOrWhiteSpace(CompanyModel.Name))
-                {
-                    ToastService.ShowError("Company name is required", "Validation Error");
-                    return false;
-                }
-                return true;
-
-            case 2: // Contact Information
-                // Validate primary email
-                var primaryEmail = CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-                if (primaryEmail == null || string.IsNullOrWhiteSpace(primaryEmail.EmailAddress) || !IsValidEmail(primaryEmail.EmailAddress))
-                {
-                    ToastService.ShowError("A valid primary email address is required", "Validation Error");
-                    return false;
-                }
-
-                // Validate primary contact number
-                var primaryContact = CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
-                if (primaryContact == null || string.IsNullOrWhiteSpace(primaryContact.Number))
-                {
-                    ToastService.ShowError("A primary contact number is required", "Validation Error");
-                    return false;
-                }
-                return true;
-
-            case 3: // Address
-                // Address is optional, so no validation needed
-                return true;
-
-            default:
-                return true;
+            isLoading = false;
         }
     }
 
-    private void CloseModal()
+    private string GetDialogTitle()
     {
-        // Reset step if modal is closed
-        CurrentStep = 1;
-        OnCancel.InvokeAsync();
+        if (IsViewMode)
+        {
+            return "Company Details";
+        }
+        else if (CompanyModel.Id == 0)
+        {
+            return "Create Company";
+        }
+        else
+        {
+            return "Edit Company";
+        }
+    }
+
+    private string GetDialogIcon()
+    {
+        if (IsViewMode)
+        {
+            return "fa-light fa-building";
+        }
+        else if (CompanyModel.Id == 0)
+        {
+            return "fa-light fa-building-plus";
+        }
+        else
+        {
+            return "fa-light fa-building-pen";
+        }
+    }
+
+    private void SwitchToEditMode()
+    {
+        isInEditMode = true;
+    }
+
+    private void HandleTabChange(string tabId)
+    {
+        activeTab = tabId;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (CompanyModel.Id == 0)
+            {
+                // Create new company
+                CompanyModel.CreatedBy = "CurrentUser"; // Replace with actual current user ID
+                CompanyModel.CreatedOn = DateTime.Now;
+            }
+            else
+            {
+                // Update existing company
+                CompanyModel.UpdatedBy = "CurrentUser"; // Replace with actual current user ID
+                CompanyModel.UpdatedDate = DateTime.Now;
+            }
+            
+            await OnSave.InvokeAsync(CompanyModel);
+            
+            // If we're in "switch to edit mode" state, go back to view mode after save
+            if (isInEditMode)
+            {
+                isInEditMode = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error saving company: {ex.Message}", "Error");
+        }
+    }
+
+    // Helper methods for email and phone management
+    private string GetPrimaryEmail()
+    {
+        var primaryEmail = CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+        return primaryEmail?.EmailAddress ?? string.Empty;
+    }
+
+    private string GetPrimaryPhone()
+    {
+        var primaryPhone = CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+        return primaryPhone?.Number ?? string.Empty;
     }
 
     private void UpdatePrimaryEmail(string value)
     {
-        var primaryEmail = CompanyModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-
-        if (primaryEmail == null)
+        if (CompanyModel.EmailAddresses == null)
         {
-            if (CompanyModel.EmailAddresses == null)
-                CompanyModel.EmailAddresses = new List<Email>();
-
-            CompanyModel.EmailAddresses.Add(new Email
-                {
-                    EmailAddress = value,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = CompanyModel.Id
-                });
+            CompanyModel.EmailAddresses = new List<Email>();
         }
-        else
+
+        var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+        
+        if (primaryEmail != null)
         {
             primaryEmail.EmailAddress = value;
+            primaryEmail.UpdatedDate = DateTime.Now;
         }
-    }
-
-    private void UpdatePrimaryContactNumber(string value)
-    {
-        var primaryContact = CompanyModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
-
-        if (primaryContact == null)
+        else if (!string.IsNullOrEmpty(value))
         {
-            if (CompanyModel.ContactNumbers == null)
-                CompanyModel.ContactNumbers = new List<ContactNumber>();
-
-            CompanyModel.ContactNumbers.Add(new ContactNumber
-                {
-                    Number = value,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = CompanyModel.Id,
-                    Type = ContactNumberType.Mobile
-                });
-        }
-        else
-        {
-            primaryContact.Number = value;
-        }
-    }
-
-    // Email management
-    private void AddEmail()
-    {
-        editingEmail = new Email
+            CompanyModel.EmailAddresses.Add(new Email
             {
+                EmailAddress = value,
+                IsPrimary = true,
                 IsActive = true,
                 RelatedEntityType = "Company",
-                RelatedEntityId = CompanyModel.Id
-            };
-        emailDialogVisible = true;
+                CreatedOn = DateTime.Now
+            });
+        }
     }
 
-    private void EditEmail(Email email)
+    private void UpdatePrimaryPhone(string value)
     {
-        editingEmail = new Email
+        if (CompanyModel.ContactNumbers == null)
+        {
+            CompanyModel.ContactNumbers = new List<ContactNumber>();
+        }
+
+        var primaryPhone = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+        
+        if (primaryPhone != null)
+        {
+            primaryPhone.Number = value;
+            primaryPhone.UpdatedDate = DateTime.Now;
+        }
+        else if (!string.IsNullOrEmpty(value))
+        {
+            CompanyModel.ContactNumbers.Add(new ContactNumber
             {
-                Id = email.Id,
-                EmailAddress = email.EmailAddress,
-                Description = email.Description,
-                IsActive = email.IsActive,
-                IsPrimary = email.IsPrimary,
-                RelatedEntityType = email.RelatedEntityType,
-                RelatedEntityId = email.RelatedEntityId
-            };
-        emailDialogVisible = true;
+                Number = value,
+                Type = ContactNumberType.Mobile,
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Company",
+                CreatedOn = DateTime.Now
+            });
+        }
+    }
+
+    private void AddEmail()
+    {
+        if (CompanyModel.EmailAddresses == null)
+        {
+            CompanyModel.EmailAddresses = new List<Email>();
+        }
+
+        CompanyModel.EmailAddresses.Add(new Email
+        {
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "Company",
+            CreatedOn = DateTime.Now
+        });
     }
 
     private void RemoveEmail(Email email)
     {
-        if (email.IsPrimary)
+        if (CompanyModel.EmailAddresses != null)
         {
-            ToastService.ShowError("Cannot remove primary email address", "Error");
-            return;
+            CompanyModel.EmailAddresses.Remove(email);
+        }
+    }
+
+    private void UpdateEmailAddress(Email email, string value)
+    {
+        email.EmailAddress = value;
+    }
+
+    private void UpdateEmailDescription(Email email, string value)
+    {
+        email.Description = value;
+    }
+
+    private void AddPhone()
+    {
+        if (CompanyModel.ContactNumbers == null)
+        {
+            CompanyModel.ContactNumbers = new List<ContactNumber>();
         }
 
-        CompanyModel.EmailAddresses.Remove(email);
-    }
-
-    private void CloseEmailDialog()
-    {
-        emailDialogVisible = false;
-    }
-
-    private void SaveEmail()
-    {
-        if (string.IsNullOrWhiteSpace(editingEmail.EmailAddress) || !IsValidEmail(editingEmail.EmailAddress))
+        CompanyModel.ContactNumbers.Add(new ContactNumber
         {
-            ToastService.ShowError("Please enter a valid email address", "Validation Error");
-            return;
+            Type = ContactNumberType.Mobile,
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "Company",
+            CreatedOn = DateTime.Now
+        });
+    }
+
+    private void RemovePhone(ContactNumber phone)
+    {
+        if (CompanyModel.ContactNumbers != null)
+        {
+            CompanyModel.ContactNumbers.Remove(phone);
         }
-
-        var existingEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.Id == editingEmail.Id);
-        if (existingEmail != null)
-        {
-            // Update existing
-            existingEmail.EmailAddress = editingEmail.EmailAddress;
-            existingEmail.Description = editingEmail.Description;
-            existingEmail.IsActive = editingEmail.IsActive;
-        }
-        else
-        {
-            // Add new
-            CompanyModel.EmailAddresses.Add(editingEmail);
-        }
-
-        emailDialogVisible = false;
     }
 
-    // Contact number management
-    private void AddContactNumber()
+    private void UpdatePhoneNumber(ContactNumber phone, string value)
     {
-        editingContact = new ContactNumber
-            {
-                IsActive = true,
-                RelatedEntityType = "Company",
-                RelatedEntityId = CompanyModel.Id,
-                Type = ContactNumberType.Mobile
-            };
-        contactDialogVisible = true;
+        phone.Number = value;
     }
 
-    private void EditContactNumber(ContactNumber contact)
+    private void UpdatePhoneType(ContactNumber phone, string value)
     {
-        editingContact = new ContactNumber
-            {
-                Id = contact.Id,
-                Number = contact.Number,
-                Type = contact.Type,
-                Description = contact.Description,
-                IsActive = contact.IsActive,
-                IsPrimary = contact.IsPrimary,
-                RelatedEntityType = contact.RelatedEntityType,
-                RelatedEntityId = contact.RelatedEntityId
-            };
-        contactDialogVisible = true;
-    }
-
-    private void RemoveContactNumber(ContactNumber contact)
-    {
-        if (contact.IsPrimary)
+        if (Enum.TryParse<ContactNumberType>(value, out var type))
         {
-            ToastService.ShowError("Cannot remove primary contact number", "Error");
-            return;
+            phone.Type = type;
         }
-
-        CompanyModel.ContactNumbers.Remove(contact);
     }
 
-    private void CloseContactDialog()
+    private void UpdatePhoneDescription(ContactNumber phone, string value)
     {
-        contactDialogVisible = false;
+        phone.Description = value;
     }
 
-    private void SaveContactNumber()
-    {
-        if (string.IsNullOrWhiteSpace(editingContact.Number))
-        {
-            ToastService.ShowError("Please enter a contact number", "Validation Error");
-            return;
-        }
-
-        var existingContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.Id == editingContact.Id);
-        if (existingContact != null)
-        {
-            // Update existing
-            existingContact.Number = editingContact.Number;
-            existingContact.Type = editingContact.Type;
-            existingContact.Description = editingContact.Description;
-            existingContact.IsActive = editingContact.IsActive;
-        }
-        else
-        {
-            // Add new
-            CompanyModel.ContactNumbers.Add(editingContact);
-        }
-
-        contactDialogVisible = false;
-    }
-
-    private string GetContactTypeIcon(ContactNumberType type)
-    {
-        return type switch
-        {
-            ContactNumberType.Mobile => "far fa-mobile-alt",
-            ContactNumberType.Landline => "far fa-phone-office",
-            ContactNumberType.Fax => "far fa-fax",
-            ContactNumberType.WhatsApp => "fab fa-whatsapp",
-            _ => "far fa-phone"
-        };
-    }
-
-    private bool IsValidEmail(string email)
+    // Logo handling methods
+    private async Task OnLogoInputChange(InputFileChangeEventArgs e)
     {
         try
         {
-            var addr = new System.Net.Mail.MailAddress(email);
-            return addr.Address == email;
+            logoFile = e.File;
+            
+            if (logoFile.Size > maxFileSize)
+            {
+                ToastService.ShowError("File size exceeds 5MB limit", "Error");
+                return;
+            }
+
+            // Validate file type
+            if (!logoFile.ContentType.StartsWith("image/"))
+            {
+                ToastService.ShowError("Please select an image file", "Error");
+                return;
+            }
+
+            // Generate preview
+            isUploading = true;
+            uploadProgress = 0;
+
+            // Simulate upload progress
+            for (int i = 0; i <= 100; i += 10)
+            {
+                uploadProgress = i;
+                await Task.Delay(100); // Simulated delay
+                StateHasChanged();
+            }
+
+            var imageFormat = logoFile.ContentType.Split('/')[1];
+            var resizedImageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 512, 512);
+            
+            using var stream = resizedImageFile.OpenReadStream();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            byte[] imageData = ms.ToArray();
+            
+            // Generate base64 preview
+            logoPreview = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(imageData)}";
+            
+            // In a real implementation, you would upload this file to your server
+            // Here we're just saving the preview so it can be displayed
+            // companyLogoPath = await UploadLogoToServer(imageData);
+            
+            isUploading = false;
+            uploadProgress = 100;
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            isUploading = false;
+            ToastService.ShowError($"Error uploading logo: {ex.Message}", "Error");
         }
+    }
+
+    private void CancelLogoUpload()
+    {
+        logoPreview = string.Empty;
+        logoFile = null;
     }
 }

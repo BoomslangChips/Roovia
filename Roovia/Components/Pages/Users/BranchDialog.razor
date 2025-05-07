@@ -1,1423 +1,1562 @@
-﻿@using Roovia.Models.Helper
+﻿@using Roovia.Interfaces
 @using Roovia.Models.Users
-@using System.IO
+@using Roovia.Models.Helper
 @using Roovia.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IUser UserService
+@inject ToastService ToastService
 
-<RVModal IsVisible="@IsVisible"
-         Title="@(IsEdit ? "Edit Branch" : "Add New Branch")"
-         OnClose="CloseModal"
-         OnConfirm="HandleValidSubmit"
-         ConfirmText="Save"
-         CancelText="Cancel"
-         Size="md"
-         CssClass="branch-dialog-modal">
+<RVModal IsVisible="true"
+         Title="@GetDialogTitle()"
+         Icon="@GetDialogIcon()"
+         OnClose="OnCancel"
+         OnCancel="OnCancel"
+         OnConfirm="HandleConfirmAction"
+         ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
+         CancelText="@(IsEditMode ? "Cancel" : "Close")"
+         DefaultFooter="false"
+         Size="lg">
     <ChildContent>
-        <EditForm Model="BranchModel" OnValidSubmit="HandleValidSubmit">
-            <div class="branch-form">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h3><i class="far fa-building"></i> Branch Information</h3>
-                        <p>Enter the basic details about this branch</p>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Branch Name"
-                                   Id="branchName"
-                                   Value="@BranchModel.Name"
-                                   ValueChanged="@((string val) => BranchModel.Name = val)"
-                                   IsValid="@(!string.IsNullOrEmpty(BranchModel.Name))"
-                                   ValidationMessage="Branch name is required"
-                                   IconLeft="far fa-building" 
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="section-header">
-                        <h3><i class="far fa-address-card"></i> Primary Contact Information</h3>
-                        <p>How customers can reach this branch</p>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Primary Email"
-                                   Id="primaryEmail"
-                                   Type="email"
-                                   Value="@PrimaryEmail"
-                                   ValueChanged="@((string val) => UpdatePrimaryEmail(val))"
-                                   IsValid="@(!string.IsNullOrEmpty(PrimaryEmail) && IsValidEmail(PrimaryEmail))"
-                                   ValidationMessage="Valid primary email is required"
-                                   IconLeft="far fa-envelope"
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Primary Contact Number"
-                                   Id="primaryContactNumber"
-                                   Value="@PrimaryContactNumber"
-                                   ValueChanged="@((string val) => UpdatePrimaryContactNumber(val))"
-                                   IsValid="@(!string.IsNullOrEmpty(PrimaryContactNumber))"
-                                   ValidationMessage="Primary contact number is required"
-                                   IconLeft="far fa-phone" 
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="section-header">
-                        <h3><i class="far fa-map-marker-alt"></i> Branch Address</h3>
-                        <p>Physical location of this branch</p>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Street"
-                                   Id="addressStreet"
-                                   Value="@BranchModel.Address.Street"
-                                   ValueChanged="@((string val) => BranchModel.Address.Street = val)"
-                                   IconLeft="far fa-road" 
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <RVTextbox Label="Unit/Suite Number"
-                                       Id="addressUnitNumber"
-                                       Value="@BranchModel.Address.UnitNumber"
-                                       ValueChanged="@((string val) => BranchModel.Address.UnitNumber = val)"
-                                       IconLeft="far fa-door-open" 
-                                       CssClass="modern-input" />
-                        </div>
-
-                        <div class="form-group">
-                            <RVTextbox Label="Complex/Estate Name"
-                                       Id="addressComplexName"
-                                       Value="@BranchModel.Address.ComplexName"
-                                       ValueChanged="@((string val) => BranchModel.Address.ComplexName = val)"
-                                       IconLeft="far fa-building" 
-                                       CssClass="modern-input" />
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <RVTextbox Label="City"
-                                       Id="addressCity"
-                                       Value="@BranchModel.Address.City"
-                                       ValueChanged="@((string val) => BranchModel.Address.City = val)"
-                                       IconLeft="far fa-city" 
-                                       CssClass="modern-input" />
-                        </div>
-
-                        <div class="form-group">
-                            <RVTextbox Label="Suburb"
-                                       Id="addressSuburb"
-                                       Value="@BranchModel.Address.Suburb"
-                                       ValueChanged="@((string val) => BranchModel.Address.Suburb = val)"
-                                       IconLeft="far fa-map" 
-                                       CssClass="modern-input" />
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <RVTextbox Label="Province"
-                                       Id="addressProvince"
-                                       Value="@BranchModel.Address.Province"
-                                       ValueChanged="@((string val) => BranchModel.Address.Province = val)"
-                                       IconLeft="far fa-map" 
-                                       CssClass="modern-input" />
-                        </div>
-
-                        <div class="form-group">
-                            <RVTextbox Label="Postal Code"
-                                       Id="addressPostalCode"
-                                       Value="@BranchModel.Address.PostalCode"
-                                       ValueChanged="@((string val) => BranchModel.Address.PostalCode = val)"
-                                       IconLeft="far fa-mailbox" 
-                                       CssClass="modern-input" />
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <RVTextbox Label="Country"
-                                       Id="addressCountry"
-                                       Value="@BranchModel.Address.Country"
-                                       ValueChanged="@((string val) => BranchModel.Address.Country = val)"
-                                       IconLeft="far fa-globe" 
-                                       CssClass="modern-input" />
-                        </div>
-
-                        <div class="form-group">
-                            <RVTextbox Label="Gate Code (optional)"
-                                       Id="addressGateCode"
-                                       Value="@BranchModel.Address.GateCode"
-                                       ValueChanged="@((string val) => BranchModel.Address.GateCode = val)"
-                                       IconLeft="far fa-lock" 
-                                       CssClass="modern-input" />
-                        </div>
-                    </div>
-
-                    <div class="section-header">
-                        <h3><i class="far fa-image"></i> Branch Logo</h3>
-                        <p>Add a visual identity for this branch</p>
-                    </div>
-
-                    <div class="logo-upload-section">
-                        <div class="logo-upload-container">
-                            <label for="logoUpload" class="logo-upload-label">
-                                <div class="upload-icon"><i class="far fa-cloud-upload-alt"></i></div>
-                                <div class="upload-text">
-                                    <span class="primary-text">Upload Logo</span>
-                                    <span class="secondary-text">Drag & drop or click to browse</span>
-                                </div>
-                            </label>
-                            <input class="logo-upload-input" type="file" id="logoUpload" accept="image/*" />
-                            <div class="upload-instructions">
-                                <i class="far fa-info-circle"></i>
-                                <span>Recommended size: 512x512px. Maximum file size: 2MB</span>
-                            </div>
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(BranchModel.LogoPath))
-                        {
-                                <div class="current-logo">
-                                    <div class="current-logo-preview">
-                                        <img src="@BranchModel.LogoPath" alt="Branch Logo" class="logo-preview-img" />
-                                    </div>
-                                    <div class="current-logo-info">
-                                        <div class="info-title">Current Logo</div>
-                                        <div class="info-filename">@Path.GetFileName(BranchModel.LogoPath)</div>
-                                        <button type="button" class="remove-logo-btn" @onclick="RemoveLogo">
-                                            <i class="far fa-trash"></i>
-                                            <span>Remove</span>
-                                        </button>
-                                    </div>
-                                </div>
-                        }
-                    </div>
-
-                    @if (IsEdit && BranchModel.EmailAddresses != null && BranchModel.EmailAddresses.Count > 1)
-                    {
-                            <div class="section-header with-actions">
-                                <div>
-                                    <h3><i class="far fa-envelope-open"></i> Additional Email Addresses</h3>
-                                    <p>Other contact emails for this branch</p>
-                                </div>
-                                <button type="button" class="add-item-btn" @onclick="AddEmail">
-                                    <i class="far fa-plus"></i>
-                                    <span>Add Email</span>
-                                </button>
-                            </div>
-
-                            <div class="contact-items">
-                            @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary))
-                            {
-                                        <div class="contact-item">
-                                            <div class="contact-item-icon">
-                                                <i class="far fa-envelope"></i>
-                                            </div>
-                                            <div class="contact-item-details">
-                                                <div class="contact-item-primary">@email.EmailAddress</div>
-                                        @if (!string.IsNullOrEmpty(email.Description))
-                                        {
-                                                        <div class="contact-item-secondary">@email.Description</div>
-                                        }
-                                            </div>
-                                            <div class="contact-item-actions">
-                                                <button type="button" class="item-action edit" @onclick="() => EditEmail(email)">
-                                                    <i class="far fa-edit"></i>
-                                                </button>
-                                                <button type="button" class="item-action delete" @onclick="() => RemoveEmail(email)">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                            }
-                            </div>
-                    }
-                    else if (IsEdit)
-                    {
-                            <div class="section-header with-actions">
-                                <div>
-                                    <h3><i class="far fa-envelope-open"></i> Additional Email Addresses</h3>
-                                    <p>Other contact emails for this branch</p>
-                                </div>
-                                <button type="button" class="add-item-btn" @onclick="AddEmail">
-                                    <i class="far fa-plus"></i>
-                                    <span>Add Email</span>
-                                </button>
-                            </div>
-                            <div class="no-items-message">
-                                <i class="far fa-envelope-open"></i>
-                                <p>No additional email addresses have been added</p>
-                            </div>
-                    }
-
-                    @if (IsEdit && BranchModel.ContactNumbers != null && BranchModel.ContactNumbers.Count > 1)
-                    {
-                            <div class="section-header with-actions">
-                                <div>
-                                    <h3><i class="far fa-phone-alt"></i> Additional Contact Numbers</h3>
-                                    <p>Other phone numbers for this branch</p>
-                                </div>
-                                <button type="button" class="add-item-btn" @onclick="AddContactNumber">
-                                    <i class="far fa-plus"></i>
-                                    <span>Add Number</span>
-                                </button>
-                            </div>
-
-                            <div class="contact-items">
-                            @foreach (var contact in BranchModel.ContactNumbers.Where(c => !c.IsPrimary))
-                            {
-                                        <div class="contact-item">
-                                            <div class="contact-item-icon contact-@contact.Type.ToString().ToLower()">
-                                                <i class="@GetContactTypeIcon(contact.Type)"></i>
-                                            </div>
-                                            <div class="contact-item-details">
-                                                <div class="contact-item-primary">@contact.Number</div>
-                                                <div class="contact-item-secondary">
-                                                    <span class="contact-type">@contact.Type</span>
-                                            @if (!string.IsNullOrEmpty(contact.Description))
-                                            {
-                                                            <span class="contact-description">@contact.Description</span>
-                                            }
-                                                </div>
-                                            </div>
-                                            <div class="contact-item-actions">
-                                                <button type="button" class="item-action edit" @onclick="() => EditContactNumber(contact)">
-                                                    <i class="far fa-edit"></i>
-                                                </button>
-                                                <button type="button" class="item-action delete" @onclick="() => RemoveContactNumber(contact)">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                            }
-                            </div>
-                    }
-                    else if (IsEdit)
-                    {
-                            <div class="section-header with-actions">
-                                <div>
-                                    <h3><i class="far fa-phone-alt"></i> Additional Contact Numbers</h3>
-                                    <p>Other phone numbers for this branch</p>
-                                </div>
-                                <button type="button" class="add-item-btn" @onclick="AddContactNumber">
-                                    <i class="far fa-plus"></i>
-                                    <span>Add Number</span>
-                                </button>
-                            </div>
-                            <div class="no-items-message">
-                                <i class="far fa-phone"></i>
-                                <p>No additional contact numbers have been added</p>
-                            </div>
-                    }
-                </div>
-            </div>
-        </EditForm>
-    </ChildContent>
-</RVModal>
-
-@if (emailDialogVisible)
-{
-        <RVModal IsVisible="true"
-                 Title="@(editingEmail.Id == 0 ? "Add Email" : "Edit Email")"
-                 OnClose="CloseEmailDialog"
-                 OnConfirm="SaveEmail"
-                 ConfirmText="Save"
-                 CancelText="Cancel"
-                 Size="sm"
-                 CssClass="contact-dialog-modal">
-            <ChildContent>
-                <div class="form-section">
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Email Address"
-                                   Id="emailAddress"
-                                   Type="email"
-                                   Value="@editingEmail.EmailAddress"
-                                   ValueChanged="@((string val) => editingEmail.EmailAddress = val)"
-                                   IsValid="@(!string.IsNullOrEmpty(editingEmail.EmailAddress) && IsValidEmail(editingEmail.EmailAddress))"
-                                   ValidationMessage="Valid email address is required"
-                                   IconLeft="far fa-envelope"
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Description (Optional)"
-                                   Id="emailDescription"
-                                   Value="@editingEmail.Description"
-                                   ValueChanged="@((string val) => editingEmail.Description = val)"
-                                   Placeholder="e.g. Billing, Support, Sales"
-                                   IconLeft="far fa-tag"
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="modern-checkbox">
-                        <label class="checkbox-container">
-                            <input type="checkbox" @bind="editingEmail.IsActive" id="emailActive" />
-                            <span class="checkmark"></span>
-                            <span class="checkbox-label">Is Active</span>
-                        </label>
-                    </div>
-                </div>
-            </ChildContent>
-        </RVModal>
-}
-
-@if (contactDialogVisible)
-{
-        <RVModal IsVisible="true"
-                 Title="@(editingContact.Id == 0 ? "Add Contact Number" : "Edit Contact Number")"
-                 OnClose="CloseContactDialog"
-                 OnConfirm="SaveContactNumber"
-                 ConfirmText="Save"
-                 CancelText="Cancel"
-                 Size="sm"
-                 CssClass="contact-dialog-modal">
-            <ChildContent>
-                <div class="form-section">
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Phone Number"
-                                   Id="phoneNumber"
-                                   Value="@editingContact.Number"
-                                   ValueChanged="@((string val) => editingContact.Number = val)"
-                                   IsValid="@(!string.IsNullOrEmpty(editingContact.Number))"
-                                   ValidationMessage="Phone number is required"
-                                   IconLeft="far fa-phone"
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label class="modern-label">Contact Type</label>
-                        <div class="contact-type-selector">
-                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
-                        {
-                                    <div class="contact-type-option @(editingContact.Type.ToString() == type.ToString() ? "selected" : "")" 
-                                         @onclick="() => editingContact.Type = (ContactNumberType)type">
-                                        <i class="@GetContactTypeIcon((ContactNumberType)type)"></i>
-                                        <span>@type</span>
-                                    </div>
-                        }
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <RVTextbox Label="Description (Optional)"
-                                   Id="contactDescription"
-                                   Value="@editingContact.Description"
-                                   ValueChanged="@((string val) => editingContact.Description = val)"
-                                   Placeholder="e.g. Reception, Support Desk, Manager"
-                                   IconLeft="far fa-tag"
-                                   CssClass="modern-input" />
-                    </div>
-
-                    <div class="modern-checkbox">
-                        <label class="checkbox-container">
-                            <input type="checkbox" @bind="editingContact.IsActive" id="contactActive" />
-                            <span class="checkmark"></span>
-                            <span class="checkbox-label">Is Active</span>
-                        </label>
-                    </div>
-                </div>
-            </ChildContent>
-        </RVModal>
-}
-
-<style>
-/* Branch Dialog Styling */
-.branch-dialog-modal :deep(.roovia-modal-content) {
-    max-height: 85vh;
-    overflow-y: auto;
-}
-
-.branch-dialog-modal :deep(.roovia-modal-header) {
-    background: var(--subtle-bg);
-    border-bottom: 1px solid var(--border-divider);
-}
-
-.branch-dialog-modal :deep(.roovia-modal-title h3) {
-    font-weight: 600;
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.branch-dialog-modal :deep(.roovia-modal-footer) {
-    background: var(--subtle-bg);
-    border-top: 1px solid var(--border-divider);
-}
-
-.contact-dialog-modal {
-    --modal-width: 450px;
-}
-
-.branch-form {
-    padding: 0.5rem 0;
-}
-
-.form-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.section-header {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.section-header h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--primary);
-    margin-bottom: 0.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.section-header p {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-.section-header.with-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.form-group {
-    margin-bottom: 0.5rem;
-}
-
-.form-group.full-width {
-    width: 100%;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    width: 100%;
-}
-
-.modern-input:deep(.form-control) {
-    border-radius: 10px;
-    padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 1.5px solid var(--border-divider);
-    background-color: var(--input-bg);
-    transition: all 0.2s ease;
-}
-
-.modern-input:deep(.form-control:focus) {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-}
-
-.modern-input:deep(.input-icon) {
-    left: 1rem;
-    color: var(--primary);
-    opacity: 0.7;
-}
-
-.modern-input:deep(.form-label) {
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    margin-bottom: 0.4rem;
-}
-
-.modern-input:deep(.input-validation-message) {
-    margin-top: 0.35rem;
-    font-size: 0.8rem;
-}
-
-.modern-label {
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    margin-bottom: 0.4rem;
-    display: block;
-}
-
-/* Logo upload styling */
-.logo-upload-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.logo-upload-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.logo-upload-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    border: 2px dashed var(--border-divider);
-    border-radius: 10px;
-    background-color: var(--subtle-bg);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.logo-upload-label:hover {
-    border-color: var(--primary);
-    background-color: var(--primary-lighter);
-}
-
-.logo-upload-input {
-    display: none;
-}
-
-.upload-icon {
-    font-size: 2rem;
-    color: var(--primary);
-    margin-bottom: 1rem;
-}
-
-.upload-text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.primary-text {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.secondary-text {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-.upload-instructions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 8px;
-    background-color: var(--primary-lighter);
-    color: var(--primary);
-    font-size: 0.85rem;
-}
-
-.current-logo {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 10px;
-    background-color: var(--subtle-bg);
-    border: 1px solid var(--border-divider);
-}
-
-.current-logo-preview {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
-    overflow: hidden;
-    background-color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-light);
-}
-
-.logo-preview-img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
-.current-logo-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.info-title {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.info-filename {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-.remove-logo-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    border: none;
-    background-color: var(--danger-light);
-    color: var(--danger);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    align-self: flex-start;
-}
-
-.remove-logo-btn:hover {
-    background-color: var(--danger);
-    color: white;
-}
-
-/* Additional contacts styling */
-.add-item-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border: none;
-    background-color: var(--primary-light);
-    color: var(--primary);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.add-item-btn:hover {
-    background-color: var(--primary);
-    color: white;
-}
-
-.contact-items {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
-    background-color: var(--content-bg);
-    border: 1px solid var(--border-divider);
-    transition: all 0.2s ease;
-}
-
-.contact-item:hover {
-    border-color: var(--border-color);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-}
-
-.contact-item-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background-color: var(--primary-light);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-}
-
-.contact-item-icon.contact-mobile {
-    background-color: rgba(14, 165, 233, 0.1);
-    color: #0ea5e9;
-}
-
-.contact-item-icon.contact-landline {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-}
-
-.contact-item-icon.contact-fax {
-    background-color: rgba(168, 85, 247, 0.1);
-    color: #a855f7;
-}
-
-.contact-item-icon.contact-whatsapp {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-}
-
-.contact-item-details {
-    flex: 1;
-    min-width: 0;
-}
-
-.contact-item-primary {
-    font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.contact-item-secondary {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.contact-type {
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-    background-color: var(--primary-lighter);
-    color: var(--primary);
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.contact-description {
-    color: var(--text-muted);
-}
-
-.contact-item-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.item-action {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border: 1px solid var(--border-divider);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.item-action.edit:hover {
-    background-color: var(--primary-light);
-    color: var(--primary);
-    border-color: var(--primary-light);
-}
-
-.item-action.delete:hover {
-    background-color: var(--danger-light);
-    color: var(--danger);
-    border-color: var(--danger-light);
-}
-
-.no-items-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem;
-    background-color: var(--subtle-bg);
-    border-radius: 10px;
-    border: 1.5px dashed var(--border-divider);
-    color: var(--text-muted);
-}
-
-.no-items-message i {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.no-items-message p {
-    margin: 0;
-    color: var(--text-secondary);
-}
-
-/* Contact type selector */
-.contact-type-selector {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
-
-.contact-type-option {
-    flex: 1;
-    min-width: 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.75rem;
-    border-radius: 8px;
-    border: 1.5px solid var(--border-divider);
-    background-color: var(--content-bg);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.contact-type-option:hover {
-    border-color: var(--primary-light);
-    background-color: var(--primary-lighter);
-    color: var(--primary);
-}
-
-.contact-type-option.selected {
-    border-color: var(--primary);
-    background-color: var(--primary-light);
-    color: var(--primary);
-}
-
-.contact-type-option i {
-    font-size: 1.2rem;
-}
-
-.contact-type-option span {
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-/* Modern checkbox */
-.modern-checkbox {
-    margin-top: 0.5rem;
-}
-
-.checkbox-container {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    cursor: pointer;
-    position: relative;
-    user-select: none;
-}
-
-.checkbox-container input {
-    position: absolute;
-    opacity: 0;
-    height: 0;
-    width: 0;
-}
-
-.checkmark {
-    height: 20px;
-    width: 20px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border-divider);
-    background-color: var(--content-bg);
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.checkbox-container input:checked ~ .checkmark {
-    background-color: var(--primary);
-    border-color: var(--primary);
-}
-
-.checkmark:after {
-    content: "";
-    position: absolute;
-    display: none;
-    left: 6px;
-    top: 2px;
-    width: 5px;
-    height: 10px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-}
-
-.checkbox-container input:checked ~ .checkmark:after {
-    display: block;
-}
-
-.checkbox-label {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
-
-    @@media (max-width: 768px) {
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .section-header.with-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-        align-items: flex-start;
-    }
-
-    .add-item-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .contact-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .contact-item-actions {
-        width: 100%;
-        justify-content: flex-end;
-        margin-top: 0.5rem;
-    }
-}
-
-    @@media (max-width: 480px) {
-    .logo-upload-label {
-        padding: 1.5rem 1rem;
-    }
-
-    .upload-icon {
-        font-size: 1.5rem;
-    }
-
-    .current-logo {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-
-    .current-logo-info {
-        align-items: center;
-    }
-
-    .contact-type-selector {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-    @@media (max-width: 400px) {
-    .contact-type-selector {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-
-@code {
-    [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public bool IsEdit { get; set; }
-    [Parameter] public Branch BranchModel { get; set; } = new Branch();
-    [Parameter] public int CompanyId { get; set; }
-    [Parameter] public EventCallback<Branch> OnSave { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
-
-    [Inject] private ToastService ToastService { get; set; }
-
-    // Contact and email management
-    private string PrimaryEmail
-    {
-        get => BranchModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress ?? string.Empty;
-    }
-
-    private string PrimaryContactNumber
-    {
-        get => BranchModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number ?? string.Empty;
-    }
-
-    // Email dialog
-    private bool emailDialogVisible = false;
-    private Email editingEmail = new Email();
-
-    // Contact dialog
-    private bool contactDialogVisible = false;
-    private ContactNumber editingContact = new ContactNumber();
-
-    protected override void OnInitialized()
-    {
-        if (!IsEdit)
+        @if (isLoading)
         {
-            BranchModel = new Branch
-                {
-                    CompanyId = CompanyId,
-                    Address = new Address(),
-                    EmailAddresses = new List<Email>
-                {
-                    new Email
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Branch"
-                    }
-                },
-                    ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Branch",
-                        Type = ContactNumberType.Mobile
-                    }
-                }
-                };
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 class="loading-text">Loading branch details...</h3>
+            </div>
         }
         else
         {
-            // Ensure collections exist
-            if (BranchModel.EmailAddresses == null)
-            {
-                BranchModel.EmailAddresses = new List<Email>
+            <div class="branch-dialog">
+                @if (IsViewMode)
                 {
-                    new Email
-                    {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Branch",
-                        RelatedEntityId = BranchModel.Id
-                    }
-                };
-            }
+                    <div class="branch-view-container">
+                        <div class="branch-header">
+                            <div class="branch-header-flex">
+                                <div class="branch-icon-wrapper">
+                                    <div class="branch-icon-large">
+                                        <i class="fa-light fa-code-branch"></i>
+                                    </div>
+                                    <div class="status-indicator @(BranchModel.IsActive ? "active" : "inactive")"></div>
+                                </div>
 
-            if (BranchModel.ContactNumbers == null)
-            {
-                BranchModel.ContactNumbers = new List<ContactNumber>
-                {
-                    new ContactNumber
+                                <div class="branch-header-info">
+                                    <h2>@BranchModel.Name</h2>
+
+                                    <div class="branch-meta">
+                                        @if (Company != null)
+                                        {
+                                            <span class="branch-meta-item"><i class="fa-light fa-building"></i>@Company.Name</span>
+                                        }
+                                    </div>
+
+                                    <div class="branch-badges">
+                                        <span class="status-badge @(BranchModel.IsActive ? "status-active" : "status-inactive")">
+                                            <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                            @(BranchModel.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="branch-details-tabs">
+                            @{
+                                var branchTabs = new List<RVTab.RVTabItem>
                     {
-                        IsPrimary = true,
-                        IsActive = true,
-                        RelatedEntityType = "Branch",
-                        RelatedEntityId = BranchModel.Id,
-                        Type = ContactNumberType.Mobile
+                    new RVTab.RVTabItem
+                    {
+                    Id = "basic",
+                    Title = "Basic Info",
+                    Icon = "fa-light fa-info-circle",
+                    IsActive = activeViewTab == "basic"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "contact",
+                    Title = "Contact",
+                    Icon = "fa-light fa-address-card",
+                    IsActive = activeViewTab == "contact"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "address",
+                    Title = "Address",
+                    Icon = "fa-light fa-map-marker-alt",
+                    IsActive = activeViewTab == "address"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "banking",
+                    Title = "Banking",
+                    Icon = "fa-light fa-university",
+                    IsActive = activeViewTab == "banking"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "branding",
+                    Title = "Branding",
+                    Icon = "fa-light fa-image",
+                    IsActive = activeViewTab == "branding"
                     }
-                };
+                    };
+                            }
+
+                            <RVTab Tabs="branchTabs" Size="sm" OnTabChange="SetActiveViewTab">
+                                <RVTabPanel TabId="basic" IsActive='activeViewTab == "basic"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-info-circle"></i> Basic Information</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-tag"></i> Branch Name</div>
+                                                    <div class="detail-value">@BranchModel.Name</div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-building"></i> Company</div>
+                                                    <div class="detail-value">@(Company?.Name ?? "Not assigned")</div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-toggle-on"></i> Status</div>
+                                                    <div class="detail-value">
+                                                        <span class="status-badge @(BranchModel.IsActive ? "status-active" : "status-inactive")">
+                                                            <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                                            @(BranchModel.IsActive ? "Active" : "Inactive")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                @if (BranchModel.CreatedOn.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
+                                                        <div class="detail-value">@BranchModel.CreatedOn?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(BranchModel.CreatedBy))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-user"></i> Created By</div>
+                                                        <div class="detail-value">@BranchModel.CreatedBy</div>
+                                                    </div>
+                                                }
+                                                @if (BranchModel.UpdatedDate.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
+                                                        <div class="detail-value">@BranchModel.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(BranchModel.UpdatedBy))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-user-edit"></i> Updated By</div>
+                                                        <div class="detail-value">@BranchModel.UpdatedBy</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="contact" IsActive='activeViewTab == "contact"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-envelope"></i> Email Addresses</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (BranchModel.EmailAddresses?.Any() == true)
+                                                {
+                                                    <div class="contact-info">
+                                                        @{
+                                                            var primaryEmail = BranchModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                                        }
+                                                        @if (primaryEmail != null)
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label"><i class="fa-light fa-envelope"></i> Primary Email</div>
+                                                                <div class="detail-value email-value">
+                                                                    <a href="mailto:@primaryEmail.EmailAddress"><i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress</a>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label">
+                                                                    <i class="fa-light fa-tag"></i>
+                                                                    @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                                </div>
+                                                                <div class="detail-value email-value">
+                                                                    <a href="mailto:@email.EmailAddress"><i class="fa-light fa-envelope"></i> @email.EmailAddress</a>
+                                                                    @if (!email.IsActive)
+                                                                    {
+                                                                        <span class="status-badge status-inactive">
+                                                                            <i class="fa-light fa-times-circle"></i> Inactive
+                                                                        </span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-envelope-open"></i>
+                                                        <p>No email addresses provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-phone"></i> Contact Numbers</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (BranchModel.ContactNumbers?.Any() == true)
+                                                {
+                                                    <div class="contact-info">
+                                                        @{
+                                                            var primaryContact = BranchModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                                        }
+                                                        @if (primaryContact != null)
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label"><i class="fa-light fa-phone"></i> Primary Contact</div>
+                                                                <div class="detail-value phone-value">
+                                                                    <a href="tel:@primaryContact.Number"><i class="fa-light fa-phone"></i> @primaryContact.Number</a>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        @foreach (var phone in BranchModel.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label">
+                                                                    <i class="fa-light fa-tag"></i>
+                                                                    @if (!string.IsNullOrEmpty(phone.Description))
+                                                                    {
+                                                                        @phone.Description
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @phone.Type.ToString()
+                                                                    }
+                                                                </div>
+                                                                <div class="detail-value phone-value">
+                                                                    <a href="tel:@phone.Number"><i class="fa-light fa-phone"></i> @phone.Number</a>
+                                                                    @if (!phone.IsActive)
+                                                                    {
+                                                                        <span class="status-badge status-inactive">
+                                                                            <i class="fa-light fa-times-circle"></i> Inactive
+                                                                        </span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-phone-slash"></i>
+                                                        <p>No contact numbers provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="address" IsActive='activeViewTab == "address"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-map-marker-alt"></i> Branch Address</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (BranchModel.Address != null)
+                                                {
+                                                    <div class="address-display">
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.ComplexName))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.ComplexName</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.BuildingName))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.BuildingName</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.UnitNumber))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-door-closed"></i> Unit @BranchModel.Address.UnitNumber</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.Street))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-road"></i> @BranchModel.Address.Street</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.Suburb))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-map"></i> @BranchModel.Address.Suburb</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.City))
+                                                        {
+                                                            <div class="address-line">
+                                                                <i class="fa-light fa-city"></i>
+                                                                @BranchModel.Address.City@(!string.IsNullOrEmpty(BranchModel.Address.Province) ? $", {BranchModel.Address.Province}" : "")
+                                                            </div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.PostalCode))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-mailbox"></i> @BranchModel.Address.PostalCode</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(BranchModel.Address.Country))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-globe"></i> @BranchModel.Address.Country</div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-map-marker-slash"></i>
+                                                        <p>No address information provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="banking" IsActive='activeViewTab == "banking"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (BranchModel.BankDetails != null && !string.IsNullOrEmpty(BranchModel.BankDetails.AccountNumber))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-university"></i> Bank Name</div>
+                                                        <div class="detail-value">@BranchModel.BankDetails.BankName.ToString()</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-credit-card"></i> Account Type</div>
+                                                        <div class="detail-value">@BranchModel.BankDetails.AccountType</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-hashtag"></i> Account Number</div>
+                                                        <div class="detail-value">@BranchModel.BankDetails.AccountNumber</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
+                                                        <div class="detail-value">@BranchModel.BankDetails.BranchCode</div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-credit-card-blank"></i>
+                                                        <p>No banking details provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="branding" IsActive='activeViewTab == "branding"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="logos-gallery">
+                                                    @if (BranchModel.Logos != null && BranchModel.Logos.Any())
+                                                    {
+                                                        foreach (var logo in BranchModel.Logos.OrderBy(l => l.Size))
+                                                        {
+                                                            <div class="logo-item">
+                                                                <div class="logo-container">
+                                                                    <img src="@logo.FilePath" alt="@logo.Size Logo" class="logo-image" />
+                                                                </div>
+                                                                <div class="logo-info">
+                                                                    <div class="logo-title">@logo.Size Logo</div>
+                                                                    <div class="logo-meta">
+                                                                        <span><i class="fa-light fa-ruler-combined"></i> @logo.Size</span>
+                                                                        <span><i class="fa-light fa-file-image"></i> @(logo.FileSize / 1024) KB</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="empty-message">
+                                                            <i class="fa-light fa-file-image"></i>
+                                                            <p>No logos uploaded</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+                            </RVTab>
+                        </div>
+
+                        <div class="branch-details-footer">
+                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Close" OnClick="OnCancel" />
+                            @if (CanEdit)
+                            {
+                                <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit Branch" OnClick="SwitchToEditMode" />
+                            }
+                        </div>
+                    </div>
+                }
+                else if (IsEditMode)
+                {
+                    <EditForm Model="BranchModel" OnValidSubmit="Save" FormName="editBranch" class="branch-edit-form">
+                        <DataAnnotationsValidator />
+                        <Roovia.Components.Elements.Forms.FluentValidationValidator />
+
+                        <RVTab Tabs="formTabs" Size="sm" OnTabChange="HandleTabChange">
+                            <RVTabPanel TabId="basic" IsActive='activeTab == "basic"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-code-branch"></i> Basic Information</h4>
+                                        <p>Enter the basic details for this branch</p>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="name">Branch Name</label>
+                                        <RVTextbox Id="name"
+                                                   Value="@BranchModel.Name"
+                                                   ValueChanged="value => BranchModel.Name = value"
+                                                   Placeholder="Enter branch name"
+                                                   IconLeft="fa-light fa-code-branch" />
+                                        <ValidationMessage For="@(() => BranchModel.Name)" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="company">Company</label>
+                                        <RVSelect Id="company"
+                                                  Value="@BranchModel.CompanyId.ToString()"
+                                                  ValueChanged="HandleCompanyChange"
+                                                  Placeholder="Select company"
+                                                  IconLeft="fa-light fa-building"
+                                                  Disabled="@(CompaniesList == null || !CompaniesList.Any() || !CanEditCompany)">
+                                            @if (CompaniesList != null)
+                                            {
+                                                @foreach (var company in CompaniesList.OrderBy(c => c.Name))
+                                                {
+                                                    <option value="@company.Id">@company.Name</option>
+                                                }
+                                            }
+                                        </RVSelect>
+                                        <ValidationMessage For="@(() => BranchModel.CompanyId)" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <RVSwitch Label="Active"
+                                                  Value="BranchModel.IsActive"
+                                                  ValueChanged="value => BranchModel.IsActive = value"
+                                                  HelperText="Inactive branches will not be accessible to users" />
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="contact" IsActive='activeTab == "contact"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
+                                        <p>Manage the branch's contact details</p>
+                                    </div>
+
+                                    <!-- Primary Email -->
+                                    <div class="form-group">
+                                        <label for="primaryEmail">Primary Email Address</label>
+                                        <RVTextbox Id="primaryEmail"
+                                                   Type="email"
+                                                   Value="@GetPrimaryEmail()"
+                                                   ValueChanged="UpdatePrimaryEmail"
+                                                   Placeholder="Enter primary email address"
+                                                   IconLeft="fa-light fa-envelope" />
+                                    </div>
+
+                                    <!-- Primary Phone -->
+                                    <div class="form-group">
+                                        <label for="primaryPhone">Primary Phone Number</label>
+                                        <RVTextbox Id="primaryPhone"
+                                                   Type="tel"
+                                                   Value="@GetPrimaryPhone()"
+                                                   ValueChanged="UpdatePrimaryPhone"
+                                                   Placeholder="Enter primary phone number"
+                                                   IconLeft="fa-light fa-phone" />
+                                    </div>
+
+                                    <!-- Additional Email Addresses Section -->
+                                    <div class="additional-contacts">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
+                                                      OnClick="AddEmail" CssClass="add-btn" />
+                                        </div>
+
+                                        @if (BranchModel.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
+                                        {
+                                            <div class="email-list">
+                                                @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary))
+                                                {
+                                                    <div class="email-item">
+                                                        <div class="email-content">
+                                                            <RVTextbox Value="@email.EmailAddress"
+                                                                       ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                                       Placeholder="Enter email address"
+                                                                       IconLeft="fa-light fa-envelope"
+                                                                       Size="sm" />
+                                                            <RVTextbox Value="@email.Description"
+                                                                       ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                                       Placeholder="Description (e.g. Sales, Support)"
+                                                                       IconLeft="fa-light fa-tag"
+                                                                       Size="sm" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <i class="fa-light fa-inbox-empty"></i>
+                                                <p>No additional email addresses</p>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <!-- Additional Phone Numbers Section -->
+                                    <div class="additional-contacts">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
+                                                      OnClick="AddPhone" CssClass="add-btn" />
+                                        </div>
+
+                                        @if (BranchModel.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
+                                        {
+                                            <div class="phone-list">
+                                                @foreach (var phone in BranchModel.ContactNumbers.Where(c => !c.IsPrimary))
+                                                {
+                                                    <div class="phone-item">
+                                                        <div class="phone-content">
+                                                            <RVTextbox Value="@phone.Number"
+                                                                       ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                                       Placeholder="Enter phone number"
+                                                                       IconLeft="fa-light fa-phone"
+                                                                       Size="sm" />
+                                                            <RVSelect Value="@phone.Type.ToString()"
+                                                                      ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                                      Placeholder="Select type"
+                                                                      IconLeft="fa-light fa-phone-office"
+                                                                      Size="sm">
+                                                                @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                                {
+                                                                    <option value="@type">@type</option>
+                                                                }
+                                                            </RVSelect>
+                                                            <RVTextbox Value="@phone.Description"
+                                                                       ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                                       Placeholder="Description"
+                                                                       IconLeft="fa-light fa-tag"
+                                                                       Size="sm" />
+                                                        </div>
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-list">
+                                                <i class="fa-light fa-phone-slash"></i>
+                                                <p>No additional phone numbers</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="address" IsActive='activeTab == "address"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-map-marker-alt"></i> Address Information</h4>
+                                        <p>Enter the branch's address details</p>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="street">Street</label>
+                                            <RVTextbox Id="street"
+                                                       Value="@BranchModel.Address.Street"
+                                                       ValueChanged="value => BranchModel.Address.Street = value"
+                                                       Placeholder="Enter street address"
+                                                       IconLeft="fa-light fa-road" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="unitNumber">Unit Number</label>
+                                            <RVTextbox Id="unitNumber"
+                                                       Value="@BranchModel.Address.UnitNumber"
+                                                       ValueChanged="value => BranchModel.Address.UnitNumber = value"
+                                                       Placeholder="Enter unit number (optional)"
+                                                       IconLeft="fa-light fa-door-closed" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="complexName">Complex Name</label>
+                                            <RVTextbox Id="complexName"
+                                                       Value="@BranchModel.Address.ComplexName"
+                                                       ValueChanged="value => BranchModel.Address.ComplexName = value"
+                                                       Placeholder="Enter complex name (optional)"
+                                                       IconLeft="fa-light fa-building" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="buildingName">Building Name</label>
+                                            <RVTextbox Id="buildingName"
+                                                       Value="@BranchModel.Address.BuildingName"
+                                                       ValueChanged="value => BranchModel.Address.BuildingName = value"
+                                                       Placeholder="Enter building name (optional)"
+                                                       IconLeft="fa-light fa-building" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="suburb">Suburb</label>
+                                            <RVTextbox Id="suburb"
+                                                       Value="@BranchModel.Address.Suburb"
+                                                       ValueChanged="value => BranchModel.Address.Suburb = value"
+                                                       Placeholder="Enter suburb"
+                                                       IconLeft="fa-light fa-map" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="city">City</label>
+                                            <RVTextbox Id="city"
+                                                       Value="@BranchModel.Address.City"
+                                                       ValueChanged="value => BranchModel.Address.City = value"
+                                                       Placeholder="Enter city"
+                                                       IconLeft="fa-light fa-city" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="province">Province</label>
+                                            <RVTextbox Id="province"
+                                                       Value="@BranchModel.Address.Province"
+                                                       ValueChanged="value => BranchModel.Address.Province = value"
+                                                       Placeholder="Enter province"
+                                                       IconLeft="fa-light fa-map-marked" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="postalCode">Postal Code</label>
+                                            <RVTextbox Id="postalCode"
+                                                       Value="@BranchModel.Address.PostalCode"
+                                                       ValueChanged="value => BranchModel.Address.PostalCode = value"
+                                                       Placeholder="Enter postal code"
+                                                       IconLeft="fa-light fa-mailbox" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="country">Country</label>
+                                        <RVTextbox Id="country"
+                                                   Value="@BranchModel.Address.Country"
+                                                   ValueChanged="value => BranchModel.Address.Country = value"
+                                                   Placeholder="Enter country"
+                                                   IconLeft="fa-light fa-globe" />
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <!-- Banking Details Tab -->
+                            <RVTabPanel TabId="banking" IsActive='activeTab == "banking"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                        <p>Enter the branch's banking information for invoicing and payments</p>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="bank">Bank Name</label>
+                                            <RVSelect Id="bank"
+                                                      Value="@BranchModel.BankDetails.BankName.ToString()"
+                                                      ValueChanged="value => UpdateBankName(value)"
+                                                      IconLeft="fa-light fa-university">
+                                                @foreach (var bank in Enum.GetValues(typeof(BankName)))
+                                                {
+                                                    <option value="@bank">@bank</option>
+                                                }
+                                            </RVSelect>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="accountType">Account Type</label>
+                                            <RVTextbox Id="accountType"
+                                                       Value="@BranchModel.BankDetails.AccountType"
+                                                       ValueChanged="value => BranchModel.BankDetails.AccountType = value"
+                                                       Placeholder="E.g. Current, Savings, Business"
+                                                       IconLeft="fa-light fa-credit-card" />
+                                            <ValidationMessage For="@(() => BranchModel.BankDetails.AccountType)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="accountNumber">Account Number</label>
+                                            <RVTextbox Id="accountNumber"
+                                                       Value="@BranchModel.BankDetails.AccountNumber"
+                                                       ValueChanged="value => BranchModel.BankDetails.AccountNumber = value"
+                                                       Placeholder="Enter account number"
+                                                       IconLeft="fa-light fa-hashtag" />
+                                            <ValidationMessage For="@(() => BranchModel.BankDetails.AccountNumber)" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="branchCode">Branch Code</label>
+                                            <RVTextbox Id="branchCode"
+                                                       Value="@BranchModel.BankDetails.BranchCode"
+                                                       ValueChanged="value => BranchModel.BankDetails.BranchCode = value"
+                                                       Placeholder="Enter branch code"
+                                                       IconLeft="fa-light fa-code" />
+                                            <ValidationMessage For="@(() => BranchModel.BankDetails.BranchCode)" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <RVTabPanel TabId="logo" IsActive='activeTab == "logo"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
+                                        <p>Upload logos for the branch</p>
+                                    </div>
+
+                                    <div class="logos-grid">
+                                        <!-- Small Logo -->
+                                        <div class="logo-upload-card">
+                                            <h5>Small Logo</h5>
+                                            <p class="logo-description">Used for login screens (64x64px recommended)</p>
+                                            <div class="logo-upload-content">
+                                                @{
+                                                    var smallLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Small);
+                                                }
+
+                                                @if (smallLogo != null)
+                                                {
+                                                    <div class="logo-preview">
+                                                        <img src="@smallLogo.FilePath" alt="Small Logo" class="logo-image" />
+                                                    </div>
+                                                    <div class="logo-actions">
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  Text="Remove" OnClick="() => RemoveLogo(smallLogo)" />
+                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
+                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Small)" />
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-logo-upload">
+                                                        <i class="fa-light fa-image fa-2x"></i>
+                                                        <p>No logo uploaded</p>
+                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
+                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Small)" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <!-- Medium Logo -->
+                                        <div class="logo-upload-card">
+                                            <h5>Medium Logo</h5>
+                                            <p class="logo-description">Used for general purposes (256x256px recommended)</p>
+                                            <div class="logo-upload-content">
+                                                @{
+                                                    var mediumLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Medium);
+                                                }
+
+                                                @if (mediumLogo != null)
+                                                {
+                                                    <div class="logo-preview">
+                                                        <img src="@mediumLogo.FilePath" alt="Medium Logo" class="logo-image" />
+                                                    </div>
+                                                    <div class="logo-actions">
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  Text="Remove" OnClick="() => RemoveLogo(mediumLogo)" />
+                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
+                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Medium)" />
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-logo-upload">
+                                                        <i class="fa-light fa-image fa-2x"></i>
+                                                        <p>No logo uploaded</p>
+                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
+                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Medium)" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <!-- Large Logo -->
+                                        <div class="logo-upload-card">
+                                            <h5>Large Logo</h5>
+                                            <p class="logo-description">Used for invoices and high-res needs (512x512px recommended)</p>
+                                            <div class="logo-upload-content">
+                                                @{
+                                                    var largeLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Large);
+                                                }
+
+                                                @if (largeLogo != null)
+                                                {
+                                                    <div class="logo-preview">
+                                                        <img src="@largeLogo.FilePath" alt="Large Logo" class="logo-image" />
+                                                    </div>
+                                                    <div class="logo-actions">
+                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                                  Text="Remove" OnClick="() => RemoveLogo(largeLogo)" />
+                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
+                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Large)" />
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-logo-upload">
+                                                        <i class="fa-light fa-image fa-2x"></i>
+                                                        <p>No logo uploaded</p>
+                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
+                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Large)" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+                        </RVTab>
+
+                        <div class="branch-edit-footer">
+                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Cancel" OnClick="OnCancel" />
+                            <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save Changes" Type="submit" />
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        }
+    </ChildContent>
+</RVModal>
+
+@if (showLogoUploadDialog)
+{
+    <RVModal IsVisible="true"
+             Title="Upload Logo"
+             Icon="fa-light fa-cloud-upload"
+             OnClose="CloseUploadDialog"
+             OnCancel="CloseUploadDialog"
+             OnConfirm="UploadLogo"
+             ConfirmText="Upload"
+             CancelText="Cancel"
+             Size="md">
+        <ChildContent>
+            <div class="logo-upload-dialog">
+                <div class="upload-instructions">
+                    <h4>@($"Upload {currentLogoSize} Logo")</h4>
+                    <p>Please select an image file to upload as the branch logo.</p>
+
+                    @if (currentLogoSize == LogoSize.Small)
+                    {
+                        <p>Recommended size: 64x64 pixels</p>
+                    }
+                    else if (currentLogoSize == LogoSize.Medium)
+                    {
+                        <p>Recommended size: 256x256 pixels</p>
+                    }
+                    else
+                    {
+                        <p>Recommended size: 512x512 pixels</p>
+                    }
+                </div>
+
+                <div class="upload-area">
+                    <InputFile OnChange="OnLogoInputChange" class="upload-input" accept="image/*" />
+                    <div class="upload-placeholder @(isUploading ? "d-none" : "")">
+                        <i class="fa-light fa-cloud-upload fa-2x"></i>
+                        <p>Drag and drop your logo here, or click to browse</p>
+                        <span class="file-hint">JPG or PNG format recommended</span>
+                    </div>
+                    @if (isUploading)
+                    {
+                        <div class="upload-progress">
+                            <div class="loading-spinner sm"></div>
+                            <span>Uploading logo... @uploadProgress%</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(logoPreview))
+                    {
+                        <div class="logo-preview-new">
+                            <img src="@logoPreview" alt="Logo Preview" class="preview-image" />
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(uploadError))
+                {
+                    <div class="upload-error">
+                        <i class="fa-light fa-exclamation-triangle"></i>
+                        <p>@uploadError</p>
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+
+@code {
+    [Parameter] public Branch BranchModel { get; set; } = new Branch();
+    [Parameter] public int CompanyId { get; set; } = 0;
+    [Parameter] public bool IsEdit { get; set; } = false;
+    [Parameter] public bool IsView { get; set; } = false;
+    [Parameter] public bool CanEdit { get; set; } = true;
+    [Parameter] public bool CanEditCompany { get; set; } = true;
+    [Parameter] public EventCallback<Branch> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool isLoading = false;
+    private string activeTab = "basic";
+    private string activeViewTab = "basic";
+    private bool IsEditMode => (IsEdit || isInEditMode) && !IsView;
+    private bool isInEditMode = false;
+    private bool IsViewMode => IsView || !IsEditMode;
+    private Company? Company { get; set; }
+    private List<Company>? CompaniesList { get; set; }
+
+    // Logo upload related fields
+    private bool showLogoUploadDialog = false;
+    private LogoSize currentLogoSize = LogoSize.Medium;
+    private string logoPreview = string.Empty;
+    private IBrowserFile? logoFile;
+    private bool isUploading = false;
+    private int uploadProgress = 0;
+    private string uploadError = string.Empty;
+    private long maxFileSize = 1024 * 1024 * 5; // 5MB
+
+    // Form tabs
+    private List<RVTab.RVTabItem> formTabs = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "basic", Title = "Basic Information", Icon = "fa-light fa-code-branch" },
+        new RVTab.RVTabItem { Id = "contact", Title = "Contact Details", Icon = "fa-light fa-address-card" },
+        new RVTab.RVTabItem { Id = "address", Title = "Address", Icon = "fa-light fa-map-marker-alt" },
+        new RVTab.RVTabItem { Id = "banking", Title = "Banking Details", Icon = "fa-light fa-university" },
+        new RVTab.RVTabItem { Id = "logo", Title = "Branch Logo", Icon = "fa-light fa-image" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompanies();
+
+        if (BranchModel.Id != 0)
+        {
+            await LoadBranchData();
+        }
+        else
+        {
+            InitializeNewBranch();
+        }
+
+        // For new branches, start in edit mode
+        if (BranchModel.Id == 0)
+        {
+            isInEditMode = true;
+        }
+        else if (IsView)
+        {
+            isInEditMode = false;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // If CompanyId is provided, ensure the branch uses this company
+        if (CompanyId > 0 && (BranchModel.Id == 0 || BranchModel.CompanyId != CompanyId))
+        {
+            BranchModel.CompanyId = CompanyId;
+
+            // Load the company details
+            await LoadCompanyDetails(CompanyId);
+        }
+    }
+
+    private async Task HandleConfirmAction()
+    {
+        if (IsView)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else if (IsEditMode)
+        {
+            await Save();
+        }
+        else
+        {
+            SwitchToEditMode();
+        }
+    }
+
+    private async Task LoadCompanies()
+    {
+        try
+        {
+            var response = await UserService.GetAllCompanies();
+            if (response.ResponseInfo.Success)
+            {
+                CompaniesList = (List<Company>)response.Response;
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
             }
         }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading companies: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadCompanyDetails(int companyId)
+    {
+        try
+        {
+            var response = await UserService.GetCompanyById(companyId);
+            if (response.ResponseInfo.Success)
+            {
+                Company = (Company)response.Response;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading company details: {ex.Message}", "Error");
+        }
+    }
+
+    private void InitializeNewBranch()
+    {
+        BranchModel = new Branch
+            {
+                CompanyId = CompanyId,
+                IsActive = true,
+                Address = new Address { Country = "South Africa" },
+                BankDetails = new BankAccount { BankName = BankName.StandardBank },
+                EmailAddresses = new List<Email>(),
+                ContactNumbers = new List<ContactNumber>(),
+                Logos = new List<BranchLogo>(),
+                CreatedOn = DateTime.Now
+            };
+    }
+
+    private async Task LoadBranchData()
+    {
+        isLoading = true;
+
+        try
+        {
+            var response = await UserService.GetBranchById(BranchModel.Id);
+            if (response.ResponseInfo.Success)
+            {
+                BranchModel = (Branch)response.Response;
+
+                // Initialize bank details if null
+                if (BranchModel.BankDetails == null)
+                {
+                    BranchModel.BankDetails = new BankAccount { BankName = BankName.StandardBank };
+                }
+
+                // Load the company details
+                if (BranchModel.CompanyId > 0)
+                {
+                    await LoadCompanyDetails(BranchModel.CompanyId);
+                }
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading branch: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetDialogTitle()
+    {
+        if (IsViewMode)
+        {
+            return "Branch Details";
+        }
+        else if (BranchModel.Id == 0)
+        {
+            return "Create Branch";
+        }
+        else
+        {
+            return "Edit Branch";
+        }
+    }
+
+    private string GetDialogIcon()
+    {
+        if (IsViewMode)
+        {
+            return "fa-light fa-code-branch";
+        }
+        else if (BranchModel.Id == 0)
+        {
+            return "fa-light fa-code-branch-circle-plus";
+        }
+        else
+        {
+            return "fa-light fa-code-branch-circle-check";
+        }
+    }
+
+    private void SwitchToEditMode()
+    {
+        isInEditMode = true;
+        IsView = false;  // Add this line to override the IsView parameter
+        StateHasChanged(); // Force UI to update
+    }
+
+    private void HandleTabChange(string tabId)
+    {
+        activeTab = tabId;
+    }
+
+    private void SetActiveViewTab(string tabId)
+    {
+        activeViewTab = tabId;
+    }
+
+    private async Task HandleCompanyChange(string value)
+    {
+        if (int.TryParse(value, out var id))
+        {
+            BranchModel.CompanyId = id;
+            await LoadCompanyDetails(id);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (BranchModel.Id == 0)
+            {
+                // Create new branch
+                BranchModel.CreatedBy = "CurrentUser"; // Replace with actual current user ID
+                BranchModel.CreatedOn = DateTime.Now;
+            }
+            else
+            {
+                // Update existing branch
+                BranchModel.UpdatedBy = "CurrentUser"; // Replace with actual current user ID
+                BranchModel.UpdatedDate = DateTime.Now;
+            }
+            await OnSave.InvokeAsync(BranchModel);
+            if (isInEditMode)
+            {
+                // If we're in "switch to edit mode" state, go back to view mode after save
+                isInEditMode = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error saving branch: {ex.Message}", "Error");
+        }
+    }
+
+    // Helper method for banking details
+    private void UpdateBankName(string value)
+    {
+        if (Enum.TryParse<BankName>(value, out var bankName))
+        {
+            BranchModel.BankDetails.BankName = bankName;
+        }
+    }
+
+    // Helper methods for email and phone management
+    private string GetPrimaryEmail()
+    {
+        var primaryEmail = BranchModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+        return primaryEmail?.EmailAddress ?? string.Empty;
+    }
+
+    private string GetPrimaryPhone()
+    {
+        var primaryPhone = BranchModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+        return primaryPhone?.Number ?? string.Empty;
     }
 
     private void UpdatePrimaryEmail(string value)
     {
-        var primaryEmail = BranchModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-
-        if (primaryEmail == null)
+        if (BranchModel.EmailAddresses == null)
         {
-            if (BranchModel.EmailAddresses == null)
-                BranchModel.EmailAddresses = new List<Email>();
+            BranchModel.EmailAddresses = new List<Email>();
+        }
 
-            BranchModel.EmailAddresses.Add(new Email
+        var primaryEmail = BranchModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+
+        if (primaryEmail != null)
+        {
+            // If there's already a primary email, just update its value
+            primaryEmail.EmailAddress = value;
+            primaryEmail.UpdatedDate = DateTime.Now;
+        }
+        else if (!string.IsNullOrEmpty(value))
+        {
+            // If there's no primary email yet, create a new one
+            var newEmail = new Email
                 {
                     EmailAddress = value,
                     IsPrimary = true,
                     IsActive = true,
                     RelatedEntityType = "Branch",
-                    RelatedEntityId = BranchModel.Id
-                });
-        }
-        else
-        {
-            primaryEmail.EmailAddress = value;
+                    CreatedOn = DateTime.Now
+                };
+
+            // For existing branches
+            if (BranchModel.Id > 0)
+            {
+                newEmail.SetRelatedEntity("Branch", BranchModel.Id);
+            }
+
+            BranchModel.EmailAddresses.Add(newEmail);
         }
     }
 
-    private void UpdatePrimaryContactNumber(string value)
+    private void UpdatePrimaryPhone(string value)
     {
-        var primaryContact = BranchModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
-
-        if (primaryContact == null)
+        if (BranchModel.ContactNumbers == null)
         {
-            if (BranchModel.ContactNumbers == null)
-                BranchModel.ContactNumbers = new List<ContactNumber>();
+            BranchModel.ContactNumbers = new List<ContactNumber>();
+        }
 
-            BranchModel.ContactNumbers.Add(new ContactNumber
+        var primaryPhone = BranchModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+
+        if (primaryPhone != null)
+        {
+            // If there's already a primary phone, just update its value
+            primaryPhone.Number = value;
+            primaryPhone.UpdatedDate = DateTime.Now;
+        }
+        else if (!string.IsNullOrEmpty(value))
+        {
+            // If there's no primary phone yet, create a new one
+            var newPhone = new ContactNumber
                 {
                     Number = value,
+                    Type = ContactNumberType.Mobile,
                     IsPrimary = true,
                     IsActive = true,
                     RelatedEntityType = "Branch",
-                    RelatedEntityId = BranchModel.Id,
-                    Type = ContactNumberType.Mobile
-                });
-        }
-        else
-        {
-            primaryContact.Number = value;
-        }
-    }
+                    CreatedOn = DateTime.Now
+                };
 
-    // Logo handling
-    private async Task HandleLogoUpload(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file == null)
-            return;
+            // For existing branches
+            if (BranchModel.Id > 0)
+            {
+                newPhone.SetRelatedEntity("Branch", BranchModel.Id);
+            }
 
-        // Check file size (2MB limit)
-        if (file.Size > 2 * 1024 * 1024)
-        {
-            ToastService.ShowError("File size exceeds 2MB limit", "Error");
-            return;
-        }
-
-        // Check file type
-        if (!file.ContentType.StartsWith("image/"))
-        {
-            ToastService.ShowError("Only image files are allowed", "Error");
-            return;
-        }
-
-        try
-        {
-            // In a real implementation, you would upload this to a server
-            // Here we'll simulate a successful upload and just store the filename
-            var fileName = $"logos/{Guid.NewGuid()}_{file.Name}";
-
-            // Simulate multiple sizes
-            BranchModel.LogoPath = fileName;
-            BranchModel.LogoSmallPath = fileName.Replace(".", "_small.");
-            BranchModel.LogoMediumPath = fileName.Replace(".", "_medium.");
-            BranchModel.LogoLargePath = fileName.Replace(".", "_large.");
-
-            // Add to logos collection
-            if (BranchModel.Logos == null)
-                BranchModel.Logos = new List<BranchLogo>();
-
-            BranchModel.Logos.Add(new BranchLogo
-                {
-                    BranchId = BranchModel.Id,
-                    FileName = file.Name,
-                    FilePath = fileName,
-                    ContentType = file.ContentType,
-                    FileSize = file.Size,
-                    Size = LogoSize.Medium, // Default size
-                    UploadedDate = DateTime.Now
-                });
-
-            ToastService.ShowSuccess("Logo uploaded successfully", "Success");
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error uploading logo: {ex.Message}", "Error");
+            BranchModel.ContactNumbers.Add(newPhone);
         }
     }
 
-    private void RemoveLogo()
-    {
-        BranchModel.LogoPath = null;
-        BranchModel.LogoSmallPath = null;
-        BranchModel.LogoMediumPath = null;
-        BranchModel.LogoLargePath = null;
-
-        if (BranchModel.Logos != null)
-        {
-            BranchModel.Logos.Clear();
-        }
-    }
-
-    // Email management
     private void AddEmail()
     {
-        editingEmail = new Email
+        if (BranchModel.EmailAddresses == null)
+        {
+            BranchModel.EmailAddresses = new List<Email>();
+        }
+
+        BranchModel.EmailAddresses.Add(new Email
             {
+                IsPrimary = false,
                 IsActive = true,
                 RelatedEntityType = "Branch",
-                RelatedEntityId = BranchModel.Id
-            };
-        emailDialogVisible = true;
-    }
-
-    private void EditEmail(Email email)
-    {
-        editingEmail = new Email
-            {
-                Id = email.Id,
-                EmailAddress = email.EmailAddress,
-                Description = email.Description,
-                IsActive = email.IsActive,
-                IsPrimary = email.IsPrimary,
-                RelatedEntityType = email.RelatedEntityType,
-                RelatedEntityId = email.RelatedEntityId
-            };
-        emailDialogVisible = true;
+                CreatedOn = DateTime.Now
+            });
     }
 
     private void RemoveEmail(Email email)
     {
-        if (email.IsPrimary)
+        if (BranchModel.EmailAddresses != null)
         {
-            ToastService.ShowError("Cannot remove primary email address", "Error");
-            return;
+            BranchModel.EmailAddresses.Remove(email);
         }
-
-        BranchModel.EmailAddresses.Remove(email);
     }
 
-    private void CloseEmailDialog()
+    private void UpdateEmailAddress(Email email, string value)
     {
-        emailDialogVisible = false;
+        email.EmailAddress = value;
     }
 
-    private void SaveEmail()
+    private void UpdateEmailDescription(Email email, string value)
     {
-        if (string.IsNullOrWhiteSpace(editingEmail.EmailAddress) || !IsValidEmail(editingEmail.EmailAddress))
-        {
-            ToastService.ShowError("Please enter a valid email address", "Validation Error");
-            return;
-        }
-
-        var existingEmail = BranchModel.EmailAddresses.FirstOrDefault(e => e.Id == editingEmail.Id);
-        if (existingEmail != null)
-        {
-            // Update existing
-            existingEmail.EmailAddress = editingEmail.EmailAddress;
-            existingEmail.Description = editingEmail.Description;
-            existingEmail.IsActive = editingEmail.IsActive;
-        }
-        else
-        {
-            // Add new
-            BranchModel.EmailAddresses.Add(editingEmail);
-        }
-
-        emailDialogVisible = false;
+        email.Description = value;
     }
 
-    // Contact number management
-    private void AddContactNumber()
+    private void AddPhone()
     {
-        editingContact = new ContactNumber
+        if (BranchModel.ContactNumbers == null)
+        {
+            BranchModel.ContactNumbers = new List<ContactNumber>();
+        }
+
+        BranchModel.ContactNumbers.Add(new ContactNumber
             {
+                Type = ContactNumberType.Mobile,
+                IsPrimary = false,
                 IsActive = true,
                 RelatedEntityType = "Branch",
-                RelatedEntityId = BranchModel.Id,
-                Type = ContactNumberType.Mobile
-            };
-        contactDialogVisible = true;
+                CreatedOn = DateTime.Now
+            });
     }
 
-    private void EditContactNumber(ContactNumber contact)
+    private void RemovePhone(ContactNumber phone)
     {
-        editingContact = new ContactNumber
-            {
-                Id = contact.Id,
-                Number = contact.Number,
-                Type = contact.Type,
-                Description = contact.Description,
-                IsActive = contact.IsActive,
-                IsPrimary = contact.IsPrimary,
-                RelatedEntityType = contact.RelatedEntityType,
-                RelatedEntityId = contact.RelatedEntityId
-            };
-        contactDialogVisible = true;
+        if (BranchModel.ContactNumbers != null)
+        {
+            BranchModel.ContactNumbers.Remove(phone);
+        }
     }
 
-    private void RemoveContactNumber(ContactNumber contact)
+    private void UpdatePhoneNumber(ContactNumber phone, string value)
     {
-        if (contact.IsPrimary)
-        {
-            ToastService.ShowError("Cannot remove primary contact number", "Error");
-            return;
-        }
-
-        BranchModel.ContactNumbers.Remove(contact);
+        phone.Number = value;
     }
 
-    private void CloseContactDialog()
+    private void UpdatePhoneType(ContactNumber phone, string value)
     {
-        contactDialogVisible = false;
+        if (Enum.TryParse<ContactNumberType>(value, out var type))
+        {
+            phone.Type = type;
+        }
     }
 
-    private void SaveContactNumber()
+    private void UpdatePhoneDescription(ContactNumber phone, string value)
     {
-        if (string.IsNullOrWhiteSpace(editingContact.Number))
-        {
-            ToastService.ShowError("Please enter a contact number", "Validation Error");
-            return;
-        }
-
-        var existingContact = BranchModel.ContactNumbers.FirstOrDefault(c => c.Id == editingContact.Id);
-        if (existingContact != null)
-        {
-            // Update existing
-            existingContact.Number = editingContact.Number;
-            existingContact.Type = editingContact.Type;
-            existingContact.Description = editingContact.Description;
-            existingContact.IsActive = editingContact.IsActive;
-        }
-        else
-        {
-            // Add new
-            BranchModel.ContactNumbers.Add(editingContact);
-        }
-
-        contactDialogVisible = false;
+        phone.Description = value;
     }
 
-    private string GetContactTypeIcon(ContactNumberType type)
+    // Logo handling methods
+    private void ShowUploadDialog(LogoSize size)
     {
-        return type switch
-        {
-            ContactNumberType.Mobile => "far fa-mobile-alt",
-            ContactNumberType.Landline => "far fa-phone-office",
-            ContactNumberType.Fax => "far fa-fax",
-            ContactNumberType.WhatsApp => "fab fa-whatsapp",
-            _ => "far fa-phone"
-        };
+        currentLogoSize = size;
+        logoPreview = string.Empty;
+        logoFile = null;
+        uploadError = string.Empty;
+        showLogoUploadDialog = true;
     }
 
-    private async Task HandleValidSubmit()
+    private void CloseUploadDialog()
     {
-        // Validate required fields
-        if (string.IsNullOrWhiteSpace(BranchModel.Name))
-        {
-            ToastService.ShowError("Branch name is required", "Validation Error");
-            return;
-        }
-
-        // Validate primary email
-        var primaryEmail = BranchModel.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-        if (primaryEmail == null || string.IsNullOrWhiteSpace(primaryEmail.EmailAddress) || !IsValidEmail(primaryEmail.EmailAddress))
-        {
-            ToastService.ShowError("A valid primary email address is required", "Validation Error");
-            return;
-        }
-
-        // Validate primary contact number
-        var primaryContact = BranchModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
-        if (primaryContact == null || string.IsNullOrWhiteSpace(primaryContact.Number))
-        {
-            ToastService.ShowError("A primary contact number is required", "Validation Error");
-            return;
-        }
-
-        // Set entity relationships if not already set
-        foreach (var email in BranchModel.EmailAddresses)
-        {
-            email.RelatedEntityType = "Branch";
-            email.RelatedEntityId = BranchModel.Id;
-        }
-
-        foreach (var contact in BranchModel.ContactNumbers)
-        {
-            contact.RelatedEntityType = "Branch";
-            contact.RelatedEntityId = BranchModel.Id;
-        }
-
-        await OnSave.InvokeAsync(BranchModel);
-        CloseModal();
+        showLogoUploadDialog = false;
     }
 
-    private void CloseModal()
-    {
-        OnCancel.InvokeAsync();
-    }
-
-    private bool IsValidEmail(string email)
+    private async Task OnLogoInputChange(InputFileChangeEventArgs e)
     {
         try
         {
-            var addr = new System.Net.Mail.MailAddress(email);
-            return addr.Address == email;
+            uploadError = string.Empty;
+            logoFile = e.File;
+
+            if (logoFile.Size > maxFileSize)
+            {
+                uploadError = "File size exceeds 5MB limit";
+                return;
+            }
+
+            // Validate file type
+            if (!logoFile.ContentType.StartsWith("image/"))
+            {
+                uploadError = "Please select an image file";
+                return;
+            }
+
+            // Generate preview
+            isUploading = true;
+            uploadProgress = 0;
+
+            // Simulate upload progress
+            for (int i = 0; i <= 100; i += 10)
+            {
+                uploadProgress = i;
+                await Task.Delay(50); // Simulated delay
+                StateHasChanged();
+            }
+
+            var imageFormat = logoFile.ContentType.Split('/')[1];
+            var resizedImageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 512, 512);
+
+            using var stream = resizedImageFile.OpenReadStream();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            byte[] imageData = ms.ToArray();
+
+            // Generate base64 preview
+            logoPreview = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(imageData)}";
+
+            isUploading = false;
+            uploadProgress = 100;
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            isUploading = false;
+            uploadError = $"Error uploading logo: {ex.Message}";
+        }
+    }
+
+    private async Task UploadLogo()
+    {
+        if (logoFile == null || string.IsNullOrEmpty(logoPreview))
+        {
+            uploadError = "Please select a logo file to upload";
+            return;
+        }
+
+        try
+        {
+            isUploading = true;
+            uploadProgress = 0;
+
+            // Simulate upload progress
+            for (int i = 0; i <= 100; i += 10)
+            {
+                uploadProgress = i;
+                await Task.Delay(50);
+                StateHasChanged();
+            }
+
+            // Create a logo entry
+            if (BranchModel.Logos == null)
+            {
+                BranchModel.Logos = new List<BranchLogo>();
+            }
+
+            // Remove existing logo of same size if exists
+            var existingLogo = BranchModel.Logos.FirstOrDefault(l => l.Size == currentLogoSize);
+            if (existingLogo != null)
+            {
+                BranchModel.Logos.Remove(existingLogo);
+            }
+
+            // In a real app, you would upload this file to a server and get the URL back
+            // Here we'll just simulate it
+            string fileName = $"{Guid.NewGuid()}.{logoFile.ContentType.Split('/')[1]}";
+            string filePath = $"/branch-logos/{fileName}";
+
+            // Add new logo
+            BranchModel.Logos.Add(new BranchLogo
+                {
+                    BranchId = BranchModel.Id,
+                    FileName = fileName,
+                    FilePath = filePath, // In a real app, this would be the URL from the server
+                    Size = currentLogoSize,
+                    ContentType = logoFile.ContentType,
+                    FileSize = logoFile.Size,
+                    UploadedDate = DateTime.Now,
+                    UploadedBy = "CurrentUser" // Replace with actual user
+                });
+
+            // Update the appropriate path in the BranchModel based on size
+            switch (currentLogoSize)
+            {
+                case LogoSize.Small:
+                    BranchModel.LogoSmallPath = filePath;
+                    break;
+                case LogoSize.Medium:
+                    BranchModel.LogoMediumPath = filePath;
+                    break;
+                case LogoSize.Large:
+                    BranchModel.LogoLargePath = filePath;
+                    break;
+            }
+
+            ToastService.ShowSuccess($"{currentLogoSize} logo uploaded successfully", "Success");
+            showLogoUploadDialog = false;
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error saving logo: {ex.Message}";
+            isUploading = false;
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private void RemoveLogo(BranchLogo logo)
+    {
+        if (BranchModel.Logos != null)
+        {
+            BranchModel.Logos.Remove(logo);
+
+            // Also remove the path in the BranchModel
+            switch (logo.Size)
+            {
+                case LogoSize.Small:
+                    BranchModel.LogoSmallPath = null;
+                    break;
+                case LogoSize.Medium:
+                    BranchModel.LogoMediumPath = null;
+                    break;
+                case LogoSize.Large:
+                    BranchModel.LogoLargePath = null;
+                    break;
+            }
+
+            ToastService.ShowSuccess($"{logo.Size} logo removed", "Success");
         }
     }
 }

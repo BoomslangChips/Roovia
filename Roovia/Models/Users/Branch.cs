@@ -16,7 +16,8 @@ namespace Roovia.Models.Users
         public Address Address { get; set; } = new Address();
         public bool IsActive { get; set; } = true;
         public int CompanyId { get; set; }
-        public DateTime CreatedOn { get; set; } = DateTime.Now;
+        public DateTime? CreatedOn { get; set; } = DateTime.Now;
+
 
         [StringLength(450)]
         public string? CreatedBy { get; set; }
@@ -40,6 +41,7 @@ namespace Roovia.Models.Users
         public string? LogoLargePath { get; set; } // For invoices or high-resolution needs
 
         // Navigation properties
+        public BankAccount BankDetails { get; set; } = new BankAccount();
         public Company? Company { get; set; }
         public List<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
         public List<BranchLogo> Logos { get; set; } = new List<BranchLogo>();

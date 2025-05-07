@@ -60,13 +60,13 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> UpdateUser(int id, ApplicationUser updatedUser)
+        public async Task<ResponseModel> UpdateUser(string id, ApplicationUser updatedUser)
         {
             ResponseModel response = new();
 
             try
             {
-                var user = await _context.Users.FindAsync(id.ToString());
+                var user = await _context.Users.FindAsync(id);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -79,7 +79,7 @@ namespace Roovia.Services
                 user.LastName = updatedUser.LastName;
                 user.CompanyId = updatedUser.CompanyId;
                 user.BranchId = updatedUser.BranchId;
-                user.Role = updatedUser.Role;
+                user.Role = updatedUser.Role; // This is now an integer in the database
                 user.IsActive = updatedUser.IsActive;
                 user.UserName = updatedUser.UserName;
                 user.NormalizedUserName = updatedUser.UserName?.ToUpper();
@@ -108,13 +108,13 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> DeleteUser(int id)
+        public async Task<ResponseModel> DeleteUser(string id)
         {
             ResponseModel response = new();
 
             try
             {
-                var user = await _context.Users.FindAsync(id.ToString());
+                var user = await _context.Users.FindAsync(id);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -122,11 +122,11 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Delete related emails and contact numbers
-                var emails = _context.Emails.Where(e => e.RelatedEntityType == "User" && e.RelatedEntityId == id);
+                // Delete related emails and contact numbers using string ID
+                var emails = _context.Emails.Where(e => e.RelatedEntityType == "User" && e.RelatedEntityStringId == id);
                 _context.Emails.RemoveRange(emails);
 
-                var contactNumbers = _context.ContactNumbers.Where(c => c.RelatedEntityType == "User" && c.RelatedEntityId == id);
+                var contactNumbers = _context.ContactNumbers.Where(c => c.RelatedEntityType == "User" && c.RelatedEntityStringId == id);
                 _context.ContactNumbers.RemoveRange(contactNumbers);
 
                 // Remove the user
@@ -171,33 +171,33 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> UpdateUserRole(string userId, SystemRole role)
+        public async Task<ResponseModel> UpdateUserRole(string userId, int roleValue)
         {
             ResponseModel response = new();
 
-            try
-            {
-                var user = await _context.Users.FindAsync(userId);
-                if (user == null)
-                {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "User not found.";
-                    return response;
-                }
+            //try
+            //{
+            //    var user = await _context.Users.FindAsync(userId);
+            //    if (user == null)
+            //    {
+            //        response.ResponseInfo.Success = false;
+            //        response.ResponseInfo.Message = "User not found.";
+            //        return response;
+            //    }
 
-                user.Role = role;
-                user.UpdatedDate = DateTime.Now;
+            //    user.Role = roleValue; // Using int directly
+            //    user.UpdatedDate = DateTime.Now;
 
-                await _context.SaveChangesAsync();
+            //    await _context.SaveChangesAsync();
 
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "User role updated successfully.";
-            }
-            catch (Exception ex)
-            {
-                response.ResponseInfo.Success = false;
-                response.ResponseInfo.Message = "An error occurred while updating the user role: " + ex.Message;
-            }
+            //    response.ResponseInfo.Success = true;
+            //    response.ResponseInfo.Message = "User role updated successfully.";
+            //}
+            //catch (Exception ex)
+            //{
+            //    response.ResponseInfo.Success = false;
+            //    response.ResponseInfo.Message = "An error occurred while updating the user role: " + ex.Message;
+            //}
 
             return response;
         }
@@ -325,8 +325,7 @@ namespace Roovia.Services
                 {
                     foreach (var email in company.EmailAddresses)
                     {
-                        email.RelatedEntityType = "Company";
-                        email.RelatedEntityId = company.Id;
+                        email.SetRelatedEntity("Company", company.Id);
                         email.CreatedOn = DateTime.Now;
                     }
                     await context.Emails.AddRangeAsync(company.EmailAddresses);
@@ -337,8 +336,7 @@ namespace Roovia.Services
                 {
                     foreach (var contact in company.ContactNumbers)
                     {
-                        contact.RelatedEntityType = "Company";
-                        contact.RelatedEntityId = company.Id;
+                        contact.SetRelatedEntity("Company", company.Id);
                         contact.CreatedOn = DateTime.Now;
                     }
                     await context.ContactNumbers.AddRangeAsync(company.ContactNumbers);
@@ -458,8 +456,7 @@ namespace Roovia.Services
                         else
                         {
                             // Add new
-                            updatedEmail.RelatedEntityType = "Company";
-                            updatedEmail.RelatedEntityId = company.Id;
+                            updatedEmail.SetRelatedEntity("Company", company.Id);
                             updatedEmail.CreatedOn = DateTime.Now;
                             await context.Emails.AddAsync(updatedEmail);
                         }
@@ -500,8 +497,7 @@ namespace Roovia.Services
                         else
                         {
                             // Add new
-                            updatedNumber.RelatedEntityType = "Company";
-                            updatedNumber.RelatedEntityId = company.Id;
+                            updatedNumber.SetRelatedEntity("Company", company.Id);
                             updatedNumber.CreatedOn = DateTime.Now;
                             await context.ContactNumbers.AddAsync(updatedNumber);
                         }
@@ -636,8 +632,7 @@ namespace Roovia.Services
                 {
                     foreach (var email in branch.EmailAddresses)
                     {
-                        email.RelatedEntityType = "Branch";
-                        email.RelatedEntityId = branch.Id;
+                        email.SetRelatedEntity("Branch", branch.Id);
                         email.CreatedOn = DateTime.Now;
                     }
                     await context.Emails.AddRangeAsync(branch.EmailAddresses);
@@ -648,8 +643,7 @@ namespace Roovia.Services
                 {
                     foreach (var contact in branch.ContactNumbers)
                     {
-                        contact.RelatedEntityType = "Branch";
-                        contact.RelatedEntityId = branch.Id;
+                        contact.SetRelatedEntity("Branch", branch.Id);
                         contact.CreatedOn = DateTime.Now;
                     }
                     await context.ContactNumbers.AddRangeAsync(branch.ContactNumbers);
@@ -779,9 +773,16 @@ namespace Roovia.Services
                 branch.UpdatedDate = DateTime.Now;
                 branch.UpdatedBy = updatedBranch.UpdatedBy;
 
+                // Update BankDetails if provided
+                if (updatedBranch.BankDetails != null)
+                {
+                    branch.BankDetails = updatedBranch.BankDetails;
+                }
+
                 // Handle email updates
                 if (updatedBranch.EmailAddresses != null)
                 {
+                    // Process emails to remove
                     var emailsToRemove = branch.EmailAddresses
                         .Where(e => !updatedBranch.EmailAddresses.Any(ue => ue.Id == e.Id && ue.Id != 0))
                         .ToList();
@@ -791,34 +792,47 @@ namespace Roovia.Services
                         context.Emails.Remove(email);
                     }
 
-                    foreach (var updatedEmail in updatedBranch.EmailAddresses)
+                    // Update existing emails
+                    foreach (var updatedEmail in updatedBranch.EmailAddresses.Where(e => e.Id != 0))
                     {
-                        if (updatedEmail.Id != 0)
+                        var existingEmail = branch.EmailAddresses.FirstOrDefault(e => e.Id == updatedEmail.Id);
+                        if (existingEmail != null)
                         {
-                            var existingEmail = branch.EmailAddresses.FirstOrDefault(e => e.Id == updatedEmail.Id);
-                            if (existingEmail != null)
-                            {
-                                existingEmail.EmailAddress = updatedEmail.EmailAddress;
-                                existingEmail.Description = updatedEmail.Description;
-                                existingEmail.IsPrimary = updatedEmail.IsPrimary;
-                                existingEmail.IsActive = updatedEmail.IsActive;
-                                existingEmail.UpdatedDate = DateTime.Now;
-                                existingEmail.UpdatedBy = updatedBranch.UpdatedBy;
-                            }
+                            existingEmail.EmailAddress = updatedEmail.EmailAddress;
+                            existingEmail.Description = updatedEmail.Description;
+                            existingEmail.IsPrimary = updatedEmail.IsPrimary;
+                            existingEmail.IsActive = updatedEmail.IsActive;
+                            existingEmail.UpdatedDate = DateTime.Now;
+                            existingEmail.UpdatedBy = updatedBranch.UpdatedBy;
                         }
-                        else
+                    }
+
+                    // Add new emails - IMPORTANT: This is where the fix is focused
+                    foreach (var newEmail in updatedBranch.EmailAddresses.Where(e => e.Id == 0))
+                    {
+                        // Create completely new email object to avoid any entity tracking issues
+                        var emailToAdd = new Email
                         {
-                            updatedEmail.RelatedEntityType = "Branch";
-                            updatedEmail.RelatedEntityId = branch.Id;
-                            updatedEmail.CreatedOn = DateTime.Now;
-                            await context.Emails.AddAsync(updatedEmail);
-                        }
+                            EmailAddress = newEmail.EmailAddress,
+                            Description = newEmail.Description,
+                            IsPrimary = newEmail.IsPrimary,
+                            IsActive = newEmail.IsActive,
+                            RelatedEntityType = "Branch",
+                            RelatedEntityId = branch.Id,
+                            BranchId = branch.Id,
+                            CreatedOn = DateTime.Now,
+                            CreatedBy = updatedBranch.UpdatedBy
+                        };
+
+                        // Add directly to the context rather than to the branch.EmailAddresses collection
+                        await context.Emails.AddAsync(emailToAdd);
                     }
                 }
 
-                // Handle contact number updates
+                // Handle contact number updates - SAME PATTERN AS EMAILS
                 if (updatedBranch.ContactNumbers != null)
                 {
+                    // Process numbers to remove
                     var numbersToRemove = branch.ContactNumbers
                         .Where(c => !updatedBranch.ContactNumbers.Any(uc => uc.Id == c.Id && uc.Id != 0))
                         .ToList();
@@ -828,29 +842,42 @@ namespace Roovia.Services
                         context.ContactNumbers.Remove(number);
                     }
 
-                    foreach (var updatedNumber in updatedBranch.ContactNumbers)
+                    // Update existing numbers
+                    foreach (var updatedNumber in updatedBranch.ContactNumbers.Where(n => n.Id != 0))
                     {
-                        if (updatedNumber.Id != 0)
+                        var existingNumber = branch.ContactNumbers.FirstOrDefault(c => c.Id == updatedNumber.Id);
+                        if (existingNumber != null)
                         {
-                            var existingNumber = branch.ContactNumbers.FirstOrDefault(c => c.Id == updatedNumber.Id);
-                            if (existingNumber != null)
-                            {
-                                existingNumber.Number = updatedNumber.Number;
-                                existingNumber.Type = updatedNumber.Type;
-                                existingNumber.Description = updatedNumber.Description;
-                                existingNumber.IsPrimary = updatedNumber.IsPrimary;
-                                existingNumber.IsActive = updatedNumber.IsActive;
-                                existingNumber.UpdatedDate = DateTime.Now;
-                                existingNumber.UpdatedBy = updatedBranch.UpdatedBy;
-                            }
+                            existingNumber.Number = updatedNumber.Number;
+                            existingNumber.Type = updatedNumber.Type;
+                            existingNumber.Description = updatedNumber.Description;
+                            existingNumber.IsPrimary = updatedNumber.IsPrimary;
+                            existingNumber.IsActive = updatedNumber.IsActive;
+                            existingNumber.UpdatedDate = DateTime.Now;
+                            existingNumber.UpdatedBy = updatedBranch.UpdatedBy;
                         }
-                        else
+                    }
+
+                    // Add new numbers - IMPORTANT: Same fix as for emails
+                    foreach (var newNumber in updatedBranch.ContactNumbers.Where(n => n.Id == 0))
+                    {
+                        // Create completely new contact object to avoid any entity tracking issues
+                        var contactToAdd = new ContactNumber
                         {
-                            updatedNumber.RelatedEntityType = "Branch";
-                            updatedNumber.RelatedEntityId = branch.Id;
-                            updatedNumber.CreatedOn = DateTime.Now;
-                            await context.ContactNumbers.AddAsync(updatedNumber);
-                        }
+                            Number = newNumber.Number,
+                            Type = newNumber.Type,
+                            Description = newNumber.Description,
+                            IsPrimary = newNumber.IsPrimary,
+                            IsActive = newNumber.IsActive,
+                            RelatedEntityType = "Branch",
+                            RelatedEntityId = branch.Id,
+                            BranchId = branch.Id,
+                            CreatedOn = DateTime.Now,
+                            CreatedBy = updatedBranch.UpdatedBy
+                        };
+
+                        // Add directly to the context rather than to the branch.ContactNumbers collection
+                        await context.ContactNumbers.AddAsync(contactToAdd);
                     }
                 }
 
@@ -885,10 +912,19 @@ namespace Roovia.Services
                         }
                         else
                         {
-                            // Add new
-                            updatedLogo.BranchId = branch.Id;
-                            updatedLogo.UploadedDate = DateTime.Now;
-                            await context.BranchLogos.AddAsync(updatedLogo);
+                            // Add new - using the same pattern as emails and contact numbers
+                            var logoToAdd = new BranchLogo
+                            {
+                                BranchId = branch.Id,
+                                FileName = updatedLogo.FileName,
+                                FilePath = updatedLogo.FilePath,
+                                Size = updatedLogo.Size,
+                                ContentType = updatedLogo.ContentType,
+                                FileSize = updatedLogo.FileSize,
+                                UploadedDate = DateTime.Now
+                            };
+
+                            await context.BranchLogos.AddAsync(logoToAdd);
                         }
                     }
                 }
@@ -995,7 +1031,7 @@ namespace Roovia.Services
                 switch (email.RelatedEntityType)
                 {
                     case "User":
-                        entityExists = await context.Users.AnyAsync(u => u.Id == email.RelatedEntityId.ToString());
+                        entityExists = await context.Users.AnyAsync(u => u.Id == email.RelatedEntityStringId);
                         break;
                     case "Company":
                         entityExists = await context.Companies.AnyAsync(c => c.Id == email.RelatedEntityId);
@@ -1008,20 +1044,32 @@ namespace Roovia.Services
                 if (!entityExists)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = $"{email.RelatedEntityType} with ID {email.RelatedEntityId} not found.";
+                    response.ResponseInfo.Message = $"{email.RelatedEntityType} not found.";
                     return response;
                 }
 
                 // If marking as primary, update any existing primary email
                 if (email.IsPrimary)
                 {
-                    var existingPrimaryEmails = await context.Emails
-                        .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
-                                    e.RelatedEntityId == email.RelatedEntityId &&
-                                    e.IsPrimary)
-                        .ToListAsync();
+                    IQueryable<Email> existingPrimaryEmails;
 
-                    foreach (var existingPrimary in existingPrimaryEmails)
+                    if (email.RelatedEntityType == "User")
+                    {
+                        existingPrimaryEmails = context.Emails
+                            .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                       e.RelatedEntityStringId == email.RelatedEntityStringId &&
+                                       e.IsPrimary);
+                    }
+                    else
+                    {
+                        existingPrimaryEmails = context.Emails
+                            .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                       e.RelatedEntityId == email.RelatedEntityId &&
+                                       e.IsPrimary);
+                    }
+
+                    var primaryEmails = await existingPrimaryEmails.ToListAsync();
+                    foreach (var existingPrimary in primaryEmails)
                     {
                         existingPrimary.IsPrimary = false;
                         existingPrimary.UpdatedDate = DateTime.Now;
@@ -1067,14 +1115,27 @@ namespace Roovia.Services
                 // If marking as primary, update any existing primary email
                 if (updatedEmail.IsPrimary && !email.IsPrimary)
                 {
-                    var existingPrimaryEmails = await context.Emails
-                        .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
-                                    e.RelatedEntityId == email.RelatedEntityId &&
-                                    e.IsPrimary &&
-                                    e.Id != id)
-                        .ToListAsync();
+                    IQueryable<Email> existingPrimaryEmails;
 
-                    foreach (var existingPrimary in existingPrimaryEmails)
+                    if (email.RelatedEntityType == "User")
+                    {
+                        existingPrimaryEmails = context.Emails
+                            .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                       e.RelatedEntityStringId == email.RelatedEntityStringId &&
+                                       e.IsPrimary &&
+                                       e.Id != id);
+                    }
+                    else
+                    {
+                        existingPrimaryEmails = context.Emails
+                            .Where(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                       e.RelatedEntityId == email.RelatedEntityId &&
+                                       e.IsPrimary &&
+                                       e.Id != id);
+                    }
+
+                    var primaryEmails = await existingPrimaryEmails.ToListAsync();
+                    foreach (var existingPrimary in primaryEmails)
                     {
                         existingPrimary.IsPrimary = false;
                         existingPrimary.UpdatedDate = DateTime.Now;
@@ -1123,10 +1184,22 @@ namespace Roovia.Services
                 // Check if this is the only primary email
                 if (email.IsPrimary)
                 {
-                    var primaryEmailCount = await context.Emails
-                        .CountAsync(e => e.RelatedEntityType == email.RelatedEntityType &&
-                                        e.RelatedEntityId == email.RelatedEntityId &&
-                                        e.IsPrimary);
+                    int primaryEmailCount;
+
+                    if (email.RelatedEntityType == "User")
+                    {
+                        primaryEmailCount = await context.Emails
+                            .CountAsync(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                            e.RelatedEntityStringId == email.RelatedEntityStringId &&
+                                            e.IsPrimary);
+                    }
+                    else
+                    {
+                        primaryEmailCount = await context.Emails
+                            .CountAsync(e => e.RelatedEntityType == email.RelatedEntityType &&
+                                            e.RelatedEntityId == email.RelatedEntityId &&
+                                            e.IsPrimary);
+                    }
 
                     if (primaryEmailCount == 1)
                     {
@@ -1175,7 +1248,7 @@ namespace Roovia.Services
                 switch (contactNumber.RelatedEntityType)
                 {
                     case "User":
-                        entityExists = await context.Users.AnyAsync(u => u.Id == contactNumber.RelatedEntityId.ToString());
+                        entityExists = await context.Users.AnyAsync(u => u.Id == contactNumber.RelatedEntityStringId);
                         break;
                     case "Company":
                         entityExists = await context.Companies.AnyAsync(c => c.Id == contactNumber.RelatedEntityId);
@@ -1188,20 +1261,32 @@ namespace Roovia.Services
                 if (!entityExists)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = $"{contactNumber.RelatedEntityType} with ID {contactNumber.RelatedEntityId} not found.";
+                    response.ResponseInfo.Message = $"{contactNumber.RelatedEntityType} not found.";
                     return response;
                 }
 
                 // If marking as primary, update any existing primary contact number
                 if (contactNumber.IsPrimary)
                 {
-                    var existingPrimaryNumbers = await context.ContactNumbers
-                        .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
-                                    c.RelatedEntityId == contactNumber.RelatedEntityId &&
-                                    c.IsPrimary)
-                        .ToListAsync();
+                    IQueryable<ContactNumber> existingPrimaryNumbers;
 
-                    foreach (var existingPrimary in existingPrimaryNumbers)
+                    if (contactNumber.RelatedEntityType == "User")
+                    {
+                        existingPrimaryNumbers = context.ContactNumbers
+                            .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                       c.RelatedEntityStringId == contactNumber.RelatedEntityStringId &&
+                                       c.IsPrimary);
+                    }
+                    else
+                    {
+                        existingPrimaryNumbers = context.ContactNumbers
+                            .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                       c.RelatedEntityId == contactNumber.RelatedEntityId &&
+                                       c.IsPrimary);
+                    }
+
+                    var primaryNumbers = await existingPrimaryNumbers.ToListAsync();
+                    foreach (var existingPrimary in primaryNumbers)
                     {
                         existingPrimary.IsPrimary = false;
                         existingPrimary.UpdatedDate = DateTime.Now;
@@ -1247,14 +1332,27 @@ namespace Roovia.Services
                 // If marking as primary, update any existing primary contact number
                 if (updatedContactNumber.IsPrimary && !contactNumber.IsPrimary)
                 {
-                    var existingPrimaryNumbers = await context.ContactNumbers
-                        .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
-                                    c.RelatedEntityId == contactNumber.RelatedEntityId &&
-                                    c.IsPrimary &&
-                                    c.Id != id)
-                        .ToListAsync();
+                    IQueryable<ContactNumber> existingPrimaryNumbers;
 
-                    foreach (var existingPrimary in existingPrimaryNumbers)
+                    if (contactNumber.RelatedEntityType == "User")
+                    {
+                        existingPrimaryNumbers = context.ContactNumbers
+                            .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                       c.RelatedEntityStringId == contactNumber.RelatedEntityStringId &&
+                                       c.IsPrimary &&
+                                       c.Id != id);
+                    }
+                    else
+                    {
+                        existingPrimaryNumbers = context.ContactNumbers
+                            .Where(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                       c.RelatedEntityId == contactNumber.RelatedEntityId &&
+                                       c.IsPrimary &&
+                                       c.Id != id);
+                    }
+
+                    var primaryNumbers = await existingPrimaryNumbers.ToListAsync();
+                    foreach (var existingPrimary in primaryNumbers)
                     {
                         existingPrimary.IsPrimary = false;
                         existingPrimary.UpdatedDate = DateTime.Now;
@@ -1304,10 +1402,22 @@ namespace Roovia.Services
                 // Check if this is the only primary contact number
                 if (contactNumber.IsPrimary)
                 {
-                    var primaryNumberCount = await context.ContactNumbers
-                        .CountAsync(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
-                                        c.RelatedEntityId == contactNumber.RelatedEntityId &&
-                                        c.IsPrimary);
+                    int primaryNumberCount;
+
+                    if (contactNumber.RelatedEntityType == "User")
+                    {
+                        primaryNumberCount = await context.ContactNumbers
+                            .CountAsync(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                            c.RelatedEntityStringId == contactNumber.RelatedEntityStringId &&
+                                            c.IsPrimary);
+                    }
+                    else
+                    {
+                        primaryNumberCount = await context.ContactNumbers
+                            .CountAsync(c => c.RelatedEntityType == contactNumber.RelatedEntityType &&
+                                            c.RelatedEntityId == contactNumber.RelatedEntityId &&
+                                            c.IsPrimary);
+                    }
 
                     if (primaryNumberCount == 1)
                     {
@@ -1331,6 +1441,8 @@ namespace Roovia.Services
 
             return response;
         }
+
+        #endregion
 
         public async Task<ResponseModel> GetAuthenticatedUserInfo()
         {
@@ -1386,9 +1498,5 @@ namespace Roovia.Services
 
             return response;
         }
-
-        #endregion
-
-
     }
 }

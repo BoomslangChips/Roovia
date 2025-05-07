@@ -7,11 +7,11 @@ namespace Roovia.Interfaces
     {
         // User methods (Identity-related)
         Task<ResponseModel> GetUserById(string id);
-        Task<ResponseModel> UpdateUser(int id, ApplicationUser updatedUser);
-        Task<ResponseModel> DeleteUser(int id);
+        Task<ResponseModel> UpdateUser(string id, ApplicationUser updatedUser); // Changed from int to string
+        Task<ResponseModel> DeleteUser(string id); // Changed from int to string
         Task<ResponseModel> GetAllUsers();
         Task<ResponseModel> UpdateUserCompanyId(string userId, int companyId);
-        Task<ResponseModel> UpdateUserRole(string userId, SystemRole role);
+        Task<ResponseModel> UpdateUserRole(string userId, int roleValue); // Changed SystemRole to int
         Task<ResponseModel> UpdateUserBranch(string userId, int branchId);
         Task<ResponseModel> GetUsersByBranch(int branchId);
 

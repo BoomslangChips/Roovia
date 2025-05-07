@@ -17,13 +17,13 @@
 
         <div class="filter-selectors">
             <div class="filter-group">
-                <RVDropdown TriggerText="@GetCompanyFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown company-dropdown">
+                <RVDropdown @ref="companyDropdown" TriggerText="@GetCompanyFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown company-dropdown" FullWidth="true">
                     <div class="dropdown-header">
                         <span>Filter by Company</span>
                     </div>
                     <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == null ? "active" : "")"
-                            @onclick="() => HandleCompanySelect(null)">
+                            @onclick="async () => await SelectCompany(null)">
                         <i class="fa-light fa-building"></i>
                         <span>All Companies</span>
                         @if (SelectedCompanyId == null)
@@ -37,7 +37,7 @@
                         @foreach (var company in Companies.OrderBy(c => c.Name))
                         {
                             <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == company.Id ? "active" : "")"
-                                    @onclick="() => HandleCompanySelect(company.Id)">
+                                    @onclick="async () => await SelectCompany(company.Id)">
                                 <i class="fa-light fa-building"></i>
                                 <span>@company.Name</span>
                                 @if (SelectedCompanyId == company.Id)
@@ -49,13 +49,14 @@
                     }
                 </RVDropdown>
 
-                <RVDropdown TriggerText="@GetBranchFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown branch-dropdown" Disabled="@(SelectedCompanyId == null || Branches == null || !Branches.Any())">
+                <RVDropdown @ref="branchDropdown" TriggerText="@GetBranchFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown branch-dropdown" Disabled="@(SelectedCompanyId == null || Branches == null || !Branches.Any())"
+                            FullWidth="true">
                     <div class="dropdown-header">
                         <span>Filter by Branch</span>
                     </div>
                     <button type="button" class="roovia-dropdown-item @(SelectedBranchId == null ? "active" : "")"
-                            @onclick="() => HandleBranchSelect(null)">
+                            @onclick="async () => await SelectBranch(null)">
                         <i class="fa-light fa-code-branch"></i>
                         <span>All Branches</span>
                         @if (SelectedBranchId == null)
@@ -69,7 +70,7 @@
                         @foreach (var branch in Branches.OrderBy(b => b.Name))
                         {
                             <button type="button" class="roovia-dropdown-item @(SelectedBranchId == branch.Id ? "active" : "")"
-                                    @onclick="() => HandleBranchSelect(branch.Id)">
+                                    @onclick="async () => await SelectBranch(branch.Id)">
                                 <i class="fa-light fa-code-branch"></i>
                                 <span>@branch.Name</span>
                                 @if (SelectedBranchId == branch.Id)
@@ -81,13 +82,13 @@
                     }
                 </RVDropdown>
 
-                <RVDropdown TriggerText="@GetRoleFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown role-dropdown">
+                <RVDropdown @ref="roleDropdown" TriggerText="@GetRoleFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown role-dropdown" FullWidth="true">
                     <div class="dropdown-header">
                         <span>Filter by Role</span>
                     </div>
                     <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == "all" ? "active" : "")"
-                            @onclick='() => HandleRoleSelect("all")'>
+                            @onclick='async () => await SelectRole("all")'>
                         <i class="fa-light fa-users"></i>
                         <span>All Roles</span>
                         @if (SelectedRoleFilter == "all")
@@ -100,7 +101,7 @@
                     {
                         var roleValue = role.ToString();
                         <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == roleValue ? "active" : "")"
-                                @onclick="() => HandleRoleSelect(roleValue)">
+                                @onclick="async () => await SelectRole(roleValue)">
                             <i class="@GetRoleIcon((SystemRole)role)"></i>
                             <span>@GetRoleDisplayName((SystemRole)role)</span>
                             @if (SelectedRoleFilter == roleValue)
@@ -111,13 +112,13 @@
                     }
                 </RVDropdown>
 
-                <RVDropdown TriggerText="@GetStatusFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown status-dropdown">
+                <RVDropdown @ref="statusDropdown" TriggerText="@GetStatusFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown status-dropdown" FullWidth="true">
                     <div class="dropdown-header">
                         <span>Filter by Status</span>
                     </div>
                     <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "all" ? "active" : "")"
-                            @onclick='() => HandleStatusSelect("all")'>
+                            @onclick='async () => await SelectStatus("all")'>
                         <i class="fa-light fa-users"></i>
                         <span>All Statuses</span>
                         @if (SelectedStatusFilter == "all")
@@ -126,7 +127,7 @@
                         }
                     </button>
                     <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
-                            @onclick='() => HandleStatusSelect("active")'>
+                            @onclick='async () => await SelectStatus("active")'>
                         <i class="fa-light fa-user-check"></i>
                         <span>Active</span>
                         @if (SelectedStatusFilter == "active")
@@ -135,7 +136,7 @@
                         }
                     </button>
                     <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
-                            @onclick='() => HandleStatusSelect("inactive")'>
+                            @onclick='async () => await SelectStatus("inactive")'>
                         <i class="fa-light fa-user-slash"></i>
                         <span>Inactive</span>
                         @if (SelectedStatusFilter == "inactive")
@@ -179,6 +180,12 @@
 
     private string searchValue = string.Empty;
 
+    // References to the dropdown components
+    private RVDropdown companyDropdown;
+    private RVDropdown branchDropdown;
+    private RVDropdown roleDropdown;
+    private RVDropdown statusDropdown;
+
     protected override void OnParametersSet()
     {
         searchValue = SearchTerm;
@@ -199,35 +206,60 @@
         }
     }
 
-    private async Task HandleCompanySelect(int? companyId)
+    // Updated selection methods that also close the dropdowns
+    private async Task SelectCompany(int? companyId)
     {
         if (SelectedCompanyId != companyId)
         {
             await OnCompanySelected.InvokeAsync(companyId);
         }
+
+        // Close the dropdown after selection
+        if (companyDropdown != null)
+        {
+            await companyDropdown.Close();
+        }
     }
 
-    private async Task HandleBranchSelect(int? branchId)
+    private async Task SelectBranch(int? branchId)
     {
         if (SelectedBranchId != branchId)
         {
             await OnBranchSelected.InvokeAsync(branchId);
         }
+
+        // Close the dropdown after selection
+        if (branchDropdown != null)
+        {
+            await branchDropdown.Close();
+        }
     }
 
-    private async Task HandleRoleSelect(string role)
+    private async Task SelectRole(string role)
     {
         if (SelectedRoleFilter != role)
         {
             await OnRoleFilterChanged.InvokeAsync(role);
         }
+
+        // Close the dropdown after selection
+        if (roleDropdown != null)
+        {
+            await roleDropdown.Close();
+        }
     }
 
-    private async Task HandleStatusSelect(string status)
+    private async Task SelectStatus(string status)
     {
         if (SelectedStatusFilter != status)
         {
             await OnStatusFilterChanged.InvokeAsync(status);
+        }
+
+        // Close the dropdown after selection
+        if (statusDropdown != null)
+        {
+            await statusDropdown.Close();
         }
     }
 

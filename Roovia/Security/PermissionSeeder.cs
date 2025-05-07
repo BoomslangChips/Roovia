@@ -320,7 +320,7 @@ namespace Roovia.Security
 
             // Find all GlobalAdmin users
             var admins = await dbContext.Users
-                .Where(u => u.Role == SystemRole.GlobalAdmin)
+                .Where(u => u.Role == 0)
                 .ToListAsync();
 
             foreach (var admin in admins)

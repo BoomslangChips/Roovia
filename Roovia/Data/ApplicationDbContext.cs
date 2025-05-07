@@ -17,8 +17,11 @@ namespace Roovia.Data
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
-        public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
 
+        public BankAccount BankDetails { get; set; } = new BankAccount();
+
+        public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
+        public DbSet<UserPermissionOverride> UserPermissionOverrides { get; set; }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
@@ -159,6 +162,20 @@ namespace Roovia.Data
                 .HasForeignKey(rp => rp.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<UserPermissionOverride>()
+    .HasOne<ApplicationUser>()
+    .WithMany()
+    .HasForeignKey(upo => upo.UserId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserPermissionOverride>()
+                .HasOne(upo => upo.Permission)
+                .WithMany()
+                .HasForeignKey(upo => upo.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserPermissionOverride>().ToTable("UserPermissionOverrides");
+            modelBuilder.Entity<Branch>().OwnsOne(b => b.BankDetails);
             // Define table names
             modelBuilder.Entity<Company>().ToTable("Companies");
             modelBuilder.Entity<Branch>().ToTable("Branches");
@@ -170,6 +187,7 @@ namespace Roovia.Data
             modelBuilder.Entity<Role>().ToTable("Roles");
             modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
             modelBuilder.Entity<UserRoleAssignment>().ToTable("UserRoleAssignments");
+
         }
     }
 }

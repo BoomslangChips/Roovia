@@ -29,84 +29,207 @@
         }
         else
         {
-            <EditForm Model="userModel" OnValidSubmit="SaveUser">
+            <EditForm Model="userModel" OnValidSubmit="SaveUser" FormName="editUser" class="user-edit-form">
                 <DataAnnotationsValidator />
                 <FluentValidationValidator />
 
-                <div class="user-edit-form">
-                    <div class="form-tabs">
-                        <div class="tab-header">
-                            <button type="button" class="tab-button @(activeTab == "basic" ? "active" : "")" 
-                                    @onclick='() => SetActiveTab("basic")'>
-                                <i class="fa-light fa-user"></i>
-                                <span>Basic Info</span>
-                            </button>
-                            <button type="button" class="tab-button @(activeTab == "contact" ? "active" : "")" 
-                                    @onclick='() => SetActiveTab("contact")'>
-                                <i class="fa-light fa-address-card"></i>
-                                <span>Contact Details</span>
-                            </button>
-                            <button type="button" class="tab-button @(activeTab == "company" ? "active" : "")" 
-                                    @onclick='() => SetActiveTab("company")'>
-                                <i class="fa-light fa-building"></i>
-                                <span>Company Access</span>
-                            </button>
+                <RVTab Tabs="topLevelTabs" Size="sm" Style="boxed" OnTabChange="HandleTopLevelTabChange">
+                    <RVTabPanel TabId="basic" IsActive='activeTopTab == "basic"'>
+                        <div class="form-section animate-fade-in">
+                            <div class="section-title">
+                                <h4><i class="fa-light fa-user-circle"></i> User Information</h4>
+                                <p>Enter the basic information for this user</p>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="firstName">First Name</label>
+                                    <RVTextbox Id="firstName"
+                                               Value="@userModel.FirstName"
+                                               ValueChanged="value => userModel.FirstName = value"
+                                               Placeholder="Enter first name" />
+                                    <ValidationMessage For="@(() => userModel.FirstName)" />
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="lastName">Last Name</label>
+                                    <RVTextbox Id="lastName"
+                                               Value="@userModel.LastName"
+                                               ValueChanged="value => userModel.LastName = value"
+                                               Placeholder="Enter last name" />
+                                    <ValidationMessage For="@(() => userModel.LastName)" />
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="userName">Username</label>
+                                <RVTextbox Id="userName"
+                                           Value="@userModel.UserName"
+                                           ValueChanged="value => userModel.UserName = value"
+                                           Placeholder="Enter username"
+                                           Disabled="@(!isNewUser)"
+                                           IconLeft="fa-light fa-user" />
+                                <ValidationMessage For="@(() => userModel.UserName)" />
+                            </div>
+
                             @if (!isNewUser)
                             {
-                                <button type="button" class="tab-button @(activeTab == "security" ? "active" : "")" 
-                                        @onclick='() => SetActiveTab("security")'>
-                                    <i class="fa-light fa-shield-check"></i>
-                                    <span>Security</span>
-                                </button>
+                                <div class="form-group">
+                                    <RVSwitch Label="Active"
+                                              Value="userModel.IsActive"
+                                              ValueChanged="value => userModel.IsActive = value"
+                                              HelperText="Inactive users will not be able to log in to the system" />
+                                </div>
                             }
                         </div>
+                    </RVTabPanel>
 
-                        <div class="tab-content">
-                            @if (activeTab == "basic")
-                            {
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4>User Information</h4>
-                                        <p>Enter the basic information for this user</p>
+                    <RVTabPanel TabId="contact" IsActive='activeTopTab == "contact"'>
+                        <div class="form-section animate-fade-in">
+                            <div class="section-title">
+                                <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
+                                <p>Enter the contact details for this user</p>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="email">Primary Email Address</label>
+                                    <RVTextbox Id="email"
+                                               Type="email"
+                                               Value="@userModel.Email"
+                                               ValueChanged="value => userModel.Email = value"
+                                               Placeholder="Enter email address"
+                                               IconLeft="fa-light fa-envelope" />
+                                    <ValidationMessage For="@(() => userModel.Email)" />
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phoneNumber">Primary Phone Number</label>
+                                    <RVTextbox Id="phoneNumber"
+                                               Type="tel"
+                                               Value="@userModel.PhoneNumber"
+                                               ValueChanged="value => userModel.PhoneNumber = value"
+                                               Placeholder="Enter phone number"
+                                               IconLeft="fa-light fa-phone" />
+                                    <ValidationMessage For="@(() => userModel.PhoneNumber)" />
+                                </div>
+                            </div>
+
+                            <!-- Additional Email Addresses Section -->
+                            <div class="additional-contacts">
+                                <div class="section-subtitle">
+                                    <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
+                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
+                                              OnClick="AddEmail" CssClass="add-btn" />
+                                </div>
+
+                                @if (additionalEmails.Any())
+                                {
+                                    <div class="email-list">
+                                        @foreach (var email in additionalEmails)
+                                        {
+                                            <div class="email-item">
+                                                <div class="email-content">
+                                                    <RVTextbox Value="@email.EmailAddress"
+                                                               ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                               Placeholder="Enter email address"
+                                                               IconLeft="fa-light fa-envelope"
+                                                               Size="sm" />
+                                                    <RVTextbox Value="@email.Description"
+                                                               ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                               Placeholder="Description (e.g. Work, Personal)"
+                                                               IconLeft="fa-light fa-tag"
+                                                               Size="sm" />
+                                                </div>
+                                                <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                          OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                            </div>
+                                        }
                                     </div>
-                                    
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="firstName">First Name</label>
-                                            <RVTextbox Id="firstName"
-                                                      Value="@userModel.FirstName"
-                                                      ValueChanged="value => userModel.FirstName = value"
-                                                      Placeholder="Enter first name" />
-                                            <ValidationMessage For="@(() => userModel.FirstName)" />
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="lastName">Last Name</label>
-                                            <RVTextbox Id="lastName"
-                                                      Value="@userModel.LastName"
-                                                      ValueChanged="value => userModel.LastName = value"
-                                                      Placeholder="Enter last name" />
-                                            <ValidationMessage For="@(() => userModel.LastName)" />
-                                        </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-list">
+                                        <i class="fa-light fa-inbox-empty"></i>
+                                        <p>No additional email addresses added</p>
                                     </div>
-                                    
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="userName">Username</label>
-                                            <RVTextbox Id="userName"
-                                                      Value="@userModel.UserName"
-                                                      ValueChanged="value => userModel.UserName = value"
-                                                      Placeholder="Enter username"
-                                                      Disabled="@(!isNewUser)" />
-                                            <ValidationMessage For="@(() => userModel.UserName)" />
+                                }
+                            </div>
+
+                            <!-- Additional Phone Numbers Section -->
+                            <div class="additional-contacts">
+                                <div class="section-subtitle">
+                                    <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
+                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
+                                              OnClick="AddPhone" CssClass="add-btn" />
+                                </div>
+
+                                @if (additionalPhones.Any())
+                                {
+                                    <div class="phone-list">
+                                        @foreach (var phone in additionalPhones)
+                                        {
+                                            <div class="phone-item">
+                                                <div class="phone-content">
+                                                    <RVTextbox Value="@phone.Number"
+                                                               ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                               Placeholder="Enter phone number"
+                                                               IconLeft="fa-light fa-phone"
+                                                               Size="sm" />
+                                                    <RVSelect Value="@phone.Type.ToString()"
+                                                              ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                              Placeholder="Select type"
+                                                              IconLeft="fa-light fa-phone-office"
+                                                              Size="sm">
+                                                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                        {
+                                                            <option value="@type">@type</option>
+                                                        }
+                                                    </RVSelect>
+                                                    <RVTextbox Value="@phone.Description"
+                                                               ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                               Placeholder="Description"
+                                                               IconLeft="fa-light fa-tag"
+                                                               Size="sm" />
+                                                </div>
+                                                <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
+                                                          OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-list">
+                                        <i class="fa-light fa-phone-slash"></i>
+                                        <p>No additional phone numbers added</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </RVTabPanel>
+
+                    <RVTabPanel TabId="access" IsActive='activeTopTab == "access"'>
+                        <div class="form-section animate-fade-in">
+                            <div class="section-title">
+                                <h4><i class="fa-light fa-shield-check"></i> Access & Roles</h4>
+                                <p>Manage user roles, permissions, and security settings</p>
+                            </div>
+
+                            <RVTab Tabs="accessTabs" Size="sm" Style="pills" OnTabChange="HandleAccessTabChange">
+                                <RVTabPanel TabId="roles" IsActive='activeAccessTab == "roles"'>
+                                    <div class="access-card">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-user-shield"></i> System Role</h5>
                                         </div>
-                                        
+
                                         <div class="form-group">
-                                            <label for="systemRole">System Role</label>
+                                            <label for="systemRole">Base System Role</label>
                                             <RVSelect Id="systemRole"
-                                                     Value="@selectedRole"
-                                                     ValueChanged="value => selectedRole = value"
-                                                     Placeholder="Select role">
+                                                      Value="@selectedRole"
+                                                      ValueChanged="value => selectedRole = value"
+                                                      Placeholder="Select role"
+                                                      IconLeft="fa-light fa-shield-check">
                                                 @foreach (var role in Enum.GetValues(typeof(SystemRole)))
                                                 {
                                                     <option value="@role">@GetRoleDisplayName((SystemRole)role)</option>
@@ -114,262 +237,176 @@
                                             </RVSelect>
                                             <div class="field-info">
                                                 <i class="fa-light fa-info-circle"></i>
-                                                <span>This defines the user's base system role. Additional roles can be assigned later.</span>
+                                                <span>This defines the user's base system role and associated permissions</span>
                                             </div>
                                         </div>
                                     </div>
-                                    
+
+                                    <div class="access-card">
+                                        <div class="section-subtitle">
+                                            <h5><i class="fa-light fa-building"></i> Company Access</h5>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="company">Company</label>
+                                            <RVSelect Id="company"
+                                                      Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
+                                                      ValueChanged="HandleCompanyChange"
+                                                      Placeholder="Select company"
+                                                      IconLeft="fa-light fa-building">
+                                                <option value="">-- None --</option>
+                                                @if (Companies != null)
+                                                {
+                                                    @foreach (var company in Companies.OrderBy(c => c.Name))
+                                                    {
+                                                        <option value="@company.Id">@company.Name</option>
+                                                    }
+                                                }
+                                            </RVSelect>
+                                            <div class="field-info">
+                                                <i class="fa-light fa-info-circle"></i>
+                                                <span>Assign the user to a company to grant access to company data</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="branch">Branch</label>
+                                            <RVSelect Id="branch"
+                                                      Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
+                                                      ValueChanged="HandleBranchChange"
+                                                      Placeholder="Select branch"
+                                                      Disabled="@(!userModel.CompanyId.HasValue || availableBranches.Count == 0)"
+                                                      IconLeft="fa-light fa-code-branch">
+                                                <option value="">-- None --</option>
+                                                @foreach (var branch in availableBranches.OrderBy(b => b.Name))
+                                                {
+                                                    <option value="@branch.Id">@branch.Name</option>
+                                                }
+                                            </RVSelect>
+                                            <div class="field-info">
+                                                <i class="fa-light fa-info-circle"></i>
+                                                <span>Assign the user to a specific branch within the company</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (isNewUser)
+                                    {
+                                        <div class="permissions-info-card">
+                                            <div class="info-box">
+                                                <div class="info-icon"><i class="fa-light fa-info-circle"></i></div>
+                                                <div class="info-content">
+                                                    <h5>Permissions Management</h5>
+                                                    <p>You'll be able to manage specific permissions after creating the user. Permission management allows you to grant or deny specific capabilities beyond their base role.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="permissions" IsActive='activeAccessTab == "permissions"'>
                                     @if (!isNewUser)
                                     {
-                                        <div class="form-group">
-                                            <RVSwitch Label="Active"
-                                                      Value="userModel.IsActive"
-                                                      ValueChanged="value => userModel.IsActive = value"
-                                                      HelperText="Inactive users will not be able to log in to the system" />
+                                        <div class="permissions-container">
+                                            <UserPermissionsPanel @ref="permissionsPanel" UserId="@UserId" OnSaved="HandlePermissionsSaved" />
                                         </div>
                                     }
-                                </div>
-                            }
-                            
-                            @if (activeTab == "contact")
-                            {
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4>Contact Information</h4>
-                                        <p>Enter the contact details for this user</p>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="email">Primary Email Address</label>
-                                        <RVTextbox Id="email"
-                                                  Type="email"
-                                                  Value="@userModel.Email"
-                                                  ValueChanged="value => userModel.Email = value"
-                                                  Placeholder="Enter email address" />
-                                        <ValidationMessage For="@(() => userModel.Email)" />
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="phoneNumber">Primary Phone Number</label>
-                                        <RVTextbox Id="phoneNumber"
-                                                  Type="tel"
-                                                  Value="@userModel.PhoneNumber"
-                                                  ValueChanged="value => userModel.PhoneNumber = value"
-                                                  Placeholder="Enter phone number" />
-                                        <ValidationMessage For="@(() => userModel.PhoneNumber)" />
-                                    </div>
-                                    
-                                    <div class="additional-emails">
-                                        <div class="section-subtitle">
-                                            <h5>Additional Email Addresses</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email" 
-                                                      OnClick="AddEmail" CssClass="add-btn" />
-                                        </div>
-                                        
-                                        @if (additionalEmails.Any())
-                                        {
-                                            <div class="email-list">
-                                                @foreach (var email in additionalEmails)
-                                                {
-                                                    <div class="email-item">
-                                                        <div class="email-content">
-                                                            <RVTextbox Value="@email.EmailAddress" 
-                                                                      ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                                      Placeholder="Enter email address" />
-                                                            <RVTextbox Value="@email.Description" 
-                                                                      ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                                      Placeholder="Description (e.g. Work, Personal)" />
-                                                        </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-list">
-                                                <p>No additional email addresses added</p>
-                                            </div>
-                                        }
-                                    </div>
-                                    
-                                    <div class="additional-phones">
-                                        <div class="section-subtitle">
-                                            <h5>Additional Phone Numbers</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone" 
-                                                      OnClick="AddPhone" CssClass="add-btn" />
-                                        </div>
-                                        
-                                        @if (additionalPhones.Any())
-                                        {
-                                            <div class="phone-list">
-                                                @foreach (var phone in additionalPhones)
-                                                {
-                                                    <div class="phone-item">
-                                                        <div class="phone-content">
-                                                            <RVTextbox Value="@phone.Number" 
-                                                                      ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                                      Placeholder="Enter phone number" />
-                                                            <RVSelect Value="@phone.Type.ToString()" 
-                                                                     ValueChanged="value => UpdatePhoneType(phone, value)"
-                                                                     Placeholder="Select type">
-                                                                @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
-                                                                {
-                                                                    <option value="@type">@type</option>
-                                                                }
-                                                            </RVSelect>
-                                                            <RVTextbox Value="@phone.Description" 
-                                                                      ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                                      Placeholder="Description" />
-                                                        </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-list">
-                                                <p>No additional phone numbers added</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                            
-                            @if (activeTab == "company")
-                            {
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4>Company Access</h4>
-                                        <p>Assign this user to a company and branch</p>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="company">Company</label>
-                                        <RVSelect Id="company"
-                                                 Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
-                                                 ValueChanged="HandleCompanyChange"
-                                                 Placeholder="Select company">
-                                            <option value="">-- None --</option>
-                                            @if (Companies != null)
-                                            {
-                                                @foreach (var company in Companies.OrderBy(c => c.Name))
-                                                {
-                                                    <option value="@company.Id">@company.Name</option>
-                                                }
-                                            }
-                                        </RVSelect>
-                                        <div class="field-info">
-                                            <i class="fa-light fa-info-circle"></i>
-                                            <span>Assign the user to a company to grant access to company data</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="branch">Branch</label>
-                                        <RVSelect Id="branch"
-                                                 Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
-                                                 ValueChanged="HandleBranchChange"
-                                                 Placeholder="Select branch"
-                                                 Disabled="@(!userModel.CompanyId.HasValue || availableBranches.Count == 0)">
-                                            <option value="">-- None --</option>
-                                            @foreach (var branch in availableBranches.OrderBy(b => b.Name))
-                                            {
-                                                <option value="@branch.Id">@branch.Name</option>
-                                            }
-                                        </RVSelect>
-                                        <div class="field-info">
-                                            <i class="fa-light fa-info-circle"></i>
-                                            <span>Assign the user to a specific branch within the company</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            
-                            @if (activeTab == "security" && !isNewUser)
-                            {
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4>Security Settings</h4>
-                                        <p>Manage password and security options</p>
-                                    </div>
-                                    
-                                    <div class="password-section">
-                                        <div class="section-subtitle">
-                                            <h5>Password Management</h5>
-                                        </div>
-                                        
-                                        <div class="password-options">
-                                            <RVButton ButtonType="primary" IconLeft="fa-light fa-key" Text="Reset Password"
-                                                      OnClick="ShowResetPasswordConfirmation" />
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="security-options">
-                                        <div class="section-subtitle">
-                                            <h5>Account Security</h5>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <RVSwitch Label="Email Confirmed"
-                                                      Value="userModel.EmailConfirmed"
-                                                      ValueChanged="value => userModel.EmailConfirmed = value"
-                                                      HelperText="Toggle whether the user's email address is confirmed" />
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <RVSwitch Label="Two-Factor Authentication Enabled"
-                                                      Value="userModel.TwoFactorEnabled"
-                                                      ValueChanged="value => userModel.TwoFactorEnabled = value"
-                                                      HelperText="Toggle whether two-factor authentication is enabled for this user" />
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    
-                    @if (isNewUser)
-                    {
-                        <div class="password-section">
-                            <div class="section-title">
-                                <h4>User Password</h4>
-                                <p>Set an initial password for the user</p>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="password">Password</label>
-                                    <RVTextbox Id="password"
-                                              Type="password"
-                                              Value="@password"
-                                              ValueChanged="value => password = value"
-                                              Placeholder="Enter password" />
-                                    @if (!string.IsNullOrEmpty(passwordError))
+                                    else
                                     {
-                                        <div class="validation-message">@passwordError</div>
+                                        <div class="permissions-info-card">
+                                            <div class="info-box">
+                                                <div class="info-icon"><i class="fa-light fa-info-circle"></i></div>
+                                                <div class="info-content">
+                                                    <h5>Permissions Management</h5>
+                                                    <p>You'll be able to manage specific permissions after creating the user. Permission management allows you to grant or deny specific capabilities beyond their base role.</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     }
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="confirmPassword">Confirm Password</label>
-                                    <RVTextbox Id="confirmPassword"
-                                              Type="password"
-                                              Value="@confirmPassword"
-                                              ValueChanged="value => confirmPassword = value"
-                                              Placeholder="Confirm password" />
-                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="security" IsActive='activeAccessTab == "security"'>
+                                    @if (!isNewUser)
                                     {
-                                        <div class="validation-message">@confirmPasswordError</div>
+                                        <div class="security-card">
+                                            <div class="section-subtitle">
+                                                <h5><i class="fa-light fa-key"></i> Password Management</h5>
+                                            </div>
+
+                                            <div class="password-options">
+                                                <RVButton ButtonType="primary"
+                                                          IconLeft="fa-light fa-key"
+                                                          Text="Reset Password"
+                                                          OnClick="ShowResetPasswordConfirmation" />
+                                            </div>
+                                        </div>
+
+                                        <div class="security-card">
+                                            <div class="section-subtitle">
+                                                <h5><i class="fa-light fa-shield-check"></i> Account Security</h5>
+                                            </div>
+
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <RVSwitch Label="Email Confirmed"
+                                                              Value="userModel.EmailConfirmed"
+                                                              ValueChanged="value => userModel.EmailConfirmed = value"
+                                                              HelperText="Toggle whether the user's email address is confirmed" />
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <RVSwitch Label="Two-Factor Authentication Enabled"
+                                                              Value="userModel.TwoFactorEnabled"
+                                                              ValueChanged="value => userModel.TwoFactorEnabled = value"
+                                                              HelperText="Toggle whether two-factor authentication is enabled for this user" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     }
-                                </div>
-                            </div>
+                                    else
+                                    {
+                                        <div class="password-section">
+                                            <div class="section-title">
+                                                <h4><i class="fa-light fa-key"></i> User Password</h4>
+                                                <p>Set an initial password for the user</p>
+                                            </div>
+
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label for="password">Password</label>
+                                                    <RVTextbox Id="password"
+                                                               Type="password"
+                                                               Value="@password"
+                                                               ValueChanged="value => password = value"
+                                                               Placeholder="Enter password"
+                                                               IconLeft="fa-light fa-lock" />
+                                                    @if (!string.IsNullOrEmpty(passwordError))
+                                                    {
+                                                        <div class="validation-message">@passwordError</div>
+                                                    }
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="confirmPassword">Confirm Password</label>
+                                                    <RVTextbox Id="confirmPassword"
+                                                               Type="password"
+                                                               Value="@confirmPassword"
+                                                               ValueChanged="value => confirmPassword = value"
+                                                               Placeholder="Confirm password"
+                                                               IconLeft="fa-light fa-lock" />
+                                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
+                                                    {
+                                                        <div class="validation-message">@confirmPasswordError</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </RVTabPanel>
+                            </RVTab>
                         </div>
-                    }
-                </div>
+                    </RVTabPanel>
+                </RVTab>
             </EditForm>
         }
     </ChildContent>
@@ -395,7 +432,7 @@
                         <p>The user will receive a password reset link via email.</p>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <RVSwitch Label="Force password change on next login"
                               Value="forcePasswordChange"
@@ -416,35 +453,122 @@
     private ApplicationUser userModel = new ApplicationUser();
     private bool isLoading = true;
     private bool isNewUser => string.IsNullOrEmpty(UserId);
-    private string activeTab = "basic";
+    private string activeTopTab = "basic";
+    private string activeAccessTab = "roles";
     private List<Email> additionalEmails = new List<Email>();
     private List<ContactNumber> additionalPhones = new List<ContactNumber>();
     private List<Branch> availableBranches = new List<Branch>();
-    
+
     // Password fields
     private string password = string.Empty;
     private string confirmPassword = string.Empty;
     private string passwordError = string.Empty;
     private string confirmPasswordError = string.Empty;
-    
+
     // Dropdown selections
     private string selectedRole = SystemRole.PropertyManager.ToString();
-    
+
     // Reset password
     private bool showResetPasswordModal = false;
     private bool forcePasswordChange = true;
 
+    // Top-level tab configuration
+    private List<RVTab.RVTabItem> topLevelTabs = new List<RVTab.RVTabItem>();
+
+    // Access tab configuration
+    private List<RVTab.RVTabItem> accessTabs = new List<RVTab.RVTabItem>();
+
+    // Reference to the permissions panel
+    private UserPermissionsPanel permissionsPanel;
+
+    // Track whether permissions have been modified
+    private bool permissionsModified = false;
+
     protected override async Task OnInitializedAsync()
     {
+        ConfigureTabs();
         await LoadData();
     }
-    
+
+    private void ConfigureTabs()
+    {
+        // Configure top-level tabs
+        topLevelTabs = new List<RVTab.RVTabItem>
+            {
+                new RVTab.RVTabItem
+                {
+                    Id = "basic",
+                    Title = "Basic Info",
+                    Icon = "fa-light fa-user",
+                    IsActive = activeTopTab == "basic"
+                },
+                new RVTab.RVTabItem
+                {
+                    Id = "contact",
+                    Title = "Contact Details",
+                    Icon = "fa-light fa-address-card",
+                    IsActive = activeTopTab == "contact"
+                },
+                new RVTab.RVTabItem
+                {
+                    Id = "access",
+                    Title = "Access & Security",
+                    Icon = "fa-light fa-shield-check",
+                    IsActive = activeTopTab == "access"
+                }
+            };
+
+        // Configure access tabs
+        accessTabs = new List<RVTab.RVTabItem>
+            {
+                new RVTab.RVTabItem
+                {
+                    Id = "roles",
+                    Title = "System Role",
+                    Icon = "fa-light fa-user-shield",
+                    IsActive = activeAccessTab == "roles"
+                },
+                new RVTab.RVTabItem
+                {
+                    Id = "permissions",
+                    Title = "Permissions",
+                    Icon = "fa-light fa-lock",
+                    IsActive = activeAccessTab == "permissions"
+                },
+                new RVTab.RVTabItem
+                {
+                    Id = "security",
+                    Title = "Security",
+                    Icon = "fa-light fa-shield-alt",
+                    IsActive = activeAccessTab == "security"
+                }
+            };
+    }
+
+    private void HandleTopLevelTabChange(string tabId)
+    {
+        activeTopTab = tabId;
+        StateHasChanged();
+    }
+
+    private void HandleAccessTabChange(string tabId)
+    {
+        activeAccessTab = tabId;
+        StateHasChanged();
+    }
+
+    private void HandlePermissionsSaved()
+    {
+        permissionsModified = true;
+        ToastService.ShowSuccess("User permissions updated successfully", "Success");
+    }
+
     private async Task LoadData()
     {
         try
         {
             isLoading = true;
-            
+
             if (!isNewUser)
             {
                 // Load user
@@ -453,7 +577,7 @@
                 {
                     userModel = (ApplicationUser)response.Response;
                     selectedRole = userModel.Role?.ToString() ?? SystemRole.PropertyManager.ToString();
-                    
+
                     // Load additional emails and phones
                     if (userModel.EmailAddresses != null)
                     {
@@ -461,7 +585,7 @@
                             .Where(e => !e.IsPrimary)
                             .ToList();
                     }
-                    
+
                     if (userModel.ContactNumbers != null)
                     {
                         additionalPhones = userModel.ContactNumbers
@@ -481,13 +605,13 @@
             {
                 // New user
                 userModel = new ApplicationUser
-                {
-                    IsActive = true,
-                    Role = SystemRole.PropertyManager,
-                    CreatedDate = DateTime.Now
-                };
+                    {
+                        IsActive = true,
+                        Role = SystemRole.PropertyManager,
+                        CreatedDate = DateTime.Now
+                    };
             }
-            
+
             // Get branches if company is selected
             if (userModel.CompanyId.HasValue && Companies != null)
             {
@@ -505,7 +629,7 @@
             isLoading = false;
         }
     }
-    
+
     private async Task LoadBranches(int companyId)
     {
         var company = Companies?.FirstOrDefault(c => c.Id == companyId);
@@ -527,60 +651,55 @@
             availableBranches = new List<Branch>();
         }
     }
-    
-    private void SetActiveTab(string tab)
-    {
-        activeTab = tab;
-    }
-    
+
     private void AddEmail()
     {
         additionalEmails.Add(new Email
-        {
-            IsPrimary = false,
-            IsActive = true,
-            RelatedEntityType = "User",
-            CreatedOn = DateTime.Now
-        });
+            {
+                IsPrimary = false,
+                IsActive = true,
+                RelatedEntityType = "User",
+                CreatedOn = DateTime.Now
+            });
     }
-    
+
     private void RemoveEmail(Email email)
     {
         additionalEmails.Remove(email);
     }
-    
+
     private void UpdateEmailAddress(Email email, string value)
     {
         email.EmailAddress = value;
     }
-    
+
     private void UpdateEmailDescription(Email email, string value)
     {
         email.Description = value;
     }
-    
+
     private void AddPhone()
     {
         additionalPhones.Add(new ContactNumber
-        {
-            Type = ContactNumberType.Mobile,
-            IsPrimary = false,
-            IsActive = true,
-            RelatedEntityType = "User",
-            CreatedOn = DateTime.Now
-        });
+            {
+                Type = ContactNumberType.Mobile,
+                IsPrimary = false,
+                IsActive = true,
+                RelatedEntityType = "User",
+                CreatedOn = DateTime.Now
+            });
     }
-    
+
     private void RemovePhone(ContactNumber phone)
     {
         additionalPhones.Remove(phone);
     }
-    
+
     private void UpdatePhoneNumber(ContactNumber phone, string value)
     {
         phone.Number = value;
     }
-    
+
     private void UpdatePhoneType(ContactNumber phone, string value)
     {
         if (Enum.TryParse<ContactNumberType>(value, out var type))
@@ -588,12 +707,12 @@
             phone.Type = type;
         }
     }
-    
+
     private void UpdatePhoneDescription(ContactNumber phone, string value)
     {
         phone.Description = value;
     }
-    
+
     private async Task HandleCompanyChange(string companyId)
     {
         if (int.TryParse(companyId, out var id))
@@ -608,7 +727,7 @@
             availableBranches.Clear();
         }
     }
-    
+
     private void HandleBranchChange(string branchId)
     {
         if (int.TryParse(branchId, out var id))
@@ -620,23 +739,23 @@
             userModel.BranchId = null;
         }
     }
-    
+
     private void ShowResetPasswordConfirmation()
     {
         showResetPasswordModal = true;
     }
-    
+
     private async Task ResetPassword()
     {
         try
         {
             // Implement password reset logic
             var token = await UserManager.GeneratePasswordResetTokenAsync(userModel);
-            
+
             // In a real implementation, you would send an email with the reset link
             // For now, we'll just show a success message
             ToastService.ShowSuccess($"Password reset token generated for {GetUserDisplayName()}", "Success");
-            
+
             showResetPasswordModal = false;
         }
         catch (Exception ex)
@@ -644,7 +763,7 @@
             ToastService.ShowError($"Failed to reset password: {ex.Message}", "Error");
         }
     }
-    
+
     private async Task SaveUser()
     {
         try
@@ -657,60 +776,60 @@
                     passwordError = "Password is required";
                     return;
                 }
-                
+
                 if (password != confirmPassword)
                 {
                     confirmPasswordError = "Passwords do not match";
                     return;
                 }
-                
+
                 // Clear errors
                 passwordError = string.Empty;
                 confirmPasswordError = string.Empty;
             }
-            
+
             // Set role
             if (Enum.TryParse<SystemRole>(selectedRole, out var role))
             {
                 userModel.Role = role;
             }
-            
+
             // Add email addresses and contact numbers
             if (isNewUser)
             {
                 // For new users, we need to set up email and phone number entities
                 var primaryEmail = new Email
-                {
-                    EmailAddress = userModel.Email,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "User",
-                    CreatedOn = DateTime.Now
-                };
-                
+                    {
+                        EmailAddress = userModel.Email,
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "User",
+                        CreatedOn = DateTime.Now
+                    };
+
                 var primaryPhone = new ContactNumber
-                {
-                    Number = userModel.PhoneNumber,
-                    Type = ContactNumberType.Mobile,
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "User",
-                    CreatedOn = DateTime.Now
-                };
-                
+                    {
+                        Number = userModel.PhoneNumber,
+                        Type = ContactNumberType.Mobile,
+                        IsPrimary = true,
+                        IsActive = true,
+                        RelatedEntityType = "User",
+                        CreatedOn = DateTime.Now
+                    };
+
                 userModel.EmailAddresses = new List<Email> { primaryEmail };
                 userModel.EmailAddresses.AddRange(additionalEmails);
-                
+
                 userModel.ContactNumbers = new List<ContactNumber> { primaryPhone };
                 userModel.ContactNumbers.AddRange(additionalPhones);
-                
+
                 // Create user
                 var result = await UserManager.CreateAsync(userModel, password);
-                
+
                 if (result.Succeeded)
                 {
                     ToastService.ShowSuccess($"User {GetUserDisplayName()} created successfully", "Success");
-                    
+
                     if (OnSaved.HasDelegate)
                         await OnSaved.InvokeAsync();
                 }
@@ -730,22 +849,38 @@
                     primaryEmail.EmailAddress = userModel.Email;
                     primaryEmail.UpdatedDate = DateTime.Now;
                 }
-                
+
                 var primaryPhone = userModel.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
                 if (primaryPhone != null)
                 {
                     primaryPhone.Number = userModel.PhoneNumber;
                     primaryPhone.UpdatedDate = DateTime.Now;
                 }
-                
+
                 // Update user
-                var userId = int.Parse(userModel.Id);
+                var userId = userModel.Id;
                 var response = await UserService.UpdateUser(userId, userModel);
-                
+
                 if (response.ResponseInfo.Success)
                 {
-                    ToastService.ShowSuccess($"User {GetUserDisplayName()} updated successfully", "Success");
-                    
+                    // Now save permissions if there are any pending changes
+                    if (!isNewUser && permissionsPanel != null && permissionsPanel.HasPendingChanges())
+                    {
+                        bool permissionsSaved = await permissionsPanel.SavePendingChanges();
+                        if (permissionsSaved)
+                        {
+                            ToastService.ShowSuccess($"User {GetUserDisplayName()} and permissions updated successfully", "Success");
+                        }
+                        else
+                        {
+                            ToastService.ShowWarning($"User updated but some permissions failed to save", "Warning");
+                        }
+                    }
+                    else
+                    {
+                        ToastService.ShowSuccess($"User {GetUserDisplayName()} updated successfully", "Success");
+                    }
+
                     if (OnSaved.HasDelegate)
                         await OnSaved.InvokeAsync();
                 }
@@ -760,17 +895,17 @@
             ToastService.ShowError($"Failed to save user: {ex.Message}", "Error");
         }
     }
-    
+
     private string GetUserDisplayName()
     {
         if (!string.IsNullOrEmpty(userModel.FullName))
         {
             return userModel.FullName;
         }
-        
+
         return userModel.UserName ?? "New User";
     }
-    
+
     private string GetRoleDisplayName(SystemRole role)
     {
         return role switch

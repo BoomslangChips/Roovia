@@ -10,7 +10,7 @@
                 {
                     <i class="@TriggerIcon"></i>
                 }
-                <span>@TriggerText</span>
+                <span class="trigger-text">@TriggerText</span>
                 <i class="far fa-chevron-down roovia-dropdown-arrow @(IsOpen ? "open" : "")"></i>
             </button>
         }
@@ -38,7 +38,7 @@
                 </div>
             }
 
-            <div class="roovia-dropdown-items">
+            <div class="roovia-dropdown-items" @ref="DropdownItemsRef">
                 @if (Items?.Any() == true)
                 {
                     @foreach (var item in FilteredItems)
@@ -75,6 +75,7 @@
     .roovia-dropdown-trigger {
         cursor: pointer;
         display: inline-flex;
+        width: 100%;
     }
 
     .roovia-dropdown-btn {
@@ -92,6 +93,7 @@
         transition: var(--hover-transition);
         min-width: 120px;
         justify-content: space-between;
+        width: 100%;
     }
 
         .roovia-dropdown-btn.size-sm {
@@ -110,10 +112,18 @@
             border-color: var(--primary);
         }
 
+    .trigger-text {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        flex: 1;
+    }
+
     .roovia-dropdown-arrow {
         font-size: 0.75rem;
         transition: transform 0.2s ease;
         margin-left: auto;
+        flex-shrink: 0;
     }
 
         .roovia-dropdown-arrow.open {
@@ -143,6 +153,8 @@
         max-height: 300px;
         display: flex;
         flex-direction: column;
+        max-width: 100vw;
+        width: max-content;
     }
 
     @@keyframes dropdown-fade-in {
@@ -167,6 +179,12 @@
     .roovia-dropdown-bottom-right {
         top: 100%;
         right: 0;
+        margin-top: 4px;
+    }
+
+    .roovia-dropdown-bottom-start {
+        top: 100%;
+        left: 0;
         margin-top: 4px;
     }
 
@@ -217,16 +235,19 @@
         transition: var(--hover-transition);
         color: var(--text-primary);
         font-size: var(--font-size-sm);
+        min-height: 44px; /* Ensures touch-friendly height */
     }
 
         .roovia-dropdown-item.size-sm {
             padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
             font-size: var(--font-size-xs);
+            min-height: 40px;
         }
 
         .roovia-dropdown-item.size-lg {
             padding: var(--spacing-3) var(--spacing-4);
             font-size: var(--font-size-base);
+            min-height: 48px;
         }
 
         .roovia-dropdown-item:hover {
@@ -241,10 +262,18 @@
 
         .roovia-dropdown-item i {
             font-size: 1rem;
+            flex-shrink: 0;
         }
 
         .roovia-dropdown-item.size-sm i {
             font-size: 0.75rem;
+        }
+
+        .roovia-dropdown-item span {
+            flex: 1;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         .roovia-dropdown-item:disabled {
@@ -271,6 +300,7 @@
         color: var(--text-primary);
         font-size: var(--font-size-xs);
         transition: var(--hover-transition);
+        height: 36px; /* Ensures touch-friendly height */
     }
 
         .roovia-dropdown-search-input:focus {
@@ -342,6 +372,62 @@
         .roovia-dropdown-full .roovia-dropdown-menu {
             width: 100%;
         }
+
+    /* Mobile Responsive Adjustments */
+    @@media (max-width: 768px) {
+        .roovia-dropdown-menu
+
+    {
+        min-width: 180px;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .roovia-dropdown-menu
+
+    {
+        position: fixed;
+        left: 10px !important;
+        right: 10px !important;
+        width: calc(100% - 20px) !important;
+        max-width: calc(100% - 20px);
+        top: 50% !important;
+        transform: translateY(-50%);
+        max-height: 80vh;
+        bottom: auto;
+        margin: 0;
+    }
+
+    .roovia-dropdown-items {
+        max-height: calc(80vh - 50px); /* Adjust for possible search bar */
+    }
+
+    .roovia-dropdown-btn {
+        padding: var(--spacing-2) var(--spacing-2);
+        min-height: 44px; /* Ensure touch-friendly height */
+    }
+
+    .roovia-dropdown-item {
+        min-height: 48px; /* Larger touch target on mobile */
+        padding: var(--spacing-2) var(--spacing-2);
+    }
+
+    }
+
+    @@media (max-width: 400px) {
+        .roovia-dropdown-btn
+
+    {
+        font-size: var(--font-size-xs);
+        min-width: unset;
+    }
+
+    .roovia-dropdown-menu {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    }
 </style>
 
 @code {
@@ -365,6 +451,7 @@
 
     private bool IsOpen { get; set; }
     private string SearchText { get; set; } = "";
+    private ElementReference DropdownItemsRef;
 
     private string PositionClass => $"roovia-dropdown-{Position.ToLowerInvariant()}";
     private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
@@ -409,6 +496,12 @@
         if (OnSelect.HasDelegate)
             await OnSelect.InvokeAsync(value);
 
+        await CloseDropdown();
+    }
+
+    // Public method to close the dropdown from the parent component
+    public async Task Close()
+    {
         await CloseDropdown();
     }
 

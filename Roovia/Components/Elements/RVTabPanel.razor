@@ -1,7 +1,70 @@
-﻿@* RVTabPanel.razor *@
+﻿@* RVTabPanel.razor - Enhanced for responsiveness *@
 <div class="roovia-tab-panel @(IsActive ? "active" : "") @CssClass">
     @ChildContent
 </div>
+
+<style>
+    /* Tab Panel Styles */
+    .roovia-tab-panel {
+        display: none;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: none;
+    }
+
+        .roovia-tab-panel.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            animation: panel-fade-in 0.3s ease-in-out forwards;
+        }
+
+    @@keyframes panel-fade-in {
+        0%
+
+    {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 768px) {
+        .roovia-tab-panel.active
+
+    {
+        animation-duration: 0.25s; /* Slightly faster on mobile */
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .roovia-tab-panel.active
+
+    {
+        animation-duration: 0.2s; /* Even faster on smaller screens */
+    }
+
+    }
+
+    /* Reduce motion preference support */
+    @@media (prefers-reduced-motion: reduce) {
+        .roovia-tab-panel.active
+
+    {
+        animation: none;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
 
 @code {
     [Parameter] public RenderFragment ChildContent { get; set; }

@@ -1,7 +1,8 @@
-﻿/* User Edit Modal - Clean Professional Edition */
+﻿/* User Edit Modal - Enhanced Professional Edition */
+
 
 .user-edit-form {
-    padding: var(--spacing-1);
+    padding: var(--spacing-3);
 }
 
 /* Form Tabs */
@@ -11,6 +12,9 @@
     border: 1px solid var(--border-divider);
     border-radius: var(--border-radius-md);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-4);
+    background-color: var(--content-bg);
 }
 
 .tab-header {
@@ -19,6 +23,8 @@
     border-bottom: 1px solid var(--border-divider);
     overflow-x: auto;
     scrollbar-width: none; /* Firefox */
+    -webkit-overflow-scrolling: touch;
+    padding: var(--spacing-1) var(--spacing-1) 0;
 }
 
     .tab-header::-webkit-scrollbar {
@@ -28,18 +34,28 @@
 .tab-button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: var(--spacing-2);
     padding: var(--spacing-2) var(--spacing-3);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
     color: var(--text-secondary);
     font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
     white-space: nowrap;
+    margin-right: var(--spacing-1);
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+    min-width: 120px;
+    flex-shrink: 0;
+    position: relative;
 }
+
+    .tab-button:first-child {
+        margin-left: var(--spacing-1);
+    }
 
     .tab-button:hover {
         color: var(--primary);
@@ -48,27 +64,42 @@
 
     .tab-button.active {
         color: var(--primary);
-        border-bottom-color: var(--primary);
-        background-color: rgba(var(--primary-rgb), 0.05);
+        background-color: var(--content-bg);
+        border-color: var(--border-divider);
+        border-bottom: 1px solid var(--content-bg);
+        font-weight: 600;
+        margin-bottom: -1px;
     }
 
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: var(--primary);
+            border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
+        }
+
     .tab-button i {
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-base);
     }
 
 .tab-content {
     background-color: var(--content-bg);
     min-height: 300px;
+    padding: var(--spacing-1);
 }
 
 /* Form Section Styling */
 .form-section {
-    padding: var(--spacing-4);
+    padding: var(--spacing-3);
     animation: fade-in 0.25s ease;
 }
 
 .section-title {
-    margin-bottom: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
     padding-bottom: var(--spacing-2);
     border-bottom: 1px solid var(--border-divider);
 }
@@ -78,7 +109,15 @@
         font-size: var(--font-size-base);
         font-weight: 600;
         color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
     }
+
+        .section-title h4 i {
+            color: var(--primary);
+            font-size: var(--font-size-lg);
+        }
 
     .section-title p {
         margin: 0;
@@ -91,6 +130,7 @@
     align-items: center;
     justify-content: space-between;
     margin: var(--spacing-4) 0 var(--spacing-2) 0;
+    width: 100%;
 }
 
     .section-subtitle h5 {
@@ -98,7 +138,14 @@
         font-size: var(--font-size-sm);
         font-weight: 600;
         color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
     }
+
+        .section-subtitle h5 i {
+            color: var(--primary);
+        }
 
 .form-row {
     display: grid;
@@ -135,42 +182,70 @@
     .field-info i {
         font-size: 12px;
         color: var(--text-muted);
-        margin-top: 1px;
+        margin-top: 2px;
     }
 
-/* Email and Phone Lists */
-.additional-emails, .additional-phones {
+/* Email and Phone Lists - IMPROVED LAYOUT */
+.additional-contacts {
     margin-top: var(--spacing-4);
     border: 1px solid var(--border-divider);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    background-color: var(--subtle-bg);
+    padding: var(--spacing-3);
 }
 
 .email-list, .phone-list {
-    padding: var(--spacing-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
 }
 
 .email-item, .phone-item {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr auto;
     gap: var(--spacing-2);
-    margin-bottom: var(--spacing-2);
-    animation: slide-in-right 0.25s ease;
+    background-color: var(--content-bg);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-2);
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+    align-items: flex-start;
 }
 
-    .email-item:last-child, .phone-item:last-child {
-        margin-bottom: 0;
+    .email-item:hover, .phone-item:hover {
+        border-color: var(--primary-light);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
     }
 
 .email-content, .phone-content {
-    display: flex;
-    align-items: center;
+    display: grid;
     gap: var(--spacing-2);
-    flex: 1;
+    width: 100%;
 }
 
+/* Email content has two fields side by side */
+.email-content {
+    grid-template-columns: 3fr 2fr;
+}
+
+/* Phone content has three fields - adjust for better layout */
 .phone-content {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.remove-btn {
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    align-self: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .empty-list {
@@ -178,42 +253,137 @@
     text-align: center;
     color: var(--text-muted);
     font-size: var(--font-size-sm);
-    background-color: var(--subtle-bg);
+    background-color: var(--content-bg);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
 }
+
+    .empty-list i {
+        font-size: var(--font-size-xl);
+        color: var(--text-light);
+    }
 
 .add-btn {
     font-size: 11px !important;
-    padding: 3px 8px !important;
+    padding: 3px 10px !important;
+    height: 28px !important;
+    min-width: 90px !important;
 }
 
-.remove-btn {
-    min-width: 28px !important;
-    width: 28px !important;
-    height: 28px !important;
-    padding: 0 !important;
+/* Access & Role Cards */
+.access-card {
+    padding: var(--spacing-3);
+    background-color: var(--content-bg);
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-3);
+    box-shadow: var(--shadow-sm);
+}
+
+    .access-card .section-subtitle {
+        margin-top: 0;
+    }
+
+    .access-card:last-of-type {
+        margin-bottom: var(--spacing-4);
+    }
+
+/* Permissions Container */
+.permissions-container {
+    margin-top: var(--spacing-4);
+}
+
+.permissions-info-card {
+    margin-top: var(--spacing-4);
+}
+
+/* Form control wrapper adjustments - make consistent height */
+::deep .roovia-textbox-input,
+::deep .roovia-select-input {
+    height: 36px !important;
 }
 
 /* Password Section */
 .password-section {
-    padding: var(--spacing-4);
+    padding: var(--spacing-3);
     background-color: var(--subtle-bg);
-    border-top: 1px solid var(--border-divider);
+    border: 1px solid var(--border-divider);
     animation: fade-in 0.25s ease;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    margin-top: var(--spacing-4);
 }
 
 .password-options {
     display: flex;
     gap: var(--spacing-2);
-    margin-top: var(--spacing-2);
+    margin-top: var(--spacing-3);
 }
 
-/* Security Section */
+/* Security Cards */
+.security-card {
+    padding: var(--spacing-3);
+    background-color: var(--content-bg);
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-3);
+    box-shadow: var(--shadow-sm);
+}
+
+    .security-card .section-subtitle {
+        margin-top: 0;
+    }
+
 .security-options {
     margin-top: var(--spacing-3);
-    padding: var(--spacing-3);
-    background-color: var(--subtle-bg);
-    border-radius: var(--border-radius-sm);
 }
+
+/* Form Actions */
+.form-actions {
+    margin-top: var(--spacing-4);
+    padding-top: var(--spacing-3);
+    border-top: 1px solid var(--border-divider);
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Info Box */
+.info-box {
+    border-radius: var(--border-radius-md);
+    background-color: rgba(var(--primary-rgb), 0.05);
+    padding: var(--spacing-3);
+    display: flex;
+    gap: var(--spacing-3);
+    border: 1px solid rgba(var(--primary-rgb), 0.1);
+}
+
+.info-icon {
+    font-size: 1.5rem;
+    color: var(--primary);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.info-content h5 {
+    margin: 0 0 var(--spacing-2) 0;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.info-content p {
+    margin: 0 0 var(--spacing-1) 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+    .info-content p:last-child {
+        margin-bottom: 0;
+    }
 
 /* Reset Password Modal */
 .reset-password-form {
@@ -226,15 +396,18 @@
     gap: var(--spacing-2);
     padding: var(--spacing-3);
     border-radius: var(--border-radius-sm);
-    background-color: rgba(var(--warning-rgb), 0.1);
-    border: 1px solid rgba(var(--warning-rgb), 0.2);
     margin-bottom: var(--spacing-3);
 }
 
-    .alert i {
-        color: var(--warning);
-        font-size: var(--font-size-lg);
-    }
+.alert-warning {
+    background-color: rgba(var(--warning-rgb), 0.1);
+    border: 1px solid rgba(var(--warning-rgb), 0.2);
+}
+
+.alert i {
+    color: var(--warning);
+    font-size: var(--font-size-lg);
+}
 
 .alert-content p {
     margin: 0 0 var(--spacing-1) 0;
@@ -286,6 +459,24 @@
         font-size: 10px;
     }
 
+/* Enhanced form control styles */
+::deep .roovia-textbox-input,
+::deep .roovia-select-input {
+    border-width: 1px;
+    transition: all 0.2s ease;
+}
+
+    ::deep .roovia-textbox-input:hover,
+    ::deep .roovia-select-input:hover {
+        border-color: var(--primary-light);
+    }
+
+    ::deep .roovia-textbox-input:focus,
+    ::deep .roovia-select-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+    }
+
 /* Animations */
 @keyframes fade-in {
     from {
@@ -323,35 +514,27 @@
     }
 
     .form-section, .password-section {
-        padding: var(--spacing-3);
-    }
-
-    .email-content, .phone-content {
-        flex-direction: column;
-        align-items: stretch;
-        width: 100%;
-    }
-
-    .email-item, .phone-item {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .remove-btn {
-        width: 100% !important;
-        height: 32px !important;
+        padding: var(--spacing-2);
     }
 
     .tab-button {
         padding: var(--spacing-2);
+        min-width: auto;
     }
 
-        .tab-button span {
-            display: none;
-        }
+    .email-content, .phone-content {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-2);
+    }
+
+    .info-box {
+        flex-direction: column;
+        gap: var(--spacing-2);
+    }
 }
 
-@media (max-width: 480px) {
+/* Enhanced mobile view optimization */
+@media (max-width: 576px) {
     .form-section, .password-section {
         padding: var(--spacing-2);
     }
@@ -360,9 +543,123 @@
         flex-direction: column;
     }
 
-        .password-options .btn {
-            width: 100%;
+    .tab-button {
+        padding: var(--spacing-1) var(--spacing-2);
+        font-size: var(--font-size-xs);
+        gap: var(--spacing-1);
+    }
+
+    .section-title h4 {
+        font-size: var(--font-size-sm);
+    }
+
+    .section-title p {
+        font-size: 11px;
+    }
+
+    .section-subtitle h5 {
+        font-size: var(--font-size-xs);
+    }
+
+    .empty-list {
+        padding: var(--spacing-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .alert {
+        padding: var(--spacing-2);
+    }
+
+    .alert-content p {
+        font-size: var(--font-size-xs);
+    }
+
+    .remove-btn {
+        justify-self: end !important;
+        margin-top: var(--spacing-1);
+    }
+
+    ::deep .roovia-textbox-label,
+    ::deep .roovia-select-label,
+    .form-group label {
+        font-size: 11px;
+    }
+
+    ::deep .roovia-textbox-input,
+    ::deep .roovia-select-input {
+        font-size: var(--font-size-xs);
+    }
+}
+
+/* Maximum optimization for very small screens */
+@media (max-width: 400px) {
+    .user-edit-form {
+        padding: var(--spacing-1);
+    }
+
+    .form-section, .password-section {
+        padding: var(--spacing-1) var(--spacing-2);
+    }
+
+    .form-row {
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-1);
+    }
+
+    .form-group {
+        margin-bottom: var(--spacing-2);
+    }
+
+    .tab-header {
+        justify-content: space-between;
+    }
+
+    .tab-button {
+        flex: 1;
+        border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
+        min-width: 0;
+        margin-top: var(--spacing-1);
+        margin-right: 0;
+        font-size: 10px;
+        height: 36px;
+        padding: 0;
+    }
+
+        .tab-button i {
+            font-size: var(--font-size-sm);
         }
+
+        .tab-button span {
+            display: none;
+        }
+
+        .tab-button.active span {
+            display: inline;
+        }
+
+    .section-title {
+        margin-bottom: var(--spacing-2);
+    }
+
+    .field-info {
+        font-size: 10px;
+    }
+
+    ::deep .roovia-textbox-validation,
+    ::deep .roovia-select-validation,
+    ::deep .validation-message {
+        font-size: 10px;
+    }
+
+    .add-btn {
+        padding: 0 var(--spacing-1) !important;
+        height: 24px !important;
+    }
+
+    ::deep .roovia-btn {
+        padding: var(--spacing-1) var(--spacing-2) !important;
+        font-size: 11px !important;
+    }
 }
 
 /* Dark Mode Adjustments */
@@ -371,7 +668,7 @@
 }
 
 .theme-dark .tab-button.active {
-    background-color: rgba(var(--primary-rgb), 0.15);
+    background-color: var(--content-bg);
 }
 
 .theme-dark .alert {
@@ -382,6 +679,27 @@
     background-color: var(--content-bg);
 }
 
-.theme-dark .security-options {
+.theme-dark .email-item,
+.theme-dark .phone-item {
+    background-color: var(--content-bg);
+    border-color: var(--border-divider);
+}
+
+.theme-dark .security-card,
+.theme-dark .access-card {
     background-color: var(--subtle-bg);
+}
+
+.theme-dark .password-section {
+    background-color: var(--subtle-bg);
+}
+
+.theme-dark .info-box {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    border-color: rgba(var(--primary-rgb), 0.2);
+}
+
+/* Animation for tab content */
+.animate-fade-in {
+    animation: fade-in 0.3s ease-in-out;
 }

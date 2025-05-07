@@ -1,4 +1,4 @@
-﻿@* RVTab.razor *@
+﻿@* RVTab.razor - Enhanced Mobile Responsiveness *@
 <div class="roovia-tabs-container @(IsVertical ? "roovia-tabs-container-vertical" : "") @CssClass">
     <div class="roovia-tabs @StyleClass">
         @foreach (var tab in Tabs)
@@ -11,7 +11,7 @@
                 {
                     <i class="@tab.Icon"></i>
                 }
-                <span>@tab.Title</span>
+                <span class="tab-title">@tab.Title</span>
                 @if (tab.BadgeCount > 0)
                 {
                     <span class="roovia-tab-badge">@(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())</span>
@@ -41,6 +41,8 @@
         -ms-overflow-style: none; /* IE/Edge */
         margin-bottom: var(--spacing-4);
         border-bottom: 1px solid var(--border-divider);
+        -webkit-overflow-scrolling: touch; /* Enhanced touch scrolling */
+        scroll-snap-type: x mandatory; /* Create snap points for better scroll experience */
     }
 
         .roovia-tabs::-webkit-scrollbar {
@@ -60,7 +62,10 @@
         font-size: var(--font-size-base);
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: var(--spacing-2);
+        min-height: 44px; /* Ensure touch-friendly size */
+        scroll-snap-align: start; /* Create snap points for better scroll experience */
     }
 
         .roovia-tab:hover {
@@ -144,10 +149,13 @@
     .roovia-tabs-boxed {
         border: none;
         gap: var(--spacing-2);
+        padding: var(--spacing-1);
+        background-color: var(--subtle-bg);
+        border-radius: var(--border-radius-md);
     }
 
         .roovia-tabs-boxed .roovia-tab {
-            border-radius: var(--border-radius-lg);
+            border-radius: var(--border-radius-md);
             border: 1px solid transparent;
             padding: var(--spacing-2) var(--spacing-4);
         }
@@ -159,6 +167,7 @@
             .roovia-tabs-boxed .roovia-tab.active {
                 background-color: var(--primary-light);
                 border-color: var(--primary);
+                box-shadow: 0 2px 5px rgba(var(--primary-rgb), 0.15); /* Subtle lift effect */
             }
 
                 .roovia-tabs-boxed .roovia-tab.active::after {
@@ -246,6 +255,7 @@
             text-align: left;
             padding: var(--spacing-3) var(--spacing-4);
             border-right: 2px solid transparent;
+            justify-content: flex-start;
         }
 
             .roovia-tabs-vertical .roovia-tab.active::after {
@@ -260,6 +270,7 @@
     .roovia-tabs-sm .roovia-tab {
         padding: var(--spacing-2) var(--spacing-3);
         font-size: var(--font-size-sm);
+        min-height: 36px;
     }
 
         .roovia-tabs-sm .roovia-tab i {
@@ -269,6 +280,7 @@
     .roovia-tabs-lg .roovia-tab {
         padding: var(--spacing-3) var(--spacing-5);
         font-size: var(--font-size-lg);
+        min-height: 52px;
     }
 
         .roovia-tabs-lg .roovia-tab i {
@@ -294,6 +306,7 @@
 
         .roovia-tabs-vertical .roovia-tab {
             border-right: none;
+            justify-content: center;
         }
 
             .roovia-tabs-vertical .roovia-tab.active {
@@ -310,19 +323,108 @@
                     background-color: var(--primary);
                 }
 
+    .roovia-tabs {
+        margin-bottom: var(--spacing-3);
+    }
+
     }
 
     @@media (max-width: 576px) {
         .roovia-tabs .roovia-tab
 
     {
-        padding: var(--spacing-2) var(--spacing-3);
+        padding: var(--spacing-2) var(--spacing-2);
+        font-size: var(--font-size-sm);
+        gap: var(--spacing-1);
+    }
+
+    .roovia-tabs-boxed .roovia-tab,
+    .roovia-tabs-buttons .roovia-tab,
+    .roovia-tabs-pills .roovia-tab {
+        padding: var(--spacing-1) var(--spacing-2);
     }
 
     .roovia-tabs-buttons,
-    .roovia-tabs-pills {
+    .roovia-tabs-pills,
+    .roovia-tabs-boxed {
         flex-wrap: nowrap;
         overflow-x: auto;
+        padding: var(--spacing-1);
+        gap: var(--spacing-1);
+    }
+
+    .roovia-tab i {
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-tabs {
+        margin-bottom: var(--spacing-2);
+    }
+
+        .roovia-tab .tab-title {
+            display: none;
+        }
+
+        .roovia-tab.active .tab-title {
+            display: inline;
+            font-size: 12px;
+        }
+    }
+
+    /* Enhanced mobile optimization for very small screens */
+    @@media (max-width: 400px) {
+        .roovia-tabs
+
+    {
+        justify-content: space-between;
+        overflow-x: auto;
+        margin-bottom: var(--spacing-2);
+    }
+
+    .roovia-tabs-boxed {
+        padding: var(--spacing-1) var(--spacing-1);
+    }
+
+    .roovia-tab {
+        flex: 1;
+        padding: var(--spacing-1) var(--spacing-1);
+        min-width: auto;
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-tabs-boxed .roovia-tab {
+        border-radius: var(--border-radius-sm);
+        padding: var(--spacing-1) var(--spacing-1);
+    }
+
+    /* Hide text on very small screens, show only icons */
+    .roovia-tab .tab-title {
+        display: none;
+    }
+
+    .roovia-tab.active .tab-title {
+        display: none;
+        font-size: 12px;
+    }
+
+    .roovia-tab i {
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-tab-badge {
+        min-width: 14px;
+        height: 14px;
+        font-size: 9px;
+        margin-left: 2px;
+    }
+
+    /* Equal width tabs for icon-only mode */
+    .roovia-tabs-boxed .roovia-tab,
+    .roovia-tabs-buttons .roovia-tab,
+    .roovia-tabs-pills .roovia-tab {
+        min-width: 0;
+        flex: 1;
+        padding: 8px 0;
     }
 
     }

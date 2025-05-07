@@ -1,12 +1,11 @@
-﻿/* UserCard Component */
+﻿/* UserCard Component - Mobile First */
 
 .user-card {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-3);
+    flex-direction: column;
+    padding: var(--spacing-2);
     background: var(--content-bg);
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius-md);
     border: 1px solid var(--border-divider);
     margin-bottom: var(--spacing-2);
     transition: all 0.3s ease;
@@ -19,13 +18,23 @@
         transform: translateY(-2px);
     }
 
+/* Card header with user info */
+.user-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    width: 100%;
+}
+
+/* Avatar styles */
 .user-card-avatar {
     flex-shrink: 0;
 }
 
 .avatar-initials {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--border-radius-pill);
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
     color: white;
@@ -33,51 +42,48 @@
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: var(--font-size-lg);
-    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2);
+    font-size: var(--font-size-base);
+    box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.2);
     transition: all 0.3s ease;
 }
 
 .user-card:hover .avatar-initials {
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
 }
 
+/* User name and badges */
 .user-card-info {
     flex: 1;
     min-width: 0;
-}
-
-.user-card-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-2);
-    gap: var(--spacing-3);
+    flex-direction: column;
 }
 
-    .user-card-header h4 {
-        margin: 0;
-        font-size: var(--font-size-base);
+    .user-card-info h4 {
+        margin: 0 0 var(--spacing-1) 0;
+        font-size: var(--font-size-sm);
         font-weight: 600;
         color: var(--text-primary);
-        white-space: nowrap;
+        line-height: 1.2;
+        white-space: normal;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
 .user-badges {
     display: flex;
-    gap: var(--spacing-1);
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: var(--spacing-1);
 }
 
 .role-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: 2px 6px;
     border-radius: var(--border-radius-pill);
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -127,9 +133,9 @@
 .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: 2px 6px;
     border-radius: var(--border-radius-pill);
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -145,10 +151,13 @@
     color: var(--danger);
 }
 
+/* User details */
 .user-card-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-3);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--spacing-1) var(--spacing-2);
+    width: 100%;
+    margin-bottom: var(--spacing-2);
 }
 
 .detail-item {
@@ -156,8 +165,11 @@
     align-items: center;
     gap: var(--spacing-1);
     color: var(--text-secondary);
-    font-size: var(--font-size-sm);
+    font-size: 11px;
     transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
     .detail-item:hover {
@@ -165,28 +177,37 @@
     }
 
     .detail-item i {
-        width: 16px;
+        width: 14px;
         text-align: center;
         opacity: 0.7;
+        flex-shrink: 0;
     }
 
+/* Action buttons */
 .user-card-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-1);
+    width: 100%;
+    padding-top: var(--spacing-2);
+    border-top: 1px solid var(--border-divider);
 }
 
 .action-btn {
     min-width: 0 !important;
-    width: 32px !important;
-    height: 32px !important;
+    width: 100% !important;
+    height: 36px !important;
     padding: 0 !important;
     font-size: 14px !important;
-    opacity: 0.7;
+    opacity: 0.8;
     transition: all 0.2s ease !important;
+    border-radius: var(--border-radius-sm);
 }
 
     .action-btn:hover {
         opacity: 1;
+        background-color: var(--primary-light);
+        transform: translateY(-1px);
     }
 
     .action-btn i {
@@ -206,57 +227,99 @@
     }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Responsive Design - Tablet */
+@media (min-width: 576px) {
     .user-card {
-        flex-wrap: wrap;
+        flex-direction: row;
+        align-items: center;
+        padding: var(--spacing-3);
+        gap: var(--spacing-3);
     }
 
     .user-card-header {
-        width: 100%;
-    }
-
-    .user-card-details {
-        width: 100%;
-    }
-
-    .user-card-actions {
-        width: 100%;
-        margin-top: var(--spacing-2);
-        padding-top: var(--spacing-2);
-        border-top: 1px solid var(--border-divider);
-    }
-}
-
-@media (max-width: 480px) {
-    .user-card {
-        padding: var(--spacing-2);
+        margin-bottom: 0;
+        width: auto;
     }
 
     .avatar-initials {
-        width: 40px;
-        height: 40px;
-        font-size: var(--font-size-base);
+        width: 48px;
+        height: 48px;
+        font-size: var(--font-size-lg);
     }
 
-    .user-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-1);
-    }
-
-    .user-badges {
-        width: 100%;
-        justify-content: flex-start;
+    .user-card-details {
+        width: auto;
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 0;
     }
 
     .detail-item {
         font-size: var(--font-size-xs);
+        width: auto;
+    }
+
+    .user-card-actions {
+        width: auto;
+        display: flex;
+        padding-top: 0;
+        border-top: none;
+        margin-left: auto;
     }
 
     .action-btn {
-        width: 40px !important;
-        height: 28px !important;
+        width: 32px !important;
+    }
+}
+
+/* Responsive Design - Desktop */
+@media (min-width: 768px) {
+    .user-card-info h4 {
+        font-size: var(--font-size-base);
+    }
+
+    .role-badge, .status-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+
+    .detail-item {
+        margin-right: var(--spacing-2);
+    }
+}
+
+/* Extra small screen optimizations */
+@media (max-width: 400px) {
+    .user-card {
+        padding: var(--spacing-1);
+    }
+
+    .avatar-initials {
+        width: 36px;
+        height: 36px;
+        font-size: 12px;
+    }
+
+    .user-card-info h4 {
+        font-size: 13px;
+    }
+
+    .role-badge, .status-badge {
+        padding: 1px 4px;
+        font-size: 8px;
+    }
+
+    .user-card-details {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: var(--spacing-1);
+    }
+
+    .detail-item {
+        font-size: 10px;
+    }
+
+    .action-btn {
+        height: 32px !important;
     }
 }
 
@@ -277,4 +340,8 @@
 
 .theme-dark .role-badge, .theme-dark .status-badge {
     border: 1px solid var(--border-color);
+}
+
+.theme-dark .action-btn:hover {
+    background-color: rgba(var(--primary-rgb), 0.15);
 }

@@ -1,0 +1,239 @@
+﻿@* RVSelect.razor - Matches your design system *@
+<div class="roovia-select-container @CssClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id" class="roovia-select-label">@Label</label>
+    }
+    <div class="roovia-select-wrapper">
+        @if (!string.IsNullOrEmpty(IconLeft))
+        {
+            <span class="roovia-select-icon-left">
+                <i class="@IconLeft"></i>
+            </span>
+        }
+        <select id="@Id"
+                class="roovia-select-input @SizeClass @(IsValid ? "" : "roovia-select-invalid")"
+                value="@Value"
+                @onchange="OnChangeHandler"
+                disabled="@Disabled"
+                required="@Required">
+
+            @if (!string.IsNullOrEmpty(Placeholder))
+            {
+                <option value="">@Placeholder</option>
+            }
+            @ChildContent
+        </select>
+        <span class="roovia-select-arrow">
+            <i class="fa-light fa-chevron-down"></i>
+        </span>
+    </div>
+    @if (!IsValid && !string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="roovia-select-validation">@ValidationMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(HelperText))
+    {
+        <div class="roovia-select-helper-text">@HelperText</div>
+    }
+</div>
+
+<style>
+    /* Select Component Styles */
+    .roovia-select-container {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-3);
+        width: 100%;
+    }
+
+    .roovia-select-label {
+        font-size: var(--font-size-xs);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0;
+    }
+
+    .roovia-select-wrapper {
+        position: relative;
+        display: flex;
+        width: 100%;
+    }
+
+    .roovia-select-input {
+        width: 100%;
+        padding: var(--spacing-2) var(--spacing-3);
+        padding-right: calc(var(--spacing-3) * 2);
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--border-divider);
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-size: var(--font-size-sm);
+        transition: var(--hover-transition);
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        cursor: pointer;
+    }
+
+        .roovia-select-input.size-sm {
+            padding: calc(var(--spacing-1) + 1px) var(--spacing-2);
+            font-size: var(--font-size-xs);
+            padding-right: calc(var(--spacing-2) * 2);
+        }
+
+        .roovia-select-input.size-lg {
+            padding: var(--spacing-3) var(--spacing-4);
+            font-size: var(--font-size-base);
+            padding-right: calc(var(--spacing-4) * 2);
+        }
+
+        .roovia-select-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-focus);
+        }
+
+    .roovia-select-arrow {
+        position: absolute;
+        top: 50%;
+        right: var(--spacing-3);
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+        font-size: var(--font-size-sm);
+        transition: transform 0.2s ease;
+    }
+
+    .roovia-select-wrapper:has(.roovia-select-input:focus) .roovia-select-arrow {
+        color: var(--primary);
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .roovia-select-icon-left {
+        position: absolute;
+        top: 50%;
+        left: var(--spacing-2);
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        z-index: 2;
+        pointer-events: none;
+        font-size: var(--font-size-sm);
+    }
+
+    .roovia-select-wrapper:has(.roovia-select-icon-left) .roovia-select-input {
+        padding-left: calc(var(--spacing-2) * 2 + 0.875rem);
+    }
+
+    .roovia-select-invalid {
+        border-color: var(--danger) !important;
+    }
+
+    .roovia-select-validation {
+        font-size: var(--font-size-xs);
+        color: var(--danger);
+        margin-top: 0;
+    }
+
+    .roovia-select-helper-text {
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+        margin-top: 0;
+    }
+
+    .roovia-select-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--subtle-bg);
+    }
+
+    /* Size-specific icon adjustments */
+    .roovia-select-input.size-sm ~ .roovia-select-icon-left {
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-select-input.size-lg ~ .roovia-select-icon-left {
+        font-size: var(--font-size-base);
+    }
+
+    .roovia-select-input.size-sm ~ .roovia-select-arrow {
+        right: var(--spacing-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-select-input.size-lg ~ .roovia-select-arrow {
+        right: var(--spacing-4);
+        font-size: var(--font-size-base);
+    }
+
+    /* Dark Mode Adjustments */
+    .theme-dark .roovia-select-input {
+        background-color: var(--input-bg);
+        border-color: var(--border-divider);
+        color: var(--text-primary);
+    }
+
+        .theme-dark .roovia-select-input option {
+            background-color: var(--dropdown-bg);
+        }
+
+    .theme-dark .roovia-select-helper-text {
+        color: var(--text-secondary);
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 400px) {
+        .roovia-select-input
+
+    {
+        padding: calc(var(--spacing-2) - 2px) var(--spacing-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .roovia-select-arrow {
+        right: var(--spacing-2);
+    }
+
+    .roovia-select-label {
+        font-size: 11px;
+    }
+
+    .roovia-select-helper-text,
+    .roovia-select-validation {
+        font-size: 10px;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? IconLeft { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg options
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public string? ValidationMessage { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+
+    private string SizeClass => Size.ToLowerInvariant() == "md" ? "" : $"size-{Size.ToLowerInvariant()}";
+
+    private async Task OnChangeHandler(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(Value);
+
+        if (OnChange.HasDelegate)
+            await OnChange.InvokeAsync(e);
+    }
+}
