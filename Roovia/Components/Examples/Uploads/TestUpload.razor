@@ -21,24 +21,24 @@
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">
-                <h5>Error</h5>
-                <pre class="mb-0">@errorMessage</pre>
-            </div>
+                    <div class="alert alert-danger">
+                        <h5>Error</h5>
+                        <pre class="mb-0">@errorMessage</pre>
+                    </div>
         }
 
         @if (!string.IsNullOrEmpty(resultUrl))
         {
-            <div class="alert alert-success">
-                <h5>Success!</h5>
-                <p>File uploaded to: @resultUrl</p>
-                <button @onclick="ViewUploadedFile" class="btn btn-primary">
-                    <i class="fa-light fa-eye me-2"></i>View File
-                </button>
-                <button @onclick="DeleteUploadedFile" class="btn btn-danger ms-2">
-                    <i class="fa-light fa-trash me-2"></i>Delete File
-                </button>
-            </div>
+                    <div class="alert alert-success">
+                        <h5>Success!</h5>
+                        <p>File uploaded to: @resultUrl</p>
+                        <button @onclick="ViewUploadedFile" class="btn btn-primary">
+                            <i class="fa-light fa-eye me-2"></i>View File
+                        </button>
+                        <button @onclick="DeleteUploadedFile" class="btn btn-danger ms-2">
+                            <i class="fa-light fa-trash me-2"></i>Delete File
+                        </button>
+                    </div>
         }
     </div>
 </div>
@@ -60,19 +60,19 @@
                 <h5>Categories</h5>
                 @if (_categories == null)
                 {
-                    <p><em>Loading categories...</em></p>
+                            <p><em>Loading categories...</em></p>
                 }
                 else
                 {
-                    <ul>
+                            <ul>
                         @foreach (var category in _categories)
                         {
-                            <li>
-                                <strong>@category.DisplayName</strong> (@category.Name) -
-                                File types: <code>@(string.IsNullOrEmpty(category.AllowedFileTypes) ? "*" : category.AllowedFileTypes)</code>
-                            </li>
+                                            <li>
+                                                <strong>@category.DisplayName</strong> (@category.Name) -
+                                                File types: <code>@(string.IsNullOrEmpty(category.AllowedFileTypes) ? "*" : category.AllowedFileTypes)</code>
+                                            </li>
                         }
-                    </ul>
+                            </ul>
                 }
             </div>
         </div>
@@ -85,9 +85,9 @@
 
             @if (!string.IsNullOrEmpty(apiTestResult))
             {
-                <div class="mt-2 @(apiTestSuccess ? "alert alert-success" : "alert alert-danger")">
-                    <p>@apiTestResult</p>
-                </div>
+                        <div class="mt-2 @(apiTestSuccess ? "alert alert-success" : "alert alert-danger")">
+                            <p>@apiTestResult</p>
+                        </div>
             }
         </div>
     </div>
@@ -101,12 +101,15 @@
     private string apiTestResult;
     private bool apiTestSuccess;
 
+    // Use the full URL with proper path to the upload endpoint
+    private readonly string _productionApiUrl = "https://portal.roovia.co.za/api/cdn";
+
     protected override async Task OnInitializedAsync()
     {
         apiKey = CdnService.GetApiKey();
         await LoadCategories();
-
     }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -114,6 +117,7 @@
             await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
         }
     }
+
     private async Task LoadCategories()
     {
         try
@@ -138,17 +142,22 @@
             var client = HttpClientFactory.CreateClient();
             client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-            var response = await client.GetAsync("https://portal.roovia.co.za/api/cdn/categories");
+            // Test the categories endpoint which should be more reliable
+            var response = await client.GetAsync($"{_productionApiUrl}/categories");
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            Logger.LogInformation("API response: {StatusCode}, Content: {Content}",
+                response.StatusCode, responseContent);
 
             if (response.IsSuccessStatusCode)
             {
                 apiTestSuccess = true;
-                apiTestResult = "Success! Connected to production CDN API.";
+                apiTestResult = $"Success! Connected to production CDN API. Response: {responseContent}";
             }
             else
             {
                 apiTestSuccess = false;
-                apiTestResult = $"Failed to connect to production CDN API. Status code: {response.StatusCode}";
+                apiTestResult = $"Failed to connect to production CDN API. Status code: {response.StatusCode}, Response: {responseContent}";
             }
         }
         catch (Exception ex)
@@ -171,66 +180,95 @@
             Logger.LogInformation("Starting upload test with file: {FileName}, size: {Size}",
                 file.Name, file.Size);
 
-            // First try direct CDN service method
-            try
-            {
-                resultUrl = await CdnService.UploadFileAsync(
-                    file.OpenReadStream(),
-                    file.Name,
-                    file.ContentType,
-                    "test-uploads");
+            // Use the CdnService directly - this should now be working with your fixes
+            resultUrl = await CdnService.UploadFileAsync(
+                file.OpenReadStream(),
+                file.Name,
+                file.ContentType,
+                "test-uploads");
 
-                Logger.LogInformation("Upload successful via CdnService: {Url}", resultUrl);
-                return;
-            }
-            catch (Exception serviceEx)
-            {
-                Logger.LogWarning("CdnService upload failed, trying direct API: {Error}", serviceEx.Message);
-                // Fall through to direct API call
-            }
-
-            // If direct service method fails, try API call
-            // Create HTTP client
-            var client = HttpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-
-            // Create multipart form data
-            using var content = new MultipartFormDataContent();
-            using var fileContent = new StreamContent(file.OpenReadStream());
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            content.Add(fileContent, "file", file.Name);
-            content.Add(new StringContent("test-uploads"), "category");
-
-            // Send to production API
-            var response = await client.PostAsync("https://portal.roovia.co.za/api/cdn/upload", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<UploadResult>();
-                if (result != null && result.success)
-                {
-                    resultUrl = result.url;
-                    Logger.LogInformation("Upload successful via direct API: {Url}", resultUrl);
-                }
-                else
-                {
-                    throw new Exception("API returned success=false");
-                }
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new Exception($"API returned error: {response.StatusCode}, {errorContent}");
-            }
+            Logger.LogInformation("Upload successful via CdnService: {Url}", resultUrl);
+            return;
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}\n\nStack trace:\n{ex.StackTrace}";
+            // Log the full exception details
+            Logger.LogError(ex, "Upload failed through CdnService");
+
+            // Create a more descriptive error message
+            errorMessage = $"Error: {ex.Message}";
+
             if (ex.InnerException != null)
             {
-                errorMessage += $"\n\nInner exception: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}";
+                errorMessage += $"\n\nInner exception: {ex.InnerException.Message}";
+                Logger.LogError(ex.InnerException, "Inner exception details");
             }
-            Logger.LogError(ex, "Upload test failed");
+
+            // Try fallback to direct API as last resort
+            try
+            {
+                Logger.LogInformation("Attempting fallback to direct API upload");
+                await DirectApiUpload(e.File);
+            }
+            catch (Exception fallbackEx)
+            {
+                Logger.LogError(fallbackEx, "Fallback upload also failed");
+                errorMessage += $"\n\nFallback attempt also failed: {fallbackEx.Message}";
+            }
+        }
+    }
+
+    private async Task DirectApiUpload(IBrowserFile file)
+    {
+        // Create HTTP client
+        var client = HttpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+        // Log all request details for debugging
+        Logger.LogInformation("Preparing direct API upload: File={FileName}, Size={Size}, API Key={ApiKey}",
+            file.Name, file.Size, apiKey);
+
+        // Create multipart form data
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new StreamContent(file.OpenReadStream());
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.Name);
+        content.Add(new StringContent("test-uploads"), "category");
+
+        // Send to production API with proper URL
+        var apiUrl = $"{_productionApiUrl}/upload";
+        Logger.LogInformation("Sending to API URL: {Url}", apiUrl);
+
+        var response = await client.PostAsync(apiUrl, content);
+        var responseText = await response.Content.ReadAsStringAsync();
+
+        // Log full response information
+        Logger.LogInformation("API response: Status={Status}, Content={Content}",
+            response.StatusCode, responseText);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"API returned error: {response.StatusCode}, {responseText}");
+        }
+
+        // Safely try to parse JSON - if it fails, use the raw response for debugging
+        try
+        {
+            var result = await response.Content.ReadFromJsonAsync<UploadResult>();
+            if (result?.success == true && !string.IsNullOrEmpty(result.url))
+            {
+                resultUrl = result.url;
+                Logger.LogInformation("Upload successful via direct API: {Url}", resultUrl);
+            }
+            else
+            {
+                throw new Exception($"API returned success=false or missing URL: {responseText}");
+            }
+        }
+        catch (Exception jsonEx)
+        {
+            Logger.LogError(jsonEx, "JSON parsing error");
+            throw new Exception($"Failed to parse API response: {jsonEx.Message}. Raw response: {responseText}");
         }
     }
 
@@ -260,47 +298,17 @@
             var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this file?");
             if (!confirmed) return;
 
-            // First try using the service
-            try
-            {
-                var result = await CdnService.DeleteFileAsync(resultUrl);
-                if (result)
-                {
-                    resultUrl = null;
-                    await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully!");
-                    return;
-                }
-            }
-            catch (Exception serviceEx)
-            {
-                Logger.LogWarning("Service delete failed, trying direct API: {Error}", serviceEx.Message);
-                // Fall through to direct API call
-            }
+            // Use the CdnService directly - this should now be working with your fixes
+            var result = await CdnService.DeleteFileAsync(resultUrl);
 
-            // If service method fails, try direct API call
-            var client = HttpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-
-            var response = await client.DeleteAsync($"https://portal.roovia.co.za/api/cdn/delete?path={Uri.EscapeDataString(resultUrl)}");
-
-            if (response.IsSuccessStatusCode)
+            if (result)
             {
-                var result = await response.Content.ReadFromJsonAsync<DeleteResult>();
-                if (result != null && result.success)
-                {
-                    resultUrl = null;
-                    await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully!");
-                }
-                else
-                {
-                    errorMessage = "Failed to delete file: " + (result?.message ?? "Unknown error");
-                }
+                resultUrl = null;
+                await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully!");
             }
             else
             {
-                errorMessage = $"Failed to delete file: {response.StatusCode}";
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Logger.LogError("Failed to delete file: {StatusCode}, {Content}", response.StatusCode, errorContent);
+                errorMessage = "Failed to delete file - please try again.";
             }
         }
         catch (Exception ex)
@@ -318,11 +326,6 @@
         public string contentType { get; set; }
         public long size { get; set; }
         public string category { get; set; }
-    }
-
-    private class DeleteResult
-    {
-        public bool success { get; set; }
         public string message { get; set; }
     }
 }

@@ -16,131 +16,131 @@
         <div class="upload-prompt">
             @if (!IsUploading)
             {
-                    <div class="upload-icon">
-                        <i class="fa-light fa-cloud-arrow-up fa-2x"></i>
-                    </div>
-                    <div class="upload-instructions">
-                        <h4>@Title</h4>
-                        <p>@Description</p>
-                        <span class="file-hint">@FileTypeHint</span>
-                        <div class="file-size-hint">
-                            <small>Maximum file size: @FormatFileSize(MaxFileSize)</small>
+                        <div class="upload-icon">
+                            <i class="fa-light fa-cloud-arrow-up fa-2x"></i>
                         </div>
-                    </div>
+                        <div class="upload-instructions">
+                            <h4>@Title</h4>
+                            <p>@Description</p>
+                            <span class="file-hint">@FileTypeHint</span>
+                            <div class="file-size-hint">
+                                <small>Maximum file size: @FormatFileSize(MaxFileSize)</small>
+                            </div>
+                        </div>
             }
             else
             {
-                    <div class="upload-progress">
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="d-flex justify-content-between w-100">
-                            <span>Uploading @_currentFileName... @UploadProgress%</span>
-                            <span>@FormatFileSize(_bytesUploaded) of @FormatFileSize(_totalBytes)</span>
-                        </div>
-                        <div class="upload-speed mt-1">
-                            <small>@_uploadSpeedText</small>
-                        </div>
+                        <div class="upload-progress">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="d-flex justify-content-between w-100">
+                                <span>Uploading @_currentFileName... @UploadProgress%</span>
+                                <span>@FormatFileSize(_bytesUploaded) of @FormatFileSize(_totalBytes)</span>
+                            </div>
+                            <div class="upload-speed mt-1">
+                                <small>@_uploadSpeedText</small>
+                            </div>
                     @if (EnableCancelUpload)
                     {
-                                <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">
-                                    <i class="fa-light fa-times me-2"></i>Cancel
-                                </button>
+                                        <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">
+                                            <i class="fa-light fa-times me-2"></i>Cancel
+                                        </button>
                     }
-                    </div>
+                        </div>
             }
         </div>
     </div>
 
     @if (UploadedFiles.Any() && !HideFileList)
     {
-            <div class="uploaded-files">
-                <h5>Uploaded Files</h5>
-                <div class="file-list">
+                <div class="uploaded-files">
+                    <h5>Uploaded Files</h5>
+                    <div class="file-list">
                 @foreach (var file in UploadedFiles)
                 {
-                            <div class="file-item">
-                                <div class="file-icon">
+                                    <div class="file-item">
+                                        <div class="file-icon">
                             @if (file.ContentType.StartsWith("image/"))
                             {
-                                            <i class="fa-light fa-image"></i>
+                                                        <i class="fa-light fa-image"></i>
                             }
                             else if (file.ContentType.Contains("pdf"))
                             {
-                                            <i class="fa-light fa-file-pdf"></i>
+                                                        <i class="fa-light fa-file-pdf"></i>
                             }
                             else if (file.ContentType.Contains("word"))
                             {
-                                            <i class="fa-light fa-file-word"></i>
+                                                        <i class="fa-light fa-file-word"></i>
                             }
                             else if (file.ContentType.Contains("excel") || file.ContentType.Contains("sheet"))
                             {
-                                            <i class="fa-light fa-file-excel"></i>
+                                                        <i class="fa-light fa-file-excel"></i>
                             }
                             else if (file.ContentType.StartsWith("video/"))
                             {
-                                            <i class="fa-light fa-file-video"></i>
+                                                        <i class="fa-light fa-file-video"></i>
                             }
                             else if (file.ContentType.StartsWith("audio/"))
                             {
-                                            <i class="fa-light fa-file-audio"></i>
+                                                        <i class="fa-light fa-file-audio"></i>
                             }
                             else
                             {
-                                            <i class="fa-light fa-file"></i>
+                                                        <i class="fa-light fa-file"></i>
                             }
-                                </div>
-                                <div class="file-details">
-                                    <div class="file-name">@file.FileName</div>
-                                    <div class="file-size">@FormatFileSize(file.Size)</div>
-                                </div>
-                                <div class="file-actions">
-                                    <button @onclick="() => ViewFile(file)" class="btn btn-sm btn-outline-primary" title="View file">
-                                        <i class="fa-light fa-eye"></i>
-                                    </button>
+                                        </div>
+                                        <div class="file-details">
+                                            <div class="file-name">@file.FileName</div>
+                                            <div class="file-size">@FormatFileSize(file.Size)</div>
+                                        </div>
+                                        <div class="file-actions">
+                                            <button @onclick="() => ViewFile(file)" class="btn btn-sm btn-outline-primary" title="View file">
+                                                <i class="fa-light fa-eye"></i>
+                                            </button>
                             @if (AllowRename)
                             {
-                                            <button @onclick="() => RenameFile(file)" class="btn btn-sm btn-outline-secondary" title="Rename file">
-                                                <i class="fa-light fa-edit"></i>
-                                            </button>
+                                                        <button @onclick="() => RenameFile(file)" class="btn btn-sm btn-outline-secondary" title="Rename file">
+                                                            <i class="fa-light fa-edit"></i>
+                                                        </button>
                             }
                             @if (AllowDelete)
                             {
-                                            <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
-                                                <i class="fa-light fa-trash"></i>
-                                            </button>
+                                                        <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
                             }
-                                </div>
-                            </div>
+                                        </div>
+                                    </div>
                 }
+                    </div>
                 </div>
-            </div>
     }
 
     @if (_showRenameDialog)
     {
-            <div class="modal fade show" style="display: block;" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Rename File</h5>
-                            <button type="button" class="btn-close" @onclick="() => _showRenameDialog = false"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="newFileName">New file name:</label>
-                                <input type="text" class="form-control" id="newFileName" @bind="_newFileName" />
-                                <small class="form-text text-muted">Enter the new name without extension.</small>
+                <div class="modal fade show" style="display: block;" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Rename File</h5>
+                                <button type="button" class="btn-close" @onclick="() => _showRenameDialog = false"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="newFileName">New file name:</label>
+                                    <input type="text" class="form-control" id="newFileName" @bind="_newFileName" />
+                                    <small class="form-text text-muted">Enter the new name without extension.</small>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @onclick="() => _showRenameDialog = false">Cancel</button>
+                                <button type="button" class="btn btn-primary" @onclick="PerformRename">Save</button>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @onclick="() => _showRenameDialog = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @onclick="PerformRename">Save</button>
-                        </div>
                     </div>
+                    <div class="modal-backdrop fade show"></div>
                 </div>
-                <div class="modal-backdrop fade show"></div>
-            </div>
     }
 </div>
 
@@ -180,6 +180,9 @@
     private string _newFileName = "";
     private UploadedFileInfo _selectedFile;
     private string _apiKey;
+
+    // Production API URL - always use this for test environments
+    private readonly string _productionApiUrl = "https://portal.roovia.co.za";
 
     protected override async Task OnInitializedAsync()
     {
@@ -354,18 +357,23 @@
                 content.Add(new StringContent(FolderPath), "folder");
             }
 
-            // Try both endpoints in sequence
+            // FIXED: Always use production API endpoints
             var endpoints = new string[] {
-                // Primary endpoint - ExtendedCdnController
+                // Primary production endpoints
+                $"{_productionApiUrl}/api/cdn/upload",
+                // Fallback to local endpoints for development only
                 $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/upload",
-                // Fallback endpoint - CdnController
                 $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdncompat/upload"
         };
+
+            // Log upload attempt for debugging
+            await JSRuntime.InvokeVoidAsync("console.log", $"Attempting to upload file {file.Name} to {endpoints[0]}");
 
             foreach (var apiUrl in endpoints)
             {
                 try
                 {
+                    await JSRuntime.InvokeVoidAsync("console.log", $"Trying endpoint: {apiUrl}");
                     var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
 
                     if (response.IsSuccessStatusCode)
@@ -377,6 +385,7 @@
 
                         if (responseContent != null && responseContent.success)
                         {
+                            await JSRuntime.InvokeVoidAsync("console.log", $"Upload successful using endpoint: {apiUrl}");
                             return new UploadedFileInfo
                                 {
                                     FileName = file.Name,
@@ -387,15 +396,21 @@
                                 };
                         }
                     }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        await JSRuntime.InvokeVoidAsync("console.error", $"Upload failed with status {response.StatusCode}: {errorContent}");
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // If first endpoint fails, try the next one
+                    // Log the error but continue to the next endpoint
+                    await JSRuntime.InvokeVoidAsync("console.error", $"Error with endpoint {apiUrl}: {ex.Message}");
                     continue;
                 }
             }
 
-            // If we reach here, both endpoints failed
+            // If we reach here, all endpoints failed
             await JSRuntime.InvokeVoidAsync("console.error", "Upload failed on all endpoints");
             await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error.");
         }
@@ -485,11 +500,12 @@
                 httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
             }
 
-            // Try both endpoints in sequence
+            // FIXED: Always use production API endpoints first
             var endpoints = new string[] {
-                // Primary endpoint
+                // Primary production endpoint
+                $"{_productionApiUrl}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}",
+                // Fallback to local endpoints for development only
                 $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}",
-                // Fallback endpoint
                 $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdncompat/delete?path={Uri.EscapeDataString(file.Url)}"
         };
 
@@ -497,6 +513,7 @@
             {
                 try
                 {
+                    await JSRuntime.InvokeVoidAsync("console.log", $"Trying delete endpoint: {apiUrl}");
                     var response = await httpClient.DeleteAsync(apiUrl);
 
                     if (response.IsSuccessStatusCode)
@@ -508,13 +525,20 @@
                             UploadedFiles.Remove(file);
                             await OnFileDeleted.InvokeAsync(file);
                             StateHasChanged();
+                            await JSRuntime.InvokeVoidAsync("console.log", $"Delete successful using endpoint: {apiUrl}");
                             return;
                         }
                     }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        await JSRuntime.InvokeVoidAsync("console.error", $"Delete failed with status {response.StatusCode}: {errorContent}");
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // If first endpoint fails, try the next one
+                    // Log the error but continue to the next endpoint
+                    await JSRuntime.InvokeVoidAsync("console.error", $"Error with delete endpoint {apiUrl}: {ex.Message}");
                     continue;
                 }
             }
@@ -717,140 +741,3 @@
         public string message { get; set; }
     }
 }
-<style>
-    /* cdn-file-upload.css */
-    .cdn-file-upload {
-        margin-bottom: 1.5rem;
-    }
-
-    .file-upload-container {
-        position: relative;
-        border: 2px dashed #ccc;
-        border-radius: 6px;
-        padding: 2rem;
-        text-align: center;
-        background-color: #f9f9f9;
-        transition: all 0.2s ease;
-    }
-
-        .file-upload-container.dragging {
-            background-color: #e9f7fe;
-            border-color: #0d6efd;
-        }
-
-        .file-upload-container.uploading {
-            background-color: #f8f9fa;
-            border-color: #6c757d;
-        }
-
-    .file-input {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-        z-index: 10;
-    }
-
-    .upload-prompt {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        pointer-events: none;
-    }
-
-    .upload-instructions h4 {
-        margin-bottom: 0.5rem;
-        font-size: 1.25rem;
-    }
-
-    .upload-instructions p {
-        margin-bottom: 0.5rem;
-        color: #6c757d;
-    }
-
-    .file-hint {
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-
-    .file-size-hint {
-        font-size: 0.75rem;
-        color: #6c757d;
-        margin-top: 0.25rem;
-    }
-
-    .upload-progress {
-        width: 100%;
-        max-width: 400px;
-    }
-
-    .progress {
-        height: 0.75rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .upload-speed {
-        font-size: 0.75rem;
-        color: #6c757d;
-    }
-
-    .compact .file-upload-container {
-        padding: 1rem;
-    }
-
-    .compact .upload-instructions h4 {
-        font-size: 1rem;
-    }
-
-    .uploaded-files {
-        margin-top: 1.5rem;
-    }
-
-    .file-list {
-        border: 1px solid #e9ecef;
-        border-radius: 6px;
-        overflow: hidden;
-    }
-
-    .file-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-        .file-item:last-child {
-            border-bottom: none;
-        }
-
-    .file-icon {
-        font-size: 1.5rem;
-        margin-right: 1rem;
-        color: #6c757d;
-        width: 32px;
-        text-align: center;
-    }
-
-    .file-details {
-        flex: 1;
-    }
-
-    .file-name {
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        word-break: break-all;
-    }
-
-    .file-size {
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-
-    .file-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-</style>
