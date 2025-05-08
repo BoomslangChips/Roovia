@@ -109,6 +109,9 @@ builder.Services.AddSingleton<ICdnService, CdnService>();
 builder.Services.AddControllers(options =>
 {
     options.MaxModelBindingCollectionSize = 10000; // Allow up to 10,000 items in collections
+}).AddJsonOptions(options => {
+    options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    options.JsonSerializerOptions.WriteIndented = true;
 })
 .ConfigureApiBehaviorOptions(options =>
 {

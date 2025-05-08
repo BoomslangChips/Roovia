@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Roovia.Services
 {
@@ -296,131 +297,111 @@ namespace Roovia.Services
             }
         }
 
-        public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
-        {
-            // Check if we need to refresh the configuration
-            await RefreshConfigIfNeededAsync();
 
+       public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
+        {
             try
             {
-                _logger.LogInformation("Uploading file: {FileName}, ContentType: {ContentType}, Category: {Category}, Folder: {Folder}, DevEnvironment: {IsDev}, ForceRemoteApi: {ForceRemote}",
-                    fileName, contentType, category, folderPath, IsDevEnvironment(), _forceRemoteApiInTestEnv);
+                _logger.LogInformation("Uploading file: {FileName}, ContentType: {ContentType}, Category: {Category}, Folder: {Folder}",
+                    fileName, contentType, category, folderPath);
 
                 // Ensure category is valid
                 category = await ValidateCategoryAsync(category);
 
-                // Generate a unique filename to prevent collisions
-                var uniqueFileName = GenerateUniqueFileName(fileName);
+                // Clean up folder path for security
+                folderPath = CleanFolderPath(folderPath);
 
-                // Clean folder path if provided
+                // Check if we need to refresh configuration
+                await RefreshConfigIfNeededAsync();
+
+                // Generate a unique file name to avoid collisions
+                string uniqueFileName = GenerateUniqueFileName(fileName);
+
+                // Get storage path from configuration
+                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                // Create category directory path
+                string categoryPath = Path.Combine(cdnStoragePath, category);
+                if (!Directory.Exists(categoryPath))
+                {
+                    Directory.CreateDirectory(categoryPath);
+                    _logger.LogInformation("Created category directory: {Path}", categoryPath);
+                }
+
+                // Create folder path if specified
+                string targetFolderPath = categoryPath;
                 if (!string.IsNullOrEmpty(folderPath))
                 {
-                    folderPath = CleanFolderPath(folderPath);
+                    string[] folders = folderPath.Split('/', '\\');
+                    string currentPath = categoryPath;
+
+                    foreach (var folder in folders)
+                    {
+                        if (string.IsNullOrWhiteSpace(folder)) continue;
+
+                        currentPath = Path.Combine(currentPath, folder);
+                        if (!Directory.Exists(currentPath))
+                        {
+                            Directory.CreateDirectory(currentPath);
+                            _logger.LogDebug("Created subfolder: {Path}", currentPath);
+                        }
+                    }
+
+                    targetFolderPath = currentPath;
                 }
 
-                // Check if we're in a test environment and should force remote API
-                bool forceRemoteApi = IsDevEnvironment() && _forceRemoteApiInTestEnv;
+                // Full path where the file will be saved
+                string fullFilePath = Path.Combine(targetFolderPath, uniqueFileName);
 
-                // Get storage path (prioritize current config, fallback to bootstrap)
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-                bool useDirectAccess = !forceRemoteApi && !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
-
-                _logger.LogDebug("Storage path: {Path}, Direct access: {DirectAccess}, Force remote: {ForceRemote}",
-                    cdnStoragePath, useDirectAccess, forceRemoteApi);
-
-                if (useDirectAccess)
+                // Save the file to disk with optimized buffer
+                using (var fileStream2 = new FileStream(
+                    fullFilePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    LargeBufferSize,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
-                    // LOCAL STORAGE APPROACH
-                    // Create the physical directory if it doesn't exist
-                    var directoryPath = string.IsNullOrEmpty(folderPath)
-                        ? Path.Combine(cdnStoragePath, category)
-                        : Path.Combine(cdnStoragePath, category, folderPath);
-
-                    // Create all directories in the path
-                    Directory.CreateDirectory(directoryPath);
-
-                    _logger.LogDebug("Created directory path: {Path}", directoryPath);
-
-                    // Save file to disk with optimized large buffer size
-                    var filePath = Path.Combine(directoryPath, uniqueFileName);
-
-                    _logger.LogDebug("Saving file to: {Path}", filePath);
-
-                    // Use FileOptions.Asynchronous and SequentialScan for optimal performance
-                    using (var fileStream2 = new FileStream(
-                        filePath,
-                        FileMode.Create,
-                        FileAccess.Write,
-                        FileShare.None,
-                        LargeBufferSize,
-                        FileOptions.Asynchronous | FileOptions.SequentialScan))
-                    {
-                        await fileStream.CopyToAsync(fileStream2, LargeBufferSize);
-                    }
-
-                    // Get folder ID from database or create if needed
-                    var folderId = await GetOrCreateFolderAsync(category, folderPath);
-
-                    // Add metadata to database
-                    await SaveFileMetadataAsync(category, uniqueFileName, filePath, contentType, new FileInfo(filePath).Length, folderId, folderPath);
-
-                    _logger.LogInformation("File saved successfully to local storage: {Path}", filePath);
-
-                    // Return the public URL with the CDN domain
-                    string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-
-                    string url = string.IsNullOrEmpty(folderPath)
-                        ? $"{cdnBaseUrl.TrimEnd('/')}/{category}/{uniqueFileName}"
-                        : $"{cdnBaseUrl.TrimEnd('/')}/{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
-
-                    _logger.LogInformation("Generated URL: {Url}", url);
-
-                    return url;
+                    await fileStream.CopyToAsync(fileStream2, LargeBufferSize);
                 }
-                else
+
+                _logger.LogInformation("File saved to: {Path}", fullFilePath);
+
+                // Create database folder record if needed
+                int? folderId = null;
+                if (!string.IsNullOrEmpty(folderPath))
                 {
-                    // REMOTE API APPROACH
-                    _logger.LogInformation("Using remote API for file upload: {ProductionApiUrl}", _productionApiUrl);
-
-                    using var streamContent = new StreamContent(fileStream, LargeBufferSize);
-                    streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-
-                    // Prepare multipart form content
-                    using var content = new MultipartFormDataContent();
-                    content.Add(streamContent, "file", fileName);
-                    content.Add(new StringContent(category), "category");
-
-                    // Add folder path if provided
-                    if (!string.IsNullOrEmpty(folderPath))
-                    {
-                        content.Add(new StringContent(folderPath), "folder");
-                    }
-
-                    // Get the production API URL
-                    var apiUrl = $"{_productionApiUrl.TrimEnd('/')}/upload";
-                    _logger.LogDebug("Using production API URL: {ApiUrl}", apiUrl);
-
-                    // Ensure API key is set in headers
-                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-                    {
-                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
-                    }
-
-                    var response = await _optimizedHttpClient.PostAsync(apiUrl, content);
-                    response.EnsureSuccessStatusCode();
-
-                    // Get the URL from the response
-                    var result = await response.Content.ReadFromJsonAsync<UploadResult>();
-
-                    _logger.LogInformation("File uploaded to remote CDN: {Url}", result.url);
-
-                    // Return the URL from the API response
-                    return result.url;
+                    folderId = await GetOrCreateFolderAsync(category, folderPath);
                 }
+
+                // Get file size
+                var fileInfo = new FileInfo(fullFilePath);
+                long fileSize = fileInfo.Length;
+
+                // Build the CDN URL
+                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
+                string relativeUrlPath = string.IsNullOrEmpty(folderPath)
+                    ? $"{category}/{uniqueFileName}"
+                    : $"{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
+
+                string fileUrl = $"{cdnBaseUrl.TrimEnd('/')}/{relativeUrlPath}";
+
+                // Save metadata to database
+                await SaveFileMetadataAsync(category, uniqueFileName, fullFilePath, contentType, fileSize, folderId, folderPath);
+
+                // Update usage statistics for the category
+                var categoryId = await GetCategoryIdAsync(category);
+                if (categoryId.HasValue)
+                {
+                    await UpdateUsageStatisticsAsync(categoryId.Value, 1, fileSize, 1, 0, 0);
+                }
+
+                _logger.LogInformation("File uploaded successfully: {Url}", fileUrl);
+                return fileUrl;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to upload file: {FileName}", fileName);
+                _logger.LogError(ex, "Error uploading file: {FileName}", fileName);
                 throw new Exception($"Failed to upload file: {ex.Message}", ex);
             }
         }
@@ -1360,12 +1341,13 @@ namespace Roovia.Services
 
         private class UploadResult
         {
-            public bool? success { get; set; }
-            public string? url { get; set; }
-            public string? fileName { get; set; }
-            public string? contentType { get; set; }
-            public long size { get; set; }
-            public string? category { get; set; }
+            public bool Success { get; set; }
+            public string? Url { get; set; }
+            public string? FileName { get; set; }
+            public string? ContentType { get; set; }
+            public long? Size { get; set; }
+            public string? Category { get; set; }
+            public string? Message { get; set; }
         }
 
         private class ApiResponse<T>

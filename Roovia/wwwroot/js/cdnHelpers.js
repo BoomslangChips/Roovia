@@ -1,4 +1,4 @@
-﻿// cdnHelpers.js - Consolidated CDN utilities for Roovia
+﻿// cdnHelpers.js - Enhanced CDN utilities for Roovia
 let cdnApiKey = '';
 
 // Initialize from session storage on page load
@@ -34,6 +34,15 @@ function getCdnApiKey() {
 }
 
 /**
+ * Log detailed request information to console
+ * @param {string} message - Message to log
+ * @param {Object} data - Data to log
+ */
+function logDebug(message, data) {
+    console.log(`[CDN Debug] ${message}`, data);
+}
+
+/**
  * Open a URL with API key
  * @param {string} url - The URL to open
  * @param {string} apiKey - The API key to use (optional, uses global key if not provided)
@@ -57,6 +66,8 @@ function openUrlWithApiKey(url, apiKey, download = false) {
     // Add API key to URL query parameters
     const separator = url.includes('?') ? '&' : '?';
     const urlWithKey = `${url}${separator}key=${key}`;
+
+    logDebug(`Opening URL: ${url} with key: ${key.substring(0, 4)}...`, { fullUrl: urlWithKey, download });
 
     if (download) {
         // Create a temporary link for download
@@ -90,10 +101,18 @@ async function fetchTextContent(url) {
         const separator = url.includes('?') ? '&' : '?';
         const urlWithKey = `${url}${separator}key=${key}`;
 
+        logDebug(`Fetching text from: ${url}`, { fullUrl: urlWithKey });
+
         const response = await fetch(urlWithKey);
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            logDebug('Error response:', {
+                status: response.status,
+                statusText: response.statusText,
+                content: errorText.length > 200 ? errorText.substring(0, 200) + '...' : errorText
+            });
+            throw new Error(`HTTP error! status: ${response.status}, message: ${response.statusText}`);
         }
 
         return await response.text();
@@ -121,6 +140,8 @@ function addDragDropListeners(dotNetRef) {
         setTimeout(() => addDragDropListeners(dotNetRef), 500);
         return;
     }
+
+    logDebug('Adding drag/drop listeners to containers', { count: containers.length });
 
     // Add event listeners to each container
     containers.forEach(container => {
@@ -158,7 +179,7 @@ function addDragDropListeners(dotNetRef) {
 }
 
 /**
- * Rename a file - tries multiple API endpoints in sequence
+ * Rename a file with enhanced error handling
  * @param {string} url - The URL of the file to rename
  * @param {string} newName - The new name for the file
  * @param {string} apiKey - The API key to use
@@ -178,41 +199,66 @@ async function renameFile(url, newName, apiKey) {
 
         const key = apiKey || getCdnApiKey();
 
+        logDebug(`Renaming file: ${url} to ${newName}`, { data });
+
         // Try each endpoint in sequence until one works
         const endpoints = [
-            // 1. Production API directly
+            // 1. Debug controller (most robust error handling)
+            `${window.location.origin}/api/cdn-debug/rename`,
+            // 2. Production API directly
             'https://portal.roovia.co.za/api/cdn/rename',
-            // 2. Local extended CDN controller
+            // 3. Local extended CDN controller
             `${window.location.origin}/api/cdn/rename`,
-            // 3. Local compatibility controller
+            // 4. Local compatibility controller
             `${window.location.origin}/api/cdncompat/rename`
         ];
 
-        console.log('Attempting to rename file', {
-            url: url,
-            newName: newName,
-            endpoints: endpoints
-        });
+        // Create common request options
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': key
+            },
+            body: JSON.stringify(data)
+        };
 
         // Try each endpoint
         for (const endpoint of endpoints) {
             try {
-                console.log(`Trying endpoint: ${endpoint}`);
+                logDebug(`Trying endpoint: ${endpoint}`);
+
+                // Make the request with built-in timeout handling
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
                 const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Api-Key': key
-                    },
-                    body: JSON.stringify(data)
+                    ...requestOptions,
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
+
+                // If we get HTML instead of JSON (which would cause JSON parse error)
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    logDebug(`HTML response detected from ${endpoint}:`, { contentType });
+                    const htmlContent = await response.text();
+                    console.warn(`Endpoint ${endpoint} returned HTML instead of JSON`, {
+                        firstChars: htmlContent.substring(0, 100),
+                        status: response.status,
+                        headers: Object.fromEntries([...response.headers])
+                    });
+                    continue; // Try next endpoint
+                }
+
+                const result = await response.json();
+
                 if (response.ok) {
-                    const result = await response.json();
-                    console.log(`Success with endpoint: ${endpoint}`, result);
+                    logDebug(`Success with endpoint: ${endpoint}`, result);
                     return result;
                 } else {
-                    console.warn(`Failed with endpoint ${endpoint}: ${response.status} ${response.statusText}`);
+                    logDebug(`Failed with endpoint ${endpoint}: ${response.status}`, result);
                 }
             } catch (err) {
                 console.warn(`Error with endpoint ${endpoint}:`, err);
@@ -232,34 +278,59 @@ async function renameFile(url, newName, apiKey) {
 }
 
 /**
- * Test controller connectivity and log results
+ * Test controller connectivity and log detailed results
  */
 function logEndpointStatus() {
     const baseUrl = window.location.origin;
+    const key = getCdnApiKey();
+
     const endpoints = [
+        `${baseUrl}/api/cdn-debug/ping`,
         `${baseUrl}/api/cdncompat/ping`,
         `${baseUrl}/api/cdn/ping`,
-        `${baseUrl}/api/diagnostics/ping`,
+        'https://portal.roovia.co.za/api/cdn/ping',
         'https://portal.roovia.co.za/api/cdn/categories'
     ];
 
-    console.group('CDN Endpoint Status Check');
+    console.group('🔍 CDN Endpoint Status Check');
+    console.log(`Testing with API key: ${key.substring(0, 4)}...${key.substring(key.length - 4)}`);
+
+    // Add request headers with API key
+    const headers = new Headers({
+        'X-Api-Key': key,
+        'Accept': 'application/json'
+    });
 
     endpoints.forEach(endpoint => {
-        fetch(endpoint, {
-            headers: {
-                'X-Api-Key': getCdnApiKey()
-            }
-        })
-            .then(response => {
-                console.log(`${endpoint}: ${response.status} ${response.statusText}`);
-                return response.json();
-            })
-            .then(data => {
-                console.log(`Response:`, data);
+        // Show we're checking each endpoint
+        console.log(`Testing ${endpoint}...`);
+
+        fetch(endpoint, { headers })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+
+                console.group(`📌 ${endpoint}: ${response.status} ${response.statusText}`);
+                console.log('Content-Type:', contentType);
+
+                try {
+                    // Try to parse as JSON first
+                    if (contentType && contentType.includes('application/json')) {
+                        const data = await response.json();
+                        console.log('Response:', data);
+                    } else {
+                        // If not JSON, get text and show first 200 chars
+                        const text = await response.text();
+                        console.log('Response (first 200 chars):', text.substring(0, 200));
+                        console.log('Full response length:', text.length);
+                    }
+                } catch (err) {
+                    console.error('Error parsing response:', err);
+                }
+
+                console.groupEnd();
             })
             .catch(err => {
-                console.error(`${endpoint}: Error - ${err.message}`);
+                console.error(`❌ ${endpoint}: Error - ${err.message}`);
             });
     });
 
@@ -277,14 +348,35 @@ async function getFileDetails(url, apiKey) {
 
     try {
         const baseUrl = window.location.origin;
-        const response = await fetch(`${baseUrl}/api/cdn/details?path=${encodeURIComponent(url)}`, {
-            method: 'GET',
-            headers: {
-                'X-Api-Key': apiKey || getCdnApiKey()
-            }
+        const key = apiKey || getCdnApiKey();
+
+        logDebug(`Getting file details for: ${url}`);
+
+        // Add necessary headers
+        const headers = new Headers({
+            'X-Api-Key': key,
+            'Accept': 'application/json'
         });
 
-        return await response.json();
+        const response = await fetch(`${baseUrl}/api/cdn-debug/file-details?path=${encodeURIComponent(url)}`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        // Handle potential HTML responses
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            const htmlContent = await response.text();
+            console.warn('HTML response detected instead of JSON', {
+                firstChars: htmlContent.substring(0, 100),
+                status: response.status
+            });
+            return { success: false, message: "Received HTML instead of JSON" };
+        }
+
+        const result = await response.json();
+        logDebug(`File details result:`, result);
+        return result;
     } catch (error) {
         console.error("Error getting file details:", error);
         return { success: false, message: error.message };

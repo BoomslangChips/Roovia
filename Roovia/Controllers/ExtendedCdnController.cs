@@ -248,38 +248,23 @@ namespace Roovia.Controllers
 
             try
             {
-                // Create HTTP client
-                var client = _httpClientFactory.CreateClient();
-                client.Timeout = TimeSpan.FromMinutes(10); // 10 minute timeout for large uploads
-                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+                // Use the CDN service directly to upload the file
+                string fileUrl = await _cdnService.UploadFileAsync(file, category, folder);
 
-                // Prepare multipart form
-                using var content = new MultipartFormDataContent();
-                using var streamContent = new StreamContent(file.OpenReadStream());
-                streamContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-                content.Add(streamContent, "file", file.FileName);
-                content.Add(new StringContent(category), "category");
-                if (!string.IsNullOrEmpty(folder))
+                // Return success response with the URL
+                return Ok(new
                 {
-                    content.Add(new StringContent(folder), "folder");
-                }
-
-                // Forward request to production API
-                var response = await client.PostAsync($"{PRODUCTION_API_URL}/upload", content);
-                var result = await response.Content.ReadFromJsonAsync<dynamic>();
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return Ok(result);
-                }
-                else
-                {
-                    return StatusCode((int)response.StatusCode, result);
-                }
+                    success = true,
+                    url = fileUrl,
+                    fileName = file.FileName,
+                    contentType = file.ContentType,
+                    size = file.Length,
+                    category = category
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during upload to production: {Message}", ex.Message);
+                _logger.LogError(ex, "Error during file upload: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
