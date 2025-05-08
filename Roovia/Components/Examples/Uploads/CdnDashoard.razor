@@ -2191,10 +2191,21 @@
             // Create HTTP client and set API key
             var httpClient = HttpClientFactory.CreateClient();
             httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            string baseUrl;
+            if (CdnService.IsDevEnvironment())
+            {
+                // In development, use the production API URL
+                baseUrl = "https://portal.roovia.co.za";
+            }
+            else
+            {
+                // In production, use the local API
+                baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            }
 
             // Prepare the API URL with current folder and search parameters
             var apiUrl = $"{baseUrl}/api/cdn/files?category={selectedCategory}&key={apiKey}";
+
             
             if (!string.IsNullOrEmpty(currentFolder))
             {

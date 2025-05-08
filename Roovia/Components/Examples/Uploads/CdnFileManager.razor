@@ -238,7 +238,17 @@
             httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
             // Get base URL
-            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            string baseUrl;
+            if (CdnService.IsDevEnvironment())
+            {
+                // In development, use the production API URL
+                baseUrl = "https://portal.roovia.co.za";
+            }
+            else
+            {
+                // In production, use the local API
+                baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            }
             var apiUrl = $"{baseUrl}/api/cdn/files?category={Category}&pattern={FilePattern}";
 
             var response = await httpClient.GetAsync(apiUrl);

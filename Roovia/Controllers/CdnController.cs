@@ -29,11 +29,17 @@ namespace Roovia.Controllers
         public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string category = "documents")
         {
             // Check API key for external requests
-            if (!HttpContext.Request.Host.Host.Contains("roovia.co.za"))
+
+
+            var apiKey = _cdnService.GetApiKey();
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
-                if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                    string.IsNullOrWhiteSpace(apiKey) ||
-                    apiKey != API_KEY)
+                // Check if query parameter has the API key as fallback
+                if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
+                    string.IsNullOrWhiteSpace(queryApiKey) ||
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }

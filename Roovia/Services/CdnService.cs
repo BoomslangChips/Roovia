@@ -137,9 +137,6 @@ namespace Roovia.Services
                     {
                         new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
                         new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                        new CdnCategory { Name = "hr", DisplayName = "HR", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx" },
-                        new CdnCategory { Name = "weighbridge", DisplayName = "Weighbridge", AllowedFileTypes = ".pdf,.xls,.xlsx,.csv" },
-                        new CdnCategory { Name = "lab", DisplayName = "Laboratory", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" }
                     };
                 }
 
@@ -192,8 +189,11 @@ namespace Roovia.Services
                     ? Path.Combine(category, uniqueFileName)
                     : Path.Combine(category, folderPath, uniqueFileName);
 
-                // If we can directly access the file system, use it for best performance
-                if (IsDirectAccessAvailable())
+                // Modified decision logic - direct access is ONLY for production environment
+                // and only when the storage path is directly accessible
+                bool useDirectAccess = IsDirectAccessAvailable() && !_environment.IsDevelopment();
+
+                if (useDirectAccess)
                 {
                     // Create the physical directory if it doesn't exist
                     string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
@@ -227,8 +227,7 @@ namespace Roovia.Services
                 }
                 else
                 {
-                    // We're on a different server, so use the API
-                    // Use memory-efficient streaming approach for large files
+                    // We're on a different server or in development mode, so use the API
                     using var streamContent = new StreamContent(fileStream, LargeBufferSize);
                     streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
@@ -243,11 +242,17 @@ namespace Roovia.Services
                         content.Add(new StringContent(folderPath), "folder");
                     }
 
-                    // Use the CDN upload endpoint with optimized client
-                    var cdnHost = new Uri(_cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl).Host;
-                    var apiUrl = $"https://portal.roovia.co.za/api/cdn/upload";
+                    // Use the configured production URL instead of hardcoded one
+                    // Get the base URL from configuration, defaulting to production if not specified
+                    var productionApiUrl = _configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn/upload";
 
-                    var response = await _optimizedHttpClient.PostAsync(apiUrl, content);
+                    // Ensure API key is set in headers
+                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
+                    {
+                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
+                    }
+
+                    var response = await _optimizedHttpClient.PostAsync(productionApiUrl, content);
                     response.EnsureSuccessStatusCode();
 
                     // Get the URL from the response
@@ -270,6 +275,12 @@ namespace Roovia.Services
             }
         }
 
+        // Modified detection method
+        public bool IsDirectAccessAvailable()
+        {
+            string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+            return !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
+        }
         private async Task<int?> GetOrCreateFolderAsync(string categoryName, string folderPath)
         {
             if (string.IsNullOrEmpty(folderPath))
@@ -629,11 +640,6 @@ namespace Roovia.Services
             return _cdnConfig.ApiKey;
         }
 
-        public bool IsDirectAccessAvailable()
-        {
-            string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-            return !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
-        }
 
         public string GetPhysicalPath(string cdnUrl)
         {

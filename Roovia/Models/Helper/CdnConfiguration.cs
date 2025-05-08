@@ -265,4 +265,12 @@ namespace Roovia.Models.CDN
         [MaxLength(100)]
         public string? ModifiedBy { get; set; }
     }
+
+
+    public class CdnOptions
+    {
+        public string ProductionApiUrl { get; set; } = "https://portal.roovia.co.za/api/cdn";
+        public bool ForceApiUsageInDevelopment { get; set; } = true;
+    }
+
 }
