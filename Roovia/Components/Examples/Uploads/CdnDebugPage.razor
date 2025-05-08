@@ -192,7 +192,7 @@
     private string uploadedFileUrl;
     private bool? connectionStatus = null;
     private string testEndpoint = "/api/cdn/ping";
-    private readonly string productionBaseUrl = "https://wh7gmcf5-7213.inc1.devtunnels.ms";
+    private readonly string productionBaseUrl = "https://portal.roovia.co.za";
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,7 +363,7 @@
                 file.Size);
 
             // Send the request and get raw response
-            var response = await client.PostAsync($"{productionBaseUrl}/api/cdn/upload", content);
+            var response = await client.PostAsJsonAsync($"{productionBaseUrl}/api/cdn/upload", content);
             var responseContent = await response.Content.ReadAsStringAsync();
 
             // Log full response details

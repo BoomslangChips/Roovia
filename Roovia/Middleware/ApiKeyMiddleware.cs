@@ -23,6 +23,9 @@ namespace Roovia.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
+            // Log all incoming API requests for debugging
+            _logger.LogInformation("API request: {Method} {Path}", context.Request.Method, context.Request.Path);
+
             // Skip non-CDN API requests
             if (!IsCdnApiRequest(context.Request.Path))
             {
@@ -30,8 +33,32 @@ namespace Roovia.Middleware
                 return;
             }
 
+            // Always skip OPTIONS requests for CORS
+            if (context.Request.Method == "OPTIONS")
+            {
+                _logger.LogDebug("Skipping API key validation for OPTIONS request: {Path}", context.Request.Path);
+                await _next(context);
+                return;
+            }
+
+            // Always skip /ping endpoint requests
+            if (context.Request.Path.Value?.ToLower().EndsWith("/ping") == true)
+            {
+                _logger.LogDebug("Skipping API key validation for ping endpoint: {Path}", context.Request.Path);
+                await _next(context);
+                return;
+            }
+
+            // Always skip diagnostic endpoints
+            if (context.Request.Path.Value?.ToLower().StartsWith("/api/diag") == true)
+            {
+                _logger.LogDebug("Skipping API key validation for diagnostic endpoint: {Path}", context.Request.Path);
+                await _next(context);
+                return;
+            }
+
             // For non-OPTIONS requests that require authentication
-            if (context.Request.Method != "OPTIONS" && RequiresAuthentication(context.Request.Path))
+            if (RequiresAuthentication(context.Request.Path))
             {
                 try
                 {
@@ -90,13 +117,21 @@ namespace Roovia.Middleware
         {
             var pathStr = path.ToString().ToLower();
 
-            // Allow ping without authentication for health checks
+            // Always allow ping without authentication for health checks
             if (pathStr.EndsWith("/ping"))
                 return false;
 
+            // Always allow diagnostics endpoints without authentication
+            if (pathStr.StartsWith("/api/diag"))
+                return false;
+
+            // Allow test and debug endpoints
+            if (pathStr.Contains("/test") || pathStr.Contains("/debug"))
+                return false;
+
             // Certain diagnostic endpoints might be exempted
-            if (pathStr.StartsWith("/api/cdn-debug/") &&
-                (pathStr.Contains("/test-connection") || pathStr.Contains("/diagnostics")))
+            if (pathStr.StartsWith("/api/cdn-debug/") ||
+                pathStr.StartsWith("/api/cdn/test-"))
                 return false;
 
             return true;
@@ -119,11 +154,29 @@ namespace Roovia.Middleware
             }
 
             // Finally try from form data for multipart uploads
-            if (request.HasFormContentType &&
-                request.Form.TryGetValue("apiKey", out var formApiKey) &&
-                !string.IsNullOrWhiteSpace(formApiKey))
+            if (request.HasFormContentType)
             {
-                return formApiKey;
+                try
+                {
+                    // First try "apiKey"
+                    if (request.Form.TryGetValue("apiKey", out var formApiKey1) &&
+                        !string.IsNullOrWhiteSpace(formApiKey1))
+                    {
+                        return formApiKey1;
+                    }
+
+                    // Then try "key"
+                    if (request.Form.TryGetValue("key", out var formApiKey2) &&
+                        !string.IsNullOrWhiteSpace(formApiKey2))
+                    {
+                        return formApiKey2;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail if form access fails
+                    _logger.LogWarning(ex, "Error accessing form data for API key");
+                }
             }
 
             return null;

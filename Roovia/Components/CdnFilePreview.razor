@@ -1,132 +1,197 @@
 ﻿@using Roovia.Interfaces
 @using System.Threading.Tasks
+@using System.IO
+@using System.Text.Json
 @inject ICdnService CdnService
 @inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
-<div class="cdn-file-preview">
+<div class="cdn-file-preview @(Compact ? "compact" : "")">
     @if (IsLoading)
     {
-            <div class="text-center p-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Loading preview...</p>
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-2">@LoadingMessage</p>
+        </div>
     }
     else if (string.IsNullOrEmpty(FileUrl))
     {
-            <div class="text-center p-4">
-                <p class="text-muted">No file selected for preview.</p>
-            </div>
+        <div class="text-center p-4">
+            <i class="fa-light fa-file-circle-question fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No file selected for preview.</p>
+        </div>
+    }
+    else if (LoadError != null)
+    {
+        <div class="text-center p-4 error-container">
+            <i class="fa-light fa-triangle-exclamation fa-3x text-danger mb-3"></i>
+            <h5 class="text-danger">Error Loading File</h5>
+            <p>@LoadError</p>
+            <button @onclick="ReloadFile" class="btn btn-outline-primary mt-2">
+                <i class="fa-light fa-rotate me-2"></i>Try Again
+            </button>
+        </div>
     }
     else
     {
-            <div class="preview-container">
+        <div class="preview-container @(IsFullScreen ? "fullscreen" : "")">
+            <div class="preview-header">
+                <div class="file-info">
+                    <div class="file-icon">
+                        @GetFileIcon()
+                    </div>
+                    <div class="file-details">
+                        <h5 class="mb-0">@TruncateFileName(FileName, 40)</h5>
+                        <div class="file-meta">
+                            <span class="file-size">@FormatFileSize(FileSize)</span>
+                            @if (FileModifiedDate.HasValue)
+                            {
+                                <span class="mx-1">•</span>
+                                <span class="file-date">Modified: @FormatDate(FileModifiedDate.Value)</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-actions-top">
+                    <button @onclick="ToggleFullScreen" class="btn btn-sm btn-outline-secondary" title="@(IsFullScreen ? "Exit Full Screen" : "Full Screen")">
+                        <i class="fa-light @(IsFullScreen ? "fa-compress" : "fa-expand")"></i>
+                    </button>
+                    <button @onclick="DownloadFile" class="btn btn-sm btn-outline-primary" title="Download">
+                        <i class="fa-light fa-download"></i>
+                    </button>
+                </div>
+            </div>
+
             @if (IsImage)
             {
-                        <div class="image-preview">
-                            <img src="@FileUrlWithKey" alt="@FileName" class="img-fluid" />
+                <div class="image-preview">
+                    <img src="@FileUrlWithKey" alt="@FileName" class="img-fluid" @onload="HandlePreviewLoaded" @onerror="HandlePreviewError" />
+
+                    @if (ImageLoaded && EnableZoom)
+                    {
+                        <div class="zoom-controls">
+                            <button @onclick="ZoomIn" class="btn btn-sm btn-outline-secondary" title="Zoom In">
+                                <i class="fa-light fa-magnifying-glass-plus"></i>
+                            </button>
+                            <button @onclick="ZoomOut" class="btn btn-sm btn-outline-secondary" title="Zoom Out">
+                                <i class="fa-light fa-magnifying-glass-minus"></i>
+                            </button>
+                            <button @onclick="ResetZoom" class="btn btn-sm btn-outline-secondary" title="Reset Zoom">
+                                <i class="fa-light fa-expand"></i>
+                            </button>
                         </div>
+                    }
+                </div>
             }
             else if (IsPdf)
             {
-                        <div class="pdf-preview">
-                            <div class="ratio ratio-16x9">
-                                <iframe src="@FileUrlWithKey" allowfullscreen></iframe>
-                            </div>
-                        </div>
+                <div class="pdf-preview">
+                    <div class="ratio ratio-16x9">
+                        <iframe src="@FileUrlWithKey" allowfullscreen @onload="HandlePreviewLoaded" @onerror="HandlePreviewError"></iframe>
+                    </div>
+                </div>
             }
             else if (IsVideo)
             {
-                        <div class="video-preview">
-                            <div class="ratio ratio-16x9">
-                                <video controls>
-                                    <source src="@FileUrlWithKey" type="@ContentType">
-                                    Your browser does not support the video tag.
-                                </video>
-                            </div>
-                        </div>
+                <div class="video-preview">
+                    <div class="ratio ratio-16x9">
+                        <video controls @onloadstart="HandlePreviewLoaded" @onerror="HandlePreviewError">
+                            <source src="@FileUrlWithKey" type="@ContentType">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
             }
             else if (IsAudio)
             {
-                        <div class="audio-preview">
-                            <audio controls class="w-100">
-                                <source src="@FileUrlWithKey" type="@ContentType">
-                                Your browser does not support the audio tag.
-                            </audio>
+                <div class="audio-preview">
+                    <div class="audio-container">
+                        <div class="audio-thumbnail">
+                            <i class="fa-light fa-waveform-lines fa-4x"></i>
                         </div>
+                        <audio controls class="w-100" @onloadstart="HandlePreviewLoaded" @onerror="HandlePreviewError">
+                            <source src="@FileUrlWithKey" type="@ContentType">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    </div>
+                </div>
             }
             else if (IsText)
             {
                 @if (TextContent != null)
                 {
-                                <div class="text-preview">
-                                    <pre class="text-preview-content">@TextContent</pre>
+                    <div class="text-preview">
+                        <div class="text-toolbar">
+                            <div class="line-numbers-toggle">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" @bind="ShowLineNumbers" id="lineNumbersToggle">
+                                    <label class="form-check-label" for="lineNumbersToggle">Line Numbers</label>
                                 </div>
+                            </div>
+                            <div class="text-format-tools">
+                                @if (CanFormatText)
+                                {
+                                    <button @onclick="FormatTextContent" class="btn btn-sm btn-outline-secondary" title="Format Code">
+                                        <i class="fa-light fa-code"></i>
+                                    </button>
+                                }
+                                <button @onclick="CopyTextToClipboard" class="btn btn-sm btn-outline-secondary" title="Copy to Clipboard">
+                                    <i class="fa-light fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <pre class="text-preview-content @(IsSyntaxHighlighted ? "syntax-highlighted" : "") @(ShowLineNumbers ? "with-line-numbers" : "")">@(ShowLineNumbers ? AddLineNumbers(TextContent) : TextContent)</pre>
+                    </div>
                 }
                 else
                 {
-                                <div class="text-center p-4">
-                                    <button @onclick="LoadTextContent" class="btn btn-primary">
-                                        <i class="fa-light fa-file-lines me-2"></i>Load Text Content
-                                    </button>
-                                </div>
+                    <div class="text-center p-4">
+                        <button @onclick="LoadTextContent" class="btn btn-primary">
+                            <i class="fa-light fa-file-lines me-2"></i>Load Text Content
+                        </button>
+                    </div>
                 }
             }
             else
             {
-                        <div class="generic-preview text-center">
-                            <div class="file-icon mb-3">
-                        @if (ContentType?.Contains("word") == true)
-                        {
-                                        <i class="fa-light fa-file-word fa-4x text-primary"></i>
-                        }
-                        else if (ContentType?.Contains("excel") == true || ContentType?.Contains("sheet") == true)
-                        {
-                                        <i class="fa-light fa-file-excel fa-4x text-success"></i>
-                        }
-                        else if (ContentType?.Contains("zip") == true || ContentType?.Contains("archive") == true)
-                        {
-                                        <i class="fa-light fa-file-archive fa-4x text-warning"></i>
-                        }
-                        else
-                        {
-                                        <i class="fa-light fa-file fa-4x text-secondary"></i>
-                        }
-                            </div>
-                            <h4>@FileName</h4>
-                            <p>@FormatFileSize(FileSize)</p>
-                            <p class="text-muted">Preview not available for this file type.</p>
-                            <button @onclick="DownloadFile" class="btn btn-primary mt-2">
-                                <i class="fa-light fa-download me-2"></i>Download File
-                            </button>
-                        </div>
-            }
-            </div>
-
-            <div class="preview-actions mt-3 d-flex justify-content-between">
-                <div>
-                    <h5>@FileName</h5>
-                    <p class="text-muted mb-0">@FormatFileSize(FileSize)</p>
-                </div>
-                <div>
-                    <button @onclick="DownloadFile" class="btn btn-primary">
-                        <i class="fa-light fa-download me-2"></i>Download
+                <div class="generic-preview text-center">
+                    <div class="file-icon mb-3">
+                        @GetFileIcon(true)
+                    </div>
+                    <h4>@FileName</h4>
+                    <p>@FormatFileSize(FileSize)</p>
+                    <p class="text-muted">Preview not available for this file type.</p>
+                    <button @onclick="DownloadFile" class="btn btn-primary mt-2">
+                        <i class="fa-light fa-download me-2"></i>Download File
                     </button>
-                @if (EnableRename && OnRename.HasDelegate)
-                {
-                            <button @onclick="RenameFile" class="btn btn-outline-secondary ms-2">
+                </div>
+            }
+
+            @if (EnablePreviewTools && IsFile)
+            {
+                <div class="preview-footer">
+                    <div class="preview-actions-bottom">
+                        <button @onclick="DownloadFile" class="btn btn-primary">
+                            <i class="fa-light fa-download me-2"></i>Download
+                        </button>
+                        @if (EnableRename && OnRename.HasDelegate)
+                        {
+                            <button @onclick="() => RenameFile()" class="btn btn-outline-secondary ms-2">
                                 <i class="fa-light fa-edit me-2"></i>Rename
                             </button>
-                }
-                @if (EnableDelete && OnDelete.HasDelegate)
-                {
-                            <button @onclick="DeleteFile" class="btn btn-outline-danger ms-2">
+                        }
+                        @if (EnableDelete && OnDelete.HasDelegate)
+                        {
+                            <button @onclick="() => DeleteFile()" class="btn btn-outline-danger ms-2">
                                 <i class="fa-light fa-trash me-2"></i>Delete
                             </button>
-                }
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+        </div>
     }
 </div>
 
@@ -137,31 +202,215 @@
     [Parameter] public long FileSize { get; set; }
     [Parameter] public bool EnableRename { get; set; } = true;
     [Parameter] public bool EnableDelete { get; set; } = true;
+    [Parameter] public bool EnablePreviewTools { get; set; } = true;
+    [Parameter] public bool EnableZoom { get; set; } = true;
+    [Parameter] public bool Compact { get; set; } = false;
     [Parameter] public EventCallback OnDelete { get; set; }
     [Parameter] public EventCallback OnRename { get; set; }
+    [Parameter] public EventCallback<bool> OnPreviewLoaded { get; set; }
 
     private bool IsLoading { get; set; } = false;
+    private string LoadingMessage { get; set; } = "Loading preview...";
+    private string LoadError { get; set; }
     private string ApiKey { get; set; }
     private string FileUrlWithKey => string.IsNullOrEmpty(FileUrl) ? "" : $"{FileUrl}{(FileUrl.Contains("?") ? "&" : "?")}key={ApiKey}";
     private string TextContent { get; set; }
+    private bool ImageLoaded { get; set; } = false;
+    private bool ShowLineNumbers { get; set; } = true;
+    private bool IsSyntaxHighlighted { get; set; } = false;
+    private bool IsFullScreen { get; set; } = false;
+    private DateTime? FileModifiedDate { get; set; }
+    private bool _jsModuleAvailable = false;
 
-    private bool IsImage => ContentType?.StartsWith("image/") ?? false;
-    private bool IsPdf => ContentType?.Contains("pdf") ?? false;
-    private bool IsVideo => ContentType?.StartsWith("video/") ?? false;
-    private bool IsAudio => ContentType?.StartsWith("audio/") ?? false;
-    private bool IsText => ContentType?.StartsWith("text/") ?? false;
+    // Format flags
+    private bool CanFormatText => Path.GetExtension(FileName)?.ToLower() is ".js" or ".json" or ".html" or ".htm" or ".css" or ".xml";
+
+    private bool IsFile => !string.IsNullOrEmpty(FileUrl) && !string.IsNullOrEmpty(FileName);
+    private bool IsImage => ContentType?.StartsWith("image/") == true;
+    private bool IsPdf => ContentType?.Contains("pdf") == true;
+    private bool IsVideo => ContentType?.StartsWith("video/") == true;
+    private bool IsAudio => ContentType?.StartsWith("audio/") == true;
+    private bool IsText =>
+        (ContentType?.StartsWith("text/") == true) ||
+        (ContentType?.Contains("javascript") == true) ||
+        (ContentType?.Contains("json") == true) ||
+        (ContentType?.Contains("xml") == true) ||
+        (Path.GetExtension(FileName).ToLower() is ".cs" or ".js" or ".ts" or ".html" or ".css" or ".json" or ".xml" or ".txt" or ".md" or ".log");
 
     protected override async Task OnInitializedAsync()
     {
         ApiKey = CdnService.GetApiKey();
+
+        // Check if our JS module is available
+        try
+        {
+            _jsModuleAvailable = await JSRuntime.InvokeAsync<bool>("typeof window.cdnModule !== 'undefined'");
+        }
+        catch
+        {
+            _jsModuleAvailable = false;
+        }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        // Reset text content when file changes
+        // Reset state when file changes
         if (IsText)
         {
             TextContent = null;
+            IsSyntaxHighlighted = false;
+        }
+
+        if (IsImage)
+        {
+            ImageLoaded = false;
+        }
+
+        LoadError = null;
+
+        if (!string.IsNullOrEmpty(FileUrl))
+        {
+            try
+            {
+                await GetFileInfo();
+            }
+            catch
+            {
+                // Ignore errors when getting file info
+            }
+        }
+
+        // Auto-load text content if it's a small text file
+        if (IsText && FileSize < 100 * 1024) // Less than 100KB
+        {
+            await LoadTextContent();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Nothing specific to dispose
+    }
+
+    private RenderFragment GetFileIcon(bool large = false)
+    {
+        string iconClass = ContentType switch
+        {
+            var ct when ct?.StartsWith("image/") == true => "fa-image",
+            var ct when ct?.Contains("pdf") == true => "fa-file-pdf",
+            var ct when ct?.Contains("word") == true => "fa-file-word",
+            var ct when (ct?.Contains("excel") == true) || (ct?.Contains("spreadsheet") == true) => "fa-file-excel",
+            var ct when (ct?.Contains("powerpoint") == true) || (ct?.Contains("presentation") == true) => "fa-file-powerpoint",
+            var ct when ct?.StartsWith("video/") == true => "fa-file-video",
+            var ct when ct?.StartsWith("audio/") == true => "fa-file-audio",
+            var ct when (ct?.Contains("zip") == true) || (ct?.Contains("archive") == true) => "fa-file-archive",
+            var ct when (ct?.StartsWith("text/") == true) || (ct?.Contains("javascript") == true) || (ct?.Contains("json") == true) => "fa-file-lines",
+            _ => GetIconFromExtension(Path.GetExtension(FileName))
+        };
+
+        string sizeClass = large ? "fa-4x" : "fa-2x";
+        string colorClass = GetColorClassFromExtension(Path.GetExtension(FileName));
+
+        return @<i class="fa-light @iconClass @sizeClass @colorClass"></i>;
+    }
+
+    private string GetIconFromExtension(string extension)
+    {
+        if (string.IsNullOrEmpty(extension))
+            return "fa-file";
+
+        return extension.ToLower() switch
+        {
+            ".pdf" => "fa-file-pdf",
+            ".doc" or ".docx" => "fa-file-word",
+            ".xls" or ".xlsx" or ".csv" => "fa-file-excel",
+            ".ppt" or ".pptx" => "fa-file-powerpoint",
+            ".zip" or ".rar" or ".7z" => "fa-file-archive",
+            ".mp3" or ".wav" or ".ogg" => "fa-file-audio",
+            ".mp4" or ".mov" or ".avi" => "fa-file-video",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => "fa-image",
+            ".txt" or ".log" => "fa-file-lines",
+            ".html" or ".htm" => "fa-file-code",
+            ".css" => "fa-file-code",
+            ".js" or ".ts" => "fa-file-code",
+            ".json" => "fa-file-code",
+            ".xml" => "fa-file-code",
+            ".cs" or ".vb" or ".java" or ".py" => "fa-file-code",
+            ".md" => "fa-file-lines",
+            _ => "fa-file"
+        };
+    }
+
+    private string GetColorClassFromExtension(string extension)
+    {
+        if (string.IsNullOrEmpty(extension))
+            return "text-secondary";
+
+        return extension.ToLower() switch
+        {
+            ".pdf" => "text-danger",
+            ".doc" or ".docx" => "text-primary",
+            ".xls" or ".xlsx" or ".csv" => "text-success",
+            ".ppt" or ".pptx" => "text-warning",
+            ".zip" or ".rar" or ".7z" => "text-warning",
+            ".mp3" or ".wav" or ".ogg" => "text-info",
+            ".mp4" or ".mov" or ".avi" => "text-info",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => "text-info",
+            ".cs" or ".vb" or ".java" or ".py" => "text-primary",
+            _ => "text-secondary"
+        };
+    }
+
+    private async Task GetFileInfo()
+    {
+        try
+        {
+            // Try direct file access first
+            string physicalPath = CdnService.GetPhysicalPath(FileUrl);
+            if (!string.IsNullOrEmpty(physicalPath) && System.IO.File.Exists(physicalPath))
+            {
+                var fileInfo = new FileInfo(physicalPath);
+                FileModifiedDate = fileInfo.LastWriteTime;
+                return;
+            }
+
+            // Try using JS module if available
+            if (_jsModuleAvailable)
+            {
+                try
+                {
+                    var fileInfoResult = await JSRuntime.InvokeAsync<FileInfoResult>("cdnModule.getFileInfo", FileUrl);
+                    if (fileInfoResult?.success == true)
+                    {
+                        FileModifiedDate = fileInfoResult.modified;
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Continue to fallback if JS method fails
+                }
+            }
+
+            // Fallback to a standard HEAD request
+            var httpClient = new HttpClient();
+
+            // Add API key to query string
+            var separator = FileUrl.Contains("?") ? "&" : "?";
+            var urlWithKey = $"{FileUrl}{separator}key={ApiKey}";
+
+            var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, urlWithKey));
+            if (response.IsSuccessStatusCode)
+            {
+                if (response.Content.Headers.LastModified.HasValue)
+                {
+                    FileModifiedDate = response.Content.Headers.LastModified.Value.DateTime;
+                }
+            }
+        }
+        catch
+        {
+            // Silently ignore errors
         }
     }
 
@@ -173,15 +422,60 @@
         try
         {
             IsLoading = true;
+            LoadingMessage = "Loading text content...";
+            LoadError = null;
             StateHasChanged();
 
-            // Use the external JavaScript function to fetch text content
-            TextContent = await JSRuntime.InvokeAsync<string>("fetchTextContent", FileUrlWithKey);
+            // Try using direct file access first
+            string physicalPath = CdnService.GetPhysicalPath(FileUrl);
+            if (!string.IsNullOrEmpty(physicalPath) && System.IO.File.Exists(physicalPath))
+            {
+                TextContent = await System.IO.File.ReadAllTextAsync(physicalPath);
+            }
+            else if (_jsModuleAvailable)
+            {
+                // Try using JS module
+                try
+                {
+                    TextContent = await JSRuntime.InvokeAsync<string>("cdnModule.fetchTextContent", FileUrl);
+                }
+                catch (Exception ex)
+                {
+                    LoadError = $"Error loading text content: {ex.Message}";
+                    await OnPreviewLoaded.InvokeAsync(false);
+                    IsLoading = false;
+                    StateHasChanged();
+                    return;
+                }
+            }
+            else
+            {
+                // Direct HTTP fetch as fallback
+                using var httpClient = new HttpClient();
+                var separator = FileUrl.Contains("?") ? "&" : "?";
+                var urlWithKey = $"{FileUrl}{separator}key={ApiKey}";
+
+                var response = await httpClient.GetAsync(urlWithKey);
+                if (response.IsSuccessStatusCode)
+                {
+                    TextContent = await response.Content.ReadAsStringAsync();
+                }
+                else
+                {
+                    LoadError = $"Error loading text content: HTTP {(int)response.StatusCode} {response.ReasonPhrase}";
+                    await OnPreviewLoaded.InvokeAsync(false);
+                    IsLoading = false;
+                    StateHasChanged();
+                    return;
+                }
+            }
+
+            await OnPreviewLoaded.InvokeAsync(true);
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("console.error", "Error loading text content", ex.Message);
-            TextContent = "Error loading text content. Please try downloading the file instead.";
+            LoadError = $"Error loading text content: {ex.Message}";
+            await OnPreviewLoaded.InvokeAsync(false);
         }
         finally
         {
@@ -190,16 +484,114 @@
         }
     }
 
+    private async Task FormatTextContent()
+    {
+        if (string.IsNullOrEmpty(TextContent) || !CanFormatText)
+            return;
+
+        // Very basic formatting - just add indentation and line breaks
+        // In a real app, you'd want to use a more sophisticated formatter
+        try
+        {
+            var extension = Path.GetExtension(FileName).ToLowerInvariant();
+            var formattedText = TextContent;
+
+            // Replace multiple consecutive blank lines with a single one
+            formattedText = System.Text.RegularExpressions.Regex.Replace(formattedText, @"(\r?\n){3,}", "\n\n");
+
+            TextContent = formattedText;
+
+            // Show success message
+            await ShowToastMessage("Text formatting applied");
+        }
+        catch (Exception ex)
+        {
+            // Show error
+            await ShowToastMessage($"Error formatting text: {ex.Message}", "error");
+        }
+    }
+
+    private async Task CopyTextToClipboard()
+    {
+        if (string.IsNullOrEmpty(TextContent))
+            return;
+
+        try
+        {
+            if (_jsModuleAvailable)
+            {
+                var success = await JSRuntime.InvokeAsync<bool>("cdnModule.copyToClipboard", TextContent);
+                if (success)
+                {
+                    await ShowToastMessage("Text copied to clipboard");
+                }
+                else
+                {
+                    await ShowToastMessage("Failed to copy text", "error");
+                }
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", TextContent);
+                await ShowToastMessage("Text copied to clipboard");
+            }
+        }
+        catch
+        {
+            await ShowToastMessage("Failed to copy text", "error");
+        }
+    }
+
+    private async Task ShowToastMessage(string message, string type = "info")
+    {
+        if (_jsModuleAvailable)
+        {
+            await JSRuntime.InvokeVoidAsync("cdnModule.showToast", message, type);
+        }
+        else
+        {
+            // Fallback to alert for simplicity
+            await JSRuntime.InvokeVoidAsync("alert", message);
+        }
+    }
+
+    private string AddLineNumbers(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var lines = text.Split('\n');
+        var result = new System.Text.StringBuilder();
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            result.AppendLine($"<span class=\"line-number\">{i + 1}</span>{lines[i]}");
+        }
+
+        return result.ToString();
+    }
+
     private async Task DownloadFile()
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", FileUrl, ApiKey, true);
+            // Try using JS module if available
+            if (_jsModuleAvailable)
+            {
+                await JSRuntime.InvokeVoidAsync("cdnModule.openFile", FileUrl, true);
+            }
+            else
+            {
+                // Fallback to creating a download link
+                var separator = FileUrl.Contains("?") ? "&" : "?";
+                var urlWithKey = $"{FileUrl}{separator}key={ApiKey}";
+
+                await JSRuntime.InvokeVoidAsync("open", urlWithKey, "_blank");
+            }
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("console.error", "Error downloading file", ex.Message);
-            await JSRuntime.InvokeVoidAsync("alert", "Failed to download file. Please try again.");
+            await JSRuntime.InvokeVoidAsync("alert", $"Error downloading file: {ex.Message}");
         }
     }
 
@@ -211,6 +603,68 @@
     private async Task DeleteFile()
     {
         await OnDelete.InvokeAsync();
+    }
+
+    private async Task ReloadFile()
+    {
+        LoadError = null;
+
+        if (IsText)
+        {
+            await LoadTextContent();
+        }
+        else
+        {
+            // For other file types, just remove error state
+            StateHasChanged();
+        }
+    }
+
+    private async Task ZoomIn()
+    {
+        if (_jsModuleAvailable)
+        {
+            await JSRuntime.InvokeVoidAsync("cdnModule.zoomImage", "in");
+        }
+    }
+
+    private async Task ZoomOut()
+    {
+        if (_jsModuleAvailable)
+        {
+            await JSRuntime.InvokeVoidAsync("cdnModule.zoomImage", "out");
+        }
+    }
+
+    private async Task ResetZoom()
+    {
+        if (_jsModuleAvailable)
+        {
+            await JSRuntime.InvokeVoidAsync("cdnModule.zoomImage", "reset");
+        }
+    }
+
+    private void ToggleFullScreen()
+    {
+        IsFullScreen = !IsFullScreen;
+    }
+
+    private void HandlePreviewLoaded()
+    {
+        if (IsImage)
+        {
+            ImageLoaded = true;
+        }
+
+        StateHasChanged();
+        OnPreviewLoaded.InvokeAsync(true);
+    }
+
+    private void HandlePreviewError()
+    {
+        LoadError = "Failed to load preview. The file may be corrupted or inaccessible.";
+        StateHasChanged();
+        OnPreviewLoaded.InvokeAsync(false);
     }
 
     private string FormatFileSize(long bytes)
@@ -227,43 +681,216 @@
 
         return $"{len:0.##} {sizes[order]}";
     }
+
+    private string FormatDate(DateTime date)
+    {
+        // If today, show time
+        if (date.Date == DateTime.Today)
+        {
+            return $"Today at {date:h:mm tt}";
+        }
+        // If yesterday, show "Yesterday"
+        else if (date.Date == DateTime.Today.AddDays(-1))
+        {
+            return $"Yesterday at {date:h:mm tt}";
+        }
+        // If this year, show month and day
+        else if (date.Year == DateTime.Today.Year)
+        {
+            return $"{date:MMM d} at {date:h:mm tt}";
+        }
+        // Otherwise show full date
+        else
+        {
+            return $"{date:MMM d, yyyy} at {date:h:mm tt}";
+        }
+    }
+
+    private string TruncateFileName(string fileName, int maxLength)
+    {
+        if (string.IsNullOrEmpty(fileName) || fileName.Length <= maxLength)
+            return fileName;
+
+        string extension = Path.GetExtension(fileName);
+        string name = Path.GetFileNameWithoutExtension(fileName);
+
+        if (name.Length <= maxLength - extension.Length - 3)
+            return fileName;
+
+        int charsToKeep = maxLength - extension.Length - 3;
+        return $"{name.Substring(0, charsToKeep)}...{extension}";
+    }
+
+    // Data class for JavaScript interactions
+    private class FileInfoResult
+    {
+        public bool success { get; set; }
+        public DateTime? modified { get; set; }
+        public string error { get; set; }
+    }
 }
 
 <style>
     .cdn-file-preview {
         margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
 
+        .cdn-file-preview.compact {
+            margin-bottom: 0.5rem;
+        }
+
     .preview-container {
+        display: flex;
+        flex-direction: column;
         border: 1px solid #e9ecef;
         border-radius: 6px;
         overflow: hidden;
         background-color: #f8f9fa;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        flex: 1;
+    }
+
+        .preview-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            border-radius: 0;
+            border: none;
+            background-color: #fff;
+        }
+
+    .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background-color: #fff;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .file-icon {
+        margin-right: 0.75rem;
+    }
+
+    .file-meta {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .error-container {
+        background-color: #fff3f3;
+        border-radius: 4px;
+        padding: 2rem 1rem;
     }
 
     .image-preview {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         padding: 1rem;
         background-color: #ffffff;
+        position: relative;
+        flex: 1;
+        overflow: auto;
     }
 
         .image-preview img {
             max-height: 500px;
             object-fit: contain;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out;
         }
 
+    .preview-container.fullscreen .image-preview img {
+        max-height: 90vh;
+    }
+
+    .zoom-controls {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: flex;
+        gap: 0.25rem;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 0.25rem;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
     .pdf-preview, .video-preview {
+        flex: 1;
         min-height: 500px;
     }
 
+    .preview-container.fullscreen .pdf-preview,
+    .preview-container.fullscreen .video-preview {
+        height: calc(100vh - 110px);
+    }
+
+    .audio-preview {
+        padding: 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex: 1;
+    }
+
+    .audio-container {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .audio-thumbnail {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #e9ecef;
+        border-radius: 50%;
+        color: #6c757d;
+    }
+
     .text-preview {
-        padding: 1rem;
+        padding: 0;
         max-height: 500px;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
         background-color: #ffffff;
+    }
+
+    .preview-container.fullscreen .text-preview {
+        max-height: calc(100vh - 110px);
+    }
+
+    .text-toolbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .text-format-tools {
+        display: flex;
+        gap: 0.5rem;
     }
 
     .text-preview-content {
@@ -271,13 +898,72 @@
         white-space: pre-wrap;
         font-family: monospace;
         font-size: 0.875rem;
+        padding: 1rem;
+        overflow: auto;
+        flex: 1;
+        tab-size: 4;
     }
+
+        .text-preview-content.with-line-numbers {
+            counter-reset: line;
+            padding-left: 3.5rem;
+            position: relative;
+        }
+
+        .text-preview-content .line-number {
+            position: absolute;
+            left: 0;
+            width: 3rem;
+            color: #aaa;
+            text-align: right;
+            padding-right: 0.5rem;
+            user-select: none;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .text-preview-content.syntax-highlighted {
+            background-color: #f8f9fa;
+        }
 
     .generic-preview {
         padding: 3rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        flex: 1;
     }
 
-    .file-icon {
-        margin-bottom: 1rem;
+    .preview-footer {
+        padding: 1rem;
+        background-color: #fff;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    @@media (max-width: 768px) {
+        .preview-header
+
+    {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .preview-actions-top {
+        width: 100%;
+        margin-top: 0.5rem;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .pdf-preview, .video-preview {
+        min-height: 300px;
+    }
+
+    .text-preview {
+        max-height: 300px;
+    }
+
     }
 </style>

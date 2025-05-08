@@ -152,7 +152,7 @@ namespace Roovia.Models.CDN
 
         public long FileSize { get; set; }
 
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
         [ForeignKey("CategoryId")]
         public CdnCategory? Category { get; set; }
@@ -188,7 +188,7 @@ namespace Roovia.Models.CDN
 
         public DateTime Date { get; set; } = DateTime.Now;
 
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
         [ForeignKey("CategoryId")]
         public CdnCategory? Category { get; set; }

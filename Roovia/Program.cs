@@ -25,10 +25,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Kestrel for large file uploads
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // Set maximum request body size to 200MB
-    options.Limits.MaxRequestBodySize = 209715200; // 200MB
+    // Remove all request size limits
+    options.Limits.MaxRequestBodySize = null; // No limit
+    options.Limits.MaxRequestBufferSize = null; // No limit
+    options.Limits.MinRequestBodyDataRate = null; // No minimum rate
 
-    // Increase request timeout
+    // Increase request timeout for large file uploads
     options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
     options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(5);
 });
@@ -36,7 +38,7 @@ builder.WebHost.ConfigureKestrel(options =>
 // Configure IIS for large file uploads (if using IIS)
 builder.Services.Configure<IISServerOptions>(options =>
 {
-    options.MaxRequestBodySize = 209715200; // 200MB
+    options.MaxRequestBodySize = null; // No limit
 });
 builder.Services.AddMemoryCache();
 // Add services to the container.
@@ -46,8 +48,8 @@ builder.Services.AddRazorComponents()
 // Configure FormOptions for larger file uploads
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 209715200; // 200MB
-    options.ValueLengthLimit = 209715200; // 200MB
+    options.MultipartBodyLengthLimit = long.MaxValue; // No limit
+    options.ValueLengthLimit = int.MaxValue; // No limit
     options.MultipartHeadersLengthLimit = 32768; // 32KB
 });
 
@@ -68,8 +70,6 @@ builder.Services.AddAuthentication(options =>
     options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
 })
     .AddIdentityCookies();
-
-
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -109,7 +109,8 @@ builder.Services.AddSingleton<ICdnService, CdnService>();
 builder.Services.AddControllers(options =>
 {
     options.MaxModelBindingCollectionSize = 10000; // Allow up to 10,000 items in collections
-}).AddJsonOptions(options => {
+})
+.AddJsonOptions(options => {
     options.JsonSerializerOptions.PropertyNamingPolicy = null;
     options.JsonSerializerOptions.WriteIndented = true;
 })
@@ -119,8 +120,8 @@ builder.Services.AddControllers(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState
-            .Where(e => e.Value.Errors.Count > 0)
-            .Select(e => new { Field = e.Key, Errors = e.Value.Errors.Select(err => err.ErrorMessage) })
+            .Where(e => e.Value?.Errors.Count > 0)
+            .Select(e => new { Field = e.Key, Errors = e.Value?.Errors.Select(err => err.ErrorMessage) })
             .ToList();
 
         return new BadRequestObjectResult(new
@@ -133,6 +134,7 @@ builder.Services.AddControllers(options =>
 });
 
 // Register authorization configuration
+// [Authorization configuration code can stay the same]
 builder.Services.AddAuthorization(options =>
 {
     // Register pre-defined policies
@@ -191,45 +193,51 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    var cdnStoragePath = builder.Configuration["CDN:StoragePath"];
-
-    // If we can't access the CDN storage path directly in development, set up local serving
-    if (!Directory.Exists(cdnStoragePath))
+    // Only in development, set up static file serving for local debugging
+    // But don't interfere with actual CDN storage
+    app.UseStaticFiles(new StaticFileOptions
     {
-        // Create local directory for development
-        var localCdnPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "cdn");
-        Directory.CreateDirectory(localCdnPath);
-
-        // Create category directories (this will be replaced by database-driven categories later)
-        using (var scope = app.Services.CreateScope())
+        FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot")),
+        RequestPath = "",
+        OnPrepareResponse = ctx =>
         {
-            var cdnService = scope.ServiceProvider.GetRequiredService<ICdnService>();
-            var categories = await cdnService.GetCategoriesAsync();
-
-            foreach (var category in categories)
-            {
-                Directory.CreateDirectory(Path.Combine(localCdnPath, category.Name));
-            }
+            ctx.Context.Response.Headers.Add("Cache-Control", "public, max-age=3600");
         }
-
-        // Set up local static file serving for development
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(localCdnPath),
-            RequestPath = "/cdn",
-            OnPrepareResponse = ctx =>
-            {
-                // Set caching headers for better performance
-                ctx.Context.Response.Headers.Add("Cache-Control", "public, max-age=3600");
-            }
-        });
-    }
+    });
 }
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
+
+// Add global exception handler
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        // Log the exception
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled exception in middleware pipeline: {Message}", ex.Message);
+
+        // Return JSON error for API requests
+        if (!context.Response.HasStarted && context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync($"{{\"success\":false,\"error\":\"Server error: {ex.Message}\"}}");
+        }
+        else if (!context.Response.HasStarted)
+        {
+            // Re-throw for non-API requests to be handled by the error page
+            throw;
+        }
+    }
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -247,13 +255,68 @@ app.MapAdditionalIdentityEndpoints();
 // Map controllers for CDN API endpoints
 app.MapControllers();
 
+// Create and ensure permissions for CDN storage directory
+// This is now used in BOTH development and production
+var cdnStoragePath = builder.Configuration["CDN:StoragePath"];
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+if (string.IsNullOrEmpty(cdnStoragePath))
+{
+    logger.LogError("CDN:StoragePath is not configured in appsettings.json");
+}
+else
+{
+    try
+    {
+        // Ensure the main CDN directory exists
+        if (!Directory.Exists(cdnStoragePath))
+        {
+            logger.LogInformation("Creating CDN storage directory: {Path}", cdnStoragePath);
+            Directory.CreateDirectory(cdnStoragePath);
+        }
+
+        // Create standard category directories
+        var standardCategories = new[] { "documents", "images", "test-uploads" };
+        foreach (var category in standardCategories)
+        {
+            var categoryPath = Path.Combine(cdnStoragePath, category);
+            if (!Directory.Exists(categoryPath))
+            {
+                logger.LogInformation("Creating category directory: {Path}", categoryPath);
+                Directory.CreateDirectory(categoryPath);
+            }
+        }
+
+        // Test write permissions
+        var testFile = Path.Combine(cdnStoragePath, $"test_{Guid.NewGuid()}.txt");
+        try
+        {
+            File.WriteAllText(testFile, "Test write permissions");
+            if (File.Exists(testFile))
+            {
+                File.Delete(testFile);
+                logger.LogInformation("Successfully verified write permissions to CDN storage: {Path}", cdnStoragePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to write to CDN storage directory: {Path}. Error: {Error}",
+                cdnStoragePath, ex.Message);
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error setting up CDN storage directory: {Path}", cdnStoragePath);
+    }
+}
+
 // Optional: Create initial CDN configuration in database if not exists
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var dbLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
         // Check if any categories exist
         if (!dbContext.Set<CdnCategory>().Any())
@@ -263,12 +326,13 @@ using (var scope = app.Services.CreateScope())
             {
                 new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
                 new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
+                new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
             };
 
             dbContext.AddRange(defaultCategories);
             await dbContext.SaveChangesAsync();
 
-            logger.LogInformation("Created default CDN categories");
+            dbLogger.LogInformation("Created default CDN categories");
         }
 
         // Check if configuration exists
@@ -307,13 +371,13 @@ using (var scope = app.Services.CreateScope())
             dbContext.Add(apiKey);
             await dbContext.SaveChangesAsync();
 
-            logger.LogInformation("Created default CDN configuration and API key");
+            dbLogger.LogInformation("Created default CDN configuration and API key");
         }
     }
     catch (Exception ex)
     {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing CDN configuration");
+        var scopeLogger = app.Services.GetRequiredService<ILogger<Program>>();
+        scopeLogger.LogError(ex, "An error occurred while initializing CDN configuration");
     }
 }
 
@@ -326,8 +390,8 @@ if (app.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        var permLogger = app.Services.GetRequiredService<ILogger<Program>>();
+        permLogger.LogError(ex, "An error occurred while seeding the database.");
     }
 }
 

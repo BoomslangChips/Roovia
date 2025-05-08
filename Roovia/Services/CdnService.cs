@@ -2,7 +2,6 @@
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -33,7 +32,7 @@ namespace Roovia.Services
         private readonly ILogger<CdnService> _logger;
         private readonly IMemoryCache _memoryCache;
 
-        // Production API URL - always use this in test/dev environments
+        // Production API URL - no longer needed for direct access
         private readonly string _productionApiUrl;
         private readonly bool _forceRemoteApiInTestEnv;
 
@@ -49,7 +48,7 @@ namespace Roovia.Services
         // Large buffer size for improved I/O performance
         private const int LargeBufferSize = 262144; // 256KB buffer
 
-        // HttpClient optimized for CDN uploads
+        // HttpClient optimized for CDN uploads - only kept for backward compatibility
         private readonly HttpClient _optimizedHttpClient;
 
         // Database configuration 
@@ -78,14 +77,12 @@ namespace Roovia.Services
             _bootstrapCdnStoragePath = configuration["CDN:StoragePath"] ?? Path.Combine(environment.ContentRootPath, "wwwroot", "cdn");
             _bootstrapApiKey = configuration["CDN:ApiKey"] ?? "RooviaCDNKey";
 
-            // Set production API URL - always use this in test/dev environments
+            // These are no longer used for actual API calls but kept for backward compatibility
             _productionApiUrl = configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn";
+            _forceRemoteApiInTestEnv = false; // Force direct access always
 
-            // Force remote API usage in test/dev environments (default to true)
-            _forceRemoteApiInTestEnv = configuration.GetValue<bool>("CDN:ForceRemoteApiInTestEnv", true);
-
-            _logger.LogInformation("CdnService initialized with production API URL: {ProductionApiUrl}, ForceRemoteApi: {ForceRemote}",
-                _productionApiUrl, _forceRemoteApiInTestEnv);
+            _logger.LogInformation("CdnService initialized with base URL: {BaseUrl}, storage path: {StoragePath}",
+                _bootstrapCdnBaseUrl, _bootstrapCdnStoragePath);
 
             // Create an optimized HttpClient for CDN operations with longer timeout
             _optimizedHttpClient = _httpClientFactory.CreateClient("CdnClient");
@@ -197,12 +194,9 @@ namespace Roovia.Services
                 }
 
                 // Ensure storage directory exists for each category
-                if (!_forceRemoteApiInTestEnv || !IsDevEnvironment())
-                {
-                    EnsureCategoryDirectoriesExist();
-                }
+                EnsureCategoryDirectoriesExist();
 
-                // Update the HttpClient API key
+                // No longer needed but kept for compatibility
                 if (_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
                 {
                     _optimizedHttpClient.DefaultRequestHeaders.Remove("X-Api-Key");
@@ -242,38 +236,32 @@ namespace Roovia.Services
                     };
                 }
 
-                // Ensure storage directory exists for each category if not using remote API
-                if (!_forceRemoteApiInTestEnv || !IsDevEnvironment())
-                {
-                    EnsureCategoryDirectoriesExist();
-                }
+                // Ensure storage directory exists for each category
+                EnsureCategoryDirectoriesExist();
             }
         }
 
         private void EnsureCategoryDirectoriesExist()
         {
-            if (_categories == null || _cdnConfig == null)
+            if (_categories == null)
                 return;
 
-            string storagePath = _cdnConfig.StoragePath;
-            if (string.IsNullOrEmpty(storagePath) || !Directory.Exists(storagePath))
-            {
-                storagePath = _bootstrapCdnStoragePath;
-                if (string.IsNullOrEmpty(storagePath))
-                    return;
+            string storagePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+            if (string.IsNullOrEmpty(storagePath))
+                return;
 
-                // Try to create the bootstrap storage path if it doesn't exist
-                if (!Directory.Exists(storagePath))
+            // Try to create the storage path if it doesn't exist
+            if (!Directory.Exists(storagePath))
+            {
+                try
                 {
-                    try
-                    {
-                        Directory.CreateDirectory(storagePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("Failed to create bootstrap storage path: {Error}", ex.Message);
-                        return;
-                    }
+                    Directory.CreateDirectory(storagePath);
+                    _logger.LogInformation("Created CDN storage path: {Path}", storagePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to create CDN storage path: {Error}", ex.Message);
+                    return;
                 }
             }
 
@@ -297,8 +285,7 @@ namespace Roovia.Services
             }
         }
 
-
-       public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
+        public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
         {
             try
             {
@@ -408,6 +395,9 @@ namespace Roovia.Services
 
         private string CleanFolderPath(string folderPath)
         {
+            if (string.IsNullOrEmpty(folderPath))
+                return string.Empty;
+
             // Remove any potentially dangerous path characters
             folderPath = folderPath.Replace("..", string.Empty);
 
@@ -426,24 +416,16 @@ namespace Roovia.Services
             return folderPath;
         }
 
-        // Modified detection method
         public bool IsDirectAccessAvailable()
         {
-            // When forcing remote API in a test/dev environment, always return false
-            if (IsDevEnvironment() && _forceRemoteApiInTestEnv)
-            {
-                return false;
-            }
-
-            // Get the storage path from config
+            // Always return true since we're using direct access
             string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
 
             // Check if storage path exists
             bool pathExists = !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
 
-            // If in development, we might not have direct access to the production storage
-            // but we can still use local storage
-            if (IsDevEnvironment() && !pathExists && !_forceRemoteApiInTestEnv)
+            // If in development, we might use local storage
+            if (_environment.IsDevelopment() && !pathExists)
             {
                 // Check if we can use local storage
                 string localStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
@@ -461,7 +443,6 @@ namespace Roovia.Services
                         return false;
                     }
                 }
-
                 return true;
             }
 
@@ -708,9 +689,6 @@ namespace Roovia.Services
             {
                 _logger.LogInformation("Deleting file: {Path}", path);
 
-                // Check if we're in a test environment and should force remote API
-                bool forceRemoteApi = IsDevEnvironment() && _forceRemoteApiInTestEnv;
-
                 string relativePathForDb = path;
 
                 // Extract the relative path from the URL
@@ -727,97 +705,60 @@ namespace Roovia.Services
                     relativePath = path.Replace(cdnBaseUrl, "").TrimStart('/');
                 }
 
-                _logger.LogDebug("Extracted relative path: {RelativePath}, ForceRemote: {ForceRemote}",
-                    relativePath, forceRemoteApi);
+                _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
 
-                if (IsDirectAccessAvailable() && !forceRemoteApi)
+                // Direct file system access
+                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                // If in development and storage path doesn't exist, try local storage path
+                if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
                 {
-                    // Direct file system access
-                    string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-                    // If in development and storage path doesn't exist, try local storage path
-                    if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
-                    {
-                        cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
-                    }
-
-                    string fullPath = Path.Combine(cdnStoragePath, relativePath);
-
-                    _logger.LogDebug("Physical path for delete: {Path}", fullPath);
-
-                    // Update database record first to mark as deleted
-                    await MarkFileAsDeletedAsync(relativePathForDb);
-
-                    if (File.Exists(fullPath))
-                    {
-                        // Get file info before deletion
-                        var fileInfo = new FileInfo(fullPath);
-
-                        // Try to determine category from path
-                        string categoryName = relativePath.Split('/')[0];
-                        var categoryId = await GetCategoryIdAsync(categoryName);
-
-                        // Delete the file
-                        File.Delete(fullPath);
-
-                        _logger.LogInformation("Successfully deleted file: {Path}", fullPath);
-
-                        // Remove from cache if exists
-                        _filePathCache.TryRemove(path, out _);
-                        _cacheExpiry.TryRemove(path, out _);
-
-                        // Update usage statistics
-                        if (categoryId.HasValue)
-                        {
-                            await UpdateUsageStatisticsAsync(
-                                categoryId.Value,
-                                -1,
-                                -fileInfo.Length,
-                                0,
-                                0,
-                                1);
-                        }
-
-                        return true;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("File not found for deletion: {Path}", fullPath);
-                    }
-
-                    return false;
+                    cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
                 }
-                else
+
+                string fullPath = Path.Combine(cdnStoragePath, relativePath);
+
+                _logger.LogDebug("Physical path for delete: {Path}", fullPath);
+
+                // Update database record first to mark as deleted
+                await MarkFileAsDeletedAsync(relativePathForDb);
+
+                if (File.Exists(fullPath))
                 {
-                    _logger.LogInformation("Using remote API for file deletion");
+                    // Get file info before deletion
+                    var fileInfo = new FileInfo(fullPath);
 
-                    // Remote API access
-                    string apiUrl = $"{_productionApiUrl.TrimEnd('/')}/delete?path={Uri.EscapeDataString(path)}";
+                    // Try to determine category from path
+                    string categoryName = relativePath.Split('/')[0];
+                    var categoryId = await GetCategoryIdAsync(categoryName);
 
-                    // Ensure API key is set
-                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-                    {
-                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
-                    }
+                    // Delete the file
+                    File.Delete(fullPath);
 
-                    var response = await _optimizedHttpClient.DeleteAsync(apiUrl);
-
-                    // Update file metadata in database if successful
-                    if (response.IsSuccessStatusCode)
-                    {
-                        await MarkFileAsDeletedAsync(relativePathForDb);
-                        _logger.LogInformation("File deleted successfully via remote API");
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to delete file via remote API: {StatusCode}", response.StatusCode);
-                    }
+                    _logger.LogInformation("Successfully deleted file: {Path}", fullPath);
 
                     // Remove from cache if exists
                     _filePathCache.TryRemove(path, out _);
                     _cacheExpiry.TryRemove(path, out _);
 
-                    return response.IsSuccessStatusCode;
+                    // Update usage statistics
+                    if (categoryId.HasValue)
+                    {
+                        await UpdateUsageStatisticsAsync(
+                            categoryId.Value,
+                            -1,
+                            -fileInfo.Length,
+                            0,
+                            0,
+                            1);
+                    }
+
+                    return true;
+                }
+                else
+                {
+                    _logger.LogWarning("File not found for deletion: {Path}", fullPath);
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -891,15 +832,8 @@ namespace Roovia.Services
             return _cdnConfig.ApiKey;
         }
 
-
         public string GetPhysicalPath(string cdnUrl)
         {
-            // When forcing API in test/dev, return null
-            if (IsDevEnvironment() && _forceRemoteApiInTestEnv)
-            {
-                return null;
-            }
-
             if (IsDirectAccessAvailable())
             {
                 // Check cache first for better performance
@@ -946,7 +880,7 @@ namespace Roovia.Services
             }
 
             // In development, try to use local storage
-            if (_environment.IsDevelopment() && !_forceRemoteApiInTestEnv)
+            if (_environment.IsDevelopment())
             {
                 if (cdnUrl.StartsWith("/cdn/"))
                 {
@@ -967,12 +901,6 @@ namespace Roovia.Services
 
         public Stream GetFileStream(string cdnUrl)
         {
-            // When forcing API in test/dev, return null
-            if (IsDevEnvironment() && _forceRemoteApiInTestEnv)
-            {
-                return null;
-            }
-
             if (IsDirectAccessAvailable())
             {
                 var physicalPath = GetPhysicalPath(cdnUrl);
@@ -990,7 +918,7 @@ namespace Roovia.Services
             }
 
             // In development, try to use local storage
-            if (_environment.IsDevelopment() && !_forceRemoteApiInTestEnv)
+            if (_environment.IsDevelopment())
             {
                 if (cdnUrl.StartsWith("/cdn/"))
                 {
@@ -1121,34 +1049,6 @@ namespace Roovia.Services
                 // Ensure the category is valid
                 category = await ValidateCategoryAsync(category);
 
-                // Check if we're in a test environment and should force remote API
-                bool forceRemoteApi = IsDevEnvironment() && _forceRemoteApiInTestEnv;
-
-                if (forceRemoteApi)
-                {
-                    // Use the production API to get folders
-                    string apiUrl = $"{_productionApiUrl.TrimEnd('/')}/folders?category={category}";
-
-                    // Ensure API key is set in headers
-                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-                    {
-                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
-                    }
-
-                    var response = await _optimizedHttpClient.GetAsync(apiUrl);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<CdnFolder>>>();
-                        if (result?.success == true && result.data != null)
-                        {
-                            return result.data;
-                        }
-                    }
-
-                    _logger.LogWarning("Failed to get folders from production API: {StatusCode}", response.StatusCode);
-                    return new List<CdnFolder>();
-                }
-
                 // Get category ID
                 var categoryId = await GetCategoryIdAsync(category);
                 if (!categoryId.HasValue)
@@ -1181,44 +1081,6 @@ namespace Roovia.Services
             {
                 // Ensure the category is valid
                 category = await ValidateCategoryAsync(category);
-
-                // Check if we're in a test environment and should force remote API
-                bool forceRemoteApi = IsDevEnvironment() && _forceRemoteApiInTestEnv;
-
-                if (forceRemoteApi)
-                {
-                    // Use the production API to get files
-                    string apiUrl = $"{_productionApiUrl.TrimEnd('/')}/files?category={category}";
-
-                    if (!string.IsNullOrEmpty(folderPath))
-                    {
-                        apiUrl += $"&folder={Uri.EscapeDataString(folderPath)}";
-                    }
-
-                    if (!string.IsNullOrEmpty(searchTerm))
-                    {
-                        apiUrl += $"&search={Uri.EscapeDataString(searchTerm)}";
-                    }
-
-                    // Ensure API key is set in headers
-                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-                    {
-                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
-                    }
-
-                    var response = await _optimizedHttpClient.GetAsync(apiUrl);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<CdnFileMetadata>>>();
-                        if (result?.success == true && result.data != null)
-                        {
-                            return result.data;
-                        }
-                    }
-
-                    _logger.LogWarning("Failed to get files from production API: {StatusCode}", response.StatusCode);
-                    return new List<CdnFileMetadata>();
-                }
 
                 // Get category ID
                 var categoryId = await GetCategoryIdAsync(category);
@@ -1339,6 +1201,7 @@ namespace Roovia.Services
             }
         }
 
+        // These classes are used for JSON deserialization - kept for backward compatibility
         private class UploadResult
         {
             public bool Success { get; set; }
