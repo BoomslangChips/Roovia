@@ -950,7 +950,7 @@
                 };
 
                 var response = await httpClient.PostAsJsonAsync(
-                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/rename",
+                $"https://portal.roovia.co.za/api/cdn/rename",
                 requestData);
 
                 if (response.IsSuccessStatusCode)
@@ -1088,7 +1088,7 @@
                 };
 
                 var response = await httpClient.PostAsJsonAsync(
-                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/create-folder",
+                $"https://portal.roovia.co.za/api/cdn/create-folder",
                 requestData);
 
                 if (response.IsSuccessStatusCode)

@@ -12,6 +12,7 @@ namespace Roovia.Interfaces
         Task<string> UploadFileAsync(IFormFile file, string category = "documents", string folderPath = "");
         string GetCdnUrl(string path);
         Task<bool> DeleteFileAsync(string path);
+        Task<string> RenameFileAsync(string path, string newName);
         string GetApiKey();
         bool IsDirectAccessAvailable();
         string GetPhysicalPath(string cdnUrl);

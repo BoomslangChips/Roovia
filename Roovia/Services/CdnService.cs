@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Net.Http.Json;
 
 namespace Roovia.Services
 {
@@ -689,8 +690,6 @@ namespace Roovia.Services
             {
                 _logger.LogInformation("Deleting file: {Path}", path);
 
-                string relativePathForDb = path;
-
                 // Extract the relative path from the URL
                 string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
                 string relativePath;
@@ -700,9 +699,14 @@ namespace Roovia.Services
                 {
                     relativePath = path.Substring(5); // Remove "/cdn/"
                 }
+                else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
+                }
                 else
                 {
-                    relativePath = path.Replace(cdnBaseUrl, "").TrimStart('/');
+                    // If path doesn't start with the base URL, treat it as a relative path
+                    relativePath = path.TrimStart('/');
                 }
 
                 _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
@@ -721,7 +725,7 @@ namespace Roovia.Services
                 _logger.LogDebug("Physical path for delete: {Path}", fullPath);
 
                 // Update database record first to mark as deleted
-                await MarkFileAsDeletedAsync(relativePathForDb);
+                await MarkFileAsDeletedAsync(path);
 
                 if (File.Exists(fullPath))
                 {
@@ -768,6 +772,155 @@ namespace Roovia.Services
             }
         }
 
+        public async Task<string> RenameFileAsync(string path, string newName)
+        {
+            try
+            {
+                _logger.LogInformation("Renaming file: {Path} to {NewName}", path, newName);
+
+                // Check if we need to refresh the configuration
+                await RefreshConfigIfNeededAsync();
+
+                // Extract the relative path from the URL
+                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
+                string relativePath;
+
+                // Handle local development URLs
+                if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
+                {
+                    relativePath = path.Substring(5); // Remove "/cdn/"
+                }
+                else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
+                }
+                else
+                {
+                    // If path doesn't start with the base URL, treat it as a relative path
+                    relativePath = path.TrimStart('/');
+                }
+
+                _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
+
+                // Get directory, old filename, and extension
+                string directory = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? string.Empty;
+                string oldFileName = Path.GetFileName(relativePath);
+                string extension = Path.GetExtension(oldFileName);
+
+                // If newName already has the extension, don't add it again
+                if (!newName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    newName = $"{newName}{extension}";
+                }
+
+                // Direct file system access
+                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                // If in development and storage path doesn't exist, try local storage path
+                if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
+                {
+                    cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
+                }
+
+                string oldFullPath = Path.Combine(cdnStoragePath, relativePath);
+                string newRelativePath = string.IsNullOrEmpty(directory) ?
+                    newName :
+                    Path.Combine(directory, newName).Replace('\\', '/');
+                string newFullPath = Path.Combine(cdnStoragePath, newRelativePath);
+
+                _logger.LogDebug("Old physical path: {OldPath}", oldFullPath);
+                _logger.LogDebug("New physical path: {NewPath}", newFullPath);
+
+                // Check if the old file exists
+                if (!File.Exists(oldFullPath))
+                {
+                    _logger.LogWarning("File not found for rename: {Path}", oldFullPath);
+                    return null;
+                }
+
+                // Check if the new filename already exists
+                if (File.Exists(newFullPath))
+                {
+                    throw new Exception($"A file with the name '{newName}' already exists in this location.");
+                }
+
+                // Rename the file
+                File.Move(oldFullPath, newFullPath);
+
+                _logger.LogInformation("Successfully renamed file from {OldPath} to {NewPath}", oldFullPath, newFullPath);
+
+                // Create new URL
+                string newUrl = $"{cdnBaseUrl.TrimEnd('/')}/{newRelativePath}";
+
+                // Update database record
+                await UpdateFileMetadataAsync(path, newUrl, newName);
+
+                // Remove from cache if exists
+                _filePathCache.TryRemove(path, out _);
+                _cacheExpiry.TryRemove(path, out _);
+
+                return newUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error renaming file: {Path} to {NewName}", path, newName);
+                throw new Exception($"Failed to rename file: {ex.Message}", ex);
+            }
+        }
+
+        private async Task UpdateFileMetadataAsync(string oldUrl, string newUrl, string newFileName)
+        {
+            try
+            {
+                // Create a scope to resolve the DbContext
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+
+                // Find the file metadata
+                var metadata = await dbContext.Set<CdnFileMetadata>()
+                    .FirstOrDefaultAsync(f => f.Url == oldUrl && !f.IsDeleted);
+
+                if (metadata != null)
+                {
+                    // Update with new information
+                    metadata.Url = newUrl;
+                    metadata.FileName = newFileName;
+                   // metadata.UpdatedDate = DateTime.Now;
+
+                    await dbContext.SaveChangesAsync();
+                    _logger.LogInformation("Updated file metadata for rename: {OldUrl} -> {NewUrl}", oldUrl, newUrl);
+                }
+                else
+                {
+                    // Try finding by matching the ending portion of the URL
+                    var allFiles = await dbContext.Set<CdnFileMetadata>()
+                        .Where(f => !f.IsDeleted)
+                        .ToListAsync();
+
+                    var match = allFiles.FirstOrDefault(f => oldUrl.EndsWith(f.Url.TrimStart('/')) || f.Url.EndsWith(oldUrl.TrimStart('/')));
+
+                    if (match != null)
+                    {
+                        match.Url = newUrl;
+                        match.FileName = newFileName;
+                      //  match.UpdatedDate = DateTime.Now;
+
+                        await dbContext.SaveChangesAsync();
+                        _logger.LogInformation("Updated file metadata for rename (partial URL match): {OldUrl} -> {NewUrl}", match.Url, newUrl);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("File metadata not found in database for rename: {Url}", oldUrl);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating file metadata for rename: {Url}", oldUrl);
+                // Don't rethrow to avoid failing the rename process
+            }
+        }
+
         private async Task<int?> GetCategoryIdAsync(string categoryName)
         {
             if (string.IsNullOrEmpty(categoryName))
@@ -800,19 +953,37 @@ namespace Roovia.Services
 
                 // Find the file metadata
                 var metadata = await dbContext.Set<CdnFileMetadata>()
-                    .Where(f => f.Url == url)
+                    .Where(f => f.Url == url && !f.IsDeleted)
                     .FirstOrDefaultAsync();
 
                 if (metadata != null)
                 {
                     // Mark as deleted
                     metadata.IsDeleted = true;
+                   // metadata.DeletedDate = DateTime.Now;
                     await dbContext.SaveChangesAsync();
                     _logger.LogInformation("Marked file as deleted in database: {Url}", url);
                 }
                 else
                 {
-                    _logger.LogWarning("File metadata not found in database: {Url}", url);
+                    // Try finding by matching the ending portion of the URL
+                    var allFiles = await dbContext.Set<CdnFileMetadata>()
+                        .Where(f => !f.IsDeleted)
+                        .ToListAsync();
+
+                    var match = allFiles.FirstOrDefault(f => url.EndsWith(f.Url.TrimStart('/')) || f.Url.EndsWith(url.TrimStart('/')));
+
+                    if (match != null)
+                    {
+                        match.IsDeleted = true;
+                       // match.DeletedDate = DateTime.Now;
+                        await dbContext.SaveChangesAsync();
+                        _logger.LogInformation("Marked file as deleted in database (partial URL match): {Url}", match.Url);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("File metadata not found in database: {Url}", url);
+                    }
                 }
             }
             catch (Exception ex)

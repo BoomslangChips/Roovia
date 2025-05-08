@@ -1061,7 +1061,7 @@
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                 
                 var response = await client.GetFromJsonAsync<ApiResponse<List<CdnCategory>>>(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/categories");
+                    $"https://portal.roovia.co.za/api/cdn/categories");
                 
                 if (response?.success == true && response.data != null)
                 {
@@ -1091,7 +1091,7 @@
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                 
                 var response = await client.GetFromJsonAsync<ApiResponse<List<CdnFolder>>>(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/folders?category={SelectedCategory}");
+                    $"https://portal.roovia.co.za/api/cdn/folders?category={SelectedCategory}");
                 
                 if (response?.success == true && response.data != null)
                 {
@@ -1129,7 +1129,7 @@
                 var apiKey = CdnService.GetApiKey();
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                 
-                var url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/files?category={SelectedCategory}";
+                var url = $"https://portal.roovia.co.za/api/cdn/files?category={SelectedCategory}";
                 if (!string.IsNullOrEmpty(SelectedFolder))
                 {
                     url += $"&folder={Uri.EscapeDataString(SelectedFolder)}";
@@ -1184,7 +1184,7 @@
                     client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                     
                     var response = await client.GetFromJsonAsync<JsonDocument>(
-                        $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/disk-usage");
+                        $"https://portal.roovia.co.za/api/diag/disk-usage");
                     
                     if (response != null)
                     {
@@ -1279,7 +1279,6 @@
         }
         StateHasChanged();
     }
-
     private async Task DeleteFile(FileViewModel file)
     {
         try
@@ -1292,41 +1291,43 @@
             StateHasChanged();
 
             bool success;
-            
+
             if (UseDirectService)
             {
+                // Direct service call for production
                 success = await CdnService.DeleteFileAsync(file.Url);
             }
             else
             {
+                // HTTP client call for test environments
                 var client = HttpClientFactory.CreateClient();
                 var apiKey = CdnService.GetApiKey();
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-                
+
                 var response = await client.DeleteAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}");
-                
+                $"https://portal.roovia.co.za/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}");
+
                 success = response.IsSuccessStatusCode;
             }
 
             if (success)
             {
                 Files.Remove(file);
-                
+
                 if (SelectedFiles.Contains(file))
                 {
                     SelectedFiles.Remove(file);
                 }
-                
+
                 if (PreviewFile == file)
                 {
                     ShowFilePreview = false;
                     PreviewFile = null;
                 }
-                
+
                 StatusMessage = $"File '{file.FileName}' deleted successfully.";
                 StatusAlertClass = "alert-success";
-                
+
                 await UpdateDashboardStats();
             }
             else
@@ -1347,106 +1348,6 @@
         }
     }
 
-    private async Task DeleteSelectedFiles()
-    {
-        if (!SelectedFiles.Any())
-            return;
-
-        try
-        {
-            var confirmed = await JSRuntime.InvokeAsync<bool>(
-                "confirm", 
-                $"Are you sure you want to delete {SelectedFiles.Count} selected files?");
-                
-            if (!confirmed)
-                return;
-
-            IsLoading = true;
-            StateHasChanged();
-
-            int successCount = 0;
-            int failCount = 0;
-
-            foreach (var file in SelectedFiles.ToList())
-            {
-                bool success;
-                
-                if (UseDirectService)
-                {
-                    success = await CdnService.DeleteFileAsync(file.Url);
-                }
-                else
-                {
-                    var client = HttpClientFactory.CreateClient();
-                    var apiKey = CdnService.GetApiKey();
-                    client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-                    
-                    var response = await client.DeleteAsync(
-                        $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}");
-                    
-                    success = response.IsSuccessStatusCode;
-                }
-
-                if (success)
-                {
-                    Files.Remove(file);
-                    SelectedFiles.Remove(file);
-                    
-                    if (PreviewFile == file)
-                    {
-                        ShowFilePreview = false;
-                        PreviewFile = null;
-                    }
-                    
-                    successCount++;
-                }
-                else
-                {
-                    failCount++;
-                }
-            }
-
-            if (successCount > 0)
-            {
-                StatusMessage = $"Successfully deleted {successCount} files.";
-                if (failCount > 0)
-                {
-                    StatusMessage += $" Failed to delete {failCount} files.";
-                    StatusAlertClass = "alert-warning";
-                }
-                else
-                {
-                    StatusAlertClass = "alert-success";
-                }
-                
-                await UpdateDashboardStats();
-            }
-            else
-            {
-                StatusMessage = "Failed to delete any files.";
-                StatusAlertClass = "alert-danger";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error deleting files: {ex.Message}";
-            StatusAlertClass = "alert-danger";
-        }
-        finally
-        {
-            IsLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private void RenameFile(FileViewModel file)
-    {
-        _selectedFile = file;
-        _newFileName = Path.GetFileNameWithoutExtension(file.FileName);
-        _showRenameDialog = true;
-        StateHasChanged();
-    }
-
     private async Task PerformRename()
     {
         if (_selectedFile == null || string.IsNullOrWhiteSpace(_newFileName))
@@ -1463,50 +1364,29 @@
             StateHasChanged();
 
             string newUrl;
-            
+
             if (UseDirectService)
             {
-                // For direct service, we need to use the API endpoint
-                var client = HttpClientFactory.CreateClient();
-                var apiKey = CdnService.GetApiKey();
-                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-                
-                var renameRequest = new
-                {
-                    Path = _selectedFile.Url,
-                    NewName = _newFileName
-                };
-                
-                var response = await client.PostAsJsonAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/rename", 
-                    renameRequest);
-                
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = await response.Content.ReadFromJsonAsync<dynamic>();
-                    newUrl = result?.url?.ToString();
-                }
-                else
-                {
-                    throw new Exception($"Failed to rename file: {response.ReasonPhrase}");
-                }
+                // Use direct service call for production
+                newUrl = await CdnService.RenameFileAsync(_selectedFile.Url, _newFileName);
             }
             else
             {
+                // Use API call for test environments
                 var client = HttpClientFactory.CreateClient();
                 var apiKey = CdnService.GetApiKey();
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-                
+
                 var renameRequest = new
                 {
                     Path = _selectedFile.Url,
                     NewName = _newFileName
                 };
-                
+
                 var response = await client.PostAsJsonAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/rename", 
-                    renameRequest);
-                
+                $"https://portal.roovia.co.za/api/cdn/rename",
+                renameRequest);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<dynamic>();
@@ -1523,21 +1403,21 @@
                 // Update file in list
                 var extension = Path.GetExtension(_selectedFile.FileName);
                 var newFileName = $"{_newFileName}{extension}";
-                
+
                 var index = Files.IndexOf(_selectedFile);
                 if (index >= 0)
                 {
                     Files[index].FileName = newFileName;
                     Files[index].Url = newUrl;
                 }
-                
+
                 // Update selected file if needed
                 if (PreviewFile == _selectedFile)
                 {
                     PreviewFile.FileName = newFileName;
                     PreviewFile.Url = newUrl;
                 }
-                
+
                 StatusMessage = $"File renamed successfully to '{newFileName}'.";
                 StatusAlertClass = "alert-success";
             }
@@ -1558,6 +1438,107 @@
             _selectedFile = null;
             StateHasChanged();
         }
+    }
+
+    private async Task DeleteSelectedFiles()
+    {
+        if (!SelectedFiles.Any())
+            return;
+
+        try
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Are you sure you want to delete {SelectedFiles.Count} selected files?");
+
+            if (!confirmed)
+                return;
+
+            IsLoading = true;
+            StateHasChanged();
+
+            int successCount = 0;
+            int failCount = 0;
+
+            foreach (var file in SelectedFiles.ToList())
+            {
+                bool success;
+
+                if (UseDirectService)
+                {
+                    // Direct service call for production
+                    success = await CdnService.DeleteFileAsync(file.Url);
+                }
+                else
+                {
+                    // HTTP client call for test environments
+                    var client = HttpClientFactory.CreateClient();
+                    var apiKey = CdnService.GetApiKey();
+                    client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+                    var response = await client.DeleteAsync(
+                    $"https://portal.roovia.co.za/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}");
+
+                    success = response.IsSuccessStatusCode;
+                }
+
+                if (success)
+                {
+                    Files.Remove(file);
+                    SelectedFiles.Remove(file);
+
+                    if (PreviewFile == file)
+                    {
+                        ShowFilePreview = false;
+                        PreviewFile = null;
+                    }
+
+                    successCount++;
+                }
+                else
+                {
+                    failCount++;
+                }
+            }
+
+            if (successCount > 0)
+            {
+                StatusMessage = $"Successfully deleted {successCount} files.";
+                if (failCount > 0)
+                {
+                    StatusMessage += $" Failed to delete {failCount} files.";
+                    StatusAlertClass = "alert-warning";
+                }
+                else
+                {
+                    StatusAlertClass = "alert-success";
+                }
+
+                await UpdateDashboardStats();
+            }
+            else
+            {
+                StatusMessage = "Failed to delete any files.";
+                StatusAlertClass = "alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error deleting files: {ex.Message}";
+            StatusAlertClass = "alert-danger";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+    private void RenameFile(FileViewModel file)
+    {
+        _selectedFile = file;
+        _newFileName = Path.GetFileNameWithoutExtension(file.FileName);
+        _showRenameDialog = true;
+        StateHasChanged();
     }
 
     private void ShowCreateFolderDialog()
@@ -1601,7 +1582,7 @@
                 };
                 
                 var response = await client.PostAsJsonAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/create-folder", 
+                    $"https://portal.roovia.co.za/api/cdn/create-folder", 
                     createRequest);
                 
                 success = response.IsSuccessStatusCode;
@@ -1620,7 +1601,7 @@
                 };
                 
                 var response = await client.PostAsJsonAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/create-folder", 
+                    $"https://portal.roovia.co.za/api/cdn/create-folder", 
                     createRequest);
                 
                 success = response.IsSuccessStatusCode;
@@ -1687,7 +1668,7 @@
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                 
                 var response = await client.DeleteAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete-folder?category={SelectedCategory}&path={Uri.EscapeDataString(folderPath)}&force=true");
+                    $"https://portal.roovia.co.za/api/cdn/delete-folder?category={SelectedCategory}&path={Uri.EscapeDataString(folderPath)}&force=true");
                 
                 success = response.IsSuccessStatusCode;
             }
@@ -1698,7 +1679,7 @@
                 client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
                 
                 var response = await client.DeleteAsync(
-                    $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete-folder?category={SelectedCategory}&path={Uri.EscapeDataString(folderPath)}&force=true");
+                    $"https://portal.roovia.co.za/api/cdn/delete-folder?category={SelectedCategory}&path={Uri.EscapeDataString(folderPath)}&force=true");
                 
                 success = response.IsSuccessStatusCode;
             }
@@ -2055,21 +2036,21 @@
             switch (SelectedDiagnostic)
             {
                 case "system-info":
-                    url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/environment";
+                    url = $"https://portal.roovia.co.za/api/diag/environment";
                     break;
                 case "storage-stats":
-                    url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/disk-usage";
+                    url = $"https://portal.roovia.co.za/api/diag/disk-usage";
                     break;
                 case "file-consistency":
-                    url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/verify-files?limit=100";
+                    url = $"https://portal.roovia.co.za/api/diag/verify-files?limit=100";
                     break;
                 case "api-status":
-                    url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/system-check";
+                    url = $"https://portal.roovia.co.za/api/diag/system-check";
                     break;
                 case "cdn-config":
-                    url = $"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/cdn";
+                    url = $"https://portal.roovia.co.za/api/diag/cdn";
                     // Also get storage info
-                    var storageResponse = await client.GetFromJsonAsync<JsonDocument>($"{NavigationManager.BaseUri.TrimEnd('/')}/api/diag/storage");
+                    var storageResponse = await client.GetFromJsonAsync<JsonDocument>($"https://portal.roovia.co.za/api/diag/storage");
                     if (storageResponse != null)
                     {
                         var result = await client.GetAsync(url);
