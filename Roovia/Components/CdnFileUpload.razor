@@ -16,131 +16,131 @@
         <div class="upload-prompt">
             @if (!IsUploading)
             {
-                <div class="upload-icon">
-                    <i class="fa-light fa-cloud-arrow-up fa-2x"></i>
-                </div>
-                <div class="upload-instructions">
-                    <h4>@Title</h4>
-                    <p>@Description</p>
-                    <span class="file-hint">@FileTypeHint</span>
-                    <div class="file-size-hint">
-                        <small>Maximum file size: @FormatFileSize(MaxFileSize)</small>
+                    <div class="upload-icon">
+                        <i class="fa-light fa-cloud-arrow-up fa-2x"></i>
                     </div>
-                </div>
+                    <div class="upload-instructions">
+                        <h4>@Title</h4>
+                        <p>@Description</p>
+                        <span class="file-hint">@FileTypeHint</span>
+                        <div class="file-size-hint">
+                            <small>Maximum file size: @FormatFileSize(MaxFileSize)</small>
+                        </div>
+                    </div>
             }
             else
             {
-                <div class="upload-progress">
-                    <div class="progress">
-                        <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <div class="d-flex justify-content-between w-100">
-                        <span>Uploading @_currentFileName... @UploadProgress%</span>
-                        <span>@FormatFileSize(_bytesUploaded) of @FormatFileSize(_totalBytes)</span>
-                    </div>
-                    <div class="upload-speed mt-1">
-                        <small>@_uploadSpeedText</small>
-                    </div>
+                    <div class="upload-progress">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: @(UploadProgress)%" aria-valuenow="@UploadProgress" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <span>Uploading @_currentFileName... @UploadProgress%</span>
+                            <span>@FormatFileSize(_bytesUploaded) of @FormatFileSize(_totalBytes)</span>
+                        </div>
+                        <div class="upload-speed mt-1">
+                            <small>@_uploadSpeedText</small>
+                        </div>
                     @if (EnableCancelUpload)
                     {
-                        <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">
-                            <i class="fa-light fa-times me-2"></i>Cancel
-                        </button>
+                                <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">
+                                    <i class="fa-light fa-times me-2"></i>Cancel
+                                </button>
                     }
-                </div>
+                    </div>
             }
         </div>
     </div>
 
     @if (UploadedFiles.Any() && !HideFileList)
     {
-        <div class="uploaded-files">
-            <h5>Uploaded Files</h5>
-            <div class="file-list">
+            <div class="uploaded-files">
+                <h5>Uploaded Files</h5>
+                <div class="file-list">
                 @foreach (var file in UploadedFiles)
                 {
-                    <div class="file-item">
-                        <div class="file-icon">
+                            <div class="file-item">
+                                <div class="file-icon">
                             @if (file.ContentType.StartsWith("image/"))
                             {
-                                <i class="fa-light fa-image"></i>
+                                            <i class="fa-light fa-image"></i>
                             }
                             else if (file.ContentType.Contains("pdf"))
                             {
-                                <i class="fa-light fa-file-pdf"></i>
+                                            <i class="fa-light fa-file-pdf"></i>
                             }
                             else if (file.ContentType.Contains("word"))
                             {
-                                <i class="fa-light fa-file-word"></i>
+                                            <i class="fa-light fa-file-word"></i>
                             }
                             else if (file.ContentType.Contains("excel") || file.ContentType.Contains("sheet"))
                             {
-                                <i class="fa-light fa-file-excel"></i>
+                                            <i class="fa-light fa-file-excel"></i>
                             }
                             else if (file.ContentType.StartsWith("video/"))
                             {
-                                <i class="fa-light fa-file-video"></i>
+                                            <i class="fa-light fa-file-video"></i>
                             }
                             else if (file.ContentType.StartsWith("audio/"))
                             {
-                                <i class="fa-light fa-file-audio"></i>
+                                            <i class="fa-light fa-file-audio"></i>
                             }
                             else
                             {
-                                <i class="fa-light fa-file"></i>
+                                            <i class="fa-light fa-file"></i>
                             }
-                        </div>
-                        <div class="file-details">
-                            <div class="file-name">@file.FileName</div>
-                            <div class="file-size">@FormatFileSize(file.Size)</div>
-                        </div>
-                        <div class="file-actions">
-                            <button @onclick="() => ViewFile(file)" class="btn btn-sm btn-outline-primary" title="View file">
-                                <i class="fa-light fa-eye"></i>
-                            </button>
+                                </div>
+                                <div class="file-details">
+                                    <div class="file-name">@file.FileName</div>
+                                    <div class="file-size">@FormatFileSize(file.Size)</div>
+                                </div>
+                                <div class="file-actions">
+                                    <button @onclick="() => ViewFile(file)" class="btn btn-sm btn-outline-primary" title="View file">
+                                        <i class="fa-light fa-eye"></i>
+                                    </button>
                             @if (AllowRename)
                             {
-                                <button @onclick="() => RenameFile(file)" class="btn btn-sm btn-outline-secondary" title="Rename file">
-                                    <i class="fa-light fa-edit"></i>
-                                </button>
+                                            <button @onclick="() => RenameFile(file)" class="btn btn-sm btn-outline-secondary" title="Rename file">
+                                                <i class="fa-light fa-edit"></i>
+                                            </button>
                             }
                             @if (AllowDelete)
                             {
-                                <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
-                                    <i class="fa-light fa-trash"></i>
-                                </button>
+                                            <button @onclick="() => DeleteFile(file)" class="btn btn-sm btn-outline-danger" title="Delete file">
+                                                <i class="fa-light fa-trash"></i>
+                                            </button>
                             }
-                        </div>
-                    </div>
+                                </div>
+                            </div>
                 }
+                </div>
             </div>
-        </div>
     }
 
     @if (_showRenameDialog)
     {
-        <div class="modal fade show" style="display: block;" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Rename File</h5>
-                        <button type="button" class="btn-close" @onclick="() => _showRenameDialog = false"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="newFileName">New file name:</label>
-                            <input type="text" class="form-control" id="newFileName" @bind="_newFileName" />
-                            <small class="form-text text-muted">Enter the new name without extension.</small>
+            <div class="modal fade show" style="display: block;" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Rename File</h5>
+                            <button type="button" class="btn-close" @onclick="() => _showRenameDialog = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="newFileName">New file name:</label>
+                                <input type="text" class="form-control" id="newFileName" @bind="_newFileName" />
+                                <small class="form-text text-muted">Enter the new name without extension.</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="() => _showRenameDialog = false">Cancel</button>
+                            <button type="button" class="btn btn-primary" @onclick="PerformRename">Save</button>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="() => _showRenameDialog = false">Cancel</button>
-                        <button type="button" class="btn btn-primary" @onclick="PerformRename">Save</button>
-                    </div>
                 </div>
+                <div class="modal-backdrop fade show"></div>
             </div>
-            <div class="modal-backdrop fade show"></div>
-        </div>
     }
 </div>
 
@@ -191,87 +191,12 @@
     {
         if (firstRender)
         {
-            // Make sure scripts are loaded
-            await EnsureJavaScriptFunctionsLoaded();
+            // Make sure API key is set in JavaScript
+            await JSRuntime.InvokeVoidAsync("setCdnApiKey", _apiKey);
+
+            // Register for drag/drop events with the .NET reference
             await JSRuntime.InvokeVoidAsync("addDragDropListeners", DotNetObjectReference.Create(this));
         }
-    }
-
-    private async Task EnsureJavaScriptFunctionsLoaded()
-    {
-        await JSRuntime.InvokeVoidAsync("eval", @"
-            if (typeof openUrlWithApiKey !== 'function') {
-                window.openUrlWithApiKey = function(url, apiKey, download = false) {
-                    if (!url) {
-                        console.error('No URL provided');
-                        return;
-                    }
-
-                    const separator = url.includes('?') ? '&' : '?';
-                    const urlWithKey = `${url}${separator}key=${apiKey}`;
-
-                    if (download) {
-                        const link = document.createElement('a');
-                        link.href = urlWithKey;
-                        link.download = url.split('/').pop();
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    } else {
-                        window.open(urlWithKey, '_blank');
-                    }
-                };
-            }
-
-            if (typeof addDragDropListeners !== 'function') {
-                window.addDragDropListeners = function(dotNetRef) {
-                    if (!dotNetRef) {
-                        console.error('No .NET reference provided');
-                        return;
-                    }
-
-                    const containers = document.querySelectorAll('.file-upload-container');
-                    if (containers.length === 0) {
-                        console.error('No file upload containers found');
-                        window.setTimeout(() => addDragDropListeners(dotNetRef), 500);
-                        return;
-                    }
-
-                    containers.forEach(container => {
-                        container.addEventListener('dragenter', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            dotNetRef.invokeMethodAsync('OnDragEnter');
-                        });
-
-                        container.addEventListener('dragover', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        });
-
-                        container.addEventListener('dragleave', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            const rect = container.getBoundingClientRect();
-                            const x = e.clientX;
-                            const y = e.clientY;
-
-                            if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
-                                dotNetRef.invokeMethodAsync('OnDragLeave');
-                            }
-                        });
-
-                        container.addEventListener('drop', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            dotNetRef.invokeMethodAsync('OnDragLeave');
-                        });
-                    });
-                };
-            }
-        ");
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -429,52 +354,50 @@
                 content.Add(new StringContent(FolderPath), "folder");
             }
 
-            // Determine the correct API URL based on environment
-            string apiUrl;
-            if (CdnService.IsDevEnvironment())
+            // Try both endpoints in sequence
+            var endpoints = new string[] {
+                // Primary endpoint - ExtendedCdnController
+                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/upload",
+                // Fallback endpoint - CdnController
+                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdncompat/upload"
+        };
+
+            foreach (var apiUrl in endpoints)
             {
-                // In development, use the local API
-                apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
-            }
-            else
-            {
-                // In production, use local API
-                apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
-            }
-
-            var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                UploadProgress = 100;
-                StateHasChanged();
-
-                var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: cancellationToken);
-
-                if (responseContent != null && responseContent.success)
+                try
                 {
-                    return new UploadedFileInfo
+                    var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        UploadProgress = 100;
+                        StateHasChanged();
+
+                        var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: cancellationToken);
+
+                        if (responseContent != null && responseContent.success)
                         {
-                            FileName = file.Name,
-                            Url = responseContent.url,     // This URL will be from the CDN domain
-                            ContentType = file.ContentType,
-                            Size = file.Size,
-                            Category = Category
-                        };
+                            return new UploadedFileInfo
+                                {
+                                    FileName = file.Name,
+                                    Url = responseContent.url,
+                                    ContentType = file.ContentType,
+                                    Size = file.Size,
+                                    Category = Category
+                                };
+                        }
+                    }
                 }
-                else
+                catch
                 {
-                    await JSRuntime.InvokeVoidAsync("console.error", "Upload succeeded but response invalid",
-                        responseContent?.message ?? "Unknown error");
-                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an invalid response.");
+                    // If first endpoint fails, try the next one
+                    continue;
                 }
             }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                await JSRuntime.InvokeVoidAsync("console.error", "Upload failed", errorContent);
-                await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error: {response.StatusCode}");
-            }
+
+            // If we reach here, both endpoints failed
+            await JSRuntime.InvokeVoidAsync("console.error", "Upload failed on all endpoints");
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to upload {file.Name}. Server returned an error.");
         }
         catch (Exception ex)
         {
@@ -562,34 +485,43 @@
                 httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
             }
 
-            // Use full API URL with the API key in headers
-            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var apiUrl = $"{baseUrl}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}";
-            var response = await httpClient.DeleteAsync(apiUrl);
+            // Try both endpoints in sequence
+            var endpoints = new string[] {
+                // Primary endpoint
+                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}",
+                // Fallback endpoint
+                $"{NavigationManager.BaseUri.TrimEnd('/')}/api/cdncompat/delete?path={Uri.EscapeDataString(file.Url)}"
+        };
 
-            if (response.IsSuccessStatusCode)
+            foreach (var apiUrl in endpoints)
             {
-                var responseContent = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+                try
+                {
+                    var response = await httpClient.DeleteAsync(apiUrl);
 
-                if (responseContent != null && responseContent.success)
-                {
-                    UploadedFiles.Remove(file);
-                    await OnFileDeleted.InvokeAsync(file);
-                    StateHasChanged();
-                    await JSRuntime.InvokeVoidAsync("console.log", "File deleted successfully:", file.FileName);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadFromJsonAsync<DeleteResponse>();
+
+                        if (responseContent != null && responseContent.success)
+                        {
+                            UploadedFiles.Remove(file);
+                            await OnFileDeleted.InvokeAsync(file);
+                            StateHasChanged();
+                            return;
+                        }
+                    }
                 }
-                else
+                catch
                 {
-                    await JSRuntime.InvokeVoidAsync("console.error", "Delete failed with success=false", responseContent?.message);
-                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete file: {responseContent?.message ?? "Unknown error"}");
+                    // If first endpoint fails, try the next one
+                    continue;
                 }
             }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                await JSRuntime.InvokeVoidAsync("console.error", "Delete failed", errorContent);
-                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete file. Server returned an error.");
-            }
+
+            // If we get here, all endpoints failed
+            await JSRuntime.InvokeVoidAsync("console.error", "Delete failed on all endpoints");
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to delete file. All server endpoints returned errors.");
         }
         catch (Exception ex)
         {
@@ -616,60 +548,34 @@
 
         try
         {
-            // Prepare the request data
-            var requestData = new
+            // Use external JS function to handle renames with fallbacks
+            var result = await JSRuntime.InvokeAsync<RenameResult>("renameFile", _selectedFile.Url, _newFileName, _apiKey);
+
+            if (result != null && result.success)
             {
-                Path = _selectedFile.Url,
-                NewName = _newFileName
-            };
+                _showRenameDialog = false;
 
-            // Create HTTP client and set API key
-            var httpClient = HttpClientFactory.CreateClient();
-            if (!httpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-            {
-                httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
-            }
+                // Update local file list
+                var oldFile = _selectedFile;
+                var index = UploadedFiles.IndexOf(oldFile);
 
-            // Make the API request
-            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/rename", requestData);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<RenameResult>();
-
-                if (result != null && result.success)
+                if (index >= 0)
                 {
-                    _showRenameDialog = false;
+                    // Update with new URL and filename
+                    var fileName = Path.GetFileName(result.url);
+                    UploadedFiles[index].Url = result.url;
+                    UploadedFiles[index].FileName = fileName;
 
-                    // Update local file list
-                    var oldFile = _selectedFile;
-                    var index = UploadedFiles.IndexOf(oldFile);
-
-                    if (index >= 0)
-                    {
-                        // Update with new URL and filename
-                        var fileName = Path.GetFileName(result.url);
-                        UploadedFiles[index].Url = result.url;
-                        UploadedFiles[index].FileName = fileName;
-
-                        // Notify parent component
-                        await OnFileRenamed.InvokeAsync(UploadedFiles[index]);
-                    }
-
-                    await JSRuntime.InvokeVoidAsync("alert", "File renamed successfully");
-                    StateHasChanged();
+                    // Notify parent component
+                    await OnFileRenamed.InvokeAsync(UploadedFiles[index]);
                 }
-                else
-                {
-                    await JSRuntime.InvokeVoidAsync("alert", $"Failed to rename file: {result?.message ?? "Unknown error"}");
-                }
+
+                await JSRuntime.InvokeVoidAsync("alert", "File renamed successfully");
+                StateHasChanged();
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                await JSRuntime.InvokeVoidAsync("console.error", "Error renaming file", errorContent);
-                await JSRuntime.InvokeVoidAsync("alert", "An error occurred while renaming the file. Server returned an error.");
+                await JSRuntime.InvokeVoidAsync("alert", $"Failed to rename file: {result?.message ?? "Unknown error"}");
             }
         }
         catch (Exception ex)

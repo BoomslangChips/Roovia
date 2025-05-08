@@ -1,11 +1,14 @@
-﻿// cdnHelpers.js
-/**
- * CDN Helper Functions for Roovia
- * Updated for production CDN integration
- */
-
-// Global API key cache
+﻿// cdnHelpers.js - Consolidated CDN utilities for Roovia
 let cdnApiKey = '';
+
+// Initialize from session storage on page load
+document.addEventListener('DOMContentLoaded', function () {
+    const storedKey = sessionStorage.getItem('cdnApiKey');
+    if (storedKey) {
+        cdnApiKey = storedKey;
+        console.log('CDN API key loaded from session storage');
+    }
+});
 
 /**
  * Set the CDN API key
@@ -51,18 +54,15 @@ function openUrlWithApiKey(url, apiKey, download = false) {
         return;
     }
 
-    // Production CDN URL handling
-    const cdnUrl = url.includes('cdn.roovia.co.za') ? url : url;
-
     // Add API key to URL query parameters
-    const separator = cdnUrl.includes('?') ? '&' : '?';
-    const urlWithKey = `${cdnUrl}${separator}key=${key}`;
+    const separator = url.includes('?') ? '&' : '?';
+    const urlWithKey = `${url}${separator}key=${key}`;
 
     if (download) {
         // Create a temporary link for download
         const link = document.createElement('a');
         link.href = urlWithKey;
-        link.download = cdnUrl.split('/').pop(); // Get filename from URL
+        link.download = url.split('/').pop(); // Get filename from URL
         link.target = '_blank';
         document.body.appendChild(link);
         link.click();
@@ -84,13 +84,11 @@ async function fetchTextContent(url) {
     }
 
     try {
-        // Production CDN URL handling
-        const cdnUrl = url.includes('cdn.roovia.co.za') ? url : url;
         const key = getCdnApiKey();
 
         // Add API key to query parameters if not already present
-        const separator = cdnUrl.includes('?') ? '&' : '?';
-        const urlWithKey = `${cdnUrl}${separator}key=${key}`;
+        const separator = url.includes('?') ? '&' : '?';
+        const urlWithKey = `${url}${separator}key=${key}`;
 
         const response = await fetch(urlWithKey);
 
@@ -126,21 +124,23 @@ function addDragDropListeners(dotNetRef) {
 
     // Add event listeners to each container
     containers.forEach(container => {
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
         container.addEventListener('dragenter', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
             dotNetRef.invokeMethodAsync('OnDragEnter');
         });
 
         container.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+            // Keep the drag effect active
         });
 
         container.addEventListener('dragleave', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
             // Check if the mouse has left the container
             const rect = container.getBoundingClientRect();
             const x = e.clientX;
@@ -152,15 +152,13 @@ function addDragDropListeners(dotNetRef) {
         });
 
         container.addEventListener('drop', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
             dotNetRef.invokeMethodAsync('OnDragLeave');
         });
     });
 }
 
 /**
- * Rename a file - always uses the production API
+ * Rename a file - tries multiple API endpoints in sequence
  * @param {string} url - The URL of the file to rename
  * @param {string} newName - The new name for the file
  * @param {string} apiKey - The API key to use
@@ -178,60 +176,117 @@ async function renameFile(url, newName, apiKey) {
             NewName: newName
         };
 
-        // Always use the production API for renaming
-        const productionApiUrl = 'https://portal.roovia.co.za/api/cdn/rename';
+        const key = apiKey || getCdnApiKey();
 
-        // First try the production API directly
-        try {
-            const productionResponse = await fetch(productionApiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Api-Key': apiKey || getCdnApiKey()
-                },
-                body: JSON.stringify(data)
-            });
+        // Try each endpoint in sequence until one works
+        const endpoints = [
+            // 1. Production API directly
+            'https://portal.roovia.co.za/api/cdn/rename',
+            // 2. Local extended CDN controller
+            `${window.location.origin}/api/cdn/rename`,
+            // 3. Local compatibility controller
+            `${window.location.origin}/api/cdncompat/rename`
+        ];
 
-            if (productionResponse.ok) {
-                const result = await productionResponse.json();
-                return result;
-            }
-        } catch (prodError) {
-            console.log('Direct production API call failed, trying local proxy:', prodError);
-        }
-
-        // Fall back to local proxy if direct call fails
-        const baseUrl = window.location.origin;
-        const apiUrl = `${baseUrl}/api/cdn/rename`;
-
-        // Make API request through local proxy
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Api-Key': apiKey || getCdnApiKey()
-            },
-            body: JSON.stringify(data)
+        console.log('Attempting to rename file', {
+            url: url,
+            newName: newName,
+            endpoints: endpoints
         });
 
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            const error = await response.text();
-            console.error('Error renaming file:', error);
-            return { success: false, message: error };
+        // Try each endpoint
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`Trying endpoint: ${endpoint}`);
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': key
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`Success with endpoint: ${endpoint}`, result);
+                    return result;
+                } else {
+                    console.warn(`Failed with endpoint ${endpoint}: ${response.status} ${response.statusText}`);
+                }
+            } catch (err) {
+                console.warn(`Error with endpoint ${endpoint}:`, err);
+                // Continue to next endpoint
+            }
         }
+
+        // If we get here, all endpoints failed
+        return {
+            success: false,
+            message: 'All rename endpoints failed. Check console for details.'
+        };
     } catch (error) {
         console.error('Error renaming file:', error);
         return { success: false, message: error.message };
     }
 }
 
-// Initialize from session storage on page load
-document.addEventListener('DOMContentLoaded', function () {
-    const storedKey = sessionStorage.getItem('cdnApiKey');
-    if (storedKey) {
-        cdnApiKey = storedKey;
+/**
+ * Test controller connectivity and log results
+ */
+function logEndpointStatus() {
+    const baseUrl = window.location.origin;
+    const endpoints = [
+        `${baseUrl}/api/cdncompat/ping`,
+        `${baseUrl}/api/cdn/ping`,
+        `${baseUrl}/api/diagnostics/ping`,
+        'https://portal.roovia.co.za/api/cdn/categories'
+    ];
+
+    console.group('CDN Endpoint Status Check');
+
+    endpoints.forEach(endpoint => {
+        fetch(endpoint, {
+            headers: {
+                'X-Api-Key': getCdnApiKey()
+            }
+        })
+            .then(response => {
+                console.log(`${endpoint}: ${response.status} ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Response:`, data);
+            })
+            .catch(err => {
+                console.error(`${endpoint}: Error - ${err.message}`);
+            });
+    });
+
+    console.groupEnd();
+}
+
+/**
+ * Get file details including size, upload date, etc.
+ * @param {string} url - File URL
+ * @param {string} apiKey - API key for authentication
+ * @returns {Promise<Object>} - File details
+ */
+async function getFileDetails(url, apiKey) {
+    if (!url) return { success: false, message: "URL is missing" };
+
+    try {
+        const baseUrl = window.location.origin;
+        const response = await fetch(`${baseUrl}/api/cdn/details?path=${encodeURIComponent(url)}`, {
+            method: 'GET',
+            headers: {
+                'X-Api-Key': apiKey || getCdnApiKey()
+            }
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error getting file details:", error);
+        return { success: false, message: error.message };
     }
-});
+}

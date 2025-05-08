@@ -49,55 +49,55 @@
 
 @if (!string.IsNullOrEmpty(uploadedImageUrl))
 {
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">3. Recently Uploaded Image Preview</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="image-preview">
-                            <img src="@(uploadedImageUrl + "?key=" + apiKey)" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">3. Recently Uploaded Image Preview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="image-preview">
+                                <img src="@(uploadedImageUrl + "?key=" + apiKey)" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>Image Details</h5>
-                        <p>Filename: @Path.GetFileName(uploadedImageUrl)</p>
-                        <p>URL: <code>@uploadedImageUrl</code></p>
-                        <button @onclick="ViewLastUploadedImage" class="btn btn-primary">
-                            <i class="fa-light fa-eye me-2"></i>View Image
-                        </button>
-                        <button @onclick="DeleteLastUploadedImage" class="btn btn-danger">
-                            <i class="fa-light fa-trash me-2"></i>Delete Image
-                        </button>
+                        <div class="col-md-6">
+                            <h5>Image Details</h5>
+                            <p>Filename: @Path.GetFileName(uploadedImageUrl)</p>
+                            <p>URL: <code>@uploadedImageUrl</code></p>
+                            <button @onclick="ViewLastUploadedImage" class="btn btn-primary">
+                                <i class="fa-light fa-eye me-2"></i>View Image
+                            </button>
+                            <button @onclick="DeleteLastUploadedImage" class="btn btn-danger">
+                                <i class="fa-light fa-trash me-2"></i>Delete Image
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 }
 
 @if (!string.IsNullOrEmpty(uploadedDocUrl))
 {
-        <div class="card mb-4">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">4. Recently Uploaded Document</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h5>Document Details</h5>
-                        <p>Filename: @Path.GetFileName(uploadedDocUrl)</p>
-                        <p>URL: <code>@uploadedDocUrl</code></p>
-                        <button @onclick="ViewLastUploadedDoc" class="btn btn-primary">
-                            <i class="fa-light fa-eye me-2"></i>View Document
-                        </button>
-                        <button @onclick="DeleteLastUploadedDoc" class="btn btn-danger">
-                            <i class="fa-light fa-trash me-2"></i>Delete Document
-                        </button>
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">4. Recently Uploaded Document</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5>Document Details</h5>
+                            <p>Filename: @Path.GetFileName(uploadedDocUrl)</p>
+                            <p>URL: <code>@uploadedDocUrl</code></p>
+                            <button @onclick="ViewLastUploadedDoc" class="btn btn-primary">
+                                <i class="fa-light fa-eye me-2"></i>View Document
+                            </button>
+                            <button @onclick="DeleteLastUploadedDoc" class="btn btn-danger">
+                                <i class="fa-light fa-trash me-2"></i>Delete Document
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 }
 
 <div class="card mb-4">
@@ -125,6 +125,9 @@
         <button @onclick="TestApiConnection" class="btn btn-primary">
             <i class="fa-light fa-network-wired me-2"></i>Test API Connection
         </button>
+        <button @onclick="RunDiagnostics" class="btn btn-outline-primary ms-2">
+            <i class="fa-light fa-stethoscope me-2"></i>Run Diagnostics
+        </button>
 
         @if (!string.IsNullOrEmpty(apiTestResult))
         {
@@ -149,17 +152,14 @@
         apiKey = CdnService.GetApiKey();
         cdnBaseUrl = "https://cdn.roovia.co.za";
         appBaseUrl = "https://portal.roovia.co.za";
-
-        // Set the API key in JavaScript
-        await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Ensure necessary JavaScript functions are registered
-            await EnsureJavaScriptFunctionsRegistered();
+            // Set the API key in JavaScript - using external function now
+            await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
@@ -195,107 +195,12 @@
         }
     }
 
-    private async Task EnsureJavaScriptFunctionsRegistered()
+    private async Task RunDiagnostics()
     {
-        try
-        {
-            // Define the JS function if it doesn't exist
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                if (typeof openUrlWithApiKey !== 'function') {
-                    window.openUrlWithApiKey = function(url, apiKey, download = false) {
-                        if (!url) {
-                            console.error('No URL provided');
-                            return;
-                        }
-
-                        const separator = url.includes('?') ? '&' : '?';
-                        const urlWithKey = `${url}${separator}key=${apiKey}`;
-
-                        if (download) {
-                            const link = document.createElement('a');
-                            link.href = urlWithKey;
-                            link.download = url.split('/').pop();
-                            link.target = '_blank';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        } else {
-                            window.open(urlWithKey, '_blank');
-                        }
-                    };
-                }
-
-                if (typeof fetchTextContent !== 'function') {
-                    window.fetchTextContent = async function(url) {
-                        if (!url) {
-                            throw new Error('No URL provided');
-                        }
-
-                        try {
-                            const response = await fetch(url);
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                            }
-                            return await response.text();
-                        } catch (error) {
-                            console.error('Error fetching text content:', error);
-                            throw error;
-                        }
-                    };
-                }
-
-                if (typeof addDragDropListeners !== 'function') {
-                    window.addDragDropListeners = function(dotNetRef) {
-                        if (!dotNetRef) {
-                            console.error('No .NET reference provided');
-                            return;
-                        }
-
-                        const containers = document.querySelectorAll('.file-upload-container');
-                        if (!containers.length) {
-                            console.warn('No file upload containers found');
-                            return;
-                        }
-
-                        containers.forEach(container => {
-                            container.addEventListener('dragenter', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dotNetRef.invokeMethodAsync('OnDragEnter');
-                            });
-
-                            container.addEventListener('dragover', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            });
-
-                            container.addEventListener('dragleave', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-
-                                const rect = container.getBoundingClientRect();
-                                const x = e.clientX;
-                                const y = e.clientY;
-
-                                if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
-                                    dotNetRef.invokeMethodAsync('OnDragLeave');
-                                }
-                            });
-
-                            container.addEventListener('drop', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dotNetRef.invokeMethodAsync('OnDragLeave');
-                            });
-                        });
-                    };
-                }
-            ");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error registering JavaScript functions: {ex.Message}");
-        }
+        await JSRuntime.InvokeVoidAsync("logEndpointStatus");
+        apiTestResult = "Check browser console for diagnostic results";
+        apiTestSuccess = true;
+        StateHasChanged();
     }
 
     private void HandleImageUploaded(CdnFileUpload.UploadedFileInfo fileInfo)

@@ -50,11 +50,7 @@ builder.Services.Configure<FormOptions>(options =>
     options.ValueLengthLimit = 209715200; // 200MB
     options.MultipartHeadersLengthLimit = 32768; // 32KB
 });
-// Configure CDN service with production URL
-builder.Services.Configure<CdnOptions>(options => {
-    options.ProductionApiUrl = builder.Configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn";
-    options.ForceApiUsageInDevelopment = true; // Always use API in development
-});
+
 // Add custom HTTP client for CDN operations with optimized settings
 builder.Services.AddHttpClient("CdnClient", client =>
 {

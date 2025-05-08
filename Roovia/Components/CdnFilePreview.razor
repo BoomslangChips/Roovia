@@ -6,127 +6,127 @@
 <div class="cdn-file-preview">
     @if (IsLoading)
     {
-        <div class="text-center p-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+            <div class="text-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading preview...</p>
             </div>
-            <p class="mt-2">Loading preview...</p>
-        </div>
     }
     else if (string.IsNullOrEmpty(FileUrl))
     {
-        <div class="text-center p-4">
-            <p class="text-muted">No file selected for preview.</p>
-        </div>
+            <div class="text-center p-4">
+                <p class="text-muted">No file selected for preview.</p>
+            </div>
     }
     else
     {
-        <div class="preview-container">
+            <div class="preview-container">
             @if (IsImage)
             {
-                <div class="image-preview">
-                    <img src="@FileUrlWithKey" alt="@FileName" class="img-fluid" />
-                </div>
+                        <div class="image-preview">
+                            <img src="@FileUrlWithKey" alt="@FileName" class="img-fluid" />
+                        </div>
             }
             else if (IsPdf)
             {
-                <div class="pdf-preview">
-                    <div class="ratio ratio-16x9">
-                        <iframe src="@FileUrlWithKey" allowfullscreen></iframe>
-                    </div>
-                </div>
+                        <div class="pdf-preview">
+                            <div class="ratio ratio-16x9">
+                                <iframe src="@FileUrlWithKey" allowfullscreen></iframe>
+                            </div>
+                        </div>
             }
             else if (IsVideo)
             {
-                <div class="video-preview">
-                    <div class="ratio ratio-16x9">
-                        <video controls>
-                            <source src="@FileUrlWithKey" type="@ContentType">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                </div>
+                        <div class="video-preview">
+                            <div class="ratio ratio-16x9">
+                                <video controls>
+                                    <source src="@FileUrlWithKey" type="@ContentType">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        </div>
             }
             else if (IsAudio)
             {
-                <div class="audio-preview">
-                    <audio controls class="w-100">
-                        <source src="@FileUrlWithKey" type="@ContentType">
-                        Your browser does not support the audio tag.
-                    </audio>
-                </div>
+                        <div class="audio-preview">
+                            <audio controls class="w-100">
+                                <source src="@FileUrlWithKey" type="@ContentType">
+                                Your browser does not support the audio tag.
+                            </audio>
+                        </div>
             }
             else if (IsText)
             {
                 @if (TextContent != null)
                 {
-                    <div class="text-preview">
-                        <pre class="text-preview-content">@TextContent</pre>
-                    </div>
+                                <div class="text-preview">
+                                    <pre class="text-preview-content">@TextContent</pre>
+                                </div>
                 }
                 else
                 {
-                    <div class="text-center p-4">
-                        <button @onclick="LoadTextContent" class="btn btn-primary">
-                            <i class="fa-light fa-file-lines me-2"></i>Load Text Content
-                        </button>
-                    </div>
+                                <div class="text-center p-4">
+                                    <button @onclick="LoadTextContent" class="btn btn-primary">
+                                        <i class="fa-light fa-file-lines me-2"></i>Load Text Content
+                                    </button>
+                                </div>
                 }
             }
             else
             {
-                <div class="generic-preview text-center">
-                    <div class="file-icon mb-3">
+                        <div class="generic-preview text-center">
+                            <div class="file-icon mb-3">
                         @if (ContentType?.Contains("word") == true)
                         {
-                            <i class="fa-light fa-file-word fa-4x text-primary"></i>
+                                        <i class="fa-light fa-file-word fa-4x text-primary"></i>
                         }
                         else if (ContentType?.Contains("excel") == true || ContentType?.Contains("sheet") == true)
                         {
-                            <i class="fa-light fa-file-excel fa-4x text-success"></i>
+                                        <i class="fa-light fa-file-excel fa-4x text-success"></i>
                         }
                         else if (ContentType?.Contains("zip") == true || ContentType?.Contains("archive") == true)
                         {
-                            <i class="fa-light fa-file-archive fa-4x text-warning"></i>
+                                        <i class="fa-light fa-file-archive fa-4x text-warning"></i>
                         }
                         else
                         {
-                            <i class="fa-light fa-file fa-4x text-secondary"></i>
+                                        <i class="fa-light fa-file fa-4x text-secondary"></i>
                         }
-                    </div>
-                    <h4>@FileName</h4>
-                    <p>@FormatFileSize(FileSize)</p>
-                    <p class="text-muted">Preview not available for this file type.</p>
-                    <button @onclick="DownloadFile" class="btn btn-primary mt-2">
-                        <i class="fa-light fa-download me-2"></i>Download File
-                    </button>
-                </div>
+                            </div>
+                            <h4>@FileName</h4>
+                            <p>@FormatFileSize(FileSize)</p>
+                            <p class="text-muted">Preview not available for this file type.</p>
+                            <button @onclick="DownloadFile" class="btn btn-primary mt-2">
+                                <i class="fa-light fa-download me-2"></i>Download File
+                            </button>
+                        </div>
             }
-        </div>
-
-        <div class="preview-actions mt-3 d-flex justify-content-between">
-            <div>
-                <h5>@FileName</h5>
-                <p class="text-muted mb-0">@FormatFileSize(FileSize)</p>
             </div>
-            <div>
-                <button @onclick="DownloadFile" class="btn btn-primary">
-                    <i class="fa-light fa-download me-2"></i>Download
-                </button>
+
+            <div class="preview-actions mt-3 d-flex justify-content-between">
+                <div>
+                    <h5>@FileName</h5>
+                    <p class="text-muted mb-0">@FormatFileSize(FileSize)</p>
+                </div>
+                <div>
+                    <button @onclick="DownloadFile" class="btn btn-primary">
+                        <i class="fa-light fa-download me-2"></i>Download
+                    </button>
                 @if (EnableRename && OnRename.HasDelegate)
                 {
-                    <button @onclick="RenameFile" class="btn btn-outline-secondary ms-2">
-                        <i class="fa-light fa-edit me-2"></i>Rename
-                    </button>
+                            <button @onclick="RenameFile" class="btn btn-outline-secondary ms-2">
+                                <i class="fa-light fa-edit me-2"></i>Rename
+                            </button>
                 }
                 @if (EnableDelete && OnDelete.HasDelegate)
                 {
-                    <button @onclick="DeleteFile" class="btn btn-outline-danger ms-2">
-                        <i class="fa-light fa-trash me-2"></i>Delete
-                    </button>
+                            <button @onclick="DeleteFile" class="btn btn-outline-danger ms-2">
+                                <i class="fa-light fa-trash me-2"></i>Delete
+                            </button>
                 }
+                </div>
             </div>
-        </div>
     }
 </div>
 
@@ -154,52 +154,6 @@
     protected override async Task OnInitializedAsync()
     {
         ApiKey = CdnService.GetApiKey();
-
-        // Ensure the fetchTextContent function is available
-        await JSRuntime.InvokeVoidAsync("eval", @"
-            if (typeof fetchTextContent !== 'function') {
-                window.fetchTextContent = async function(url) {
-                    if (!url) {
-                        throw new Error('No URL provided');
-                    }
-
-                    try {
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return await response.text();
-                    } catch (error) {
-                        console.error('Error fetching text content:', error);
-                        throw error;
-                    }
-                };
-            }
-
-            if (typeof openUrlWithApiKey !== 'function') {
-                window.openUrlWithApiKey = function(url, apiKey, download = false) {
-                    if (!url) {
-                        console.error('No URL provided');
-                        return;
-                    }
-
-                    const separator = url.includes('?') ? '&' : '?';
-                    const urlWithKey = `${url}${separator}key=${apiKey}`;
-
-                    if (download) {
-                        const link = document.createElement('a');
-                        link.href = urlWithKey;
-                        link.download = url.split('/').pop();
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    } else {
-                        window.open(urlWithKey, '_blank');
-                    }
-                };
-            }
-        ");
     }
 
     protected override async Task OnParametersSetAsync()
@@ -221,7 +175,7 @@
             IsLoading = true;
             StateHasChanged();
 
-            // Use our JavaScript helper function to fetch the text content
+            // Use the external JavaScript function to fetch text content
             TextContent = await JSRuntime.InvokeAsync<string>("fetchTextContent", FileUrlWithKey);
         }
         catch (Exception ex)

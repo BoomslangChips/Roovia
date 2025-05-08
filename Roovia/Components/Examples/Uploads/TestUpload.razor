@@ -21,24 +21,24 @@
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-                <div class="alert alert-danger">
-                    <h5>Error</h5>
-                    <pre class="mb-0">@errorMessage</pre>
-                </div>
+            <div class="alert alert-danger">
+                <h5>Error</h5>
+                <pre class="mb-0">@errorMessage</pre>
+            </div>
         }
 
         @if (!string.IsNullOrEmpty(resultUrl))
         {
-                <div class="alert alert-success">
-                    <h5>Success!</h5>
-                    <p>File uploaded to: @resultUrl</p>
-                    <button @onclick="ViewUploadedFile" class="btn btn-primary">
-                        <i class="fa-light fa-eye me-2"></i>View File
-                    </button>
-                    <button @onclick="DeleteUploadedFile" class="btn btn-danger ms-2">
-                        <i class="fa-light fa-trash me-2"></i>Delete File
-                    </button>
-                </div>
+            <div class="alert alert-success">
+                <h5>Success!</h5>
+                <p>File uploaded to: @resultUrl</p>
+                <button @onclick="ViewUploadedFile" class="btn btn-primary">
+                    <i class="fa-light fa-eye me-2"></i>View File
+                </button>
+                <button @onclick="DeleteUploadedFile" class="btn btn-danger ms-2">
+                    <i class="fa-light fa-trash me-2"></i>Delete File
+                </button>
+            </div>
         }
     </div>
 </div>
@@ -60,19 +60,19 @@
                 <h5>Categories</h5>
                 @if (_categories == null)
                 {
-                        <p><em>Loading categories...</em></p>
+                    <p><em>Loading categories...</em></p>
                 }
                 else
                 {
-                        <ul>
+                    <ul>
                         @foreach (var category in _categories)
                         {
-                                    <li>
-                                        <strong>@category.DisplayName</strong> (@category.Name) -
-                                        File types: <code>@(string.IsNullOrEmpty(category.AllowedFileTypes) ? "*" : category.AllowedFileTypes)</code>
-                                    </li>
+                            <li>
+                                <strong>@category.DisplayName</strong> (@category.Name) -
+                                File types: <code>@(string.IsNullOrEmpty(category.AllowedFileTypes) ? "*" : category.AllowedFileTypes)</code>
+                            </li>
                         }
-                        </ul>
+                    </ul>
                 }
             </div>
         </div>
@@ -85,9 +85,9 @@
 
             @if (!string.IsNullOrEmpty(apiTestResult))
             {
-                    <div class="mt-2 @(apiTestSuccess ? "alert alert-success" : "alert alert-danger")">
-                        <p>@apiTestResult</p>
-                    </div>
+                <div class="mt-2 @(apiTestSuccess ? "alert alert-success" : "alert alert-danger")">
+                    <p>@apiTestResult</p>
+                </div>
             }
         </div>
     </div>
@@ -105,9 +105,15 @@
     {
         apiKey = CdnService.GetApiKey();
         await LoadCategories();
-        await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
-    }
 
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
+        }
+    }
     private async Task LoadCategories()
     {
         try

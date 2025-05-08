@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 namespace Roovia.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/cdncompat")] // Changed from "api/[controller]" to avoid route conflict
     public class CdnController : ControllerBase
     {
         private readonly ICdnService _cdnService;
@@ -33,12 +33,24 @@ namespace Roovia.Controllers
             _logger = logger;
         }
 
+        [HttpGet("ping")]
+        public IActionResult Ping()
+        {
+            return Ok(new
+            {
+                success = true,
+                controller = GetType().Name,
+                timestamp = DateTime.Now
+            });
+        }
+
         [HttpPost("upload")]
         [RequestSizeLimit(209715200)] // 200MB in bytes
         [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200MB in bytes
         public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string category = "documents", [FromForm] string folder = "")
         {
             var apiKey = _cdnService.GetApiKey();
+            // Check API key for external requests
             if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
                 string.IsNullOrWhiteSpace(requestApiKey) ||
                 requestApiKey != apiKey)

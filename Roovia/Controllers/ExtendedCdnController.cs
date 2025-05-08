@@ -32,6 +32,17 @@ namespace Roovia.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
+        [HttpGet("ping")]
+        public IActionResult Ping()
+        {
+            return Ok(new
+            {
+                success = true,
+                controller = GetType().Name,
+                timestamp = DateTime.Now
+            });
+        }
+
         [HttpGet("categories")]
         public async Task<IActionResult> GetCategories()
         {
@@ -220,11 +231,13 @@ namespace Roovia.Controllers
         {
             // Check API key for external requests
             var apiKey = _cdnService.GetApiKey();
-            if (!HttpContext.Request.Host.Host.Contains("roovia.co.za"))
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
-                if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
-                    string.IsNullOrWhiteSpace(requestApiKey) ||
-                    requestApiKey != apiKey)
+                if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
+                    string.IsNullOrWhiteSpace(queryApiKey) ||
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }
@@ -413,6 +426,53 @@ namespace Roovia.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error redirecting to file: {Path}", path);
+                return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
+            }
+        }
+
+        [HttpDelete("delete")]
+        public async Task<IActionResult> DeleteFile([FromQuery] string path)
+        {
+            var apiKey = _cdnService.GetApiKey();
+            // Check API key for external requests
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
+            {
+                // Check if query parameter has the API key
+                if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
+                    string.IsNullOrWhiteSpace(queryApiKey) ||
+                    queryApiKey != apiKey)
+                {
+                    return Unauthorized(new { success = false, message = "Invalid API key" });
+                }
+            }
+
+            if (string.IsNullOrEmpty(path))
+                return BadRequest(new { success = false, message = "No file path provided" });
+
+            try
+            {
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+                // Forward request to production API
+                var response = await client.DeleteAsync($"{PRODUCTION_API_URL}/delete?path={Uri.EscapeDataString(path)}");
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error forwarding delete to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
