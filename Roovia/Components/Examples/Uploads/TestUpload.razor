@@ -1,0 +1,69 @@
+﻿@page "/test-upload"
+@using System.IO
+@using System.Net.Http.Headers
+@using Microsoft.Extensions.Logging
+@using Roovia.Interfaces
+@inject ICdnService CdnService
+@inject ILogger<TestUpload> Logger
+@rendermode InteractiveServer
+
+<h1>Test CDN Upload</h1>
+
+<div class="mb-3">
+    <InputFile OnChange="@OnInputFileChange" />
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3">
+        <h4>Error</h4>
+        <pre>@errorMessage</pre>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(resultUrl))
+{
+    <div class="alert alert-success mt-3">
+        <h4>Success!</h4>
+        <p>File uploaded to: <a href="@resultUrl" target="_blank">@resultUrl</a></p>
+    </div>
+}
+
+@code {
+    private string errorMessage;
+    private string resultUrl;
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            errorMessage = null;
+            resultUrl = null;
+
+            // Use a small test file
+            var file = e.File;
+
+            Logger.LogInformation("Starting upload test with file: {FileName}, size: {Size}",
+                file.Name, file.Size);
+
+            // Try direct upload first
+            resultUrl = await CdnService.UploadFileAsync(
+                file.OpenReadStream(),
+                file.Name,
+                file.ContentType,
+                "test-uploads");
+
+            Logger.LogInformation("Upload successful: {Url}", resultUrl);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}\n\nStack trace:\n{ex.StackTrace}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\n\nInner exception: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}";
+            }
+
+            Logger.LogError(ex, "Upload test failed");
+        }
+    }
+}
