@@ -43,7 +43,9 @@
                     </div>
                     @if (EnableCancelUpload)
                     {
-                        <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">Cancel</button>
+                        <button @onclick="CancelUpload" class="btn btn-sm btn-outline-danger mt-2">
+                            <i class="fa-light fa-times me-2"></i>Cancel
+                        </button>
                     }
                 </div>
             }
@@ -190,19 +192,86 @@
         if (firstRender)
         {
             // Make sure scripts are loaded
+            await EnsureJavaScriptFunctionsLoaded();
             await JSRuntime.InvokeVoidAsync("addDragDropListeners", DotNetObjectReference.Create(this));
-
-            // Check if fileUpload.js is loaded
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("eval", "typeof openUrlWithApiKey === 'function'");
-            }
-            catch
-            {
-                // If not loaded, warn in console
-                await JSRuntime.InvokeVoidAsync("console.warn", "fileUpload.js is not loaded. File viewing may not work correctly.");
-            }
         }
+    }
+
+    private async Task EnsureJavaScriptFunctionsLoaded()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            if (typeof openUrlWithApiKey !== 'function') {
+                window.openUrlWithApiKey = function(url, apiKey, download = false) {
+                    if (!url) {
+                        console.error('No URL provided');
+                        return;
+                    }
+
+                    const separator = url.includes('?') ? '&' : '?';
+                    const urlWithKey = `${url}${separator}key=${apiKey}`;
+
+                    if (download) {
+                        const link = document.createElement('a');
+                        link.href = urlWithKey;
+                        link.download = url.split('/').pop();
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } else {
+                        window.open(urlWithKey, '_blank');
+                    }
+                };
+            }
+
+            if (typeof addDragDropListeners !== 'function') {
+                window.addDragDropListeners = function(dotNetRef) {
+                    if (!dotNetRef) {
+                        console.error('No .NET reference provided');
+                        return;
+                    }
+
+                    const containers = document.querySelectorAll('.file-upload-container');
+                    if (containers.length === 0) {
+                        console.error('No file upload containers found');
+                        window.setTimeout(() => addDragDropListeners(dotNetRef), 500);
+                        return;
+                    }
+
+                    containers.forEach(container => {
+                        container.addEventListener('dragenter', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dotNetRef.invokeMethodAsync('OnDragEnter');
+                        });
+
+                        container.addEventListener('dragover', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        });
+
+                        container.addEventListener('dragleave', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            const rect = container.getBoundingClientRect();
+                            const x = e.clientX;
+                            const y = e.clientY;
+
+                            if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+                                dotNetRef.invokeMethodAsync('OnDragLeave');
+                            }
+                        });
+
+                        container.addEventListener('drop', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dotNetRef.invokeMethodAsync('OnDragLeave');
+                        });
+                    });
+                };
+            }
+        ");
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -215,7 +284,9 @@
 
             var uploadedFiles = new List<UploadedFileInfo>();
 
-            foreach (var file in e.GetMultipleFiles(Multiple ? 10 : 1))
+            var files = Multiple ? e.GetMultipleFiles(10) : new[] { e.File };
+
+            foreach (var file in files)
             {
                 if (file.Size > MaxFileSize)
                 {
@@ -290,56 +361,87 @@
 
     private async Task<UploadedFileInfo> UploadStandardFile(IBrowserFile file, CancellationToken cancellationToken)
     {
-        // Create HTTP client
-        var httpClient = HttpClientFactory.CreateClient();
-        httpClient.Timeout = TimeSpan.FromHours(1); // Extended timeout for large files
-
-        // Ensure we have the API key header
-        if (!httpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-        {
-            httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
-        }
-
-        // Create multipart form content
-        using var content = new MultipartFormDataContent();
-
-        // Use a progress tracking stream
-        var progressStream = new ProgressStream(
-            file.OpenReadStream(MaxFileSize),
-            async size =>
-            {
-                _bytesUploaded = size;
-                UploadProgress = (int)(size * 100 / _totalBytes);
-                await InvokeAsync(() => this.StateHasChanged());
-            });
-
-        var fileContent = new StreamContent(progressStream);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-
-        content.Add(fileContent, "file", file.Name);
-        content.Add(new StringContent(Category), "category");
-
-        // Add folder path if provided
-        if (!string.IsNullOrEmpty(FolderPath))
-        {
-            content.Add(new StringContent(FolderPath), "folder");
-        }
-
-        // Determine the correct API URL based on environment
-        string apiUrl;
-        if (CdnService.IsDevEnvironment())
-        {
-            // In development, use the production API
-            apiUrl = "https://portal.roovia.co.za/api/cdn/upload";
-        }
-        else
-        {
-            // In production, use local API
-            apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
-        }
-
         try
         {
+            // Use the CdnService for direct upload when available
+            if (CdnService.IsDirectAccessAvailable() && !CdnService.IsDevEnvironment())
+            {
+                var stream = file.OpenReadStream(MaxFileSize);
+                var progressStream2 = new ProgressStream(stream, async size =>
+                {
+                    _bytesUploaded = size;
+                    UploadProgress = (int)(size * 100 / _totalBytes);
+                    await InvokeAsync(() => StateHasChanged());
+                });
+
+                var url = await CdnService.UploadFileAsync(
+                    progressStream2,
+                    file.Name,
+                    file.ContentType,
+                    Category,
+                    FolderPath);
+
+                UploadProgress = 100;
+                await InvokeAsync(() => StateHasChanged());
+
+                return new UploadedFileInfo
+                    {
+                        FileName = file.Name,
+                        Url = url,
+                        ContentType = file.ContentType,
+                        Size = file.Size,
+                        Category = Category
+                    };
+            }
+
+            // Otherwise use HTTP client
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromHours(1); // Extended timeout for large files
+
+            // Ensure we have the API key header
+            if (!httpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
+            }
+
+            // Create multipart form content
+            using var content = new MultipartFormDataContent();
+
+            // Use a progress tracking stream
+            var progressStream = new ProgressStream(
+                file.OpenReadStream(MaxFileSize),
+                async size =>
+                {
+                    _bytesUploaded = size;
+                    UploadProgress = (int)(size * 100 / _totalBytes);
+                    await InvokeAsync(() => this.StateHasChanged());
+                });
+
+            var fileContent = new StreamContent(progressStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+            content.Add(fileContent, "file", file.Name);
+            content.Add(new StringContent(Category), "category");
+
+            // Add folder path if provided
+            if (!string.IsNullOrEmpty(FolderPath))
+            {
+                content.Add(new StringContent(FolderPath), "folder");
+            }
+
+            // Determine the correct API URL based on environment
+            string apiUrl;
+            if (CdnService.IsDevEnvironment())
+            {
+                // In development, use the local API
+                apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
+            }
+            else
+            {
+                // In production, use local API
+                apiUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority) + "/api/cdn/upload";
+            }
+
             var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
@@ -376,7 +478,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("console.error", "Upload exception", ex.Message, apiUrl);
+            await JSRuntime.InvokeVoidAsync("console.error", "Upload exception", ex.Message);
             await JSRuntime.InvokeVoidAsync("alert", $"Error uploading {file.Name}: {ex.Message}");
         }
 
@@ -385,8 +487,8 @@
 
     private async Task<UploadedFileInfo> UploadLargeFile(IBrowserFile file, CancellationToken cancellationToken)
     {
-        // Use the same approach as standard upload for now
-        // In the future, implement proper chunked uploading
+        // For now, use the same approach as standard upload
+        // In the future, implement chunked uploading with better progress tracking
         return await UploadStandardFile(file, cancellationToken);
     }
 
@@ -444,6 +546,15 @@
             if (!confirmed)
                 return;
 
+            // Try to use CdnService directly
+            if (await CdnService.DeleteFileAsync(file.Url))
+            {
+                UploadedFiles.Remove(file);
+                await OnFileDeleted.InvokeAsync(file);
+                StateHasChanged();
+                return;
+            }
+
             // Create HTTP client and set API key
             var httpClient = HttpClientFactory.CreateClient();
             if (!httpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
@@ -451,20 +562,8 @@
                 httpClient.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
             }
 
-            // Determine the correct API URL based on environment
-            string baseUrl;
-            if (CdnService.IsDevEnvironment())
-            {
-                // In development, use the production API
-                baseUrl = "https://portal.roovia.co.za";
-            }
-            else
-            {
-                // In production, use local API
-                baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            }
-
             // Use full API URL with the API key in headers
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
             var apiUrl = $"{baseUrl}/api/cdn/delete?path={Uri.EscapeDataString(file.Url)}";
             var response = await httpClient.DeleteAsync(apiUrl);
 
@@ -517,19 +616,6 @@
 
         try
         {
-            // Determine the correct API URL based on environment
-            string baseUrl;
-            if (CdnService.IsDevEnvironment())
-            {
-                // In development, use the production API
-                baseUrl = "https://portal.roovia.co.za";
-            }
-            else
-            {
-                // In production, use local API
-                baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            }
-
             // Prepare the request data
             var requestData = new
             {
@@ -545,6 +631,7 @@
             }
 
             // Make the API request
+            var baseUrl = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
             var response = await httpClient.PostAsJsonAsync($"{baseUrl}/api/cdn/rename", requestData);
 
             if (response.IsSuccessStatusCode)

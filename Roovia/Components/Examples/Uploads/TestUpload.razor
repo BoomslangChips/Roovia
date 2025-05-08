@@ -5,33 +5,101 @@
 @using Roovia.Interfaces
 @inject ICdnService CdnService
 @inject ILogger<TestUpload> Logger
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<h1>Test CDN Upload</h1>
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h3 class="mb-0">Test CDN Upload</h3>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <InputFile OnChange="OnInputFileChange" class="form-control" />
+            <small class="text-muted">Select a file to test the upload functionality</small>
+        </div>
 
-<div class="mb-3">
-    <InputFile OnChange="@OnInputFileChange" />
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <h5>Error</h5>
+                <pre class="mb-0">@errorMessage</pre>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(resultUrl))
+        {
+            <div class="alert alert-success">
+                <h5>Success!</h5>
+                <p>File uploaded to: @resultUrl</p>
+                <button @onclick="ViewUploadedFile" class="btn btn-primary">
+                    <i class="fa-light fa-eye me-2"></i>View File
+                </button>
+                <button @onclick="DeleteUploadedFile" class="btn btn-danger ms-2">
+                    <i class="fa-light fa-trash me-2"></i>Delete File
+                </button>
+            </div>
+        }
+    </div>
 </div>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger mt-3">
-        <h4>Error</h4>
-        <pre>@errorMessage</pre>
+<div class="card mt-4">
+    <div class="card-header bg-info text-white">
+        <h4 class="mb-0">CDN Information</h4>
     </div>
-}
-
-@if (!string.IsNullOrEmpty(resultUrl))
-{
-    <div class="alert alert-success mt-3">
-        <h4>Success!</h4>
-        <p>File uploaded to: <a href="@resultUrl" target="_blank">@resultUrl</a></p>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Environment</h5>
+                <p>Development Environment: <strong>@CdnService.IsDevEnvironment()</strong></p>
+                <p>Direct Access Available: <strong>@CdnService.IsDirectAccessAvailable()</strong></p>
+                <p>API Key: <code>@CdnService.GetApiKey()</code></p>
+                <p>CDN Base URL: <code>@CdnService.GetCdnUrl("")</code></p>
+            </div>
+            <div class="col-md-6">
+                <h5>Categories</h5>
+                @if (_categories == null)
+                {
+                    <p><em>Loading categories...</em></p>
+                }
+                else
+                {
+                    <ul>
+                        @foreach (var category in _categories)
+                        {
+                            <li>
+                                <strong>@category.DisplayName</strong> (@category.Name) -
+                                File types: <code>@(string.IsNullOrEmpty(category.AllowedFileTypes) ? "*" : category.AllowedFileTypes)</code>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
     </div>
-}
+</div>
 
 @code {
     private string errorMessage;
     private string resultUrl;
+    private List<Roovia.Models.CDN.CdnCategory> _categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            _categories = await CdnService.GetCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading categories: {ex.Message}";
+            Logger.LogError(ex, "Failed to load categories");
+        }
+    }
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
@@ -42,11 +110,10 @@
 
             // Use a small test file
             var file = e.File;
-
             Logger.LogInformation("Starting upload test with file: {FileName}, size: {Size}",
                 file.Name, file.Size);
 
-            // Try direct upload first
+            // Try direct upload using the service
             resultUrl = await CdnService.UploadFileAsync(
                 file.OpenReadStream(),
                 file.Name,
@@ -62,8 +129,49 @@
             {
                 errorMessage += $"\n\nInner exception: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}";
             }
-
             Logger.LogError(ex, "Upload test failed");
+        }
+    }
+
+    private async Task ViewUploadedFile()
+    {
+        if (string.IsNullOrEmpty(resultUrl))
+            return;
+
+        try
+        {
+            string apiKey = CdnService.GetApiKey();
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", resultUrl, apiKey);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error viewing file: {ex.Message}";
+            Logger.LogError(ex, "Failed to view file");
+        }
+    }
+
+    private async Task DeleteUploadedFile()
+    {
+        if (string.IsNullOrEmpty(resultUrl))
+            return;
+
+        try
+        {
+            var result = await CdnService.DeleteFileAsync(resultUrl);
+            if (result)
+            {
+                resultUrl = null;
+                await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully!");
+            }
+            else
+            {
+                errorMessage = "Failed to delete file";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting file: {ex.Message}";
+            Logger.LogError(ex, "Failed to delete file");
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// wwwroot/js/cdnHelpers.js
+﻿// cdnHelpers.js
 /**
  * CDN Helper Functions for Roovia
  */
@@ -70,6 +70,34 @@ function openUrlWithApiKey(url, apiKey, download = false) {
 }
 
 /**
+ * Fetch text content from a URL
+ * @param {string} url - The URL to fetch
+ * @returns {Promise<string>} A promise that resolves with the text content
+ */
+async function fetchTextContent(url) {
+    if (!url) {
+        throw new Error('No URL provided');
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'X-Api-Key': getCdnApiKey()
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.text();
+    } catch (error) {
+        console.error('Error fetching text content:', error);
+        throw error;
+    }
+}
+
+/**
  * Add drag and drop event listeners to file upload component
  * @param {object} dotNetRef - Reference to the .NET component
  */
@@ -79,45 +107,47 @@ function addDragDropListeners(dotNetRef) {
         return;
     }
 
-    // Get file upload container
-    const container = document.querySelector('.roovia-cdn-file-upload-container');
-    if (!container) {
-        console.error('File upload container not found');
+    // Get file upload containers
+    const containers = document.querySelectorAll('.file-upload-container');
+    if (!containers.length) {
+        console.error('No file upload containers found');
+        // Try again after a delay in case containers are not yet rendered
+        setTimeout(() => addDragDropListeners(dotNetRef), 500);
         return;
     }
 
-    // Add event listeners
-    container.addEventListener('dragenter', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dotNetRef.invokeMethodAsync('OnDragEnter');
-    });
+    // Add event listeners to each container
+    containers.forEach(container => {
+        container.addEventListener('dragenter', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dotNetRef.invokeMethodAsync('OnDragEnter');
+        });
 
-    container.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-    });
+        container.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
 
-    container.addEventListener('dragleave', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        container.addEventListener('dragleave', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
 
-        // Check if the mouse has left the container
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
+            // Check if the mouse has left the container
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
 
-        if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+            if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+                dotNetRef.invokeMethodAsync('OnDragLeave');
+            }
+        });
+
+        container.addEventListener('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
             dotNetRef.invokeMethodAsync('OnDragLeave');
-        }
-    });
-
-    container.addEventListener('drop', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dotNetRef.invokeMethodAsync('OnDragLeave');
-
-        // The file input will handle the dropped files
+        });
     });
 }
 
@@ -164,81 +194,6 @@ async function renameFile(url, newName, apiKey) {
         }
     } catch (error) {
         console.error('Error renaming file:', error);
-        return { success: false, message: error.message };
-    }
-}
-
-/**
- * Fetch text content from a URL
- * @param {string} url - The URL to fetch
- * @returns {Promise<string>} A promise that resolves with the text content
- */
-async function fetchTextContent(url) {
-    if (!url) {
-        throw new Error('No URL provided');
-    }
-
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'X-Api-Key': getCdnApiKey()
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.text();
-    } catch (error) {
-        console.error('Error fetching text content:', error);
-        throw error;
-    }
-}
-
-/**
- * Create a new folder
- * @param {string} category - The category to create the folder in
- * @param {string} path - The path of the folder to create
- * @param {string} apiKey - The API key to use
- * @returns {Promise} A promise that resolves with the create result
- */
-async function createFolder(category, path, apiKey) {
-    if (!category || !path) {
-        return { success: false, message: 'Category and path are required' };
-    }
-
-    try {
-        // Create request data
-        const data = {
-            Category: category,
-            Path: path
-        };
-
-        // Get base URL
-        const baseUrl = window.location.origin;
-        const apiUrl = `${baseUrl}/api/cdn/folder`;
-
-        // Make API request
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Api-Key': apiKey || getCdnApiKey()
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            const error = await response.text();
-            console.error('Error creating folder:', error);
-            return { success: false, message: error };
-        }
-    } catch (error) {
-        console.error('Error creating folder:', error);
         return { success: false, message: error.message };
     }
 }

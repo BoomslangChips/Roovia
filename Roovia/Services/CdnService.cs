@@ -1,5 +1,4 @@
-﻿// Services/CdnService.cs
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -70,9 +69,9 @@ namespace Roovia.Services
             _memoryCache = memoryCache;
 
             // Get bootstrap configuration from appsettings.json (only used first time)
-            _bootstrapCdnBaseUrl = configuration["CDN:BaseUrl"];
-            _bootstrapCdnStoragePath = configuration["CDN:StoragePath"];
-            _bootstrapApiKey = configuration["CDN:ApiKey"];
+            _bootstrapCdnBaseUrl = configuration["CDN:BaseUrl"] ?? "https://cdn.yourdomain.com";
+            _bootstrapCdnStoragePath = configuration["CDN:StoragePath"] ?? Path.Combine(environment.ContentRootPath, "wwwroot", "cdn");
+            _bootstrapApiKey = configuration["CDN:ApiKey"] ?? "RooviaCDNKey";
 
             // Create an optimized HttpClient for CDN operations with longer timeout
             _optimizedHttpClient = _httpClientFactory.CreateClient("CdnClient");
@@ -80,65 +79,111 @@ namespace Roovia.Services
 
             // Load the database configuration asynchronously
             Task.Run(async () => await LoadConfigFromDatabaseAsync());
+
+            // Ensure bootstrap storage path exists
+            if (!Directory.Exists(_bootstrapCdnStoragePath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(_bootstrapCdnStoragePath);
+                    _logger.LogInformation("Created bootstrap CDN storage path: {Path}", _bootstrapCdnStoragePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to create bootstrap CDN storage path: {Path}. Error: {Error}",
+                        _bootstrapCdnStoragePath, ex.Message);
+                }
+            }
         }
 
         private async Task LoadConfigFromDatabaseAsync()
         {
             try
             {
-                // Create a scope to resolve the DbContext
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                // Get the active configuration
-                var config = await dbContext.Set<CdnConfiguration>()
-                    .Where(c => c.IsActive)
-                    .OrderByDescending(c => c.Id)
-                    .FirstOrDefaultAsync();
-
-                if (config != null)
+                // First check if we have the config cached
+                if (_memoryCache.TryGetValue(CONFIG_CACHE_KEY, out CdnConfiguration cachedConfig))
                 {
-                    // Update cache
-                    _memoryCache.Set(CONFIG_CACHE_KEY, config, TimeSpan.FromMinutes(15));
-
-                    // Update the configuration values
-                    _cdnConfig = config;
+                    _cdnConfig = cachedConfig;
+                    _logger.LogDebug("Loaded CDN configuration from cache");
                 }
                 else
                 {
-                    // If no config in DB, use the bootstrap values
-                    _cdnConfig = new CdnConfiguration
+                    // Create a scope to resolve the DbContext
+                    using var scope = _serviceProvider.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+
+                    // Get the active configuration
+                    var config = await dbContext.Set<CdnConfiguration>()
+                        .Where(c => c.IsActive)
+                        .OrderByDescending(c => c.Id)
+                        .FirstOrDefaultAsync();
+
+                    if (config != null)
                     {
-                        BaseUrl = _bootstrapCdnBaseUrl,
-                        StoragePath = _bootstrapCdnStoragePath,
-                        ApiKey = _bootstrapApiKey,
-                        MaxFileSizeMB = 200,
-                        AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
-                        EnforceAuthentication = true,
-                        AllowDirectAccess = true,
-                        EnableCaching = true
-                    };
+                        // Update cache
+                        _memoryCache.Set(CONFIG_CACHE_KEY, config, TimeSpan.FromMinutes(15));
+
+                        // Update the configuration values
+                        _cdnConfig = config;
+                        _logger.LogInformation("Loaded CDN configuration from database: ID={Id}, BaseUrl={BaseUrl}",
+                            config.Id, config.BaseUrl);
+                    }
+                    else
+                    {
+                        // If no config in DB, use the bootstrap values
+                        _cdnConfig = new CdnConfiguration
+                        {
+                            BaseUrl = _bootstrapCdnBaseUrl,
+                            StoragePath = _bootstrapCdnStoragePath,
+                            ApiKey = _bootstrapApiKey,
+                            MaxFileSizeMB = 200,
+                            AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
+                            EnforceAuthentication = true,
+                            AllowDirectAccess = true,
+                            EnableCaching = true
+                        };
+                        _logger.LogInformation("No CDN configuration found in database. Using bootstrap values: BaseUrl={BaseUrl}",
+                            _bootstrapCdnBaseUrl);
+                    }
                 }
 
-                // Load categories
-                var categories = await dbContext.Set<CdnCategory>()
-                    .Where(c => c.IsActive)
-                    .ToListAsync();
-
-                if (categories.Any())
+                // Check if categories are cached
+                if (_memoryCache.TryGetValue(CATEGORIES_CACHE_KEY, out List<CdnCategory> cachedCategories))
                 {
-                    _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, TimeSpan.FromMinutes(15));
-                    _categories = categories;
+                    _categories = cachedCategories;
+                    _logger.LogDebug("Loaded CDN categories from cache: Count={Count}", cachedCategories.Count);
                 }
                 else
                 {
-                    // Create default categories if none exist
-                    _categories = new List<CdnCategory>
+                    // Load categories from database
+                    using var scope = _serviceProvider.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+
+                    var categories = await dbContext.Set<CdnCategory>()
+                        .Where(c => c.IsActive)
+                        .ToListAsync();
+
+                    if (categories.Any())
                     {
-                        new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
-                        new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                    };
+                        _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, TimeSpan.FromMinutes(15));
+                        _categories = categories;
+                        _logger.LogInformation("Loaded {Count} CDN categories from database", categories.Count);
+                    }
+                    else
+                    {
+                        // Create default categories if none exist
+                        _categories = new List<CdnCategory>
+                        {
+                            new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
+                            new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
+                            new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
+                        };
+                        _logger.LogInformation("No CDN categories found in database. Using default categories");
+                    }
                 }
+
+                // Ensure storage directory exists for each category
+                EnsureCategoryDirectoriesExist();
 
                 // Update the HttpClient API key
                 if (_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
@@ -168,6 +213,67 @@ namespace Roovia.Services
                         EnableCaching = true
                     };
                 }
+
+                // Default categories if not set
+                if (_categories == null)
+                {
+                    _categories = new List<CdnCategory>
+                    {
+                        new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
+                        new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
+                        new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
+                    };
+                }
+
+                // Ensure storage directory exists for each category
+                EnsureCategoryDirectoriesExist();
+            }
+        }
+
+        private void EnsureCategoryDirectoriesExist()
+        {
+            if (_categories == null || _cdnConfig == null)
+                return;
+
+            string storagePath = _cdnConfig.StoragePath;
+            if (string.IsNullOrEmpty(storagePath) || !Directory.Exists(storagePath))
+            {
+                storagePath = _bootstrapCdnStoragePath;
+                if (string.IsNullOrEmpty(storagePath))
+                    return;
+
+                // Try to create the bootstrap storage path if it doesn't exist
+                if (!Directory.Exists(storagePath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(storagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Failed to create bootstrap storage path: {Error}", ex.Message);
+                        return;
+                    }
+                }
+            }
+
+            foreach (var category in _categories)
+            {
+                string categoryPath = Path.Combine(storagePath, category.Name);
+                if (!Directory.Exists(categoryPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(categoryPath);
+                        _logger.LogInformation("Created directory for category {Category}: {Path}",
+                            category.Name, categoryPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Failed to create directory for category {Category}: {Error}",
+                            category.Name, ex.Message);
+                    }
+                }
             }
         }
 
@@ -178,25 +284,34 @@ namespace Roovia.Services
 
             try
             {
+                _logger.LogInformation("Uploading file: {FileName}, ContentType: {ContentType}, Category: {Category}, Folder: {Folder}",
+                    fileName, contentType, category, folderPath);
+
                 // Ensure category is valid
                 category = await ValidateCategoryAsync(category);
 
                 // Generate a unique filename to prevent collisions
                 var uniqueFileName = GenerateUniqueFileName(fileName);
 
-                // Create relative path with optional folder
-                var relativePath = string.IsNullOrEmpty(folderPath)
-                    ? Path.Combine(category, uniqueFileName)
-                    : Path.Combine(category, folderPath, uniqueFileName);
+                // Clean folder path if provided
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    folderPath = CleanFolderPath(folderPath);
+                }
 
-                // Modified decision logic - direct access is ONLY for production environment
-                // and only when the storage path is directly accessible
-                bool useDirectAccess = IsDirectAccessAvailable() && !_environment.IsDevelopment();
+                // Get storage path (prioritize current config, fallback to bootstrap)
+                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                _logger.LogDebug("Using storage path: {Path}", cdnStoragePath);
+
+                // Check if direct access is available
+                bool useDirectAccess = !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
+
+                _logger.LogDebug("Direct access available: {DirectAccess}", useDirectAccess);
 
                 if (useDirectAccess)
                 {
                     // Create the physical directory if it doesn't exist
-                    string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
                     var directoryPath = string.IsNullOrEmpty(folderPath)
                         ? Path.Combine(cdnStoragePath, category)
                         : Path.Combine(cdnStoragePath, category, folderPath);
@@ -204,8 +319,12 @@ namespace Roovia.Services
                     // Create all directories in the path
                     Directory.CreateDirectory(directoryPath);
 
+                    _logger.LogDebug("Created directory path: {Path}", directoryPath);
+
                     // Save file to disk with optimized large buffer size
                     var filePath = Path.Combine(directoryPath, uniqueFileName);
+
+                    _logger.LogDebug("Saving file to: {Path}", filePath);
 
                     // Use FileOptions.Asynchronous and SequentialScan for optimal performance
                     using (var fileStream2 = new FileStream(
@@ -224,10 +343,78 @@ namespace Roovia.Services
 
                     // Add metadata to database
                     await SaveFileMetadataAsync(category, uniqueFileName, filePath, contentType, new FileInfo(filePath).Length, folderId, folderPath);
+
+                    _logger.LogInformation("File saved successfully: {Path}", filePath);
+
+                    // Return the public URL with the CDN domain
+                    string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
+
+                    string url = string.IsNullOrEmpty(folderPath)
+                        ? $"{cdnBaseUrl.TrimEnd('/')}/{category}/{uniqueFileName}"
+                        : $"{cdnBaseUrl.TrimEnd('/')}/{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
+
+                    _logger.LogInformation("Generated URL: {Url}", url);
+
+                    return url;
                 }
                 else
                 {
-                    // We're on a different server or in development mode, so use the API
+                    _logger.LogWarning("Direct file access not available. Storage path does not exist: {Path}", cdnStoragePath);
+
+                    // We don't have direct file system access, so use the fallback approach
+                    // Create a temp local storage for development if needed
+                    if (_environment.IsDevelopment())
+                    {
+                        string localStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
+                        if (!Directory.Exists(localStoragePath))
+                        {
+                            Directory.CreateDirectory(localStoragePath);
+                        }
+
+                        string localCategoryPath = Path.Combine(localStoragePath, category);
+                        if (!Directory.Exists(localCategoryPath))
+                        {
+                            Directory.CreateDirectory(localCategoryPath);
+                        }
+
+                        string localFolderPath = string.IsNullOrEmpty(folderPath)
+                            ? localCategoryPath
+                            : Path.Combine(localCategoryPath, folderPath);
+
+                        if (!Directory.Exists(localFolderPath))
+                        {
+                            Directory.CreateDirectory(localFolderPath);
+                        }
+
+                        // Save to local storage
+                        string localFilePath = Path.Combine(localFolderPath, uniqueFileName);
+
+                        _logger.LogDebug("Saving file to local dev storage: {Path}", localFilePath);
+
+                        using (var fileStream2 = new FileStream(
+                            localFilePath,
+                            FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.None,
+                            LargeBufferSize,
+                            FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        {
+                            await fileStream.CopyToAsync(fileStream2, LargeBufferSize);
+                        }
+
+                        // Generate URL for dev environment
+                        string url = string.IsNullOrEmpty(folderPath)
+                            ? $"/cdn/{category}/{uniqueFileName}"
+                            : $"/cdn/{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
+
+                        _logger.LogInformation("Generated dev URL: {Url}", url);
+
+                        return url;
+                    }
+
+                    // If not in development, we need to use HTTP for remote API
+                    _logger.LogInformation("Using HTTP upload to remote CDN API");
+
                     using var streamContent = new StreamContent(fileStream, LargeBufferSize);
                     streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
@@ -242,9 +429,8 @@ namespace Roovia.Services
                         content.Add(new StringContent(folderPath), "folder");
                     }
 
-                    // Use the configured production URL instead of hardcoded one
-                    // Get the base URL from configuration, defaulting to production if not specified
-                    var productionApiUrl = _configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn/upload";
+                    // Get the base URL from configuration
+                    var apiUrl = $"{_configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn"}/upload";
 
                     // Ensure API key is set in headers
                     if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
@@ -252,21 +438,17 @@ namespace Roovia.Services
                         _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
                     }
 
-                    var response = await _optimizedHttpClient.PostAsync(productionApiUrl, content);
+                    var response = await _optimizedHttpClient.PostAsync(apiUrl, content);
                     response.EnsureSuccessStatusCode();
 
                     // Get the URL from the response
                     var result = await response.Content.ReadFromJsonAsync<UploadResult>();
 
+                    _logger.LogInformation("File uploaded to remote CDN: {Url}", result.url);
+
                     // Return the URL from the API response
                     return result.url;
                 }
-
-                // Return the public URL with the CDN domain
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                return string.IsNullOrEmpty(folderPath)
-                    ? $"{cdnBaseUrl.TrimEnd('/')}/{category}/{uniqueFileName}"
-                    : $"{cdnBaseUrl.TrimEnd('/')}/{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
             }
             catch (Exception ex)
             {
@@ -275,12 +457,62 @@ namespace Roovia.Services
             }
         }
 
+        private string CleanFolderPath(string folderPath)
+        {
+            // Remove any potentially dangerous path characters
+            folderPath = folderPath.Replace("..", string.Empty);
+
+            // Replace backslashes with forward slashes
+            folderPath = folderPath.Replace("\\", "/");
+
+            // Trim leading and trailing slashes
+            folderPath = folderPath.Trim('/');
+
+            // Remove any double slashes
+            while (folderPath.Contains("//"))
+            {
+                folderPath = folderPath.Replace("//", "/");
+            }
+
+            return folderPath;
+        }
+
         // Modified detection method
         public bool IsDirectAccessAvailable()
         {
+            // Get the storage path from config
             string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-            return !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
+
+            // Check if storage path exists
+            bool pathExists = !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
+
+            // If in development, we might not have direct access to the production storage
+            // but we can still use local storage
+            if (_environment.IsDevelopment() && !pathExists)
+            {
+                // Check if we can use local storage
+                string localStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
+                if (!Directory.Exists(localStoragePath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(localStoragePath);
+                        _logger.LogInformation("Created local CDN storage directory: {Path}", localStoragePath);
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Failed to create local CDN storage directory: {Error}", ex.Message);
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            return pathExists;
         }
+
         private async Task<int?> GetOrCreateFolderAsync(string categoryName, string folderPath)
         {
             if (string.IsNullOrEmpty(folderPath))
@@ -494,6 +726,13 @@ namespace Roovia.Services
             if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
                 return path;
 
+            // Handle local development URLs
+            if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
+            {
+                // Return the local URL as is
+                return path;
+            }
+
             // If path starts with a slash, remove it
             if (path.StartsWith("/"))
                 path = path.Substring(1);
@@ -512,18 +751,43 @@ namespace Roovia.Services
 
             try
             {
+                _logger.LogInformation("Deleting file: {Path}", path);
+
+                string relativePathForDb = path;
+
                 // Extract the relative path from the URL
                 string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativePath = path.Replace(cdnBaseUrl, "").TrimStart('/');
+                string relativePath;
+
+                // Handle local development URLs
+                if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
+                {
+                    relativePath = path.Substring(5); // Remove "/cdn/"
+                }
+                else
+                {
+                    relativePath = path.Replace(cdnBaseUrl, "").TrimStart('/');
+                }
+
+                _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
 
                 if (IsDirectAccessAvailable())
                 {
                     // Direct file system access
                     string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                    // If in development and storage path doesn't exist, try local storage path
+                    if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
+                    {
+                        cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
+                    }
+
                     string fullPath = Path.Combine(cdnStoragePath, relativePath);
 
+                    _logger.LogDebug("Physical path for delete: {Path}", fullPath);
+
                     // Update database record first to mark as deleted
-                    await MarkFileAsDeletedAsync(path);
+                    await MarkFileAsDeletedAsync(relativePathForDb);
 
                     if (File.Exists(fullPath))
                     {
@@ -536,6 +800,8 @@ namespace Roovia.Services
 
                         // Delete the file
                         File.Delete(fullPath);
+
+                        _logger.LogInformation("Successfully deleted file: {Path}", fullPath);
 
                         // Remove from cache if exists
                         _filePathCache.TryRemove(path, out _);
@@ -555,19 +821,37 @@ namespace Roovia.Services
 
                         return true;
                     }
+                    else
+                    {
+                        _logger.LogWarning("File not found for deletion: {Path}", fullPath);
+                    }
 
                     return false;
                 }
                 else
                 {
+                    _logger.LogInformation("Using remote API for file deletion");
+
                     // Remote API access
-                    var apiUrl = $"https://portal.roovia.co.za/api/cdn/delete?path={Uri.EscapeDataString(path)}";
+                    string apiUrl = $"{_configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn"}/delete?path={Uri.EscapeDataString(path)}";
+
+                    // Ensure API key is set
+                    if (!_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
+                    {
+                        _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
+                    }
+
                     var response = await _optimizedHttpClient.DeleteAsync(apiUrl);
 
                     // Update file metadata in database if successful
                     if (response.IsSuccessStatusCode)
                     {
-                        await MarkFileAsDeletedAsync(path);
+                        await MarkFileAsDeletedAsync(relativePathForDb);
+                        _logger.LogInformation("File deleted successfully via remote API");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to delete file via remote API: {StatusCode}", response.StatusCode);
                     }
 
                     // Remove from cache if exists
@@ -586,6 +870,9 @@ namespace Roovia.Services
 
         private async Task<int?> GetCategoryIdAsync(string categoryName)
         {
+            if (string.IsNullOrEmpty(categoryName))
+                return null;
+
             try
             {
                 using var scope = _serviceProvider.CreateScope();
@@ -621,6 +908,11 @@ namespace Roovia.Services
                     // Mark as deleted
                     metadata.IsDeleted = true;
                     await dbContext.SaveChangesAsync();
+                    _logger.LogInformation("Marked file as deleted in database: {Url}", url);
+                }
+                else
+                {
+                    _logger.LogWarning("File metadata not found in database: {Url}", url);
                 }
             }
             catch (Exception ex)
@@ -655,10 +947,30 @@ namespace Roovia.Services
                     }
                 }
 
+                // Get storage path
+                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+                // Handle development environment URLs
+                if (_environment.IsDevelopment())
+                {
+                    if (cdnUrl.StartsWith("/cdn/"))
+                    {
+                        // Local development URL
+                        string relativePath2 = cdnUrl.Substring(5); // Remove "/cdn/"
+                        string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath2);
+
+                        // Cache the result
+                        _filePathCache[cdnUrl] = localPath;
+                        _cacheExpiry[cdnUrl] = DateTime.UtcNow.Add(_cacheDuration);
+
+                        return localPath;
+                    }
+                }
+
                 // Extract the relative path from the URL
                 string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
                 string relativePath = cdnUrl.Replace(cdnBaseUrl, "").TrimStart('/');
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
                 var physicalPath = Path.Combine(cdnStoragePath, relativePath);
 
                 // Cache the result
@@ -667,6 +979,24 @@ namespace Roovia.Services
 
                 return physicalPath;
             }
+
+            // In development, try to use local storage
+            if (_environment.IsDevelopment())
+            {
+                if (cdnUrl.StartsWith("/cdn/"))
+                {
+                    // Local development URL
+                    string relativePath2 = cdnUrl.Substring(5); // Remove "/cdn/"
+                    return Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath2);
+                }
+
+                // Extract the relative path from the URL
+                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
+                string relativePath = cdnUrl.Replace(cdnBaseUrl, "").TrimStart('/');
+
+                return Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath);
+            }
+
             return null;
         }
 
@@ -675,7 +1005,7 @@ namespace Roovia.Services
             if (IsDirectAccessAvailable())
             {
                 var physicalPath = GetPhysicalPath(cdnUrl);
-                if (File.Exists(physicalPath))
+                if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
                 {
                     // Use optimized file stream settings for better performance
                     return new FileStream(
@@ -687,6 +1017,29 @@ namespace Roovia.Services
                         FileOptions.Asynchronous | FileOptions.SequentialScan);
                 }
             }
+
+            // In development, try to use local storage
+            if (_environment.IsDevelopment())
+            {
+                if (cdnUrl.StartsWith("/cdn/"))
+                {
+                    // Local development URL
+                    string relativePath = cdnUrl.Substring(5); // Remove "/cdn/"
+                    string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath);
+
+                    if (File.Exists(localPath))
+                    {
+                        return new FileStream(
+                            localPath,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.Read,
+                            LargeBufferSize,
+                            FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    }
+                }
+            }
+
             return null;
         }
 
@@ -703,6 +1056,15 @@ namespace Roovia.Services
                 return cachedCategories;
             }
 
+            // Check if we need to refresh the configuration
+            await RefreshConfigIfNeededAsync();
+
+            // If we have categories loaded, return them
+            if (_categories != null && _categories.Any())
+            {
+                return _categories;
+            }
+
             // Otherwise, load from database
             try
             {
@@ -717,6 +1079,7 @@ namespace Roovia.Services
                 {
                     // Update cache
                     _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, TimeSpan.FromMinutes(15));
+                    _categories = categories;
                     return categories;
                 }
             }
@@ -726,31 +1089,84 @@ namespace Roovia.Services
             }
 
             // If no categories found or error occurred, return default ones
-            return new List<CdnCategory>
+            var defaultCategories = new List<CdnCategory>
             {
                 new CdnCategory { Id = 1, Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
                 new CdnCategory { Id = 2, Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                new CdnCategory { Id = 3, Name = "hr", DisplayName = "HR", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx" },
-                new CdnCategory { Id = 4, Name = "weighbridge", DisplayName = "Weighbridge", AllowedFileTypes = ".pdf,.xls,.xlsx,.csv" },
-                new CdnCategory { Id = 5, Name = "lab", DisplayName = "Laboratory", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" }
+                new CdnCategory { Id = 3, Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
             };
+
+            // Try to save default categories to database
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+
+                foreach (var category in defaultCategories)
+                {
+                    if (!await dbContext.Set<CdnCategory>().AnyAsync(c => c.Name == category.Name))
+                    {
+                        var newCategory = new CdnCategory
+                        {
+                            Name = category.Name,
+                            DisplayName = category.DisplayName,
+                            AllowedFileTypes = category.AllowedFileTypes,
+                            IsActive = true,
+                            CreatedDate = DateTime.Now,
+                            CreatedBy = "System"
+                        };
+
+                        dbContext.Add(newCategory);
+                    }
+                }
+
+                await dbContext.SaveChangesAsync();
+                _logger.LogInformation("Saved default categories to database");
+
+                // Reload categories
+                var savedCategories = await dbContext.Set<CdnCategory>()
+                    .Where(c => c.IsActive)
+                    .ToListAsync();
+
+                if (savedCategories.Any())
+                {
+                    _memoryCache.Set(CATEGORIES_CACHE_KEY, savedCategories, TimeSpan.FromMinutes(15));
+                    _categories = savedCategories;
+                    return savedCategories;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving default categories to database");
+            }
+
+            return defaultCategories;
         }
 
         public async Task<List<CdnFolder>> GetFoldersAsync(string category)
         {
             try
             {
+                // Ensure the category is valid
+                category = await ValidateCategoryAsync(category);
+
+                // Get category ID
                 var categoryId = await GetCategoryIdAsync(category);
                 if (!categoryId.HasValue)
+                {
+                    _logger.LogWarning("Category not found for folder lookup: {Category}", category);
                     return new List<CdnFolder>();
+                }
 
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
 
                 var folders = await dbContext.Set<CdnFolder>()
                     .Where(f => f.CategoryId == categoryId && f.IsActive)
+                    .OrderBy(f => f.Path)
                     .ToListAsync();
 
+                _logger.LogInformation("Found {Count} folders for category {Category}", folders.Count, category);
                 return folders;
             }
             catch (Exception ex)
@@ -764,10 +1180,16 @@ namespace Roovia.Services
         {
             try
             {
+                // Ensure the category is valid
+                category = await ValidateCategoryAsync(category);
+
                 // Get category ID
                 var categoryId = await GetCategoryIdAsync(category);
                 if (!categoryId.HasValue)
+                {
+                    _logger.LogWarning("Category not found for file lookup: {Category}", category);
                     return new List<CdnFileMetadata>();
+                }
 
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
@@ -779,35 +1201,46 @@ namespace Roovia.Services
                 // If folder path is specified, get the folder ID
                 if (!string.IsNullOrEmpty(folderPath))
                 {
+                    folderPath = CleanFolderPath(folderPath);
+
                     var folder = await dbContext.Set<CdnFolder>()
-                        .FirstOrDefaultAsync(f => f.CategoryId == categoryId && f.Path == folderPath);
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryId && f.Path == folderPath && f.IsActive);
 
                     if (folder != null)
                     {
                         query = query.Where(f => f.FolderId == folder.Id);
+                        _logger.LogDebug("Found folder {FolderPath}, ID: {FolderId}", folderPath, folder.Id);
                     }
                     else
                     {
                         // If folder doesn't exist, return empty list
+                        _logger.LogWarning("Folder not found: {Category}/{FolderPath}", category, folderPath);
                         return new List<CdnFileMetadata>();
                     }
                 }
                 else if (folderPath == "") // Root folder specifically
                 {
                     query = query.Where(f => f.FolderId == null);
+                    _logger.LogDebug("Looking up files in root folder of category {Category}", category);
                 }
 
                 // If search term is specified, filter by filename
                 if (!string.IsNullOrEmpty(searchTerm))
                 {
                     query = query.Where(f => f.FileName.Contains(searchTerm));
+                    _logger.LogDebug("Applied search filter: {SearchTerm}", searchTerm);
                 }
 
-                return await query.ToListAsync();
+                var files = await query.OrderByDescending(f => f.UploadDate).ToListAsync();
+                _logger.LogInformation("Found {Count} files for category {Category}, folder {Folder}",
+                    files.Count, category, folderPath ?? "root");
+
+                return files;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving files for category {Category}", category);
+                _logger.LogError(ex, "Error retrieving files for category {Category}, folder {Folder}",
+                    category, folderPath ?? "root");
                 return new List<CdnFileMetadata>();
             }
         }
@@ -823,6 +1256,11 @@ namespace Roovia.Services
             if (categories.Any(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase)))
                 return category.ToLowerInvariant();
 
+            // Check if it's a standard category
+            string[] standardCategories = { "documents", "images", "hr", "weighbridge", "lab", "test-uploads" };
+            if (standardCategories.Contains(category.ToLowerInvariant()))
+                return category.ToLowerInvariant();
+
             // Default to documents if not found
             return "documents";
         }
@@ -830,11 +1268,25 @@ namespace Roovia.Services
         private string GenerateUniqueFileName(string fileName)
         {
             // Remove any potentially dangerous characters from the filename
+            string extension = Path.GetExtension(fileName);
+
+            // Process the file name to make it safe
             var safeName = Path.GetFileNameWithoutExtension(fileName)
                 .Replace(" ", "-")
                 .Replace("_", "-");
 
-            var extension = Path.GetExtension(fileName);
+            // Remove any invalid characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            foreach (var c in invalidChars)
+            {
+                safeName = safeName.Replace(c.ToString(), "");
+            }
+
+            if (string.IsNullOrWhiteSpace(safeName))
+            {
+                safeName = "file";
+            }
+
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             var random = Guid.NewGuid().ToString().Substring(0, 8);
 
@@ -844,7 +1296,7 @@ namespace Roovia.Services
         private async Task RefreshConfigIfNeededAsync()
         {
             // Check if we need to refresh the database configuration
-            if (_configLastRefreshed.Add(_configRefreshInterval) < DateTime.Now)
+            if (_configLastRefreshed.Add(_configRefreshInterval) < DateTime.Now || _cdnConfig == null)
             {
                 await LoadConfigFromDatabaseAsync();
             }
