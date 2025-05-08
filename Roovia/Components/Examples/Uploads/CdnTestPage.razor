@@ -8,6 +8,11 @@
 
 <h3>CDN Integration Test</h3>
 
+<div class="alert alert-info mb-4">
+    <i class="fa-light fa-info-circle me-2"></i>
+    <strong>Test Server Mode:</strong> Connected to production CDN at https://cdn.roovia.co.za
+</div>
+
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0">1. Upload Images</h5>
@@ -44,55 +49,55 @@
 
 @if (!string.IsNullOrEmpty(uploadedImageUrl))
 {
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">3. Recently Uploaded Image Preview</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="image-preview">
-                        <img src="@(uploadedImageUrl + "?key=" + apiKey)" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">3. Recently Uploaded Image Preview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="image-preview">
+                            <img src="@(uploadedImageUrl + "?key=" + apiKey)" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <h5>Image Details</h5>
-                    <p>Filename: @Path.GetFileName(uploadedImageUrl)</p>
-                    <p>URL: <a href="javascript:void(0)" @onclick="ViewLastUploadedImage">View Full Size</a></p>
-                    <button @onclick="ViewLastUploadedImage" class="btn btn-primary">
-                        <i class="fa-light fa-eye me-2"></i>View Image
-                    </button>
-                    <button @onclick="DeleteLastUploadedImage" class="btn btn-danger">
-                        <i class="fa-light fa-trash me-2"></i>Delete Image
-                    </button>
+                    <div class="col-md-6">
+                        <h5>Image Details</h5>
+                        <p>Filename: @Path.GetFileName(uploadedImageUrl)</p>
+                        <p>URL: <code>@uploadedImageUrl</code></p>
+                        <button @onclick="ViewLastUploadedImage" class="btn btn-primary">
+                            <i class="fa-light fa-eye me-2"></i>View Image
+                        </button>
+                        <button @onclick="DeleteLastUploadedImage" class="btn btn-danger">
+                            <i class="fa-light fa-trash me-2"></i>Delete Image
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 }
 
 @if (!string.IsNullOrEmpty(uploadedDocUrl))
 {
-    <div class="card mb-4">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">4. Recently Uploaded Document</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-12">
-                    <h5>Document Details</h5>
-                    <p>Filename: @Path.GetFileName(uploadedDocUrl)</p>
-                    <p>URL: <a href="javascript:void(0)" @onclick="ViewLastUploadedDoc">View Document</a></p>
-                    <button @onclick="ViewLastUploadedDoc" class="btn btn-primary">
-                        <i class="fa-light fa-eye me-2"></i>View Document
-                    </button>
-                    <button @onclick="DeleteLastUploadedDoc" class="btn btn-danger">
-                        <i class="fa-light fa-trash me-2"></i>Delete Document
-                    </button>
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">4. Recently Uploaded Document</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Document Details</h5>
+                        <p>Filename: @Path.GetFileName(uploadedDocUrl)</p>
+                        <p>URL: <code>@uploadedDocUrl</code></p>
+                        <button @onclick="ViewLastUploadedDoc" class="btn btn-primary">
+                            <i class="fa-light fa-eye me-2"></i>View Document
+                        </button>
+                        <button @onclick="DeleteLastUploadedDoc" class="btn btn-danger">
+                            <i class="fa-light fa-trash me-2"></i>Delete Document
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 }
 
 <div class="card mb-4">
@@ -107,15 +112,26 @@
         <p>CDN Base URL: <code>@cdnBaseUrl</code></p>
         <p>Application Base URL: <code>@appBaseUrl</code></p>
         <p>Direct Access Available: <code>@CdnService.IsDirectAccessAvailable()</code></p>
-        <p>Development Environment: <code>@CdnService.IsDevEnvironment()</code></p>
 
-        <h5>API Endpoints</h5>
+        <h5>Production API Endpoints</h5>
         <ul>
-            <li><strong>Upload:</strong> <code>@appBaseUrl/api/cdn/upload</code></li>
-            <li><strong>Delete:</strong> <code>@appBaseUrl/api/cdn/delete?path={url}</code></li>
-            <li><strong>List:</strong> <code>@appBaseUrl/api/cdn/files?category={category}</code></li>
-            <li><strong>View:</strong> <code>@appBaseUrl/api/cdn/view?path={url}</code></li>
+            <li><strong>Upload:</strong> <code>https://portal.roovia.co.za/api/cdn/upload</code></li>
+            <li><strong>Delete:</strong> <code>https://portal.roovia.co.za/api/cdn/delete?path={url}</code></li>
+            <li><strong>List:</strong> <code>https://portal.roovia.co.za/api/cdn/files?category={category}</code></li>
+            <li><strong>View:</strong> <code>https://portal.roovia.co.za/api/cdn/view?path={url}</code></li>
         </ul>
+
+        <h5>API Connection Test</h5>
+        <button @onclick="TestApiConnection" class="btn btn-primary">
+            <i class="fa-light fa-network-wired me-2"></i>Test API Connection
+        </button>
+
+        @if (!string.IsNullOrEmpty(apiTestResult))
+        {
+                <div class="mt-2 @(apiTestSuccess ? "alert alert-success" : "alert alert-danger")">
+                    <p>@apiTestResult</p>
+                </div>
+        }
     </div>
 </div>
 
@@ -125,20 +141,58 @@
     private string apiKey;
     private string cdnBaseUrl;
     private string appBaseUrl;
+    private string apiTestResult;
+    private bool apiTestSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        apiKey = CdnService.GetApiKey();
+        cdnBaseUrl = "https://cdn.roovia.co.za";
+        appBaseUrl = "https://portal.roovia.co.za";
+
+        // Set the API key in JavaScript
+        await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            apiKey = CdnService.GetApiKey();
-            cdnBaseUrl = CdnService.GetCdnUrl("").TrimEnd('/');
-            appBaseUrl = NavigationManager.BaseUri.TrimEnd('/');
-
             // Ensure necessary JavaScript functions are registered
             await EnsureJavaScriptFunctionsRegistered();
             await InvokeAsync(() => this.StateHasChanged());
         }
+    }
 
+    private async Task TestApiConnection()
+    {
+        try
+        {
+            apiTestResult = "Testing connection to production CDN API...";
+            apiTestSuccess = false;
+            StateHasChanged();
+
+            var client = HttpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+            var response = await client.GetAsync("https://portal.roovia.co.za/api/cdn/categories");
+
+            if (response.IsSuccessStatusCode)
+            {
+                apiTestSuccess = true;
+                apiTestResult = "Success! Connected to production CDN API.";
+            }
+            else
+            {
+                apiTestSuccess = false;
+                apiTestResult = $"Failed to connect to production CDN API. Status code: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            apiTestSuccess = false;
+            apiTestResult = $"Error testing API connection: {ex.Message}";
+        }
     }
 
     private async Task EnsureJavaScriptFunctionsRegistered()
@@ -313,10 +367,27 @@
     {
         try
         {
+            // Try using the service first
+            try
+            {
+                var result = await CdnService.DeleteFileAsync(url);
+                if (result)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "File deleted successfully");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error with CdnService.DeleteFileAsync: {ex.Message}");
+                // Fall through to direct API call
+            }
+
+            // If service method fails, try direct API call
             var httpClient = HttpClientFactory.CreateClient();
             httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-            var apiUrl = $"{appBaseUrl}/api/cdn/delete?path={Uri.EscapeDataString(url)}";
+            var apiUrl = $"https://portal.roovia.co.za/api/cdn/delete?path={Uri.EscapeDataString(url)}";
             var response = await httpClient.DeleteAsync(apiUrl);
 
             if (response.IsSuccessStatusCode)

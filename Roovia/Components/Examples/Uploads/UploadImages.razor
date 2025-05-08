@@ -24,19 +24,26 @@
 
 @if (!string.IsNullOrEmpty(uploadedImageUrl))
 {
-        <div class="mt-3">
-            <h4>Recently Uploaded Image Preview</h4>
-            <div class="image-preview">
-                <img src="@uploadedImageUrl" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
-                <div class="mt-2">
-                    <button @onclick="ViewImage" class="btn btn-primary">View Full Size</button>
-                </div>
+    <div class="mt-3">
+        <h4>Recently Uploaded Image Preview</h4>
+        <div class="image-preview">
+            <img src="@(uploadedImageUrl + "?key=" + apiKey)" alt="Uploaded image" class="img-fluid" style="max-height: 300px;" />
+            <div class="mt-2">
+                <button @onclick="ViewImage" class="btn btn-primary">View Full Size</button>
             </div>
         </div>
+    </div>
 }
 
 @code {
     private string uploadedImageUrl;
+    private string apiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        apiKey = CdnService.GetApiKey();
+        await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
+    }
 
     private void HandleImageUploaded(CdnFileUpload.UploadedFileInfo fileInfo)
     {
@@ -57,7 +64,6 @@
     {
         if (!string.IsNullOrEmpty(uploadedImageUrl))
         {
-            var apiKey = CdnService.GetApiKey();
             await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", uploadedImageUrl, apiKey);
         }
     }

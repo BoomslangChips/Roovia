@@ -1,6 +1,7 @@
 ﻿@page "/upload-document"
 @using Roovia.Interfaces
 @inject ICdnService CdnService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 <h3>Document Upload</h3>
 
@@ -21,18 +22,34 @@
     <div class="alert alert-success mt-3">
         <p>Document uploaded successfully!</p>
         <p>
-            <a href="@uploadedFileUrl" target="_blank" class="btn btn-primary">
+            <button @onclick="ViewDocument" class="btn btn-primary">
                 <i class="fa-light fa-eye"></i> View Document
-            </a>
+            </button>
         </p>
     </div>
 }
 
 @code {
     private string uploadedFileUrl;
+    private string apiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        apiKey = CdnService.GetApiKey();
+        await JSRuntime.InvokeVoidAsync("setCdnApiKey", apiKey);
+    }
 
     private void HandleFileUploaded(CdnFileUpload.UploadedFileInfo fileInfo)
     {
         uploadedFileUrl = fileInfo.Url;
+        StateHasChanged();
+    }
+
+    private async Task ViewDocument()
+    {
+        if (!string.IsNullOrEmpty(uploadedFileUrl))
+        {
+            await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", uploadedFileUrl, apiKey);
+        }
     }
 }

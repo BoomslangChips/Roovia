@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 using Roovia.Interfaces;
 using System.Linq;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Roovia.Controllers
 {
@@ -15,22 +19,25 @@ namespace Roovia.Controllers
     public class CdnController : ControllerBase
     {
         private readonly ICdnService _cdnService;
-        private const string API_KEY = "RooviaCDNKey"; // Hardcoded API key
-        private const long MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB limit
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<CdnController> _logger;
+        private const string PRODUCTION_API_URL = "https://portal.roovia.co.za/api/cdn";
 
-        public CdnController(ICdnService cdnService)
+        public CdnController(
+            ICdnService cdnService,
+            IHttpClientFactory httpClientFactory,
+            ILogger<CdnController> logger)
         {
             _cdnService = cdnService;
+            _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         [HttpPost("upload")]
         [RequestSizeLimit(209715200)] // 200MB in bytes
         [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200MB in bytes
-        public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string category = "documents")
+        public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string category = "documents", [FromForm] string folder = "")
         {
-            // Check API key for external requests
-
-
             var apiKey = _cdnService.GetApiKey();
             if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
                 string.IsNullOrWhiteSpace(requestApiKey) ||
@@ -50,41 +57,39 @@ namespace Roovia.Controllers
 
             try
             {
-                // Check file size (limit to 200MB)
-                if (file.Length > MAX_FILE_SIZE)
-                    return BadRequest(new { success = false, message = $"File size exceeds the {MAX_FILE_SIZE / (1024 * 1024)}MB limit" });
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromMinutes(5); // 5 minute timeout for large uploads
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-                // Validate file type (basic validation)
-                var allowedTypes = new[] { "image/", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument", "text/plain", "text/csv", "video/", "audio/" };
-                bool isValidType = false;
-                foreach (var type in allowedTypes)
+                // Prepare multipart form
+                using var content = new MultipartFormDataContent();
+                using var streamContent = new StreamContent(file.OpenReadStream());
+                streamContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                content.Add(streamContent, "file", file.FileName);
+                content.Add(new StringContent(category), "category");
+
+                if (!string.IsNullOrEmpty(folder))
                 {
-                    if (file.ContentType.StartsWith(type))
-                    {
-                        isValidType = true;
-                        break;
-                    }
+                    content.Add(new StringContent(folder), "folder");
                 }
 
-                if (!isValidType)
-                    return BadRequest(new { success = false, message = "File type not allowed" });
+                // Forward request to production API
+                var response = await client.PostAsync($"{PRODUCTION_API_URL}/upload", content);
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
 
-                // Upload the file using the CDN service
-                var fileUrl = await _cdnService.UploadFileAsync(file, category);
-
-                // Return success with the file URL
-                return Ok(new
+                if (response.IsSuccessStatusCode)
                 {
-                    success = true,
-                    url = fileUrl,
-                    fileName = file.FileName,
-                    contentType = file.ContentType,
-                    size = file.Length,
-                    category = category
-                });
+                    return Ok(result);
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, result);
+                }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding upload to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
@@ -92,15 +97,16 @@ namespace Roovia.Controllers
         [HttpDelete("delete")]
         public async Task<IActionResult> DeleteFile([FromQuery] string path)
         {
+            var apiKey = _cdnService.GetApiKey();
             // Check API key for external requests
-            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                apiKey != API_KEY)
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
                 // Check if query parameter has the API key
                 if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
                     string.IsNullOrWhiteSpace(queryApiKey) ||
-                    queryApiKey != API_KEY)
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }
@@ -111,26 +117,38 @@ namespace Roovia.Controllers
 
             try
             {
-                var result = await _cdnService.DeleteFileAsync(path);
-                if (result)
-                    return Ok(new { success = true, message = "File deleted successfully" });
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+                // Forward request to production API
+                var response = await client.DeleteAsync($"{PRODUCTION_API_URL}/delete?path={Uri.EscapeDataString(path)}");
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Ok(result);
+                }
                 else
-                    return NotFound(new { success = false, message = "File not found" });
+                {
+                    return StatusCode((int)response.StatusCode, result);
+                }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding delete to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
 
-        // Add a new endpoint for file renaming
         [HttpPost("rename")]
         public async Task<IActionResult> RenameFile([FromBody] RenameFileRequest request)
         {
+            var apiKey = _cdnService.GetApiKey();
             // Check API key
-            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                apiKey != API_KEY)
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
                 return Unauthorized(new { success = false, message = "Invalid API key" });
             }
@@ -140,76 +158,43 @@ namespace Roovia.Controllers
 
             try
             {
-                // Validate new filename (remove potentially dangerous characters)
-                var safeNewName = Path.GetFileNameWithoutExtension(request.NewName)
-                    .Replace(" ", "-")
-                    .Replace("_", "-");
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-                // Keep the original extension
-                var originalExtension = Path.GetExtension(request.Path);
+                // Forward request to production API
+                var response = await client.PostAsJsonAsync($"{PRODUCTION_API_URL}/rename", request);
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
 
-                // Get the CDN base URL and extract category and filename
-                var cdnBaseUrl = _cdnService.GetCdnUrl("").TrimEnd('/');
-                var relativePath = request.Path.Replace(cdnBaseUrl, "").TrimStart('/');
-                var pathParts = relativePath.Split('/');
-
-                if (pathParts.Length < 2)
-                    return BadRequest(new { success = false, message = "Invalid file path" });
-
-                var category = pathParts[0];
-
-                // Generate the new path
-                var newFilename = $"{safeNewName}{originalExtension}";
-
-                // Check if we have direct file access
-                if (_cdnService.IsDirectAccessAvailable())
+                if (response.IsSuccessStatusCode)
                 {
-                    // Get physical paths
-                    var oldPhysicalPath = _cdnService.GetPhysicalPath(request.Path);
-                    var directoryPath = Path.GetDirectoryName(oldPhysicalPath);
-                    var newPhysicalPath = Path.Combine(directoryPath, newFilename);
-
-                    // Check if old file exists
-                    if (!System.IO.File.Exists(oldPhysicalPath))
-                        return NotFound(new { success = false, message = "File not found" });
-
-                    // Check if new filename already exists
-                    if (System.IO.File.Exists(newPhysicalPath))
-                        return BadRequest(new { success = false, message = "A file with that name already exists" });
-
-                    // Rename the file
-                    System.IO.File.Move(oldPhysicalPath, newPhysicalPath);
-
-                    // Return the new URL
-                    var newUrl = $"{cdnBaseUrl}/{category}/{newFilename}";
-                    return Ok(new { success = true, url = newUrl, message = "File renamed successfully" });
+                    return Ok(result);
                 }
                 else
                 {
-                    // Remote CDN - we'd need to implement API endpoint on the remote server
-                    // For now, return not supported
-                    return StatusCode(501, new { success = false, message = "Renaming not supported on remote CDN" });
+                    return StatusCode((int)response.StatusCode, result);
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding rename to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
 
-        // Add a controller method to get file details
         [HttpGet("details")]
-        public IActionResult GetFileDetails([FromQuery] string path)
+        public async Task<IActionResult> GetFileDetails([FromQuery] string path)
         {
+            var apiKey = _cdnService.GetApiKey();
             // Check API key
-            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                apiKey != API_KEY)
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
                 // Check query parameter
                 if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
                     string.IsNullOrWhiteSpace(queryApiKey) ||
-                    queryApiKey != API_KEY)
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }
@@ -220,68 +205,43 @@ namespace Roovia.Controllers
 
             try
             {
-                // Check if we have direct file access
-                if (_cdnService.IsDirectAccessAvailable())
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+                // Forward request to production API
+                var response = await client.GetAsync($"{PRODUCTION_API_URL}/details?path={Uri.EscapeDataString(path)}");
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
+
+                if (response.IsSuccessStatusCode)
                 {
-                    var physicalPath = _cdnService.GetPhysicalPath(path);
-                    if (string.IsNullOrEmpty(physicalPath) || !System.IO.File.Exists(physicalPath))
-                        return NotFound(new { success = false, message = "File not found" });
-
-                    var fileInfo = new System.IO.FileInfo(physicalPath);
-                    var fileName = Path.GetFileName(physicalPath);
-                    var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                    var contentType = GetContentTypeFromPath(fileName);
-
-                    return Ok(new
-                    {
-                        success = true,
-                        fileName = fileName,
-                        extension = extension,
-                        contentType = contentType,
-                        size = fileInfo.Length,
-                        createdDate = fileInfo.CreationTime,
-                        modifiedDate = fileInfo.LastWriteTime,
-                        physicalPath = physicalPath
-                    });
+                    return Ok(result);
                 }
                 else
                 {
-                    // Remote CDN - limited information
-                    var fileName = Path.GetFileName(path);
-                    var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                    var contentType = GetContentTypeFromPath(fileName);
-
-                    return Ok(new
-                    {
-                        success = true,
-                        fileName = fileName,
-                        extension = extension,
-                        contentType = contentType,
-                        size = -1, // Unknown
-                        createdDate = DateTime.MinValue, // Unknown
-                        modifiedDate = DateTime.MinValue // Unknown
-                    });
+                    return StatusCode((int)response.StatusCode, result);
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding details request to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
 
-        // Add a controller method to serve files directly with authentication
         [HttpGet("view")]
         public async Task<IActionResult> ViewFile([FromQuery] string path)
         {
+            var apiKey = _cdnService.GetApiKey();
             // Check for API key in header first
-            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                apiKey != API_KEY)
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
                 // Check if query parameter has the API key
                 if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
                     string.IsNullOrWhiteSpace(queryApiKey) ||
-                    queryApiKey != API_KEY)
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }
@@ -292,58 +252,30 @@ namespace Roovia.Controllers
 
             try
             {
-                // Extract the physical path from the CDN URL
-                var cdnBaseUrl = _cdnService.GetCdnUrl("").TrimEnd('/');
-                var relativePath = path.Replace(cdnBaseUrl, "").TrimStart('/');
-
-                // Get the CDN storage path from configuration
-                var configPath = _cdnService.GetPhysicalPath(path);
-                if (string.IsNullOrEmpty(configPath))
-                {
-                    // Fallback to constructing the path
-                    var parts = relativePath.Split('/');
-                    var category = parts.Length > 0 ? parts[0] : "documents";
-                    var fileName = parts.Length > 1 ? parts[1] : relativePath;
-
-                    // Get CDN storage path from the service
-                    configPath = Path.Combine(_cdnService.GetPhysicalPath(cdnBaseUrl), category, fileName);
-                }
-
-                // Check if the file exists
-                if (!System.IO.File.Exists(configPath))
-                {
-                    return NotFound(new { success = false, message = "File not found" });
-                }
-
-                // Try to determine content type from extension
-                var contentType = GetContentTypeFromPath(path);
-
-                // Set cache headers for better performance
-                Response.Headers.Add("Cache-Control", "public, max-age=604800"); // 7 days
-                Response.Headers.Add("Expires", DateTime.UtcNow.AddDays(7).ToString("R"));
-
-                // Return the file with streaming enabled for large files
-                return PhysicalFile(configPath, contentType, enableRangeProcessing: true);
+                // For view requests, simply redirect to the CDN URL with API key
+                var separator = path.Contains("?") ? "&" : "?";
+                return Redirect($"{path}{separator}key={apiKey}");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error redirecting to CDN URL: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
         }
 
-        // Updated method to get files in a category
         [HttpGet("files")]
-        public async Task<IActionResult> GetFiles([FromQuery] string category = "documents", [FromQuery] string pattern = "*")
+        public async Task<IActionResult> GetFiles([FromQuery] string category = "documents", [FromQuery] string pattern = "*", [FromQuery] string folder = "")
         {
+            var apiKey = _cdnService.GetApiKey();
             // Check for API key in header
-            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                apiKey != API_KEY)
+            if (!HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var requestApiKey) ||
+                string.IsNullOrWhiteSpace(requestApiKey) ||
+                requestApiKey != apiKey)
             {
                 // Check if query parameter has the API key
                 if (!Request.Query.TryGetValue("key", out var queryApiKey) ||
                     string.IsNullOrWhiteSpace(queryApiKey) ||
-                    queryApiKey != API_KEY)
+                    queryApiKey != apiKey)
                 {
                     return Unauthorized(new { success = false, message = "Invalid API key" });
                 }
@@ -351,68 +283,39 @@ namespace Roovia.Controllers
 
             try
             {
-                // Validate category
-                var validatedCategory = ValidateCategory(category);
+                // Create HTTP client
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-                // Get files from CDN service - using GetFilesAsync instead of GetFilesInCategory
-                var files = await _cdnService.GetFilesAsync(validatedCategory, null, pattern);
-
-                if (files == null || !files.Any())
+                // Build the URL with query parameters
+                var url = $"{PRODUCTION_API_URL}/files?category={category}";
+                if (!string.IsNullOrEmpty(pattern) && pattern != "*")
                 {
-                    return Ok(new { success = true, files = new List<object>(), message = "No files found" });
+                    url += $"&pattern={Uri.EscapeDataString(pattern)}";
+                }
+                if (!string.IsNullOrEmpty(folder))
+                {
+                    url += $"&folder={Uri.EscapeDataString(folder)}";
                 }
 
-                // Map to file info objects
-                var fileInfoList = files.Select(file => {
-                    return new
-                    {
-                        FileName = file.FileName,
-                        Url = file.Url,
-                        ContentType = file.ContentType,
-                        Size = file.FileSize,
-                        Category = validatedCategory,
-                        UploadDate = file.UploadDate
-                    };
-                }).ToList();
+                // Forward request to production API
+                var response = await client.GetAsync(url);
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
 
-                return Ok(new { success = true, files = fileInfoList });
+                if (response.IsSuccessStatusCode)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, result);
+                }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding files request to production: {Message}", ex.Message);
                 return StatusCode(500, new { success = false, message = $"Internal server error: {ex.Message}" });
             }
-        }
-
-        private string ValidateCategory(string category)
-        {
-            var allowedCategories = new[] { "documents", "images", "hr", "weighbridge", "lab" };
-            return allowedCategories.Contains(category.ToLower()) ? category.ToLower() : "documents";
-        }
-
-        private string GetContentTypeFromPath(string path)
-        {
-            var extension = Path.GetExtension(path).ToLowerInvariant();
-            return extension switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".bmp" => "image/bmp",
-                ".webp" => "image/webp",
-                ".svg" => "image/svg+xml",
-                ".pdf" => "application/pdf",
-                ".doc" => "application/msword",
-                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ".xls" => "application/vnd.ms-excel",
-                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                ".txt" => "text/plain",
-                ".csv" => "text/csv",
-                ".mp4" => "video/mp4",
-                ".webm" => "video/webm",
-                ".mp3" => "audio/mpeg",
-                ".wav" => "audio/wav",
-                _ => "application/octet-stream",
-            };
         }
 
         public class RenameFileRequest

@@ -1,6 +1,7 @@
 ﻿// cdnHelpers.js
 /**
  * CDN Helper Functions for Roovia
+ * Updated for production CDN integration
  */
 
 // Global API key cache
@@ -50,15 +51,18 @@ function openUrlWithApiKey(url, apiKey, download = false) {
         return;
     }
 
+    // Production CDN URL handling
+    const cdnUrl = url.includes('cdn.roovia.co.za') ? url : url;
+
     // Add API key to URL query parameters
-    const separator = url.includes('?') ? '&' : '?';
-    const urlWithKey = `${url}${separator}key=${key}`;
+    const separator = cdnUrl.includes('?') ? '&' : '?';
+    const urlWithKey = `${cdnUrl}${separator}key=${key}`;
 
     if (download) {
         // Create a temporary link for download
         const link = document.createElement('a');
         link.href = urlWithKey;
-        link.download = url.split('/').pop(); // Get filename from URL
+        link.download = cdnUrl.split('/').pop(); // Get filename from URL
         link.target = '_blank';
         document.body.appendChild(link);
         link.click();
@@ -70,7 +74,7 @@ function openUrlWithApiKey(url, apiKey, download = false) {
 }
 
 /**
- * Fetch text content from a URL
+ * Fetch text content from a URL with API key
  * @param {string} url - The URL to fetch
  * @returns {Promise<string>} A promise that resolves with the text content
  */
@@ -80,11 +84,15 @@ async function fetchTextContent(url) {
     }
 
     try {
-        const response = await fetch(url, {
-            headers: {
-                'X-Api-Key': getCdnApiKey()
-            }
-        });
+        // Production CDN URL handling
+        const cdnUrl = url.includes('cdn.roovia.co.za') ? url : url;
+        const key = getCdnApiKey();
+
+        // Add API key to query parameters if not already present
+        const separator = cdnUrl.includes('?') ? '&' : '?';
+        const urlWithKey = `${cdnUrl}${separator}key=${key}`;
+
+        const response = await fetch(urlWithKey);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -152,7 +160,7 @@ function addDragDropListeners(dotNetRef) {
 }
 
 /**
- * Rename a file
+ * Rename a file - always uses the production API
  * @param {string} url - The URL of the file to rename
  * @param {string} newName - The new name for the file
  * @param {string} apiKey - The API key to use
@@ -170,11 +178,33 @@ async function renameFile(url, newName, apiKey) {
             NewName: newName
         };
 
-        // Get base URL
+        // Always use the production API for renaming
+        const productionApiUrl = 'https://portal.roovia.co.za/api/cdn/rename';
+
+        // First try the production API directly
+        try {
+            const productionResponse = await fetch(productionApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Api-Key': apiKey || getCdnApiKey()
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (productionResponse.ok) {
+                const result = await productionResponse.json();
+                return result;
+            }
+        } catch (prodError) {
+            console.log('Direct production API call failed, trying local proxy:', prodError);
+        }
+
+        // Fall back to local proxy if direct call fails
         const baseUrl = window.location.origin;
         const apiUrl = `${baseUrl}/api/cdn/rename`;
 
-        // Make API request
+        // Make API request through local proxy
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
