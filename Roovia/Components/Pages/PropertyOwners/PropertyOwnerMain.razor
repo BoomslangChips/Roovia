@@ -9,71 +9,66 @@
 
 @rendermode InteractiveServer
 
-<div class="container my-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <span>Owners Overview</span>
-            <button class="btn roovia-btn" @onclick="AddPropertyOwner">
-                <i class="fas fa-plus"></i> Add Owner
-            </button>
+
+<CardView CssClass="management-card">
+    <HeaderActions>
+        <div class="d-flex align-items-center justify-content-between">
+            <h3>Owners Overview</h3>
+            <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Add Owner" OnClick="AddPropertyOwner" />
         </div>
-        <div class="card-body">
-            <div class="mb-3">
-                <input type="text" placeholder="Search property owners..." class="form-control" @bind="searchTerm" />
-            </div>
-            @if (FilteredPropertyOwners.Any())
-            {
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+        <div class="search-bar mt-2">
+            <input type="text" placeholder="Search property owners..." class="form-control" style="max-width: 300px;" @bind="searchTerm" />
+        </div>
+    </HeaderActions>
+    <ChildContent>
+        @if (FilteredPropertyOwners.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>ID Number</th>
+                            <th>VAT Number</th>
+                            <th>Mobile Number</th>
+                            <th>Email</th>
+                            <th>Date Added</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var owner in FilteredPropertyOwners)
+                        {
                             <tr>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th>ID Number</th>
-                                <th>VAT Number</th>
-                                <th>Mobile Number</th>
-                                <th>Email</th>
-                                <th>Date Added</th>
-                                <th>Actions</th>
+                                <td>@owner.FirstName</td>
+                                <td>@owner.LastName</td>
+                                <td>@owner.IdNumber</td>
+                                <td>@owner.VatNumber</td>
+                                <td>@owner.MobileNumber</td>
+                                <td>@owner.EmailAddress</td>
+                                <td>@owner.CreatedOn.ToShortDateString()</td>
+                                <td>
+                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View" OnClick="() => ViewPropertyOwner(owner)" />
+                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => EditPropertyOwner(owner)" CssClass="ms-2" />
+                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" Text="Delete" OnClick="() => DeletePropertyOwner(owner)" CssClass="ms-2" />
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var owner in FilteredPropertyOwners)
-                            {
-                                <tr>
-                                    <td>@owner.FirstName</td>
-                                    <td>@owner.LastName</td>
-                                    <td>@owner.IdNumber</td>
-                                    <td>@owner.VatNumber</td>
-                                    <td>@owner.MobileNumber</td>
-                                    <td>@owner.EmailAddress</td>
-                                    <td>@owner.CreatedOn.ToShortDateString()</td>
-                                    <td>
-                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => ViewPropertyOwner(owner)">
-                                            <i class="fas fa-eye"></i> View
-                                        </button>
-                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => EditPropertyOwner(owner)">
-                                            <i class="fas fa-pencil-alt"></i> Edit
-                                        </button>
-                                        <button class="btn roovia-btn btn-sm" @onclick="() => DeletePropertyOwner(owner)">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="roovia-alert-info d-flex justify-content-between align-items-center">
-                    <span>No property owners available.</span>
-                </div>
-            }
-        </div>
-    </div>
-</div>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <EmptyState Title="No property owners available" 
+                        Description="There are no property owners to display at this time." 
+                        Icon="fa-light fa-user-slash" 
+                        ActionText="Refresh" 
+                        OnAction="LoadPropertyOwnersAsync" />
+        }
+    </ChildContent>
+</CardView>
 
 @if (showPropertyOwnerModal)
 {
@@ -90,6 +85,7 @@
         </CascadingValue>
     </CascadingValue>
 }
+
 
 @code {
     private string searchTerm = string.Empty;
