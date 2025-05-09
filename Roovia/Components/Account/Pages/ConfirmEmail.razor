@@ -5,17 +5,64 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using Roovia.Data
 @using Roovia.Models.Users
+@using Roovia.Components.Layout
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
+@layout BlankLayout
 
-<PageTitle>Confirm email</PageTitle>
+<PageTitle>Confirm Email - Roovia</PageTitle>
 
-<h1>Confirm email</h1>
-<StatusMessage Message="@statusMessage" />
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="/images/roovia-logo.png" alt="Roovia Logo" class="auth-logo">
+            <h1>Email Confirmation</h1>
+        </div>
+
+        @if (isConfirmed)
+        {
+            <div class="auth-alert auth-alert-success">
+                <i class="fal fa-check-circle"></i>
+                <div class="auth-alert-content">
+                    <h3>Success!</h3>
+                    <p>@statusMessage</p>
+                </div>
+            </div>
+
+            <a href="Account/Login" class="auth-button">
+                <span>Proceed to Login</span>
+                <i class="fal fa-sign-in"></i>
+            </a>
+        }
+        else
+        {
+            <div class="auth-alert auth-alert-danger">
+                <i class="fal fa-exclamation-circle"></i>
+                <div class="auth-alert-content">
+                    <h3>Error</h3>
+                    <p>@statusMessage</p>
+                </div>
+            </div>
+
+            <div class="auth-actions">
+                <a href="Account/ResendEmailConfirmation" class="auth-button">
+                    <span>Resend Confirmation</span>
+                    <i class="fal fa-paper-plane"></i>
+                </a>
+            </div>
+        }
+
+        <div class="auth-footer">
+            <p>Need help?</p>
+            <a href="mailto:support@roovia.co.za" class="auth-link">Contact Support</a>
+        </div>
+    </div>
+</div>
 
 @code {
     private string? statusMessage;
+    private bool isConfirmed = false;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -26,24 +73,42 @@
     [SupplyParameterFromQuery]
     private string? Code { get; set; }
 
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         if (UserId is null || Code is null)
         {
             RedirectManager.RedirectTo("");
+            return;
         }
 
         var user = await UserManager.FindByIdAsync(UserId);
         if (user is null)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            statusMessage = $"Error loading user with ID {UserId}";
+            statusMessage = $"Error: Unable to load user.";
+            return;
+        }
+
+        var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+        var result = await UserManager.ConfirmEmailAsync(user, code);
+
+        if (result.Succeeded)
+        {
+            isConfirmed = true;
+            statusMessage = "Thank you for confirming your email. Your account will now be reviewed by our administrators.";
+
+            // If user was already active, redirect to login
+            if (user.IsActive)
+            {
+                statusMessage = "Thank you for confirming your email. You can now log in to your account.";
+            }
         }
         else
         {
-            var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
-            var result = await UserManager.ConfirmEmailAsync(user, code);
-            statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
+            statusMessage = "Error confirming your email. The confirmation link may have expired or is invalid.";
         }
     }
 }

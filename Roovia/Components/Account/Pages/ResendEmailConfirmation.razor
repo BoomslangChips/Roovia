@@ -7,30 +7,58 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using Roovia.Data
 @using Roovia.Models.Users
+@using Roovia.Components.Layout
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IEmailSender<ApplicationUser> EmailSender
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@layout BlankLayout
 
-<PageTitle>Resend email confirmation</PageTitle>
+<PageTitle>Resend Email Confirmation - Roovia</PageTitle>
 
-<h1>Resend email confirmation</h1>
-<h2>Enter your email.</h2>
-<hr />
-<StatusMessage Message="@message" />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm Model="Input" FormName="resend-email-confirmation" OnValidSubmit="OnValidSubmitAsync" method="post">
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="/images/roovia-logo.png" alt="Roovia Logo" class="auth-logo">
+            <h1>Resend Email Confirmation</h1>
+            <h2>Please enter your email address to receive a new confirmation link</h2>
+        </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="auth-alert auth-alert-success">
+                <i class="fal fa-check-circle"></i>
+                <div class="auth-alert-content">
+                    <h3>Success!</h3>
+                    <p>@message</p>
+                </div>
+            </div>
+        }
+
+        <EditForm Model="Input" FormName="resend-email-confirmation" OnValidSubmit="OnValidSubmitAsync" method="post" class="auth-form">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" aria-required="true" placeholder="name@example.com" />
-                <label for="Input.Email" class="form-label">Email</label>
+
+            <div class="form-group">
+                <label for="Input.Email" class="form-label">Email Address</label>
+                <div class="input-with-icon">
+                    <i class="fal fa-envelope"></i>
+                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                </div>
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Resend</button>
+
+            <button type="submit" class="auth-button">
+                <span>Resend Confirmation Email</span>
+                <i class="fal fa-paper-plane"></i>
+            </button>
         </EditForm>
+
+        <div class="auth-footer">
+            <p>Remember your password?</p>
+            <a href="Account/Login" class="auth-link">Back to login</a>
+        </div>
     </div>
 </div>
 
@@ -62,8 +90,8 @@
 
     private sealed class InputModel
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Email address is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
         public string Email { get; set; } = "";
     }
 }

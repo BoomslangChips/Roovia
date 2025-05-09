@@ -5,19 +5,58 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using Roovia.Data
 @using Roovia.Models.Users
+@using Roovia.Components.Layout
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityRedirectManager RedirectManager
+@layout BlankLayout
 
-<PageTitle>Confirm email change</PageTitle>
+<PageTitle>Confirm Email Change - Roovia</PageTitle>
 
-<h1>Confirm email change</h1>
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="/images/roovia-logo.png" alt="Roovia Logo" class="auth-logo">
+            <h1>Email Change Confirmation</h1>
+        </div>
 
-<StatusMessage Message="@message" />
+        @if (isSuccess)
+        {
+            <div class="auth-alert auth-alert-success">
+                <i class="fal fa-check-circle"></i>
+                <div class="auth-alert-content">
+                    <h3>Success!</h3>
+                    <p>@message</p>
+                </div>
+            </div>
+
+            <a href="/" class="auth-button">
+                <span>Continue to Dashboard</span>
+                <i class="fal fa-arrow-right"></i>
+            </a>
+        }
+        else
+        {
+            <div class="auth-alert auth-alert-danger">
+                <i class="fal fa-exclamation-circle"></i>
+                <div class="auth-alert-content">
+                    <h3>Error</h3>
+                    <p>@message</p>
+                </div>
+            </div>
+
+            <div class="auth-footer">
+                <p>Need help?</p>
+                <a href="mailto:support@roovia.co.za" class="auth-link">Contact Support</a>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
     private string? message;
+    private bool isSuccess = false;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -31,18 +70,21 @@
     [SupplyParameterFromQuery]
     private string? Code { get; set; }
 
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         if (UserId is null || Email is null || Code is null)
         {
-            RedirectManager.RedirectToWithStatus(
-                "Account/Login", "Error: Invalid email change confirmation link.", HttpContext);
+            message = "Error: Invalid email change confirmation link.";
+            return;
         }
 
         var user = await UserManager.FindByIdAsync(UserId);
         if (user is null)
         {
-            message = "Unable to find user with Id '{userId}'";
+            message = $"Unable to find user.";
             return;
         }
 
@@ -65,5 +107,6 @@
 
         await SignInManager.RefreshSignInAsync(user);
         message = "Thank you for confirming your email change.";
+        isSuccess = true;
     }
 }
