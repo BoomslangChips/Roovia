@@ -38,6 +38,8 @@ namespace Roovia.Models.PropertyOwner
 
         public Guid UpdatedBy { get; set; }
 
+        public int CurrentTenantId { get; set; } = 0;
+
         public List<Property> Properties { get; set; } = new List<Property>();
 
     }

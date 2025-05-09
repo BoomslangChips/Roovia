@@ -9,68 +9,70 @@
 
 @rendermode InteractiveServer
 
-<h3>Tenants</h3>
-
-<div class="container my-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            Tenants Overview
-        </div>
-        <div class="card-body">
-            <div class="mb-3">
-                <input type="text" placeholder="Search tenants..." class="form-control" @bind="searchTerm" />
+<CardView CssClass="management-card">
+    <HeaderActions>
+        <div class="d-flex align-items-center justify-content-between">
+            <h3 class="mb-0">Tenants</h3>
+            <div class="search-bar">
+                <input type="text" placeholder="Search tenants..."
+                       class="form-control" style="max-width: 300px;" @bind="searchTerm" />
             </div>
-            @if (isLoading)
-            {
-                <div class="d-flex justify-content-center py-5">
-                    <div class="loading-spinner"></div>
-                </div>
-            }
-            else if (FilteredTenants.Any())
-            {
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Created On</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var tenant in FilteredTenants)
-                            {
-                                <tr>
-                                    <td>@tenant.FirstName</td>
-                                    <td>@tenant.LastName</td>
-                                    <td>@tenant.CreatedOn.ToShortDateString()</td>
-                                    <td>
-                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => OpenTenant(tenant)">
-                                            <i class="bi bi-eye"></i> Open
-                                        </button>
-                                        <button class="btn roovia-btn btn-sm me-2" @onclick="() => EditTenant(tenant)">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </button>
-                                        <button class="btn roovia-btn btn-sm" @onclick="() => DeleteTenant(tenant)">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-info">
-                    No tenants available.
-                </div>
-            }
         </div>
-    </div>
-</div>
+    </HeaderActions>
+    <ChildContent>
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center py-5">
+                <div class="loading-spinner"></div>
+            </div>
+        }
+        else if (FilteredTenants.Any())
+        {
+            <div class="tenant-grid d-flex flex-wrap gap-3">
+                @foreach (var tenant in FilteredTenants)
+                {
+                    <div class="tenant-card card shadow-sm" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                @tenant.FirstName @tenant.LastName
+                            </h5>
+                            <p class="card-text">
+                                Status: 
+                                @if (tenant.PropertyId > 0)
+                                {
+                                    <span class="badge bg-success">Renting</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Not Renting</span>
+                                }
+                            </p>
+                            <p class="card-text">
+                                Created On: @tenant.CreatedOn.ToShortDateString()
+                            </p>
+                            <div class="d-flex justify-content-between">
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" 
+                                          Text="Open" OnClick="() => OpenTenant(tenant)" />
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" 
+                                          Text="Edit" OnClick="() => EditTenant(tenant)" />
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" 
+                                          Text="Delete" OnClick="() => DeleteTenant(tenant)" />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <EmptyState Title="No tenants available" 
+                        Description="There are no tenants to display at this time." 
+                        Icon="fa-light fa-user-slash" 
+                        ActionText="Refresh" 
+                        OnAction="LoadTenants" />
+        }
+    </ChildContent>
+</CardView>
 
 @code {
     [CascadingParameter]
@@ -126,24 +128,25 @@
     }
 
     private IEnumerable<PropertyTenant> FilteredTenants =>
-        tenants.Where(t => string.IsNullOrEmpty(searchTerm) || t.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+        tenants.Where(t => string.IsNullOrEmpty(searchTerm)
+                             || t.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                             || t.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
 
     private void OpenTenant(PropertyTenant tenant)
     {
         // Implement navigation to tenant details page or modal opening logic here.
-        Console.WriteLine($"Opening tenant: {tenant.FirstName}");
+        Console.WriteLine($"Opening tenant: {tenant.FirstName} {tenant.LastName}");
     }
 
     private void EditTenant(PropertyTenant tenant)
     {
         // Implement tenant edit logic here.
-        Console.WriteLine($"Editing tenant: {tenant.FirstName}");
+        Console.WriteLine($"Editing tenant: {tenant.FirstName} {tenant.LastName}");
     }
 
     private async Task DeleteTenant(PropertyTenant tenant)
     {
         // Optionally call a service to delete the tenant from the backend.
-        // For now, we'll just remove it from the list.
         tenants.Remove(tenant);
         ToastService.ShowInfo($"Tenant {tenant.FirstName} deleted.", "Delete Tenant");
         await Task.CompletedTask;
