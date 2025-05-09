@@ -46,170 +46,170 @@
 <style>
     /* Modal Styles */
     .roovia-modal-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: var(--overlay-bg);
-        backdrop-filter: blur(2px);
-        z-index: var(--z-modal-backdrop);
-        animation: fadeIn 0.2s ease-in-out forwards;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay-bg);
+    backdrop-filter: blur(2px);
+    z-index: var(--z-modal-backdrop);
+    animation: fadeIn 0.2s ease-in-out forwards;
     }
 
     .roovia-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.95);
-        z-index: var(--z-modal);
-        width: 90%;
-        max-width: 600px;
-        max-height: 90vh;
-        display: flex;
-        flex-direction: column;
-        background-color: var(--modal-bg);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-xl);
-        opacity: 0;
-        overflow: auto;
-        transition: opacity 0.2s ease, transform 0.2s ease;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    z-index: var(--z-modal);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--modal-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    overflow: auto;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .roovia-modal-visible {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
     }
 
     .roovia-modal-sm {
-        max-width: 400px;
+    max-width: 400px;
     }
 
     .roovia-modal-lg {
-        max-width: 800px;
+    max-width: 800px;
     }
 
     .roovia-modal-xl {
-        max-width: 1000px;
+    max-width: 1000px;
     }
 
     .roovia-modal-fullscreen {
-        width: 95%;
-        max-width: 95%;
-        height: 95%;
-        max-height: 95%;
+    width: 95%;
+    max-width: 95%;
+    height: 95%;
+    max-height: 95%;
     }
 
     .roovia-modal-content {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
     }
 
     .roovia-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: var(--spacing-4);
-        border-bottom: 1px solid var(--border-divider);
-        background-color: var(--subtle-bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
     }
 
     .roovia-modal-title {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-3);
-        color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    color: var(--text-primary);
     }
 
     .roovia-modal-icon {
-        color: var(--primary);
-        font-size: 1.25rem;
+    color: var(--primary);
+    font-size: 1.25rem;
     }
 
     .roovia-modal-close {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        border: none;
-        background-color: transparent;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: var(--hover-transition);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--hover-transition);
     }
 
-        .roovia-modal-close:hover {
-            background-color: var(--primary-light);
-            color: var(--primary);
-            transform: rotate(90deg);
-        }
+    .roovia-modal-close:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    transform: rotate(90deg);
+    }
 
     .roovia-modal-body {
 
-        overflow-y: auto;
-        flex: 1;
+    overflow-y: auto;
+    flex: 1;
     }
 
     .roovia-modal-footer {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: var(--spacing-3);
-        padding: var(--spacing-4);
-        border-top: 1px solid var(--border-divider);
-        background-color: var(--subtle-bg);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4);
+    border-top: 1px solid var(--border-divider);
+    background-color: var(--subtle-bg);
     }
 
-        /* Modal-specific button adjustments - limited to placement only */
-        .roovia-modal-footer > button:not(:first-child) {
-            margin-left: var(--spacing-2);
-        }
+    /* Modal-specific button adjustments - limited to placement only */
+    .roovia-modal-footer > button:not(:first-child) {
+    margin-left: var(--spacing-2);
+    }
 
     /* Modal animations */
     @@keyframes fadeIn {
-        from
+    from
 
     {
-        opacity: 0;
+    opacity: 0;
     }
 
     to {
-        opacity: 1;
+    opacity: 1;
     }
 
     }
 
     @@media (max-width: 576px) {
-        .roovia-modal
+    .roovia-modal
 
     {
-        width: 95%;
-        max-width: none;
-        max-height: 95vh;
+    width: 95%;
+    max-width: none;
+    max-height: 95vh;
     }
 
     .roovia-modal-header {
-        padding: var(--spacing-3);
+    padding: var(--spacing-3);
     }
 
     .roovia-modal-body {
     }
 
     .roovia-modal-footer {
-        padding: var(--spacing-3);
-        flex-direction: column;
-        width: 100%;
+    padding: var(--spacing-3);
+    flex-direction: column;
+    width: 100%;
     }
 
-        .roovia-modal-footer button {
-            width: 100%;
-            margin-left: 0 !important;
-            margin-top: var(--spacing-2);
-        }
+    .roovia-modal-footer button {
+    width: 100%;
+    margin-left: 0 !important;
+    margin-top: var(--spacing-2);
+    }
 
     }
 </style>
@@ -236,15 +236,6 @@
     protected IJSRuntime? JSRuntime { get; set; }
     private string SizeClass => $"roovia-modal-{Size.ToLowerInvariant()}";
 
-    protected override void OnInitialized()
-    {
-        // Register ESC key handler when component is initialized
-        if (CloseOnEsc)
-        {
-            if (JSRuntime != null)
-            JSRuntime.InvokeVoidAsync("document.addEventListener", "keydown", DotNetObjectReference.Create(this));
-        }
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

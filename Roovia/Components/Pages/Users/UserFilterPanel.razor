@@ -3,16 +3,23 @@
 
 <div class="user-filters-panel">
     <div class="filter-section">
-        <div class="search-input-wrapper">
-            <i class="fa-light fa-search search-icon"></i>
-            <input type="text" class="custom-search-input" placeholder="Search users..."
-                   @bind="searchValue" @bind:event="oninput" @onkeyup="HandleKeyPress" />
-            @if (!string.IsNullOrEmpty(searchValue))
-            {
-                <button class="clear-search-btn" @onclick="ClearSearch">
-                    <i class="fa-light fa-times"></i>
-                </button>
-            }
+        <div class="search-section">
+            <div class="search-input-wrapper">
+                <i class="fa-light fa-search search-icon"></i>
+                <input type="text" class="custom-search-input" placeholder="Search @SearchTypePlaceholder..."
+                       @bind="searchValue" @bind:event="oninput" @onkeyup="HandleKeyPress" />
+                @if (!string.IsNullOrEmpty(searchValue))
+                {
+                    <button class="clear-search-btn" @onclick="ClearSearch" title="Clear search">
+                        <i class="fa-light fa-times"></i>
+                    </button>
+                }
+            </div>
+
+            <RVChips Chips="@SearchTypeChips"
+                     IsInputChip="false"
+                     OnChipSelected="HandleSearchTypeSelection"
+                     CssClass="search-type-chips" />
         </div>
 
         <div class="filter-selectors">
@@ -41,39 +48,6 @@
                                 <i class="fa-light fa-building"></i>
                                 <span>@company.Name</span>
                                 @if (SelectedCompanyId == company.Id)
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                        }
-                    }
-                </RVDropdown>
-
-                <RVDropdown @ref="branchDropdown" TriggerText="@GetBranchFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown branch-dropdown" Disabled="@(SelectedCompanyId == null || Branches == null || !Branches.Any())"
-                            FullWidth="true">
-                    <div class="dropdown-header">
-                        <span>Filter by Branch</span>
-                    </div>
-                    <button type="button" class="roovia-dropdown-item @(SelectedBranchId == null ? "active" : "")"
-                            @onclick="async () => await SelectBranch(null)">
-                        <i class="fa-light fa-code-branch"></i>
-                        <span>All Branches</span>
-                        @if (SelectedBranchId == null)
-                        {
-                            <i class="fa-light fa-check"></i>
-                        }
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    @if (Branches != null)
-                    {
-                        @foreach (var branch in Branches.OrderBy(b => b.Name))
-                        {
-                            <button type="button" class="roovia-dropdown-item @(SelectedBranchId == branch.Id ? "active" : "")"
-                                    @onclick="async () => await SelectBranch(branch.Id)">
-                                <i class="fa-light fa-code-branch"></i>
-                                <span>@branch.Name</span>
-                                @if (SelectedBranchId == branch.Id)
                                 {
                                     <i class="fa-light fa-check"></i>
                                 }
@@ -151,9 +125,17 @@
                 <RVButton ButtonType="secondary" IconLeft="fa-light fa-filter-slash" Text="Clear" OnClick="HandleClearFilters"
                           Disabled="@(!HasActiveFilters)" CssClass="clear-filters-btn" />
 
-                <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh" OnClick="HandleRefresh" />
+                <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh" OnClick="HandleRefresh" CssClass="refresh-btn" />
             </div>
         </div>
+
+        @if (HasActiveFilters)
+        {
+            <div class="active-filters-indicator">
+                <i class="fa-light fa-filter"></i>
+                <span>Filters applied</span>
+            </div>
+        }
     </div>
 </div>
 
@@ -161,10 +143,6 @@
     [Parameter] public List<Company>? Companies { get; set; }
     [Parameter] public int? SelectedCompanyId { get; set; }
     [Parameter] public EventCallback<int?> OnCompanySelected { get; set; }
-
-    [Parameter] public List<Branch>? Branches { get; set; }
-    [Parameter] public int? SelectedBranchId { get; set; }
-    [Parameter] public EventCallback<int?> OnBranchSelected { get; set; }
 
     [Parameter] public string SelectedRoleFilter { get; set; } = "all";
     [Parameter] public EventCallback<string> OnRoleFilterChanged { get; set; }
@@ -175,26 +153,113 @@
     [Parameter] public string SearchTerm { get; set; } = string.Empty;
     [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
 
+    [Parameter] public string SearchType { get; set; } = "users";
+    [Parameter] public EventCallback<string> OnSearchTypeChanged { get; set; }
+
     [Parameter] public EventCallback OnClearFilters { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
 
     private string searchValue = string.Empty;
+    private List<RVChips.ChipItem> SearchTypeChips { get; set; } = new List<RVChips.ChipItem>();
 
     // References to the dropdown components
     private RVDropdown companyDropdown;
-    private RVDropdown branchDropdown;
     private RVDropdown roleDropdown;
     private RVDropdown statusDropdown;
+
+    private string SearchTypePlaceholder => SearchType switch
+    {
+        "companies" => "companies",
+        "branches" => "branches",
+        _ => "users"
+    };
+
+    protected override void OnInitialized()
+    {
+        InitializeSearchTypeChips();
+    }
 
     protected override void OnParametersSet()
     {
         searchValue = SearchTerm;
+        UpdateSearchTypeChips();
+    }
+
+    private void InitializeSearchTypeChips()
+    {
+        SearchTypeChips = new List<RVChips.ChipItem>
+        {
+            new RVChips.ChipItem
+            {
+                Label = "Users",
+                Icon = "fa-light fa-users",
+                Type = "primary",
+                IsActive = SearchType == "users",
+                IsDeletable = false
+            },
+            new RVChips.ChipItem
+            {
+                Label = "Companies",
+                Icon = "fa-light fa-building",
+                Type = "primary",
+                IsActive = SearchType == "companies",
+                IsDeletable = false
+            },
+            new RVChips.ChipItem
+            {
+                Label = "Branches",
+                Icon = "fa-light fa-code-branch",
+                Type = "primary",
+                IsActive = SearchType == "branches",
+                IsDeletable = false
+            }
+        };
+    }
+
+    private void UpdateSearchTypeChips()
+    {
+        foreach (var chip in SearchTypeChips)
+        {
+            if (chip.Label.ToLower() == SearchType)
+                chip.IsActive = true;
+            else
+                chip.IsActive = false;
+        }
+    }
+
+    private async Task HandleSearchTypeSelection(string chipId)
+    {
+        var selectedChip = SearchTypeChips.FirstOrDefault(c => c.Id == chipId);
+        if (selectedChip != null)
+        {
+            // Update all chips - only one can be active at a time
+            foreach (var chip in SearchTypeChips)
+            {
+                chip.IsActive = chip.Id == chipId;
+            }
+
+            // Convert chip label to lowercase for the search type
+            string newSearchType = selectedChip.Label.ToLower();
+
+            // Only invoke if the search type actually changed
+            if (SearchType != newSearchType)
+            {
+                SearchType = newSearchType;
+                await OnSearchTypeChanged.InvokeAsync(SearchType);
+
+                // Clear the search when changing type
+                if (!string.IsNullOrEmpty(searchValue))
+                {
+                    searchValue = string.Empty;
+                    await OnSearchChanged.InvokeAsync(searchValue);
+                }
+            }
+        }
     }
 
     private bool HasActiveFilters =>
         !string.IsNullOrEmpty(SearchTerm) ||
         SelectedCompanyId.HasValue ||
-        SelectedBranchId.HasValue ||
         SelectedRoleFilter != "all" ||
         SelectedStatusFilter != "all";
 
@@ -206,7 +271,6 @@
         }
     }
 
-    // Updated selection methods that also close the dropdowns
     private async Task SelectCompany(int? companyId)
     {
         if (SelectedCompanyId != companyId)
@@ -218,20 +282,6 @@
         if (companyDropdown != null)
         {
             await companyDropdown.Close();
-        }
-    }
-
-    private async Task SelectBranch(int? branchId)
-    {
-        if (SelectedBranchId != branchId)
-        {
-            await OnBranchSelected.InvokeAsync(branchId);
-        }
-
-        // Close the dropdown after selection
-        if (branchDropdown != null)
-        {
-            await branchDropdown.Close();
         }
     }
 
@@ -288,17 +338,6 @@
         }
 
         return "Company: All";
-    }
-
-    private string GetBranchFilterText()
-    {
-        if (SelectedBranchId.HasValue && Branches != null)
-        {
-            var branch = Branches.FirstOrDefault(b => b.Id == SelectedBranchId);
-            return branch != null ? $"Branch: {branch.Name}" : "Branch: All";
-        }
-
-        return "Branch: All";
     }
 
     private string GetRoleFilterText()

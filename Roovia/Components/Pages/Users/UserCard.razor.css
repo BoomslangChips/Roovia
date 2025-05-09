@@ -229,6 +229,8 @@
 
 /* Responsive Design - Tablet */
 @media (min-width: 576px) {
+
+
     .user-card {
         flex-direction: row;
         align-items: center;
@@ -274,6 +276,8 @@
 
 /* Responsive Design - Desktop */
 @media (min-width: 768px) {
+
+
     .user-card-info h4 {
         font-size: var(--font-size-base);
     }
@@ -287,17 +291,24 @@
         margin-right: var(--spacing-2);
     }
 }
-
+@media (max-width: 600px) {
+    .user-card {
+        padding: var(--spacing-1);
+        position: relative;
+    }
+    .avatar-initials {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+        position: absolute;
+        right: 10px;
+        border-radius: 2px;
+    }
+}
 /* Extra small screen optimizations */
 @media (max-width: 400px) {
     .user-card {
         padding: var(--spacing-1);
-    }
-
-    .avatar-initials {
-        width: 36px;
-        height: 36px;
-        font-size: 12px;
     }
 
     .user-card-info h4 {

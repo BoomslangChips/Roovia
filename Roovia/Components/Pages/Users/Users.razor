@@ -52,15 +52,14 @@
                     <UserFilterPanel Companies="@allCompanies"
                                      OnCompanySelected="HandleCompanyChange"
                                      SelectedCompanyId="@selectedCompanyId"
-                                     Branches="@filteredBranches"
-                                     OnBranchSelected="HandleBranchChange"
-                                     SelectedBranchId="@selectedBranchId"
                                      OnRoleFilterChanged="HandleRoleFilterChange"
                                      SelectedRoleFilter="@selectedRoleFilter"
                                      OnStatusFilterChanged="HandleStatusFilterChange"
                                      SelectedStatusFilter="@selectedStatusFilter"
                                      SearchTerm="@searchTerm"
                                      OnSearchChanged="HandleSearch"
+                                     SearchType="@searchType"
+                                     OnSearchTypeChanged="HandleSearchTypeChange"
                                      OnClearFilters="ClearFilters"
                                      OnRefresh="LoadUserHierarchy" />
                 </HeaderActions>
@@ -477,13 +476,18 @@
     private HashSet<int> expandedCompanies = new HashSet<int>();
     private HashSet<int> expandedBranches = new HashSet<int>();
     private string activeTab = "users";
-
+    private string searchType = "users";
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUser();
         await LoadUserHierarchy();
     }
-
+    private void HandleSearchTypeChange(string type)
+    {
+        searchType = type;
+        // Refresh the filtered results when search type changes
+        StateHasChanged();
+    }
     private async Task LoadCurrentUser()
     {
         try
@@ -597,17 +601,66 @@
 
             var companies = allCompanies.AsEnumerable();
 
-            // Search filter
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                companies = companies.Where(c =>
-                    c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
-            }
-
             // Company filter
             if (selectedCompanyIdFilter.HasValue)
             {
                 companies = companies.Where(c => c.Id == selectedCompanyIdFilter);
+            }
+
+            // Search filter based on search type
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                if (searchType == "companies")
+                {
+                    // Search directly in companies
+                    companies = companies.Where(c =>
+                        c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+                }
+                else if (searchType == "branches")
+                {
+                    // Search in branches, then get their parent companies
+                    var matchingBranchCompanyIds = allBranches
+                        .Where(b => b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true)
+                        .Select(b => b.CompanyId)
+                        .Distinct()
+                        .ToList();
+
+                    companies = companies.Where(c => matchingBranchCompanyIds.Contains(c.Id));
+                }
+                else // users (default)
+                {
+                    // Search in users, then get their company IDs
+                    var companyIds = users
+                        .Where(u =>
+                            (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (u.UserName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                        .Select(u => u.CompanyId)
+                        .Where(id => id.HasValue)
+                        .Select(id => id!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    companies = companies.Where(c => companyIds.Contains(c.Id));
+                }
+            }
+
+            // Status filter - hide companies with no matching users
+            if (selectedStatusFilter != "all")
+            {
+                bool isActive = selectedStatusFilter == "active";
+
+                // Get company IDs that have users with the specified status
+                var companyIdsWithMatchingUsers = users
+                    .Where(u => u.IsActive == isActive)
+                    .Select(u => u.CompanyId)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                companies = companies.Where(c => companyIdsWithMatchingUsers.Contains(c.Id));
             }
 
             return companies;
@@ -630,17 +683,11 @@
     {
         var branches = allBranches.Where(b => b.CompanyId == companyId);
 
-        // Search filter
-        if (!string.IsNullOrWhiteSpace(searchTerm))
+        // Search filter - only apply when search type is "branches"
+        if (!string.IsNullOrWhiteSpace(searchTerm) && searchType == "branches")
         {
             branches = branches.Where(b =>
                 b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
-        }
-
-        // Branch filter
-        if (selectedBranchIdFilter.HasValue)
-        {
-            branches = branches.Where(b => b.Id == selectedBranchIdFilter);
         }
 
         return branches;
@@ -648,8 +695,8 @@
 
     private IEnumerable<ApplicationUser> ApplyUserFilters(IEnumerable<ApplicationUser> userList)
     {
-        // Search filter
-        if (!string.IsNullOrWhiteSpace(searchTerm))
+        // Search filter - only apply when search type is "users"
+        if (!string.IsNullOrWhiteSpace(searchTerm) && searchType == "users")
         {
             userList = userList.Where(u =>
                 (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -677,6 +724,7 @@
         return userList;
     }
 
+
     private void ToggleCompany(int companyId)
     {
         if (expandedCompanies.Contains(companyId))
@@ -696,17 +744,7 @@
     private void HandleCompanyChange(int? companyId)
     {
         selectedCompanyIdFilter = companyId;
-        selectedBranchIdFilter = null;
-
-        // Update filtered branches
-        if (companyId.HasValue)
-        {
-            filteredBranches = allBranches.Where(b => b.CompanyId == companyId).ToList();
-        }
-        else
-        {
-            filteredBranches = allBranches;
-        }
+        selectedBranchIdFilter = null; // Reset branch filter when company changes
     }
 
     private void HandleBranchChange(int? branchId)
@@ -736,6 +774,7 @@
         selectedBranchIdFilter = null;
         selectedRoleFilter = "all";
         selectedStatusFilter = "all";
+        searchType = "users";
         filteredBranches = allBranches;
     }
 
