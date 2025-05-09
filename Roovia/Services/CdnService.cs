@@ -58,6 +58,10 @@ namespace Roovia.Services
         private DateTime _configLastRefreshed;
         private readonly TimeSpan _configRefreshInterval = TimeSpan.FromMinutes(5);
 
+        // File operation retry settings
+        private const int MaxRetryAttempts = 3;
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(500);
+
         public CdnService(
             IConfiguration configuration,
             IHttpClientFactory httpClientFactory,
@@ -681,6 +685,173 @@ namespace Roovia.Services
             return $"{cdnBaseUrl.TrimEnd('/')}/{path}";
         }
 
+        // Improved file path resolution and file operation with retries
+        private (string RelativePath, string PhysicalPath) ResolveFilePaths(string path)
+        {
+            _logger.LogInformation("Resolving path: {Path}", path);
+
+            // Extract the relative path from the URL
+            string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
+            string relativePath = "";
+
+            // Handle local development URLs
+            if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
+            {
+                relativePath = path.Substring(5); // Remove "/cdn/"
+                _logger.LogDebug("Development path detected, relative path: {RelativePath}", relativePath);
+            }
+            else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
+                _logger.LogDebug("CDN URL detected, relative path: {RelativePath}", relativePath);
+            }
+            else if (path.StartsWith("http://") || path.StartsWith("https://"))
+            {
+                // Try to extract relative path from any URL by looking for category names
+                var segments = path.Split('/');
+                bool foundCategory = false;
+                for (int i = 0; i < segments.Length - 1; i++)
+                {
+                    if (_categories?.Any(c => c.Name.Equals(segments[i], StringComparison.OrdinalIgnoreCase)) == true)
+                    {
+                        foundCategory = true;
+                        relativePath = string.Join("/", segments.Skip(i));
+                        _logger.LogDebug("Found category in URL path, relative path: {RelativePath}", relativePath);
+                        break;
+                    }
+                }
+
+                if (!foundCategory)
+                {
+                    // If no category found, treat as relative path
+                    relativePath = path.TrimStart('/');
+                    _logger.LogDebug("No category found in URL, treating as relative path: {RelativePath}", relativePath);
+                }
+            }
+            else
+            {
+                // If path doesn't start with the base URL, treat it as a relative path
+                relativePath = path.TrimStart('/');
+                _logger.LogDebug("Treating as relative path: {RelativePath}", relativePath);
+            }
+
+            // Get CDN storage path
+            string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
+
+            // If in development and storage path doesn't exist, try local storage path
+            if (_environment.IsDevelopment() &&
+                (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
+            {
+                string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
+
+                // If the file exists in the local path, use it
+                if (Directory.Exists(localPath) && File.Exists(Path.Combine(localPath, relativePath)))
+                {
+                    cdnStoragePath = localPath;
+                    _logger.LogDebug("Using local storage path: {Path}", cdnStoragePath);
+                }
+            }
+
+            string physicalPath = Path.Combine(cdnStoragePath, relativePath);
+            _logger.LogDebug("Resolved to physical path: {PhysicalPath}", physicalPath);
+
+            return (relativePath, physicalPath);
+        }
+
+        // Verify file permissions before attempting operations
+        private bool VerifyFileAccess(string path, FileAccess access)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                _logger.LogWarning("File does not exist: {Path}", path);
+                return false;
+            }
+
+            try
+            {
+                // Try to open the file with the requested access to check permissions
+                using (var fileStream = new FileStream(
+                    path,
+                    FileMode.Open,
+                    access,
+                    FileShare.ReadWrite,
+                    4096,
+                    FileOptions.None))
+                {
+                    _logger.LogDebug("File access verified for {Path} with {Access} access", path, access);
+                    return true;
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Permission denied for file {Path} with {Access} access", path, access);
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "File is locked or in use: {Path}", path);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying file access for {Path}", path);
+                return false;
+            }
+        }
+
+        // Attempt file operation with retries
+        private async Task<bool> TryFileOperationAsync(Func<Task<bool>> operation, string operationName, string path)
+        {
+            int attempts = 0;
+            while (attempts < MaxRetryAttempts)
+            {
+                try
+                {
+                    _logger.LogDebug("Attempting {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
+                        operationName, path, attempts + 1, MaxRetryAttempts);
+
+                    var result = await operation();
+
+                    if (result)
+                    {
+                        _logger.LogInformation("{Operation} successful on {Path}", operationName, path);
+                        return true;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("{Operation} returned false on {Path}", operationName, path);
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogError(ex, "Permission denied for {Operation} on {Path}", operationName, path);
+                    // Don't retry permission issues
+                    return false;
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "IO Exception during {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
+                        operationName, path, attempts + 1, MaxRetryAttempts);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
+                        operationName, path, attempts + 1, MaxRetryAttempts);
+                }
+
+                attempts++;
+                if (attempts < MaxRetryAttempts)
+                {
+                    await Task.Delay(RetryDelay);
+                }
+            }
+
+            _logger.LogError("Failed {Operation} on {Path} after {MaxAttempts} attempts",
+                operationName, path, MaxRetryAttempts);
+            return false;
+        }
+
+        // Improved delete file implementation
         public async Task<bool> DeleteFileAsync(string path)
         {
             // Check if we need to refresh the configuration
@@ -690,68 +861,106 @@ namespace Roovia.Services
             {
                 _logger.LogInformation("Deleting file: {Path}", path);
 
-                // Extract the relative path from the URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativePath;
+                // Resolve paths
+                var (relativePath, physicalPath) = ResolveFilePaths(path);
 
-                // Handle local development URLs
-                if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
-                {
-                    relativePath = path.Substring(5); // Remove "/cdn/"
-                }
-                else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
-                {
-                    relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
-                }
-                else
-                {
-                    // If path doesn't start with the base URL, treat it as a relative path
-                    relativePath = path.TrimStart('/');
-                }
-
-                _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
-
-                // Direct file system access
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-                // If in development and storage path doesn't exist, try local storage path
-                if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
-                {
-                    cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
-                }
-
-                string fullPath = Path.Combine(cdnStoragePath, relativePath);
-
-                _logger.LogDebug("Physical path for delete: {Path}", fullPath);
+                _logger.LogDebug("Delete file - Physical path: {Path}", physicalPath);
 
                 // Update database record first to mark as deleted
                 await MarkFileAsDeletedAsync(path);
 
-                if (File.Exists(fullPath))
+                // Check if file exists and is accessible
+                if (!File.Exists(physicalPath))
                 {
-                    // Get file info before deletion
-                    var fileInfo = new FileInfo(fullPath);
+                    _logger.LogWarning("File not found for deletion: {Path}", physicalPath);
+                    return false;
+                }
 
-                    // Try to determine category from path
-                    string categoryName = relativePath.Split('/')[0];
-                    var categoryId = await GetCategoryIdAsync(categoryName);
+                if (!VerifyFileAccess(physicalPath, FileAccess.ReadWrite))
+                {
+                    _logger.LogWarning("File access denied for deletion: {Path}", physicalPath);
 
-                    // Delete the file
-                    File.Delete(fullPath);
+                    // Try alternate delete methods if permission issues
+                    return await TryFileOperationAsync(
+                        async () =>
+                        {
+                            try
+                            {
+                                // Try to use alternative delete method
+                                if (File.Exists(physicalPath))
+                                {
+                                    File.SetAttributes(physicalPath, FileAttributes.Normal);
+                                    File.Delete(physicalPath);
+                                    await Task.CompletedTask; // Just to make it async
+                                    return true;
+                                }
+                                return false;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Alternative delete method failed: {Path}", physicalPath);
+                                return false;
+                            }
+                        },
+                        "Alternative Delete",
+                        physicalPath);
+                }
 
-                    _logger.LogInformation("Successfully deleted file: {Path}", fullPath);
+                // Try to get file info before deletion (for statistics update)
+                long fileSize = 0;
+                try
+                {
+                    var fileInfo = new FileInfo(physicalPath);
+                    fileSize = fileInfo.Length;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not get file size for {Path}", physicalPath);
+                }
+
+                // Try to determine category from path
+                string categoryName = relativePath.Split('/').FirstOrDefault() ?? "";
+                var categoryId = await GetCategoryIdAsync(categoryName);
+
+                // Delete with retry
+                bool deleteSuccess = await TryFileOperationAsync(
+                    async () =>
+                    {
+                        try
+                        {
+                            if (File.Exists(physicalPath))
+                            {
+                                // Reset any read-only attribute
+                                File.SetAttributes(physicalPath, FileAttributes.Normal);
+                                File.Delete(physicalPath);
+                                await Task.CompletedTask; // Just to make it async
+                                return true;
+                            }
+                            return false;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    },
+                    "Delete",
+                    physicalPath);
+
+                if (deleteSuccess)
+                {
+                    _logger.LogInformation("Successfully deleted file: {Path}", physicalPath);
 
                     // Remove from cache if exists
                     _filePathCache.TryRemove(path, out _);
                     _cacheExpiry.TryRemove(path, out _);
 
                     // Update usage statistics
-                    if (categoryId.HasValue)
+                    if (categoryId.HasValue && fileSize > 0)
                     {
                         await UpdateUsageStatisticsAsync(
                             categoryId.Value,
                             -1,
-                            -fileInfo.Length,
+                            -fileSize,
                             0,
                             0,
                             1);
@@ -759,11 +968,8 @@ namespace Roovia.Services
 
                     return true;
                 }
-                else
-                {
-                    _logger.LogWarning("File not found for deletion: {Path}", fullPath);
-                    return false;
-                }
+
+                return false;
             }
             catch (Exception ex)
             {
@@ -772,6 +978,7 @@ namespace Roovia.Services
             }
         }
 
+        // Improved rename file implementation
         public async Task<string> RenameFileAsync(string path, string newName)
         {
             try
@@ -781,26 +988,10 @@ namespace Roovia.Services
                 // Check if we need to refresh the configuration
                 await RefreshConfigIfNeededAsync();
 
-                // Extract the relative path from the URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativePath;
+                // Resolve paths
+                var (relativePath, oldFullPath) = ResolveFilePaths(path);
 
-                // Handle local development URLs
-                if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
-                {
-                    relativePath = path.Substring(5); // Remove "/cdn/"
-                }
-                else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
-                {
-                    relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
-                }
-                else
-                {
-                    // If path doesn't start with the base URL, treat it as a relative path
-                    relativePath = path.TrimStart('/');
-                }
-
-                _logger.LogDebug("Extracted relative path: {RelativePath}", relativePath);
+                _logger.LogDebug("Rename file - Old physical path: {Path}", oldFullPath);
 
                 // Get directory, old filename, and extension
                 string directory = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? string.Empty;
@@ -813,43 +1004,94 @@ namespace Roovia.Services
                     newName = $"{newName}{extension}";
                 }
 
-                // Direct file system access
                 string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
 
                 // If in development and storage path doesn't exist, try local storage path
-                if (_environment.IsDevelopment() && (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
+                if (_environment.IsDevelopment() &&
+                    (!Directory.Exists(cdnStoragePath) || !File.Exists(oldFullPath)))
                 {
                     cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
                 }
 
-                string oldFullPath = Path.Combine(cdnStoragePath, relativePath);
                 string newRelativePath = string.IsNullOrEmpty(directory) ?
                     newName :
                     Path.Combine(directory, newName).Replace('\\', '/');
                 string newFullPath = Path.Combine(cdnStoragePath, newRelativePath);
 
-                _logger.LogDebug("Old physical path: {OldPath}", oldFullPath);
-                _logger.LogDebug("New physical path: {NewPath}", newFullPath);
+                _logger.LogDebug("Rename file - New physical path: {Path}", newFullPath);
 
-                // Check if the old file exists
+                // Check if the old file exists and is accessible
                 if (!File.Exists(oldFullPath))
                 {
                     _logger.LogWarning("File not found for rename: {Path}", oldFullPath);
                     return null;
                 }
 
+                if (!VerifyFileAccess(oldFullPath, FileAccess.ReadWrite))
+                {
+                    _logger.LogWarning("File access denied for rename: {Path}", oldFullPath);
+                    return null;
+                }
+
                 // Check if the new filename already exists
                 if (File.Exists(newFullPath))
                 {
+                    _logger.LogWarning("Destination file already exists: {Path}", newFullPath);
                     throw new Exception($"A file with the name '{newName}' already exists in this location.");
                 }
 
-                // Rename the file
-                File.Move(oldFullPath, newFullPath);
+                // Ensure the directory for the new path exists
+                string newDir = Path.GetDirectoryName(newFullPath);
+                if (!string.IsNullOrEmpty(newDir) && !Directory.Exists(newDir))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(newDir);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to create directory for rename: {Path}", newDir);
+                        throw new Exception($"Failed to create directory for the renamed file: {ex.Message}", ex);
+                    }
+                }
+
+                // Rename with retry
+                bool renameSuccess = await TryFileOperationAsync(
+                    async () =>
+                    {
+                        try
+                        {
+                            if (File.Exists(oldFullPath))
+                            {
+                                // Reset any read-only attribute
+                                File.SetAttributes(oldFullPath, FileAttributes.Normal);
+
+                                // Use copy + delete as a more reliable alternative to Move
+                                File.Copy(oldFullPath, newFullPath, false);
+                                File.Delete(oldFullPath);
+                                await Task.CompletedTask; // Just to make it async
+                                return true;
+                            }
+                            return false;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    },
+                    "Rename",
+                    oldFullPath);
+
+                if (!renameSuccess)
+                {
+                    _logger.LogError("Failed to rename file after multiple attempts: {Path}", oldFullPath);
+                    return null;
+                }
 
                 _logger.LogInformation("Successfully renamed file from {OldPath} to {NewPath}", oldFullPath, newFullPath);
 
                 // Create new URL
+                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
                 string newUrl = $"{cdnBaseUrl.TrimEnd('/')}/{newRelativePath}";
 
                 // Update database record
@@ -885,7 +1127,7 @@ namespace Roovia.Services
                     // Update with new information
                     metadata.Url = newUrl;
                     metadata.FileName = newFileName;
-                   // metadata.UpdatedDate = DateTime.Now;
+                    // metadata.UpdatedDate = DateTime.Now;
 
                     await dbContext.SaveChangesAsync();
                     _logger.LogInformation("Updated file metadata for rename: {OldUrl} -> {NewUrl}", oldUrl, newUrl);
@@ -903,7 +1145,7 @@ namespace Roovia.Services
                     {
                         match.Url = newUrl;
                         match.FileName = newFileName;
-                      //  match.UpdatedDate = DateTime.Now;
+                        //  match.UpdatedDate = DateTime.Now;
 
                         await dbContext.SaveChangesAsync();
                         _logger.LogInformation("Updated file metadata for rename (partial URL match): {OldUrl} -> {NewUrl}", match.Url, newUrl);
@@ -960,7 +1202,7 @@ namespace Roovia.Services
                 {
                     // Mark as deleted
                     metadata.IsDeleted = true;
-                   // metadata.DeletedDate = DateTime.Now;
+                    // metadata.DeletedDate = DateTime.Now;
                     await dbContext.SaveChangesAsync();
                     _logger.LogInformation("Marked file as deleted in database: {Url}", url);
                 }
@@ -976,7 +1218,7 @@ namespace Roovia.Services
                     if (match != null)
                     {
                         match.IsDeleted = true;
-                       // match.DeletedDate = DateTime.Now;
+                        // match.DeletedDate = DateTime.Now;
                         await dbContext.SaveChangesAsync();
                         _logger.LogInformation("Marked file as deleted in database (partial URL match): {Url}", match.Url);
                     }
@@ -1037,11 +1279,8 @@ namespace Roovia.Services
                     }
                 }
 
-                // Extract the relative path from the URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativePath = cdnUrl.Replace(cdnBaseUrl, "").TrimStart('/');
-
-                var physicalPath = Path.Combine(cdnStoragePath, relativePath);
+                // Use the more robust path resolution
+                var (_, physicalPath) = ResolveFilePaths(cdnUrl);
 
                 // Cache the result
                 _filePathCache[cdnUrl] = physicalPath;
