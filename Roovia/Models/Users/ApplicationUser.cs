@@ -41,6 +41,8 @@ namespace Roovia.Models.Users
         public List<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
         public virtual ICollection<UserRoleAssignment> CustomRoles { get; set; } = new List<UserRoleAssignment>();
 
+        public bool RequireChangePasswordOnLogin { get; set; }
+
         // Helper property for display
         [StringLength(101)]
         public string? FullName => $"{FirstName} {LastName}";

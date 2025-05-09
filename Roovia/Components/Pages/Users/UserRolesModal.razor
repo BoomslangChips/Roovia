@@ -5,6 +5,8 @@
 @using Roovia.Services
 @inject IPermissionService PermissionService
 @inject ToastService ToastService
+@inject IUser UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <RVModal IsVisible="true"
          Title="Manage User Roles"
@@ -46,148 +48,167 @@
                     </div>
                 </div>
 
-                <div class="roles-filters">
-                    <div class="search-wrapper">
-                        <i class="fa-light fa-search"></i>
-                        <input type="text" placeholder="Search roles..." @bind="searchTerm" @bind:event="oninput" />
-                        @if (!string.IsNullOrEmpty(searchTerm))
+                @if (permissionIssue)
+                {
+                    <div class="alert alert-warning">
+                        <i class="fa-light fa-exclamation-triangle"></i>
+                        <div class="alert-content">
+                            <p>You don't have permission to manage roles for users with equal or higher roles than your own.</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="roles-filters">
+                        <div class="search-wrapper">
+                            <i class="fa-light fa-search"></i>
+                            <input type="text" placeholder="Search roles..." @bind="searchTerm" @bind:event="oninput" />
+                            @if (!string.IsNullOrEmpty(searchTerm))
+                            {
+                                <button class="clear-search" @onclick="() => searchTerm = string.Empty">
+                                    <i class="fa-light fa-times"></i>
+                                </button>
+                            }
+                        </div>
+
+                        <div class="filter-controls">
+                            <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-end"
+                                        CssClass="filter-dropdown">
+                                <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")"
+                                        @onclick='() => filterType = "all"'>
+                                    <i class="fa-light fa-layer-group"></i>
+                                    <span>All Roles</span>
+                                    @if (filterType == "all")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                                <button type="button" class="roovia-dropdown-item @(filterType == "assigned" ? "active" : "")"
+                                        @onclick='() => filterType = "assigned"'>
+                                    <i class="fa-light fa-check-circle"></i>
+                                    <span>Assigned Roles</span>
+                                    @if (filterType == "assigned")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                                <button type="button" class="roovia-dropdown-item @(filterType == "unassigned" ? "active" : "")"
+                                        @onclick='() => filterType = "unassigned"'>
+                                    <i class="fa-light fa-circle"></i>
+                                    <span>Unassigned Roles</span>
+                                    @if (filterType == "unassigned")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")"
+                                        @onclick='() => filterType = "preset"'>
+                                    <i class="fa-light fa-shield"></i>
+                                    <span>System Roles</span>
+                                    @if (filterType == "preset")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                                <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")"
+                                        @onclick='() => filterType = "custom"'>
+                                    <i class="fa-light fa-pencil"></i>
+                                    <span>Custom Roles</span>
+                                    @if (filterType == "custom")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                            </RVDropdown>
+                        </div>
+                    </div>
+
+                    <div class="roles-grid">
+                        @foreach (var role in filteredRoles)
                         {
-                            <button class="clear-search" @onclick="() => searchTerm = string.Empty">
-                                <i class="fa-light fa-times"></i>
-                            </button>
-                        }
-                    </div>
+                            bool isAssigned = assignedRoleIds.Contains(role.Id);
+                            bool canAssignRole = CanAssignRole(role);
 
-                    <div class="filter-controls">
-                        <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-end"
-                                    CssClass="filter-dropdown">
-                            <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")"
-                                    @onclick='() => filterType = "all"'>
-                                <i class="fa-light fa-layer-group"></i>
-                                <span>All Roles</span>
-                                @if (filterType == "all")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "assigned" ? "active" : "")"
-                                    @onclick='() => filterType = "assigned"'>
-                                <i class="fa-light fa-check-circle"></i>
-                                <span>Assigned Roles</span>
-                                @if (filterType == "assigned")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "unassigned" ? "active" : "")"
-                                    @onclick='() => filterType = "unassigned"'>
-                                <i class="fa-light fa-circle"></i>
-                                <span>Unassigned Roles</span>
-                                @if (filterType == "unassigned")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <div class="dropdown-divider"></div>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")"
-                                    @onclick='() => filterType = "preset"'>
-                                <i class="fa-light fa-shield"></i>
-                                <span>System Roles</span>
-                                @if (filterType == "preset")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")"
-                                    @onclick='() => filterType = "custom"'>
-                                <i class="fa-light fa-pencil"></i>
-                                <span>Custom Roles</span>
-                                @if (filterType == "custom")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                        </RVDropdown>
-                    </div>
-                </div>
-
-                <div class="roles-grid">
-                    @foreach (var role in filteredRoles)
-                    {
-                        bool isAssigned = assignedRoleIds.Contains(role.Id);
-
-                        <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
-                            <div class="role-header">
-                                <div class="role-checkbox">
-                                    <RVCheckbox Value="@isAssigned"
-                                                ValueChanged="value => ToggleRole(role.Id, value)"
-                                                Disabled="@(!role.IsActive)" />
-                                </div>
-                                <div class="role-icon">
-                                    @if (role.IsPreset)
-                                    {
-                                        <i class="fa-light fa-shield"></i>
-                                    }
-                                    else
-                                    {
-                                        <i class="fa-light fa-tools"></i>
-                                    }
-                                </div>
-                                <div class="role-title">
-                                    <h3>@role.Name</h3>
-                                    <div class="role-badges">
+                            <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
+                                <div class="role-header">
+                                    <div class="role-checkbox">
+                                        <RVCheckbox Value="@isAssigned"
+                                                    ValueChanged="value => ToggleRole(role.Id, value)"
+                                                    Disabled="@(!canAssignRole || !role.IsActive)" />
+                                    </div>
+                                    <div class="role-icon">
                                         @if (role.IsPreset)
                                         {
-                                            <span class="badge-preset">System</span>
+                                            <i class="fa-light fa-shield"></i>
                                         }
                                         else
                                         {
-                                            <span class="badge-custom">Custom</span>
+                                            <i class="fa-light fa-tools"></i>
                                         }
-                                        <span class="badge-status @(role.IsActive ? "active" : "inactive")">
-                                            @(role.IsActive ? "Active" : "Inactive")
-                                        </span>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="role-description">
-                                <p>@role.Description</p>
-                            </div>
-
-                            @if (isAssigned && userRoles.FirstOrDefault(ur => ur.RoleId == role.Id) is UserRoleAssignment assignment)
-                            {
-                                <div class="role-assignment-info">
-                                    <div class="assignment-date">
-                                        <i class="fa-light fa-calendar-check"></i>
-                                        <span>Assigned: @assignment.AssignedDate.ToString("dd MMM yyyy")</span>
-                                    </div>
-                                    @if (!string.IsNullOrEmpty(assignment.AssignedBy))
-                                    {
-                                        <div class="assignment-by">
-                                            <i class="fa-light fa-user"></i>
-                                            <span>By: @assignment.AssignedBy</span>
+                                    <div class="role-title">
+                                        <h3>@role.Name</h3>
+                                        <div class="role-badges">
+                                            @if (role.IsPreset)
+                                            {
+                                                <span class="badge-preset">System</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge-custom">Custom</span>
+                                            }
+                                            <span class="badge-status @(role.IsActive ? "active" : "inactive")">
+                                                @(role.IsActive ? "Active" : "Inactive")
+                                            </span>
+                                            @if (!canAssignRole && role.IsActive)
+                                            {
+                                                <span class="badge-status">
+                                                    <i class="fa-light fa-lock"></i> No Permission
+                                                </span>
+                                            }
                                         </div>
-                                    }
+                                    </div>
                                 </div>
-                            }
+
+                                <div class="role-description">
+                                    <p>@role.Description</p>
+                                </div>
+
+                                @if (isAssigned && userRoles.FirstOrDefault(ur => ur.RoleId == role.Id) is UserRoleAssignment assignment)
+                                {
+                                    <div class="role-assignment-info">
+                                        <div class="assignment-date">
+                                            <i class="fa-light fa-calendar-check"></i>
+                                            <span>Assigned: @assignment.AssignedDate.ToString("dd MMM yyyy")</span>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(assignment.AssignedBy))
+                                        {
+                                            <div class="assignment-by">
+                                                <i class="fa-light fa-user"></i>
+                                                <span>By: @assignment.AssignedBy</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (!filteredRoles.Any())
+                    {
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fa-light fa-shield-slash"></i>
+                            </div>
+                            <h3>No Roles Found</h3>
+                            <p>No roles match your current search or filter criteria.</p>
+                            <div class="empty-actions">
+                                <RVButton ButtonType="primary" Text="Clear Filters"
+                                          OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
+                            </div>
                         </div>
                     }
-                </div>
-
-                @if (!filteredRoles.Any())
-                {
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fa-light fa-shield-slash"></i>
-                        </div>
-                        <h3>No Roles Found</h3>
-                        <p>No roles match your current search or filter criteria.</p>
-                        <div class="empty-actions">
-                            <RVButton ButtonType="primary" Text="Clear Filters"
-                                      OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
-                        </div>
-                    </div>
                 }
 
                 @if (hasChanges)
@@ -215,6 +236,7 @@
     [Parameter] public EventCallback OnSaved { get; set; }
 
     private ApplicationUser user = new ApplicationUser();
+    private ApplicationUser currentUser = null;
     private List<Role> allRoles = new List<Role>();
     private List<UserRoleAssignment> userRoles = new List<UserRoleAssignment>();
 
@@ -223,12 +245,36 @@
 
     private bool isLoading = true;
     private bool isSaving = false;
+    private bool permissionIssue = false;
     private string searchTerm = string.Empty;
     private string filterType = "all";
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCurrentUser();
         await LoadData();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var response = await UserService.GetUserById(userId);
+                if (response.ResponseInfo.Success)
+                {
+                    currentUser = (ApplicationUser)response.Response;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load current user: {ex.Message}", "Error");
+        }
     }
 
     private async Task LoadData()
@@ -237,27 +283,21 @@
         {
             isLoading = true;
 
-            // Load user
-            var userResponse = await PermissionService.GetUserRoles(UserId);
+            // Load user being edited
+            var userResponse = await UserService.GetUserById(UserId);
             if (userResponse.ResponseInfo.Success)
             {
-                userRoles = (List<UserRoleAssignment>)userResponse.Response;
+                user = (ApplicationUser)userResponse.Response;
 
-                // Get the first UserRoleAssignment to extract user info
-                if (userRoles.FirstOrDefault()?.Role?.UserRoles.FirstOrDefault()?.UserId == UserId)
-                {
-                    var firstRole = userRoles.First();
-                    if (firstRole.Role?.UserRoles.FirstOrDefault() is UserRoleAssignment firstAssignment)
-                    {
-                        // Get user info from the first role assignment
-                        user = new ApplicationUser
-                            {
-                                Id = UserId,
-                                UserName = firstAssignment.UserId,
-                            // Other properties would be populated here
-                            };
-                    }
-                }
+                // Check if current user has permission to manage this user's roles
+                permissionIssue = !CanManageUserRoles();
+            }
+
+            // Load user roles
+            var userRolesResponse = await PermissionService.GetUserRoles(UserId);
+            if (userRolesResponse.ResponseInfo.Success)
+            {
+                userRoles = (List<UserRoleAssignment>)userRolesResponse.Response;
 
                 // Set initially assigned roles
                 assignedRoleIds = new HashSet<int>(userRoles.Select(ur => ur.RoleId));
@@ -269,6 +309,22 @@
             if (rolesResponse.ResponseInfo.Success)
             {
                 allRoles = (List<Role>)rolesResponse.Response;
+
+                // Filter out roles that current user cannot assign
+                if (currentUser?.Role != SystemRole.GlobalAdmin)
+                {
+                    // Only System Admins can assign System Admin roles
+                    allRoles = allRoles.Where(r =>
+                        !r.Name.Contains("Global Admin", StringComparison.OrdinalIgnoreCase) &&
+                        !r.Name.Contains("System Admin", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                    // Company Admins can only assign roles below Company Admin
+                    if (currentUser?.Role == SystemRole.CompanyAdmin)
+                    {
+                        allRoles = allRoles.Where(r =>
+                            !r.Name.Contains("Company Admin", StringComparison.OrdinalIgnoreCase)).ToList();
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -279,6 +335,82 @@
         {
             isLoading = false;
         }
+    }
+
+    private bool CanManageUserRoles()
+    {
+        if (currentUser == null || user == null)
+            return false;
+
+        // Can't manage your own roles
+        if (currentUser.Id == user.Id)
+            return false;
+
+        // Global Admin can manage any user's roles
+        if (currentUser.Role == SystemRole.GlobalAdmin)
+            return true;
+
+        // Company Admin can manage users below them in the hierarchy
+        if (currentUser.Role == SystemRole.CompanyAdmin)
+        {
+            // Can't manage other admins
+            if (user.Role == SystemRole.GlobalAdmin || user.Role == SystemRole.CompanyAdmin)
+                return false;
+
+            // Company Admin can only manage users in their company
+            return user.CompanyId == currentUser.CompanyId;
+        }
+
+        // Branch Manager can only manage users below them in the hierarchy
+        if (currentUser.Role == SystemRole.BranchManager)
+        {
+            // Can't manage admins or other managers
+            if (user.Role == SystemRole.GlobalAdmin ||
+                user.Role == SystemRole.CompanyAdmin ||
+                user.Role == SystemRole.BranchManager)
+                return false;
+
+            // Branch Manager can only manage users in their branch
+            return user.BranchId == currentUser.BranchId;
+        }
+
+        // Other roles can't manage user roles
+        return false;
+    }
+
+    private bool CanAssignRole(Role role)
+    {
+        if (currentUser == null)
+            return false;
+
+        // System Admins can assign any role
+        if (currentUser.Role == SystemRole.GlobalAdmin)
+            return true;
+
+        // Company Admin restrictions
+        if (currentUser.Role == SystemRole.CompanyAdmin)
+        {
+            // Can't assign admin roles
+            if (role.Name.Contains("Global Admin") ||
+                role.Name.Contains("System Admin") ||
+                role.Name.Contains("Company Admin"))
+                return false;
+
+            return true;
+        }
+
+        // Branch Manager restrictions
+        if (currentUser.Role == SystemRole.BranchManager)
+        {
+            // Can't assign admin or manager roles
+            if (role.Name.Contains("Admin") || role.Name.Contains("Manager"))
+                return false;
+
+            return true;
+        }
+
+        // Other roles can't assign roles
+        return false;
     }
 
     private List<Role> filteredRoles
@@ -320,6 +452,10 @@
 
     private void ToggleRole(int roleId, bool isAssigned)
     {
+        var role = allRoles.FirstOrDefault(r => r.Id == roleId);
+        if (role == null || !CanAssignRole(role))
+            return;
+
         if (isAssigned)
         {
             assignedRoleIds.Add(roleId);
@@ -346,6 +482,12 @@
             return;
         }
 
+        if (permissionIssue)
+        {
+            ToastService.ShowError("You don't have permission to manage roles for this user", "Permission Denied");
+            return;
+        }
+
         try
         {
             isSaving = true;
@@ -357,13 +499,23 @@
             // Process role removals
             foreach (var roleId in rolesToRemove)
             {
-                await PermissionService.RemoveRoleFromUser(UserId, roleId);
+                // Double check permissions for each role
+                var role = allRoles.FirstOrDefault(r => r.Id == roleId);
+                if (role != null && CanAssignRole(role))
+                {
+                    await PermissionService.RemoveRoleFromUser(UserId, roleId);
+                }
             }
 
             // Process role additions
             foreach (var roleId in rolesToAdd)
             {
-                await PermissionService.AssignRoleToUser(UserId, roleId);
+                // Double check permissions for each role
+                var role = allRoles.FirstOrDefault(r => r.Id == roleId);
+                if (role != null && CanAssignRole(role))
+                {
+                    await PermissionService.AssignRoleToUser(UserId, roleId);
+                }
             }
 
             ToastService.ShowSuccess("User roles updated successfully", "Success");

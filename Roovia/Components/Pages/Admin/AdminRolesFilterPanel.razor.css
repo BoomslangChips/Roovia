@@ -1,13 +1,12 @@
-﻿/* Enhanced User Filters Panel - Clean Professional Edition - Mobile First */
+﻿/* Enhanced Roles Filters Panel - Clean Professional Edition - Mobile First */
 
-.user-filters-panel {
+.roles-filters-panel {
     padding: var(--spacing-3) var(--spacing-2);
     background: linear-gradient(to bottom, var(--subtle-bg), var(--content-bg));
     border-bottom: 1px solid var(--border-divider);
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
-    position: relative;
 }
 
 .filter-section {
@@ -104,44 +103,6 @@
         background: var(--danger-light);
         border-color: var(--danger-light);
         opacity: 1;
-    }
-
-/* Search type chips styling */
-.search-type-chips {
-    width: 100%;
-}
-
-::deep .search-type-chips .roovia-chips-list {
-    justify-content: flex-start;
-    gap: 8px;
-}
-
-::deep .search-type-chips .roovia-chip {
-    padding: 0 var(--spacing-2);
-    height: 36px;
-    border-radius: var(--border-radius-md);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    min-width: 0;
-    flex: 1;
-    max-width: 120px;
-    justify-content: center;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-    ::deep .search-type-chips .roovia-chip:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    ::deep .search-type-chips .roovia-chip.active {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(var(--primary-rgb), 0.2);
-        border: 1px solid rgba(var(--primary-rgb), 0.2);
-    }
-
-    ::deep .search-type-chips .roovia-chip .roovia-chip-icon {
-        font-size: 14px;
     }
 
 /* Filter selectors - stacked mobile layout */
@@ -307,7 +268,7 @@
 
 /* Responsive Design - Tablet */
 @media (min-width: 576px) {
-    .user-filters-panel {
+    .roles-filters-panel {
         padding: var(--spacing-3);
     }
 
@@ -322,22 +283,13 @@
     }
 
     .filter-group {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    ::deep .search-type-chips .roovia-chip {
-        max-width: 100px;
-        flex: 0 1 auto;
-    }
-
-    ::deep .search-type-chips .roovia-chips-list {
-        justify-content: flex-start;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
 /* Responsive Design - Desktop */
 @media (min-width: 768px) {
-    .user-filters-panel {
+    .roles-filters-panel {
         background: linear-gradient(to right, var(--subtle-bg), var(--content-bg), var(--subtle-bg));
     }
 
@@ -389,7 +341,7 @@
 
 /* Extra small screen optimizations */
 @media (max-width: 400px) {
-    .user-filters-panel {
+    .roles-filters-panel {
         padding: var(--spacing-2) var(--spacing-1);
     }
 
@@ -429,21 +381,10 @@
     .search-icon {
         font-size: var(--font-size-xs);
     }
-
-    ::deep .search-type-chips .roovia-chip {
-        height: 34px;
-        min-width: 0;
-        padding: 0 var(--spacing-1);
-        font-size: var(--font-size-xs);
-    }
-
-        ::deep .search-type-chips .roovia-chip .roovia-chip-icon {
-            font-size: 12px;
-        }
 }
 
 /* Dark Mode Adjustments */
-.theme-dark .user-filters-panel {
+.theme-dark .roles-filters-panel {
     background: linear-gradient(to bottom, var(--subtle-bg), rgba(0,0,0,0.05));
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -475,8 +416,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-
-
 .theme-dark .clear-search-btn {
     background: var(--input-bg);
     border-color: var(--border-divider);
@@ -487,12 +426,8 @@
     border-color: rgba(var(--primary-rgb), 0.3);
 }
 
-.theme-dark ::deep .search-type-chips .roovia-chip {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
 @media (min-width: 768px) {
-    .theme-dark .user-filters-panel {
+    .theme-dark .roles-filters-panel {
         background: linear-gradient(to right, var(--subtle-bg), rgba(0,0,0,0.1), var(--subtle-bg));
     }
 }

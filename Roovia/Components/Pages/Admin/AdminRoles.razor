@@ -31,59 +31,16 @@
     </div>
 
     <div class="admin-main-container">
-        <RVCard CssClass="management-card">
+        <CardView CssClass="management-card">
             <HeaderActions>
-                <div class="management-toolbar">
-                    <div class="search-section">
-                        <div class="search-input-wrapper">
-                            <i class="fa-light fa-search search-icon"></i>
-                            <input type="text" class="custom-search-input" placeholder="Search roles..."
-                                   @bind="searchTerm" @bind:event="oninput" />
-                            @if (!string.IsNullOrEmpty(searchTerm))
-                            {
-                                <button class="clear-search-btn" @onclick="() => searchTerm = string.Empty">
-                                    <i class="fa-light fa-times"></i>
-                                </button>
-                            }
-                        </div>
-
-                        <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-right"
-                                    CssClass="filter-dropdown">
-                            <button type="button" class="roovia-dropdown-item @(filterType == "all" ? "active" : "")"
-                                    @onclick='() => filterType = "all"'>
-                                <i class="fa-light fa-layer-group"></i>
-                                <span>All Roles</span>
-                                @if (filterType == "all")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "preset" ? "active" : "")"
-                                    @onclick='() => filterType = "preset"'>
-                                <i class="fa-light fa-shield"></i>
-                                <span>Preset Roles</span>
-                                @if (filterType == "preset")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                            <button type="button" class="roovia-dropdown-item @(filterType == "custom" ? "active" : "")"
-                                    @onclick='() => filterType = "custom"'>
-                                <i class="fa-light fa-pencil"></i>
-                                <span>Custom Roles</span>
-                                @if (filterType == "custom")
-                                {
-                                    <i class="fa-light fa-check"></i>
-                                }
-                            </button>
-                        </RVDropdown>
-                    </div>
-
-                    <div class="toolbar-actions">
-                        <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh"
-                                  OnClick="LoadRoles" />
-                    </div>
-                </div>
+                <AdminRolesFilterPanel SearchTerm="@searchTerm"
+                                       OnSearchChanged="HandleSearch"
+                                       SelectedRoleTypeFilter="@filterType"
+                                       OnRoleTypeFilterChanged="HandleRoleTypeFilterChange"
+                                       SelectedStatusFilter="@statusFilter"
+                                       OnStatusFilterChanged="HandleStatusFilterChange"
+                                       OnClearFilters="ClearFilters"
+                                       OnRefresh="LoadRoles" />
             </HeaderActions>
             <ChildContent>
                 @if (isLoading)
@@ -159,14 +116,14 @@
                         <p>No roles match your current search or filter criteria.</p>
                         <div class="empty-actions">
                             <RVButton ButtonType="primary" Text="Clear Filters"
-                                      OnClick='() => { searchTerm = string.Empty; filterType = "all"; }' />
+                                      OnClick='ClearFilters' />
                             <RVButton ButtonType="outline" Text="Create New Role"
                                       OnClick="() => ShowRoleEditModal(0)" />
                         </div>
                     </div>
                 }
             </ChildContent>
-        </RVCard>
+        </CardView>
     </div>
 
     @if (showDeleteDialog)
@@ -242,6 +199,7 @@
     private bool isLoading = true;
     private string searchTerm = string.Empty;
     private string filterType = "all";
+    private string statusFilter = "all";
 
     // Delete confirmation
     private bool showDeleteDialog = false;
@@ -289,24 +247,45 @@
         }
     }
 
-    private List<Role> filteredRoles => roles
-        .Where(r => (string.IsNullOrEmpty(searchTerm) ||
-                    r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
-        .Where(r => filterType == "all" ||
-                   (filterType == "preset" && r.IsPreset) ||
-                   (filterType == "custom" && !r.IsPreset))
-        .OrderBy(r => r.Name)
-        .ToList();
-
-    private string GetFilterText()
+    private List<Role> filteredRoles
     {
-        return filterType switch
+        get
         {
-            "preset" => "Preset Roles",
-            "custom" => "Custom Roles",
-            _ => "All Roles"
-        };
+            return roles
+                .Where(r => (string.IsNullOrEmpty(searchTerm) ||
+                            r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                            r.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+                .Where(r => filterType == "all" ||
+                           (filterType == "preset" && r.IsPreset) ||
+                           (filterType == "custom" && !r.IsPreset))
+                .Where(r => statusFilter == "all" ||
+                           (statusFilter == "active" && r.IsActive) ||
+                           (statusFilter == "inactive" && !r.IsActive))
+                .OrderBy(r => r.Name)
+                .ToList();
+        }
+    }
+
+    private void HandleSearch(string value)
+    {
+        searchTerm = value;
+    }
+
+    private void HandleRoleTypeFilterChange(string value)
+    {
+        filterType = value;
+    }
+
+    private void HandleStatusFilterChange(string value)
+    {
+        statusFilter = value;
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = string.Empty;
+        filterType = "all";
+        statusFilter = "all";
     }
 
     // Modal methods

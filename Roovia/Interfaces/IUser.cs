@@ -38,5 +38,6 @@ namespace Roovia.Interfaces
         Task<ResponseModel> AddContactNumber(ContactNumber contactNumber);
         Task<ResponseModel> UpdateContactNumber(int id, ContactNumber contactNumber);
         Task<ResponseModel> DeleteContactNumber(int id);
+        Task<ResponseModel> ResetUserPassword(string userId, bool requireChange = true);
     }
 }

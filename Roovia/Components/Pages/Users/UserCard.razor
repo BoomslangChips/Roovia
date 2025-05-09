@@ -57,14 +57,29 @@
 
     <div class="user-card-actions">
         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye"
-                  OnClick="() => OnView.InvokeAsync(User.Id)" CssClass="action-btn" />
+                  OnClick="HandleView" CssClass="action-btn"
+                  Title="View User Details" />
+
         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit"
-                  OnClick="() => OnEdit.InvokeAsync(User.Id)" CssClass="action-btn" />
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
-                  OnClick="() => OnRoles.InvokeAsync(User.Id)" CssClass="action-btn" />
-        <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
+                  OnClick="HandleEdit" CssClass="action-btn"
+                  Disabled="@DisableActions"
+                  Title="@(DisableActions ? "You don't have permission to edit this user" : "Edit User")" />
+
+@*         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
+                  OnClick="HandleRoles" CssClass="action-btn"
+                  Disabled="@DisableActions"
+                  Title="@(DisableActions ? "You don't have permission to manage this user's roles" : "Manage Roles")" />
+ *@
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-key"
+                  OnClick="HandleResetPassword" CssClass="action-btn"
+                  Disabled="@DisableActions"
+                  Title="@(DisableActions ? "You don't have permission to reset this user's password" : "Reset Password")" />
+
+@*         <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
                   Size="xs" IconLeft="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
-                  OnClick="() => OnToggleStatus.InvokeAsync(User)" CssClass="action-btn" />
+                  OnClick="HandleToggleStatus" CssClass="action-btn"
+                  Disabled="@DisableActions"
+                  Title="@(DisableActions ? "You don't have permission to change this user's status" : User.IsActive ? "Deactivate User" : "Activate User")" /> *@
     </div>
 </div>
 
@@ -73,7 +88,46 @@
     [Parameter] public EventCallback<string> OnView { get; set; }
     [Parameter] public EventCallback<string> OnEdit { get; set; }
     [Parameter] public EventCallback<string> OnRoles { get; set; }
+    [Parameter] public EventCallback<string> OnResetPassword { get; set; }
     [Parameter] public EventCallback<ApplicationUser> OnToggleStatus { get; set; }
+    [Parameter] public bool DisableActions { get; set; } = false;
+
+    private void HandleView()
+    {
+        OnView.InvokeAsync(User.Id);
+    }
+
+    private void HandleEdit()
+    {
+        if (!DisableActions)
+        {
+            OnEdit.InvokeAsync(User.Id);
+        }
+    }
+
+    private void HandleRoles()
+    {
+        if (!DisableActions)
+        {
+            OnRoles.InvokeAsync(User.Id);
+        }
+    }
+
+    private void HandleResetPassword()
+    {
+        if (!DisableActions)
+        {
+            OnResetPassword.InvokeAsync(User.Id);
+        }
+    }
+
+    private void HandleToggleStatus()
+    {
+        if (!DisableActions)
+        {
+            OnToggleStatus.InvokeAsync(User);
+        }
+    }
 
     private string GetRoleBadgeClass(SystemRole? role)
     {

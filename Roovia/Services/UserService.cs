@@ -5,6 +5,7 @@ using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Users;
 using System.Security.Claims;
+using System.Text;
 
 namespace Roovia.Services
 {
@@ -1443,7 +1444,84 @@ namespace Roovia.Services
         }
 
         #endregion
+        public async Task<ResponseModel> ResetUserPassword(string userId, bool requireChange = true)
+        {
+            ResponseModel response = new();
 
+            try
+            {
+                // Find the user
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "User not found.";
+                    return response;
+                }
+
+                // Generate a random password (12 characters including uppercase, lowercase, numbers, and special chars)
+                string newPassword = GenerateRandomPassword(12);
+
+                // Update the user's password hash
+                var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<ApplicationUser>();
+                user.PasswordHash = passwordHasher.HashPassword(user, newPassword);
+
+                // Set security stamp to invalidate existing sessions
+                user.SecurityStamp = Guid.NewGuid().ToString();
+
+                // If requireChange is true, set the flag to force password change on next login
+                if (requireChange)
+                {
+                    user.RequireChangePasswordOnLogin = true;
+                }
+
+                // Update the last modified date
+                user.UpdatedDate = DateTime.Now;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                // Return the new password
+                response.Response = newPassword;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Password reset successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while resetting the password: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        // Helper method to generate a random password
+        private string GenerateRandomPassword(int length)
+        {
+            const string upperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // Excluding I and O
+            const string lowerChars = "abcdefghijkmnopqrstuvwxyz";  // Excluding l
+            const string digits = "23456789";  // Excluding 0 and 1
+            const string specialChars = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+
+            var random = new Random();
+            var password = new StringBuilder();
+
+            // Ensure at least one of each character type
+            password.Append(upperChars[random.Next(upperChars.Length)]);
+            password.Append(lowerChars[random.Next(lowerChars.Length)]);
+            password.Append(digits[random.Next(digits.Length)]);
+            password.Append(specialChars[random.Next(specialChars.Length)]);
+
+            // Fill the rest of the password
+            var allChars = upperChars + lowerChars + digits + specialChars;
+            for (int i = 4; i < length; i++)
+            {
+                password.Append(allChars[random.Next(allChars.Length)]);
+            }
+
+            // Shuffle the password characters
+            return new string(password.ToString().OrderBy(c => random.Next()).ToArray());
+        }
         public async Task<ResponseModel> GetAuthenticatedUserInfo()
         {
             ResponseModel response = new();

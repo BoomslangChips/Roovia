@@ -1,0 +1,209 @@
+﻿@using Roovia.Models.Users
+@using Roovia.Models.Helper
+
+<div class="roles-filters-panel">
+    <div class="filter-section">
+        <div class="search-section">
+            <div class="search-input-wrapper">
+                <i class="fa-light fa-search search-icon"></i>
+                <input type="text" class="custom-search-input" placeholder="Search roles..."
+                       @bind="searchValue" @bind:event="oninput" @onkeyup="HandleKeyPress" />
+                @if (!string.IsNullOrEmpty(searchValue))
+                {
+                    <button class="clear-search-btn" @onclick="ClearSearch" title="Clear search">
+                        <i class="fa-light fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="filter-selectors">
+            <div class="filter-group">
+                <RVDropdown @ref="roleTypeDropdown" TriggerText="@GetRoleTypeFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown role-type-dropdown" FullWidth="true">
+                    <div class="dropdown-header">
+                        <span>Filter by Type</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedRoleTypeFilter == "all" ? "active" : "")"
+                            @onclick='async () => await SelectRoleType("all")'>
+                        <i class="fa-light fa-layer-group"></i>
+                        <span>All Roles</span>
+                        @if (SelectedRoleTypeFilter == "all")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedRoleTypeFilter == "preset" ? "active" : "")"
+                            @onclick='async () => await SelectRoleType("preset")'>
+                        <i class="fa-light fa-shield"></i>
+                        <span>Preset Roles</span>
+                        @if (SelectedRoleTypeFilter == "preset")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedRoleTypeFilter == "custom" ? "active" : "")"
+                            @onclick='async () => await SelectRoleType("custom")'>
+                        <i class="fa-light fa-pencil"></i>
+                        <span>Custom Roles</span>
+                        @if (SelectedRoleTypeFilter == "custom")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                </RVDropdown>
+
+                <RVDropdown @ref="statusDropdown" TriggerText="@GetStatusFilterText()" ButtonType="outline" Position="bottom-start"
+                            CssClass="filter-dropdown status-dropdown" FullWidth="true">
+                    <div class="dropdown-header">
+                        <span>Filter by Status</span>
+                    </div>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "all" ? "active" : "")"
+                            @onclick='async () => await SelectStatus("all")'>
+                        <i class="fa-light fa-shield-check"></i>
+                        <span>All Statuses</span>
+                        @if (SelectedStatusFilter == "all")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
+                            @onclick='async () => await SelectStatus("active")'>
+                        <i class="fa-light fa-check-circle"></i>
+                        <span>Active</span>
+                        @if (SelectedStatusFilter == "active")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
+                            @onclick='async () => await SelectStatus("inactive")'>
+                        <i class="fa-light fa-times-circle"></i>
+                        <span>Inactive</span>
+                        @if (SelectedStatusFilter == "inactive")
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                    </button>
+                </RVDropdown>
+            </div>
+
+            <div class="filter-actions">
+                <RVButton ButtonType="secondary" IconLeft="fa-light fa-filter-slash" Text="Clear" OnClick="HandleClearFilters"
+                          Disabled="@(!HasActiveFilters)" CssClass="clear-filters-btn" />
+
+                <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh" OnClick="HandleRefresh" CssClass="refresh-btn" />
+            </div>
+        </div>
+
+        @if (HasActiveFilters)
+        {
+            <div class="active-filters-indicator">
+                <i class="fa-light fa-filter"></i>
+                <span>Filters applied</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string SelectedRoleTypeFilter { get; set; } = "all";
+    [Parameter] public EventCallback<string> OnRoleTypeFilterChanged { get; set; }
+
+    [Parameter] public string SelectedStatusFilter { get; set; } = "all";
+    [Parameter] public EventCallback<string> OnStatusFilterChanged { get; set; }
+
+    [Parameter] public string SearchTerm { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private string searchValue = string.Empty;
+
+    // References to the dropdown components
+    private RVDropdown roleTypeDropdown;
+    private RVDropdown statusDropdown;
+
+    protected override void OnParametersSet()
+    {
+        searchValue = SearchTerm;
+    }
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrEmpty(SearchTerm) ||
+        SelectedRoleTypeFilter != "all" ||
+        SelectedStatusFilter != "all";
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await OnSearchChanged.InvokeAsync(searchValue);
+        }
+    }
+
+    private async Task SelectRoleType(string roleType)
+    {
+        if (SelectedRoleTypeFilter != roleType)
+        {
+            await OnRoleTypeFilterChanged.InvokeAsync(roleType);
+        }
+
+        // Close the dropdown after selection
+        if (roleTypeDropdown != null)
+        {
+            await roleTypeDropdown.Close();
+        }
+    }
+
+    private async Task SelectStatus(string status)
+    {
+        if (SelectedStatusFilter != status)
+        {
+            await OnStatusFilterChanged.InvokeAsync(status);
+        }
+
+        // Close the dropdown after selection
+        if (statusDropdown != null)
+        {
+            await statusDropdown.Close();
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchValue = string.Empty;
+        await OnSearchChanged.InvokeAsync(searchValue);
+    }
+
+    private async Task HandleClearFilters()
+    {
+        await OnClearFilters.InvokeAsync();
+    }
+
+    private async Task HandleRefresh()
+    {
+        await OnRefresh.InvokeAsync();
+    }
+
+    private string GetRoleTypeFilterText()
+    {
+        return SelectedRoleTypeFilter switch
+        {
+            "preset" => "Type: Preset Roles",
+            "custom" => "Type: Custom Roles",
+            _ => "Type: All Roles"
+        };
+    }
+
+    private string GetStatusFilterText()
+    {
+        return SelectedStatusFilter switch
+        {
+            "active" => "Status: Active",
+            "inactive" => "Status: Inactive",
+            _ => "Status: All"
+        };
+    }
+}

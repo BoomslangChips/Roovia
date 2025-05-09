@@ -6,9 +6,16 @@
 @using Roovia.Services
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using System.Security.Claims
 @inject IUser UserService
 @inject UserManager<ApplicationUser> UserManager
 @inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> _contextFactory
+@inject IPermissionService PermissionService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
 
 <RVModal IsVisible="true"
          Title="@(isNewUser ? "Create User" : "Edit User")"
@@ -25,6 +32,24 @@
             <div class="loading-state">
                 <div class="loading-spinner"></div>
                 <h3 class="loading-text">Loading user details...</h3>
+            </div>
+        }
+        else if (!hasAccessPermission)
+        {
+            <div class="alert alert-danger">
+                <i class="fa-light fa-exclamation-triangle"></i>
+                <div class="alert-content">
+                    <p>You do not have permission to manage users.</p>
+                </div>
+            </div>
+        }
+        else if (!canEditThisUser)
+        {
+            <div class="alert alert-danger">
+                <i class="fa-light fa-exclamation-triangle"></i>
+                <div class="alert-content">
+                    <p>You do not have permission to edit this user.</p>
+                </div>
             </div>
         }
         else
@@ -230,9 +255,9 @@
                                                       ValueChanged="value => selectedRole = value"
                                                       Placeholder="Select role"
                                                       IconLeft="fa-light fa-shield-check">
-                                                @foreach (var role in Enum.GetValues(typeof(SystemRole)))
+                                                @foreach (var role in availableRoles)
                                                 {
-                                                    <option value="@role">@GetRoleDisplayName((SystemRole)role)</option>
+                                                    <option value="@role">@GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
                                                 }
                                             </RVSelect>
                                             <div class="field-info">
@@ -253,11 +278,12 @@
                                                       Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
                                                       ValueChanged="HandleCompanyChange"
                                                       Placeholder="Select company"
+                                                      Disabled="@(!canAssignAnyCompany)"
                                                       IconLeft="fa-light fa-building">
                                                 <option value="">-- None --</option>
-                                                @if (Companies != null)
+                                                @if (availableCompanies != null)
                                                 {
-                                                    @foreach (var company in Companies.OrderBy(c => c.Name))
+                                                    @foreach (var company in availableCompanies.OrderBy(c => c.Name))
                                                     {
                                                         <option value="@company.Id">@company.Name</option>
                                                     }
@@ -275,7 +301,7 @@
                                                       Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
                                                       ValueChanged="HandleBranchChange"
                                                       Placeholder="Select branch"
-                                                      Disabled="@(!userModel.CompanyId.HasValue || availableBranches.Count == 0)"
+                                                      Disabled="@(!canAssignBranch || !userModel.CompanyId.HasValue || availableBranches.Count == 0)"
                                                       IconLeft="fa-light fa-code-branch">
                                                 <option value="">-- None --</option>
                                                 @foreach (var branch in availableBranches.OrderBy(b => b.Name))
@@ -458,6 +484,13 @@
     private List<Email> additionalEmails = new List<Email>();
     private List<ContactNumber> additionalPhones = new List<ContactNumber>();
     private List<Branch> availableBranches = new List<Branch>();
+    private List<Company> availableCompanies = new List<Company>();
+
+    // Permission flags
+    private bool hasAccessPermission = false;
+    private bool canEditThisUser = true;
+    private bool canAssignAnyCompany = false;
+    private bool canAssignBranch = false;
 
     // Password fields
     private string password = string.Empty;
@@ -467,6 +500,18 @@
 
     // Dropdown selections
     private string selectedRole = SystemRole.PropertyManager.ToString();
+    private string initialRole = string.Empty; // To track if role has changed
+    private int? initialCompanyId;
+    private int? initialBranchId;
+
+    // Current user info
+    private string currentUserId = string.Empty;
+    private SystemRole? currentUserRole;
+    private int? currentUserCompanyId;
+    private int? currentUserBranchId;
+    private List<string> availableRoles = new List<string>();
+    private bool hasManageUsersPermission = false;
+    private bool hasManageRolesPermission = false;
 
     // Reset password
     private bool showResetPasswordModal = false;
@@ -486,8 +531,181 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await GetCurrentUserInfo();
+
+        // Check if user has permission to access this page
+        if (!hasManageUsersPermission)
+        {
+            hasAccessPermission = false;
+            isLoading = false;
+            return;
+        }
+
+        hasAccessPermission = true;
+
+        await LoadAvailableCompaniesAndBranches();
+        await LoadAvailableRoles();
         ConfigureTabs();
         await LoadData();
+    }
+
+    private async Task GetCurrentUserInfo()
+    {
+        try
+        {
+            // Get the current user's ID and role
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                // Get user ID
+                var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null)
+                {
+                    currentUserId = userIdClaim.Value;
+                }
+
+                // Get current user's permissions
+                var userPermissions = await PermissionService.GetUserPermissions(currentUserId);
+                hasManageUsersPermission = userPermissions.Contains("settings.users");
+                hasManageRolesPermission = userPermissions.Contains("settings.permissions");
+
+                // Get current user's role and company/branch
+                using var dbContext = await _contextFactory.CreateDbContextAsync();
+                var currentUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == currentUserId);
+                if (currentUser != null)
+                {
+                    if (currentUser.Role.HasValue)
+                    {
+                        currentUserRole = currentUser.Role.Value;
+                    }
+
+                    currentUserCompanyId = currentUser.CompanyId;
+                    currentUserBranchId = currentUser.BranchId;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // If there's an error, we'll fall back to default permissions
+            currentUserRole = SystemRole.PropertyManager;
+            currentUserCompanyId = null;
+            currentUserBranchId = null;
+            hasManageUsersPermission = false;
+            hasManageRolesPermission = false;
+        }
+    }
+
+    private async Task LoadAvailableCompaniesAndBranches()
+    {
+        if (Companies == null)
+            return;
+
+        try
+        {
+            // Filter companies based on current user's role and company
+            if (currentUserRole == SystemRole.GlobalAdmin)
+            {
+                // Global admin can see all companies
+                availableCompanies = Companies.ToList();
+                canAssignAnyCompany = true;
+                canAssignBranch = true;
+            }
+            else if (currentUserRole == SystemRole.CompanyAdmin && currentUserCompanyId.HasValue)
+            {
+                // Company admin can only see their own company
+                availableCompanies = Companies
+                    .Where(c => c.Id == currentUserCompanyId.Value)
+                    .ToList();
+                canAssignAnyCompany = false; // Can't change company, only displayed for information
+                canAssignBranch = true; // Can change branch within their company
+            }
+            else if (currentUserRole == SystemRole.BranchManager && currentUserCompanyId.HasValue)
+            {
+                // Branch manager can only see their own company
+                availableCompanies = Companies
+                    .Where(c => c.Id == currentUserCompanyId.Value)
+                    .ToList();
+                canAssignAnyCompany = false;
+                canAssignBranch = false; // Can only assign to their own branch, handled in branch selection
+            }
+            else
+            {
+                // Other roles shouldn't be able to access this page
+                availableCompanies = new List<Company>();
+                canAssignAnyCompany = false;
+                canAssignBranch = false;
+            }
+
+            // If editing existing user and we're a branch manager, preload the branches
+            if (!isNewUser && currentUserRole == SystemRole.BranchManager && currentUserCompanyId.HasValue)
+            {
+                // Load user's branch options (restricted to branch manager's branch)
+                var response = await UserService.GetBranchesByCompany(currentUserCompanyId.Value);
+                if (response.ResponseInfo.Success)
+                {
+                    var allBranches = (List<Branch>)response.Response;
+                    // Branch manager can only see their branch
+                    availableBranches = allBranches
+                        .Where(b => currentUserBranchId.HasValue && b.Id == currentUserBranchId.Value)
+                        .ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load companies: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadAvailableRoles()
+    {
+        // Default to only showing property manager role
+        availableRoles = new List<string> { SystemRole.PropertyManager.ToString() };
+
+        if (currentUserRole.HasValue && hasManageUsersPermission)
+        {
+            switch (currentUserRole.Value)
+            {
+                case SystemRole.GlobalAdmin:
+                    // Global admin can assign all roles
+                    availableRoles = Enum.GetNames(typeof(SystemRole)).ToList();
+                    break;
+
+                case SystemRole.CompanyAdmin:
+                    // Company admin can assign roles below their level
+                    availableRoles = new List<string>
+                    {
+                        SystemRole.BranchManager.ToString(),
+                        SystemRole.PropertyManager.ToString(),
+                        SystemRole.FinancialOfficer.ToString(),
+                        SystemRole.TenantOfficer.ToString(),
+                        SystemRole.ReportsViewer.ToString()
+                    };
+                    break;
+
+                case SystemRole.BranchManager:
+                    // Branch manager can assign roles below their level
+                    availableRoles = new List<string>
+                    {
+                        SystemRole.PropertyManager.ToString(),
+                        SystemRole.FinancialOfficer.ToString(),
+                        SystemRole.TenantOfficer.ToString(),
+                        SystemRole.ReportsViewer.ToString()
+                    };
+                    break;
+
+                default:
+                    // Other roles can only assign property manager and reports viewer
+                    availableRoles = new List<string>
+                    {
+                        SystemRole.PropertyManager.ToString(),
+                        SystemRole.ReportsViewer.ToString()
+                    };
+                    break;
+            }
+        }
     }
 
     private void ConfigureTabs()
@@ -577,6 +795,24 @@
                 {
                     userModel = (ApplicationUser)response.Response;
                     selectedRole = userModel.Role?.ToString() ?? SystemRole.PropertyManager.ToString();
+                    initialRole = selectedRole; // Store initial role for comparison
+                    initialCompanyId = userModel.CompanyId;
+                    initialBranchId = userModel.BranchId;
+
+                    // Check if current user has permission to edit this user
+                    if (!CanEditUser(userModel))
+                    {
+                        canEditThisUser = false;
+                        isLoading = false;
+                        return;
+                    }
+
+                    // Verify the current user has permission to edit this user's role
+                    if (!CanAssignRole(selectedRole))
+                    {
+                        // If current user can't assign the existing role, make the dropdown read-only
+                        availableRoles = new List<string> { selectedRole };
+                    }
 
                     // Load additional emails and phones
                     if (userModel.EmailAddresses != null)
@@ -591,6 +827,26 @@
                         additionalPhones = userModel.ContactNumbers
                             .Where(c => !c.IsPrimary)
                             .ToList();
+                    }
+
+                    // If user being edited is in a different company than what the current user can access
+                    if (userModel.CompanyId.HasValue &&
+                        !availableCompanies.Any(c => c.Id == userModel.CompanyId.Value))
+                    {
+                        // Add the user's company to the available companies list for display
+                        // But don't allow changing it (handled by canAssignAnyCompany flag)
+                        using var dbContext = await _contextFactory.CreateDbContextAsync();
+                        var userCompany = await dbContext.Companies.FirstOrDefaultAsync(c => c.Id == userModel.CompanyId.Value);
+                        if (userCompany != null)
+                        {
+                            availableCompanies.Add(userCompany);
+                        }
+                    }
+
+                    // Load branches appropriate to the user's company
+                    if (userModel.CompanyId.HasValue)
+                    {
+                        await LoadBranchesForUser(userModel.CompanyId.Value, userModel.BranchId);
                     }
                 }
                 else
@@ -607,15 +863,35 @@
                 userModel = new ApplicationUser
                     {
                         IsActive = true,
-                        Role = SystemRole.PropertyManager,
-                        CreatedDate = DateTime.Now
+                        CreatedDate = DateTime.Now,
+                        CreatedBy = currentUserId
                     };
-            }
 
-            // Get branches if company is selected
-            if (userModel.CompanyId.HasValue && Companies != null)
-            {
-                await LoadBranches(userModel.CompanyId.Value);
+                // Set default role based on available roles
+                if (availableRoles.Any())
+                {
+                    selectedRole = availableRoles.First();
+                    if (Enum.TryParse<SystemRole>(selectedRole, out var role))
+                    {
+                        userModel.Role = role;
+                    }
+                }
+
+                // For new users, set the company to current user's company if the current user
+                // is not a system admin
+                if (currentUserRole != SystemRole.GlobalAdmin && currentUserCompanyId.HasValue)
+                {
+                    userModel.CompanyId = currentUserCompanyId;
+
+                    // For branch managers, also set the branch
+                    if (currentUserRole == SystemRole.BranchManager && currentUserBranchId.HasValue)
+                    {
+                        userModel.BranchId = currentUserBranchId;
+                    }
+
+                    // Load available branches
+                    await LoadBranchesForUser(userModel.CompanyId.Value, userModel.BranchId);
+                }
             }
         }
         catch (Exception ex)
@@ -630,23 +906,121 @@
         }
     }
 
-    private async Task LoadBranches(int companyId)
+    private bool CanEditUser(ApplicationUser user)
     {
-        var company = Companies?.FirstOrDefault(c => c.Id == companyId);
-        if (company != null)
+        if (!hasManageUsersPermission)
+            return false;
+
+        if (currentUserRole == SystemRole.GlobalAdmin)
+            return true;
+
+        // Can't edit users with higher or equal roles
+        if (user.Role.HasValue)
         {
-            // Get branches for company
+            // Company admins can't edit system admins
+            if (currentUserRole == SystemRole.CompanyAdmin &&
+                user.Role.Value == SystemRole.GlobalAdmin)
+                return false;
+
+            // Branch managers can't edit system admins or company admins
+            if (currentUserRole == SystemRole.BranchManager &&
+                (user.Role.Value == SystemRole.GlobalAdmin || user.Role.Value == SystemRole.CompanyAdmin))
+                return false;
+        }
+
+        // Check company/branch restrictions
+        if (currentUserRole == SystemRole.CompanyAdmin)
+        {
+            // Company admin can only edit users in their company
+            return user.CompanyId.HasValue && user.CompanyId.Value == currentUserCompanyId;
+        }
+        else if (currentUserRole == SystemRole.BranchManager)
+        {
+            // Branch manager can only edit users in their branch
+            return user.CompanyId.HasValue && user.CompanyId.Value == currentUserCompanyId &&
+                   user.BranchId.HasValue && user.BranchId.Value == currentUserBranchId;
+        }
+
+        return true;
+    }
+
+    private bool CanAssignRole(string roleName)
+    {
+        if (!currentUserRole.HasValue || !hasManageUsersPermission)
+            return false;
+
+        if (Enum.TryParse<SystemRole>(roleName, out var targetRole))
+        {
+            // Determine if current user can assign this role based on hierarchy
+            switch (currentUserRole.Value)
+            {
+                case SystemRole.GlobalAdmin:
+                    // Global admin can assign any role
+                    return true;
+
+                case SystemRole.CompanyAdmin:
+                    // Company admin can't assign global admin roles
+                    return targetRole != SystemRole.GlobalAdmin;
+
+                case SystemRole.BranchManager:
+                    // Branch manager can't assign global or company admin roles
+                    return targetRole != SystemRole.GlobalAdmin &&
+                           targetRole != SystemRole.CompanyAdmin;
+
+                default:
+                    // Other roles can only assign property manager and reports viewer
+                    return targetRole == SystemRole.PropertyManager ||
+                           targetRole == SystemRole.ReportsViewer;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task LoadBranchesForUser(int companyId, int? userBranchId)
+    {
+        try
+        {
+            // Load all branches for the company
             var response = await UserService.GetBranchesByCompany(companyId);
             if (response.ResponseInfo.Success)
             {
-                availableBranches = (List<Branch>)response.Response;
+                var allBranches = (List<Branch>)response.Response;
+
+                if (currentUserRole == SystemRole.GlobalAdmin || currentUserRole == SystemRole.CompanyAdmin)
+                {
+                    // Global admin and company admin can see all branches in the company
+                    availableBranches = allBranches;
+                }
+                else if (currentUserRole == SystemRole.BranchManager && currentUserBranchId.HasValue)
+                {
+                    // Branch manager can only see their branch
+                    availableBranches = allBranches
+                        .Where(b => b.Id == currentUserBranchId.Value)
+                        .ToList();
+
+                    // If the user has a branch that's not in the list, add it just for display
+                    if (userBranchId.HasValue && userBranchId.Value != currentUserBranchId.Value)
+                    {
+                        var userBranch = allBranches.FirstOrDefault(b => b.Id == userBranchId.Value);
+                        if (userBranch != null)
+                        {
+                            // Add the branch but user can't change to it
+                            availableBranches.Add(userBranch);
+                        }
+                    }
+                }
+                else
+                {
+                    availableBranches = new List<Branch>();
+                }
             }
             else
             {
                 availableBranches = new List<Branch>();
             }
         }
-        else
+        catch
         {
             availableBranches = new List<Branch>();
         }
@@ -715,10 +1089,39 @@
 
     private async Task HandleCompanyChange(string companyId)
     {
+        // If the user can't change companies, don't allow it
+        if (!canAssignAnyCompany)
+        {
+            if (string.IsNullOrEmpty(companyId))
+            {
+                // If trying to clear the company, revert back to original value
+                if (initialCompanyId.HasValue)
+                {
+                    userModel.CompanyId = initialCompanyId;
+                }
+                return;
+            }
+
+            // Check if the company being set is the initial company
+            if (int.TryParse(companyId, out var cId) && initialCompanyId.HasValue && cId != initialCompanyId.Value)
+            {
+                // If different from initial company, don't allow change
+                ToastService.ShowError("You do not have permission to change the company", "Permission Denied");
+                return;
+            }
+        }
+
         if (int.TryParse(companyId, out var id))
         {
             userModel.CompanyId = id;
-            await LoadBranches(id);
+            await LoadBranchesForUser(id, userModel.BranchId);
+
+            // When company changes, clear branch unless it's also available in the new company
+            if (userModel.BranchId.HasValue &&
+                !availableBranches.Any(b => b.Id == userModel.BranchId.Value))
+            {
+                userModel.BranchId = null;
+            }
         }
         else
         {
@@ -730,6 +1133,29 @@
 
     private void HandleBranchChange(string branchId)
     {
+        // If branch manager or company is fixed, validate branch assignment
+        if (!canAssignBranch)
+        {
+            if (string.IsNullOrEmpty(branchId))
+            {
+                // If trying to clear the branch, revert back to original value
+                if (initialBranchId.HasValue)
+                {
+                    userModel.BranchId = initialBranchId;
+                }
+                return;
+            }
+
+            // If branch manager, can only assign to their branch
+            if (currentUserRole == SystemRole.BranchManager &&
+                int.TryParse(branchId, out var bId) &&
+                currentUserBranchId.HasValue && bId != currentUserBranchId.Value)
+            {
+                ToastService.ShowError("You can only assign users to your own branch", "Permission Denied");
+                return;
+            }
+        }
+
         if (int.TryParse(branchId, out var id))
         {
             userModel.BranchId = id;
@@ -764,10 +1190,55 @@
         }
     }
 
+    private string GetRoleNameForSystemRole(SystemRole systemRole)
+    {
+        return systemRole switch
+        {
+            SystemRole.GlobalAdmin => "System Administrator",
+            SystemRole.CompanyAdmin => "Company Administrator",
+            SystemRole.BranchManager => "Branch Manager",
+            SystemRole.PropertyManager => "Property Manager",
+            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.ReportsViewer => "Reports Viewer",
+            _ => "Property Manager" // Default
+        };
+    }
+
     private async Task SaveUser()
     {
         try
         {
+            // Check permissions before saving
+            if (!hasAccessPermission || !canEditThisUser)
+            {
+                ToastService.ShowError("You do not have permission to perform this action", "Permission Denied");
+                return;
+            }
+
+            // Validate company/branch assignments
+            if (!canAssignAnyCompany && initialCompanyId != userModel.CompanyId)
+            {
+                ToastService.ShowError("You do not have permission to change the company", "Permission Denied");
+                return;
+            }
+
+            if (!canAssignBranch && initialBranchId != userModel.BranchId)
+            {
+                ToastService.ShowError("You do not have permission to change the branch", "Permission Denied");
+                return;
+            }
+
+            // For branch managers, validate branch assignment
+            if (currentUserRole == SystemRole.BranchManager &&
+                userModel.BranchId.HasValue &&
+                currentUserBranchId.HasValue &&
+                userModel.BranchId.Value != currentUserBranchId.Value)
+            {
+                ToastService.ShowError("You can only assign users to your own branch", "Permission Denied");
+                return;
+            }
+
             // Validate password for new users
             if (isNewUser)
             {
@@ -788,10 +1259,28 @@
                 confirmPasswordError = string.Empty;
             }
 
-            // Set role
+            // Set role - verify the current user can assign this role
             if (Enum.TryParse<SystemRole>(selectedRole, out var role))
             {
+                if (!CanAssignRole(selectedRole) && selectedRole != initialRole)
+                {
+                    ToastService.ShowError("You do not have permission to assign this role", "Permission Denied");
+                    return;
+                }
+
                 userModel.Role = role;
+            }
+
+            // Handle user information updates
+            if (!isNewUser)
+            {
+                userModel.UpdatedBy = currentUserId;
+                userModel.UpdatedDate = DateTime.Now;
+            }
+            else
+            {
+                userModel.CreatedBy = currentUserId;
+                userModel.CreatedDate = DateTime.Now;
             }
 
             // Add email addresses and contact numbers
@@ -828,6 +1317,26 @@
 
                 if (result.Succeeded)
                 {
+                    // Add the user to the appropriate role based on their SystemRole
+                    using var dbContext = await _contextFactory.CreateDbContextAsync();
+                    string roleName = GetRoleNameForSystemRole(userModel.Role.Value);
+                    var dbRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+
+                    if (dbRole != null)
+                    {
+                        // Create a new UserRoleAssignment
+                        var userRoleAssignment = new UserRoleAssignment
+                            {
+                                UserId = userModel.Id,
+                                RoleId = dbRole.Id,
+                                AssignedDate = DateTime.Now,
+                                AssignedBy = currentUserId
+                            };
+
+                        await dbContext.UserRoleAssignments.AddAsync(userRoleAssignment);
+                        await dbContext.SaveChangesAsync();
+                    }
+
                     ToastService.ShowSuccess($"User {GetUserDisplayName()} created successfully", "Success");
 
                     if (OnSaved.HasDelegate)
@@ -863,6 +1372,46 @@
 
                 if (response.ResponseInfo.Success)
                 {
+                    // Check if the SystemRole has changed and update UserRoleAssignment if needed
+                    if (initialRole != selectedRole)
+                    {
+                        using var dbContext = await _contextFactory.CreateDbContextAsync();
+
+                        // Get the role ID for the selected role
+                        string roleName = GetRoleNameForSystemRole(userModel.Role.Value);
+                        var dbRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+
+                        if (dbRole != null)
+                        {
+                            // Check if the user already has a role assignment
+                            var existingRoleAssignment = await dbContext.UserRoleAssignments
+                                .FirstOrDefaultAsync(ura => ura.UserId == userId);
+
+                            if (existingRoleAssignment != null)
+                            {
+                                // Update existing role assignment
+                                existingRoleAssignment.RoleId = dbRole.Id;
+                                existingRoleAssignment.AssignedDate = DateTime.Now;
+                                existingRoleAssignment.AssignedBy = currentUserId;
+                            }
+                            else
+                            {
+                                // Create new role assignment
+                                var userRoleAssignment = new UserRoleAssignment
+                                    {
+                                        UserId = userId,
+                                        RoleId = dbRole.Id,
+                                        AssignedDate = DateTime.Now,
+                                        AssignedBy = currentUserId
+                                    };
+
+                                await dbContext.UserRoleAssignments.AddAsync(userRoleAssignment);
+                            }
+
+                            await dbContext.SaveChangesAsync();
+                        }
+                    }
+
                     // Now save permissions if there are any pending changes
                     if (!isNewUser && permissionsPanel != null && permissionsPanel.HasPendingChanges())
                     {
