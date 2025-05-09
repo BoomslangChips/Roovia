@@ -473,6 +473,7 @@
 @code {
     [Parameter] public string? UserId { get; set; }
     [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public int SelectedBranchId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
@@ -650,6 +651,34 @@
                     availableBranches = allBranches
                         .Where(b => currentUserBranchId.HasValue && b.Id == currentUserBranchId.Value)
                         .ToList();
+                }
+            }
+
+            // If a specific branch was selected through the parameter, ensure it's loaded
+            if (SelectedBranchId > 0 && !isNewUser)
+            {
+                var branchResponse = await UserService.GetBranchById(SelectedBranchId);
+                if (branchResponse.ResponseInfo.Success)
+                {
+                    var selectedBranch = (Branch)branchResponse.Response;
+
+                    // Check if branch is already in the list
+                    if (!availableBranches.Any(b => b.Id == SelectedBranchId))
+                    {
+                        // Add to available branches if user has access
+                        var companyResponse = await UserService.GetCompanyById(selectedBranch.CompanyId);
+                        if (companyResponse.ResponseInfo.Success)
+                        {
+                            var company = (Company)companyResponse.Response;
+
+                            // Add branch only if it belongs to an available company
+                            if (availableCompanies.Any(c => c.Id == company.Id))
+                            {
+                                selectedBranch.Company = company;
+                                availableBranches.Add(selectedBranch);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -888,9 +917,37 @@
                     {
                         userModel.BranchId = currentUserBranchId;
                     }
+                    // Use the selected branch ID if provided
+                    else if (SelectedBranchId > 0)
+                    {
+                        // Verify the branch belongs to the company
+                        var branchResponse = await UserService.GetBranchById(SelectedBranchId);
+                        if (branchResponse.ResponseInfo.Success)
+                        {
+                            var branch = (Branch)branchResponse.Response;
+                            if (branch.CompanyId == userModel.CompanyId)
+                            {
+                                userModel.BranchId = SelectedBranchId;
+                            }
+                        }
+                    }
 
                     // Load available branches
                     await LoadBranchesForUser(userModel.CompanyId.Value, userModel.BranchId);
+                }
+                else if (currentUserRole == SystemRole.GlobalAdmin && SelectedBranchId > 0)
+                {
+                    // For global admin, if a branch was specified, load its company and set both
+                    var branchResponse = await UserService.GetBranchById(SelectedBranchId);
+                    if (branchResponse.ResponseInfo.Success)
+                    {
+                        var branch = (Branch)branchResponse.Response;
+                        userModel.CompanyId = branch.CompanyId;
+                        userModel.BranchId = SelectedBranchId;
+
+                        // Load available branches for this company
+                        await LoadBranchesForUser(branch.CompanyId, SelectedBranchId);
+                    }
                 }
             }
         }
@@ -1014,6 +1071,16 @@
                 {
                     availableBranches = new List<Branch>();
                 }
+
+                // If a specific branch is selected but not in the available branches, add it
+                if (SelectedBranchId > 0 && !availableBranches.Any(b => b.Id == SelectedBranchId))
+                {
+                    var selectedBranch = allBranches.FirstOrDefault(b => b.Id == SelectedBranchId);
+                    if (selectedBranch != null && selectedBranch.CompanyId == companyId)
+                    {
+                        availableBranches.Add(selectedBranch);
+                    }
+                }
             }
             else
             {
@@ -1121,6 +1188,20 @@
                 !availableBranches.Any(b => b.Id == userModel.BranchId.Value))
             {
                 userModel.BranchId = null;
+            }
+
+            // If a specific branch was selected via parameter, try to set it if it matches the company
+            if (SelectedBranchId > 0 && isNewUser)
+            {
+                var branchResponse = await UserService.GetBranchById(SelectedBranchId);
+                if (branchResponse.ResponseInfo.Success)
+                {
+                    var branch = (Branch)branchResponse.Response;
+                    if (branch.CompanyId == id)
+                    {
+                        userModel.BranchId = SelectedBranchId;
+                    }
+                }
             }
         }
         else

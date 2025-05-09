@@ -26,14 +26,27 @@
                     <i class="fa-light fa-users"></i>
                 </div>
                 <div class="header-title-group">
-                    <h1 class="header-title">User Management</h1>
-                    <p class="header-subtitle">Manage users, assign roles and company access</p>
+                    <h1 class="header-title">Administration</h1>
+                    <p class="header-subtitle">Manage users, companies, and branches</p>
                 </div>
             </div>
 
             <div class="header-action-panel">
-                <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Create User"
-                          OnClick="() => ShowUserEditModal()" CssClass="create-user-btn" />
+                <RVButton ButtonType="primary" IconLeft="fa-light fa-user-plus" Text="Create User"
+                          OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
+
+                @if (currentUser?.Role == SystemRole.GlobalAdmin)
+                {
+                    <RVButton ButtonType="primary" IconLeft="fa-light fa-building" Text="Create Company"
+                              OnClick="() => ShowCompanyEditModal()" CssClass="action-btn me-2" />
+                }
+
+                @if (currentUser?.Role == SystemRole.GlobalAdmin ||
+                (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue))
+                {
+                    <RVButton ButtonType="primary" IconLeft="fa-light fa-code-branch" Text="Create Branch"
+                              OnClick="() => ShowBranchEditModal()" CssClass="action-btn" />
+                }
             </div>
         </div>
     </div>
@@ -43,7 +56,7 @@
         {
             <div class="loading-state">
                 <div class="loading-spinner"></div>
-                <h3 class="loading-text">Loading user hierarchy...</h3>
+                <h3 class="loading-text">Loading data...</h3>
             </div>
         }
         else
@@ -103,6 +116,8 @@
                                                               OnClick="() => ShowCompanyEditModal(company.Id, true)" CssClass="action-btn" />
                                                     <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
                                                               OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
+                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-code-branch-add" Text="Add Branch"
+                                                              OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
                                                 </div>
                                             </div>
 
@@ -143,6 +158,8 @@
                                                                                       OnClick="() => ShowBranchEditModal(branch.Id, true)" CssClass="action-btn" />
                                                                             <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
                                                                                       OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
+                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-user-plus" Text="Add User"
+                                                                                      OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
                                                                         </div>
                                                                     </div>
 
@@ -162,9 +179,27 @@
                                                                             }
                                                                         </div>
                                                                     }
+                                                                    else if (expandedBranches.Contains(branch.Id) && !branchUsers.Any())
+                                                                    {
+                                                                        <div class="accordion-content">
+                                                                            <EmptyState Title="No users in branch"
+                                                                                        Description="No users are currently assigned to this branch."
+                                                                                        Icon="fa-light fa-user-plus"
+                                                                                        ActionText="Add User"
+                                                                                        OnAction="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                        </div>
+                                                                    }
                                                                 </div>
                                                             }
                                                         </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <EmptyState Title="No branches found"
+                                                                    Description="This company has no branches yet."
+                                                                    Icon="fa-light fa-code-branch-slash"
+                                                                    ActionText="Create Branch"
+                                                                    OnAction="() => ShowCreateBranchModal(company.Id)" />
                                                     }
                                                 </div>
                                             }
@@ -210,16 +245,16 @@
 
                                 <div class="tabs-container">
                                     <div class="tabs-header">
-                                        <button class="tab-button @(activeTab == "users" ? "active" : "")" @onclick='() => activeTab = "users"'>
+                                        <button class="tab-button @(activeSubTab == "users" ? "active" : "")" @onclick='() => activeSubTab = "users"'>
                                             <i class="fa-light fa-users"></i> Company Users
                                         </button>
-                                        <button class="tab-button @(activeTab == "branches" ? "active" : "")" @onclick='() => activeTab = "branches"'>
+                                        <button class="tab-button @(activeSubTab == "branches" ? "active" : "")" @onclick='() => activeSubTab = "branches"'>
                                             <i class="fa-light fa-code-branch"></i> Branches
                                         </button>
                                     </div>
 
                                     <div class="tabs-content">
-                                        @if (activeTab == "users")
+                                        @if (activeSubTab == "users")
                                         {
                                             <div class="tab-panel">
                                                 @if (GetCompanyUsers(currentUserCompany.Id).Any())
@@ -274,6 +309,8 @@
                                                                               OnClick="() => ViewBranchUsers(branch.Id)" />
                                                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
                                                                               OnClick="() => ShowBranchEditModal(branch.Id)" />
+                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-user-plus" Text="Add User"
+                                                                              OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
                                                                 </div>
                                                             </div>
                                                         }
@@ -400,6 +437,7 @@
     {
         <UserEditModal UserId="@selectedUserId"
                        Companies="allCompanies"
+                       SelectedBranchId="@selectedBranchForUser"
                        OnClose="() => showUserEditModal = false"
                        OnSaved="HandleUserSaved" />
     }
@@ -474,11 +512,13 @@
     private string selectedUserId = string.Empty;
     private int selectedCompanyId = 0;
     private int selectedBranchId = 0;
+    private int selectedBranchForUser = 0; // Used when adding a user to a specific branch
     private int editingBranchCompanyId = 0;
     private ApplicationUser? userToToggle;
     private ApplicationUser? userToResetPassword;
     private Company editingCompany = new Company();
     private Branch editingBranch = new Branch();
+    private string activeSubTab = "users";
 
     // Filtering
     private string searchTerm = string.Empty;
@@ -486,24 +526,16 @@
     private int? selectedBranchIdFilter = null;
     private string selectedRoleFilter = "all";
     private string selectedStatusFilter = "all";
+    private string searchType = "users";
 
     // UI State
     private HashSet<int> expandedCompanies = new HashSet<int>();
     private HashSet<int> expandedBranches = new HashSet<int>();
-    private string activeTab = "users";
-    private string searchType = "users";
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUser();
         await LoadUserHierarchy();
-    }
-
-    private void HandleSearchTypeChange(string type)
-    {
-        searchType = type;
-        // Refresh the filtered results when search type changes
-        StateHasChanged();
     }
 
     private async Task LoadCurrentUser()
@@ -556,14 +588,7 @@
             await LoadUsers();
 
             // Load companies based on permissions
-            var companiesResponse = await UserService.GetAllCompanies();
-            if (companiesResponse.ResponseInfo.Success)
-            {
-                allCompanies = (List<Company>)companiesResponse.Response;
-
-                // Filter available companies based on user role
-                FilterAvailableCompanies();
-            }
+            await LoadCompanies();
 
             // Load branches based on permissions
             await LoadBranches();
@@ -577,6 +602,25 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task LoadCompanies()
+    {
+        try
+        {
+            var response = await UserService.GetAllCompanies();
+            if (response.ResponseInfo.Success)
+            {
+                allCompanies = (List<Company>)response.Response;
+
+                // Filter available companies based on user role
+                FilterAvailableCompanies();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading companies: {ex.Message}", "Error");
         }
     }
 
@@ -615,35 +659,56 @@
     {
         allBranches.Clear();
 
-        if (currentUser?.Role == SystemRole.GlobalAdmin)
+        try
         {
-            // Global admin can see all branches from all companies
-            foreach (var company in allCompanies)
+            if (currentUser?.Role == SystemRole.GlobalAdmin)
             {
-                var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
+                // Global admin can see all branches from all companies
+                foreach (var company in allCompanies)
+                {
+                    var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
+                    if (branchesResponse.ResponseInfo.Success)
+                    {
+                        var companyBranches = (List<Branch>)branchesResponse.Response;
+                        foreach (var branch in companyBranches)
+                        {
+                            branch.Company = company;
+                        }
+                        allBranches.AddRange(companyBranches);
+                    }
+                }
+            }
+            else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue)
+            {
+                // Company admin can only see branches from their company
+                var branchesResponse = await UserService.GetBranchesByCompany(currentUser.CompanyId.Value);
                 if (branchesResponse.ResponseInfo.Success)
                 {
-                    allBranches.AddRange((List<Branch>)branchesResponse.Response);
+                    var companyBranches = (List<Branch>)branchesResponse.Response;
+                    var company = allCompanies.FirstOrDefault(c => c.Id == currentUser.CompanyId.Value);
+                    foreach (var branch in companyBranches)
+                    {
+                        branch.Company = company;
+                    }
+                    allBranches.AddRange(companyBranches);
+                }
+            }
+            else if (currentUser?.Role == SystemRole.BranchManager && currentUser.BranchId.HasValue)
+            {
+                // Branch manager can only see their branch
+                var branch = await UserService.GetBranchById(currentUser.BranchId.Value);
+                if (branch.ResponseInfo.Success)
+                {
+                    var branchItem = (Branch)branch.Response;
+                    var company = allCompanies.FirstOrDefault(c => c.Id == currentUser?.CompanyId);
+                    branchItem.Company = company;
+                    allBranches.Add(branchItem);
                 }
             }
         }
-        else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue)
+        catch (Exception ex)
         {
-            // Company admin can only see branches from their company
-            var branchesResponse = await UserService.GetBranchesByCompany(currentUser.CompanyId.Value);
-            if (branchesResponse.ResponseInfo.Success)
-            {
-                allBranches.AddRange((List<Branch>)branchesResponse.Response);
-            }
-        }
-        else if (currentUser?.Role == SystemRole.BranchManager && currentUser.BranchId.HasValue)
-        {
-            // Branch manager can only see their branch
-            var branch = await UserService.GetBranchById(currentUser.BranchId.Value);
-            if (branch.ResponseInfo.Success)
-            {
-                allBranches.Add((Branch)branch.Response);
-            }
+            ToastService.ShowError($"Error loading branches: {ex.Message}", "Error");
         }
     }
 
@@ -892,7 +957,6 @@
         return userList;
     }
 
-
     private void ToggleCompany(int companyId)
     {
         if (expandedCompanies.Contains(companyId))
@@ -915,11 +979,6 @@
         selectedBranchIdFilter = null; // Reset branch filter when company changes
     }
 
-    private void HandleBranchChange(int? branchId)
-    {
-        selectedBranchIdFilter = branchId;
-    }
-
     private void HandleRoleFilterChange(string roleFilter)
     {
         selectedRoleFilter = roleFilter;
@@ -933,6 +992,12 @@
     private void HandleSearch(string search)
     {
         searchTerm = search;
+    }
+
+    private void HandleSearchTypeChange(string type)
+    {
+        searchType = type;
+        StateHasChanged();
     }
 
     private void ClearFilters()
@@ -970,6 +1035,9 @@
                     ToastService.ShowError("You must be assigned to a branch to create users", "Permission Denied");
                     return;
                 }
+
+                // Auto-select the branch manager's branch
+                selectedBranchForUser = currentUser.BranchId.Value;
             }
             else if (currentUser?.Role != SystemRole.GlobalAdmin && currentUser?.Role != SystemRole.CompanyAdmin)
             {
@@ -979,6 +1047,35 @@
         }
 
         selectedUserId = userId ?? string.Empty;
+        showUserEditModal = true;
+    }
+
+    private void ShowAddUserToBranchModal(int branchId)
+    {
+        // Check if the user has permission to add users to this branch
+        var branch = allBranches.FirstOrDefault(b => b.Id == branchId);
+        if (branch == null)
+        {
+            ToastService.ShowError("Branch not found", "Error");
+            return;
+        }
+
+        if (currentUser?.Role == SystemRole.CompanyAdmin &&
+            currentUser.CompanyId != branch.CompanyId)
+        {
+            ToastService.ShowError("You can only add users to branches in your company", "Permission Denied");
+            return;
+        }
+
+        if (currentUser?.Role == SystemRole.BranchManager &&
+            currentUser.BranchId != branchId)
+        {
+            ToastService.ShowError("You can only add users to your branch", "Permission Denied");
+            return;
+        }
+
+        selectedBranchForUser = branchId;
+        selectedUserId = string.Empty; // Create a new user
         showUserEditModal = true;
     }
 
@@ -1076,6 +1173,7 @@
     private async Task HandleUserSaved()
     {
         showUserEditModal = false;
+        selectedBranchForUser = 0; // Reset selected branch after saving
         await LoadUserHierarchy();
     }
 
@@ -1128,7 +1226,7 @@
     }
 
     // Company Management Methods
-    private async Task ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
+    private void ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
     {
         // Only Global Admin can create/edit companies
         if (currentUser?.Role != SystemRole.GlobalAdmin)
@@ -1142,23 +1240,29 @@
 
         if (companyId != 0)
         {
-            var response = await UserService.GetCompanyById(companyId);
-            if (response.ResponseInfo.Success)
+            var company = allCompanies.FirstOrDefault(c => c.Id == companyId);
+            if (company != null)
             {
-                editingCompany = (Company)response.Response;
+                editingCompany = company;
+                showCompanyEditModal = true;
             }
             else
             {
-                ToastService.ShowError(response.ResponseInfo.Message, "Error");
-                return;
+                ToastService.ShowError("Company not found", "Error");
             }
         }
         else
         {
-            editingCompany = new Company();
+            editingCompany = new Company
+                {
+                    IsActive = true,
+                    Address = new Address { Country = "South Africa" },
+                    EmailAddresses = new List<Email>(),
+                    ContactNumbers = new List<ContactNumber>(),
+                    CreatedOn = DateTime.Now
+                };
+            showCompanyEditModal = true;
         }
-
-        showCompanyEditModal = true;
     }
 
     private async Task HandleCompanySaved(Company company)
@@ -1179,6 +1283,7 @@
                 if (response.ResponseInfo.Success)
                 {
                     ToastService.ShowSuccess($"Company '{company.Name}' created successfully", "Success");
+                    await LoadUserHierarchy();
                 }
                 else
                 {
@@ -1192,15 +1297,13 @@
                 if (response.ResponseInfo.Success)
                 {
                     ToastService.ShowSuccess($"Company '{company.Name}' updated successfully", "Success");
+                    await LoadUserHierarchy();
                 }
                 else
                 {
                     ToastService.ShowError(response.ResponseInfo.Message, "Error");
                 }
             }
-
-            // Reload data
-            await LoadUserHierarchy();
         }
         catch (Exception ex)
         {
@@ -1211,7 +1314,7 @@
     }
 
     // Branch Management Methods
-    private async Task ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
+    private void ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
     {
         // Check permissions based on role
         if (currentUser?.Role != SystemRole.GlobalAdmin &&
@@ -1226,36 +1329,44 @@
 
         if (branchId != 0)
         {
-            var response = await UserService.GetBranchById(branchId);
-            if (response.ResponseInfo.Success)
+            var branch = allBranches.FirstOrDefault(b => b.Id == branchId);
+            if (branch != null)
             {
-                editingBranch = (Branch)response.Response;
-
                 // Check if this branch belongs to the company admin's company
                 if (currentUser?.Role == SystemRole.CompanyAdmin &&
-                    editingBranch.CompanyId != currentUser.CompanyId)
+                    branch.CompanyId != currentUser.CompanyId)
                 {
                     ToastService.ShowError("You can only edit branches in your company", "Permission Denied");
                     return;
                 }
 
-                editingBranchCompanyId = editingBranch.CompanyId;
+                editingBranch = branch;
+                editingBranchCompanyId = branch.CompanyId;
+                showBranchEditModal = true;
             }
             else
             {
-                ToastService.ShowError(response.ResponseInfo.Message, "Error");
-                return;
+                ToastService.ShowError("Branch not found", "Error");
             }
         }
         else
         {
-            editingBranch = new Branch();
-            editingBranchCompanyId = currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue
-                ? currentUser.CompanyId.Value
-                : (selectedCompanyIdFilter ?? 0);
-        }
+            editingBranch = new Branch
+                {
+                    CompanyId = currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue
+                        ? currentUser.CompanyId.Value
+                        : 0,
+                    IsActive = true,
+                    Address = new Address { Country = "South Africa" },
+                    EmailAddresses = new List<Email>(),
+                    ContactNumbers = new List<ContactNumber>(),
+                    Logos = new List<BranchLogo>(),
+                    CreatedOn = DateTime.Now
+                };
 
-        showBranchEditModal = true;
+            editingBranchCompanyId = editingBranch.CompanyId;
+            showBranchEditModal = true;
+        }
     }
 
     private void ShowCreateBranchModal(int companyId)
@@ -1271,7 +1382,16 @@
 
         selectedBranchId = 0;
         viewModeOnly = false;
-        editingBranch = new Branch();
+        editingBranch = new Branch
+            {
+                CompanyId = companyId,
+                IsActive = true,
+                Address = new Address { Country = "South Africa" },
+                EmailAddresses = new List<Email>(),
+                ContactNumbers = new List<ContactNumber>(),
+                Logos = new List<BranchLogo>(),
+                CreatedOn = DateTime.Now
+            };
         editingBranchCompanyId = companyId;
         showBranchEditModal = true;
     }
@@ -1295,6 +1415,7 @@
                 if (response.ResponseInfo.Success)
                 {
                     ToastService.ShowSuccess($"Branch '{branch.Name}' created successfully", "Success");
+                    await LoadUserHierarchy();
                 }
                 else
                 {
@@ -1308,15 +1429,13 @@
                 if (response.ResponseInfo.Success)
                 {
                     ToastService.ShowSuccess($"Branch '{branch.Name}' updated successfully", "Success");
+                    await LoadUserHierarchy();
                 }
                 else
                 {
                     ToastService.ShowError(response.ResponseInfo.Message, "Error");
                 }
             }
-
-            // Reload data
-            await LoadUserHierarchy();
         }
         catch (Exception ex)
         {
@@ -1329,7 +1448,7 @@
     private void ViewBranchUsers(int branchId)
     {
         selectedBranchIdFilter = branchId;
-        activeTab = "users";
+        activeSubTab = "users";
         ToggleBranch(branchId);
     }
 
@@ -1343,8 +1462,3 @@
         return user.UserName ?? "Unknown User";
     }
 }
-<style>
-    .roovia-tabs {
-        justify-content: center !important;
-    }
-</style>
