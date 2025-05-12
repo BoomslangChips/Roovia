@@ -15,7 +15,7 @@
             <h3 class="mb-0">Tenants</h3>
             <div class="search-bar">
                 <input type="text" placeholder="Search tenants..."
-                       class="form-control" style="max-width: 300px;" @bind="searchTerm" />
+                class="form-control" style="max-width: 300px;" @bind="searchTerm" />
             </div>
         </div>
     </HeaderActions>
@@ -47,16 +47,13 @@
                                     <span class="badge bg-secondary">Not Renting</span>
                                 }
                             </p>
-                            <p class="card-text">
-                                Created On: @tenant.CreatedOn.ToShortDateString()
-                            </p>
                             <div class="d-flex justify-content-between">
                                 <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" 
-                                          Text="Open" OnClick="() => OpenTenant(tenant)" />
+                                Text="Open" OnClick="() => OpenTenant(tenant)" />
                                 <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" 
-                                          Text="Edit" OnClick="() => EditTenant(tenant)" />
+                                Text="Edit" OnClick="() => EditTenant(tenant)" />
                                 <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" 
-                                          Text="Delete" OnClick="() => DeleteTenant(tenant)" />
+                                Text="Delete" OnClick="() => DeleteTenant(tenant)" />
                             </div>
                         </div>
                     </div>
@@ -66,13 +63,31 @@
         else
         {
             <EmptyState Title="No tenants available" 
-                        Description="There are no tenants to display at this time." 
-                        Icon="fa-light fa-user-slash" 
-                        ActionText="Refresh" 
-                        OnAction="LoadTenants" />
+            Description="There are no tenants to display at this time." 
+            Icon="fa-light fa-user-slash" 
+            ActionText="Refresh" 
+            OnAction="LoadTenants" />
         }
     </ChildContent>
 </CardView>
+
+@if (viewTenantsClicked)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="PropertyTenant" Value="selectedTenant">
+            <ViewTenantComponent OnModalClosed="ViewTenantsClosed"></ViewTenantComponent>
+        </CascadingValue>
+    </CascadingValue>
+}
+
+@if (editTenantsClicked)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="PropertyTenant" Value="selectedTenant">
+            <EditTenantModal OnModalClosed="ViewTenantsClosed"></EditTenantModal>
+        </CascadingValue>
+    </CascadingValue>
+}
 
 @code {
     [CascadingParameter]
@@ -81,6 +96,10 @@
     private List<PropertyTenant> tenants = new List<PropertyTenant>();
     private string searchTerm = string.Empty;
     private bool isLoading = true;
+    bool viewTenantsClicked = false;
+    bool editTenantsClicked = false;
+
+    PropertyTenant selectedTenant = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,7 +128,7 @@
         isLoading = true;
         if (CurrentUser != null && CurrentUser.CompanyId.HasValue)
         {
-            var response = await TenantService.GetAllTenants();
+            var response = await TenantService.GetAllTenants(CurrentUser.CompanyId.Value);
             if (response.ResponseInfo.Success && response.Response != null)
             {
                 tenants = response.Response as List<PropertyTenant>;
@@ -134,14 +153,29 @@
 
     private void OpenTenant(PropertyTenant tenant)
     {
-        // Implement navigation to tenant details page or modal opening logic here.
-        Console.WriteLine($"Opening tenant: {tenant.FirstName} {tenant.LastName}");
+        selectedTenant = tenant;
+        viewTenantsClicked = true;
+    }
+
+    private async Task ViewTenantsClosed()
+    {
+        selectedTenant = new();
+        viewTenantsClicked = false;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private void EditTenant(PropertyTenant tenant)
     {
-        // Implement tenant edit logic here.
-        Console.WriteLine($"Editing tenant: {tenant.FirstName} {tenant.LastName}");
+        selectedTenant = tenant;
+        editTenantsClicked = true; ;
+    }
+
+    private async Task EditTenantsClosed()
+    {
+        selectedTenant = new();
+        editTenantsClicked = false;
+        await LoadTenants();
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private async Task DeleteTenant(PropertyTenant tenant)

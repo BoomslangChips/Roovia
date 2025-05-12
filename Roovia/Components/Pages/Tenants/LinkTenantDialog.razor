@@ -1,0 +1,208 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models
+@using Roovia.Models.Tenant
+@using Roovia.Models.Properties
+@using Roovia.Models.Users
+@using Roovia.Services
+@using static Roovia.Components.Elements.RVDropdown
+
+@inject ITenant TenantService
+@inject IProperty PropertyService
+@inject ToastService ToastService
+
+@rendermode InteractiveServer
+
+<RVModal Title="Link Tenant" Icon="fas fa-link" IsVisible="@IsVisible" CloseOnBackdrop="true" CloseOnEsc="true" Size="ModalSize.Medium">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <h5>Select a Tenant to link</h5>
+                <div class="mb-3">
+                    @if (!string.IsNullOrWhiteSpace(selectedTenantId))
+                    {
+                        var selectedTenant = availableTenants.FirstOrDefault(t => t.Id.ToString() == selectedTenantId);
+                        if (selectedTenant != null)
+                        {
+                            <div class="card p-3 mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-primary">
+                                        @selectedTenant.FirstName @selectedTenant.LastName
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                    @onclick="ResetSelectedTenant" 
+                                    title="Reset selection">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <RVDropdown TriggerText="Search Tenants"
+                        Items="TenantDropdownItems"
+                        ShowSearch="true"
+                        SearchPlaceholder="Find a tenant..."
+                        OnSelect="(selectedItem => OnTenantSelected(selectedItem))" />
+                    }
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-end w-100">
+            <button class="btn roovia-btn-secondary me-2" @onclick="CancelLink">
+                <i class="fas fa-times me-1"></i> Cancel
+            </button>
+            <button class="btn roovia-btn-primary" @onclick="SaveLink">
+                <i class="fas fa-save me-1"></i> Save
+            </button>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter]
+    public ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+
+    [CascadingParameter]
+    public Property Property { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnDialogClosed { get; set; }
+
+    bool IsVisible = true;
+
+    // Selected tenant id as string for dropdown
+    string selectedTenantId = "";
+    List<DropdownItem> TenantDropdownItems = new();
+    List<PropertyTenant> availableTenants = new();
+
+    PropertyTenant selectedTenant = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableTenants();
+    }
+
+    public async Task ResetSelectedTenant()
+    {
+        selectedTenantId = string.Empty;
+    }
+
+    private async Task LoadAvailableTenants()
+    {
+        try
+        {
+            var result = await TenantService.GetAllTenants(CurrentUser.CompanyId.Value);
+            if (result.ResponseInfo.Success)
+            {
+                availableTenants = result.Response as List<PropertyTenant> ?? new List<PropertyTenant>();
+                availableTenants = availableTenants.Where(x => x.PropertyId == 0).ToList();
+                TenantDropdownItems = availableTenants.Select(t => new DropdownItem
+                    {
+                        Value = t.Id.ToString(),
+                        Text = $"{t.FirstName} {t.LastName}"
+                    }).ToList();
+            }
+            else
+            {
+                ToastService.ShowError(result.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load tenants: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task OnTenantSelected(object selectedValue)
+    {
+        if (selectedValue != null)
+        {
+            selectedTenantId = selectedValue.ToString()!;
+            var tenantResponse = await TenantService.GetTenantById(Convert.ToInt32(selectedTenantId), CurrentUser.CompanyId.Value);
+            if (tenantResponse.ResponseInfo.Success)
+            {
+                selectedTenant = tenantResponse.Response as PropertyTenant;
+            }
+        }
+    }
+
+    private async Task SaveLink()
+    {
+        if (string.IsNullOrWhiteSpace(selectedTenantId))
+        {
+            ToastService.ShowError("Please select a tenant", "Validation Error");
+            return;
+        }
+
+        // Find the selected tenant from the available list
+        if (!int.TryParse(selectedTenantId, out var tenantId))
+        {
+            ToastService.ShowError("Invalid tenant selection", "Error");
+            return;
+        }
+
+        if (selectedTenant == null)
+        {
+            ToastService.ShowError("Selected tenant not found", "Error");
+            return;
+        }
+
+        // Link the tenant to the property
+        selectedTenant.PropertyId = Property.Id;
+        Property.CurrentTenantId = selectedTenant.Id;
+        selectedTenant.UpdatedBy = Guid.Parse(CurrentUser.Id);
+        try
+        {
+            // Update tenant with the new property ID
+            var tenantResult = await TenantService.UpdateTenant(selectedTenant.Id, selectedTenant, CurrentUser.CompanyId.Value);
+            if (!tenantResult.ResponseInfo.Success)
+            {
+                ToastService.ShowError(tenantResult.ResponseInfo.Message, "Error");
+                return;
+            }
+
+            // Update the property with the linked tenant
+            // Assuming Property has a CompanyId property for the update method signature
+            Property.UpdatedBy = Guid.Parse(CurrentUser.Id);
+            Property.HasTenant = true;
+            var propertyResult = await PropertyService.UpdateProperty(Property.Id, Property, CurrentUser.CompanyId.Value);
+            if (!propertyResult.ResponseInfo.Success)
+            {
+                ToastService.ShowError(propertyResult.ResponseInfo.Message, "Error");
+                return;
+            }
+
+            ToastService.ShowSuccess("Tenant successfully linked", "Success");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
+        }
+
+        await CloseDialog();
+    }
+
+    private async Task CancelLink()
+    {
+        await CloseDialog();
+    }
+
+    private async Task CloseDialog()
+    {
+        IsVisible = false;
+        await OnDialogClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    .rv-modal-custom {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 1em 0em 6em;
+        max-height: 25em;
+        height: fit-content;
+        overflow-y: auto;
+    }</style>

@@ -1,0 +1,178 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models
+@using Roovia.Models.Helper
+@using Roovia.Models.Properties
+@using Roovia.Models.Tenant
+@using Roovia.Models.Users
+@using Roovia.Services
+@using static Roovia.Components.Elements.RVDropdown
+
+@rendermode InteractiveServer
+@page "/viewtenant"
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Title="View Tenant" Icon="fas fa-eye" IsVisible="@IsVisible" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="rv-modal-custom">
+            <div class="container-fluid">
+                <!-- Tenant Details Section -->
+                <div class="roovia-panel mb-4">
+                    <div class="roovia-panel-header">
+                        <h5 class="roovia-panel-title"><i class="fas fa-user me-2"></i>Tenant Details</h5>
+                    </div>
+                    <div class="roovia-panel-body">
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
+                            <div>
+                                <RVTextbox Label="First Name"
+                                           Value="@Tenant.FirstName"
+                                           Disabled="true"
+                                           Placeholder="First name">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Last Name"
+                                           Value="@Tenant.LastName"
+                                           Disabled="true"
+                                           Placeholder="Last name">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="ID Number"
+                                           Value="@Tenant.IdNumber"
+                                           Disabled="true"
+                                           Placeholder="ID number">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Email Address"
+                                           Value="@Tenant.EmailAddress"
+                                           Disabled="true"
+                                           Placeholder="Email address">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="Mobile Number"
+                                           Value="@Tenant.MobileNumber"
+                                           Disabled="true"
+                                           Placeholder="Mobile number">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Debit Day of Month"
+                                           Value="@Tenant.DebitDayOfMonth.ToString()"
+                                           Disabled="true"
+                                           Placeholder="Debit day">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <RVCheckbox Label="Enable Email Notifications"
+                                        Value="@(Tenant.IsEmailNotificationsEnabled?.ToLower() == "true")"
+                                        Disabled="true">
+                            </RVCheckbox>
+                            <RVCheckbox Label="Enable SMS Notifications"
+                                        Value="@(Tenant.IsSmsNotificationsEnabled?.ToLower() == "true")"
+                                        Disabled="true">
+                            </RVCheckbox>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Banking Details Section -->
+                <div class="roovia-panel mb-4">
+                    <div class="roovia-panel-header">
+                        <h5 class="roovia-panel-title"><i class="fas fa-university me-2"></i>Banking Details</h5>
+                    </div>
+                    <div class="roovia-panel-body">
+                        <div class="roovia-grid-cols-1 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="Bank Name"
+                                           Value="@Tenant.BankAccount.BankName.ToString()"
+                                           Disabled="true"
+                                           Placeholder="Bank name">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                        <div class="roovia-grid-cols-1 roovia-grid gap-4 mt-3">
+                            <div>
+                                <RVTextbox Label="Account Number"
+                                           Value="@Tenant.BankAccount.AccountNumber"
+                                           Disabled="true"
+                                           Placeholder="Account number">
+                                </RVTextbox>
+                            </div>
+                            <div>
+                                <RVTextbox Label="Branch Code"
+                                           Value="@Tenant.BankAccount.BranchCode"
+                                           Disabled="true"
+                                           Placeholder="Branch code">
+                                </RVTextbox>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-end w-100">
+            <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                <i class="fas fa-times me-1"></i> Close
+            </button>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter]
+    public PropertyTenant Tenant { get; set; } = new PropertyTenant
+    {
+        BankAccount = new BankAccount()
+    };
+
+    [CascadingParameter]
+    public ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+
+    [CascadingParameter]
+    public Property Property { get; set; } = new Property();
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    bool IsVisible = true;
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    .rv-modal-custom {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .roovia-panel {
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-divider);
+        overflow: hidden;
+        transition: var(--card-transition);
+    }
+
+    .roovia-panel-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-panel-body {
+        padding: 1.5rem;
+    }
+</style>

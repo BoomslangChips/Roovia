@@ -7,6 +7,7 @@ namespace Roovia.Models.Tenant
     {
         public int Id { get; set; }
 
+        public int CompanyId { get; set; }
         public int PropertyId { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }

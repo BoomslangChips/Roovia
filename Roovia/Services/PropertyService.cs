@@ -21,6 +21,9 @@ namespace Roovia.Services
         {
             ResponseModel response = new ResponseModel();
 
+            // Ensure dates are valid
+            property.EnsureValidDates();
+
             // Set creation date if not already set
             if (property.CreatedOn == default)
                 property.CreatedOn = DateTime.Now;
@@ -160,20 +163,14 @@ namespace Roovia.Services
                         OwnerId = row.OwnerId,
                         RentalAmount = row.RentalAmount,
                         HasTenant = row.HasTenant,
-
-                        // Handle nullable DateTime fields
-                        LeaseOriginalStartDate = row.LeaseOriginalStartDate != null ? row.LeaseOriginalStartDate : DateTime.MinValue,
-                        CurrentLeaseStartDate = row.CurrentLeaseStartDate != null ? row.CurrentLeaseStartDate : DateTime.MinValue,
-                        LeaseEndDate = row.LeaseEndDate != null ? row.LeaseEndDate : DateTime.MinValue,
-
-                        // Handle nullable Guid fields
-                        CurrentTenantId = row.CurrentTenantId != null ? row.CurrentTenantId : Guid.Empty,
-                        CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-                        UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-
-                        // Handle other nullable DateTime fields
-                        CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-                        UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
+                        LeaseOriginalStartDate = row.LeaseOriginalStartDate,
+                        CurrentLeaseStartDate = row.CurrentLeaseStartDate,
+                        LeaseEndDate = row.LeaseEndDate,
+                        CurrentTenantId = row.CurrentTenantId,
+                        CreatedOn = row.CreatedOn,
+                        CreatedBy = row.CreatedBy,
+                        UpdatedDate = row.UpdatedDate,
+                        UpdatedBy = row.UpdatedBy,
 
                         // Map Address properties
                         Address = new Address
@@ -189,12 +186,15 @@ namespace Roovia.Services
                             PostalCode = row.PostalCode,
                             Country = row.Country,
                             GateCode = row.GateCode,
-                            IsResidential = row.IsResidential ?? true,
+                            IsResidential = row.IsResidential,
                             Latitude = row.Latitude,
                             Longitude = row.Longitude,
                             DeliveryInstructions = row.DeliveryInstructions
                         }
                     };
+
+                    // Ensure dates are handled properly
+                    property.EnsureValidDates();
 
                     response.Response = property;
                     response.ResponseInfo.Success = true;
@@ -213,6 +213,10 @@ namespace Roovia.Services
         public async Task<ResponseModel> UpdateProperty(int id, Property updatedProperty, int companyId)
         {
             ResponseModel response = new();
+
+            // Ensure dates are valid
+            updatedProperty.EnsureValidDates();
+
             string sql = @"
                 UPDATE p
                 SET 
@@ -341,20 +345,14 @@ namespace Roovia.Services
                         OwnerId = row.OwnerId,
                         RentalAmount = row.RentalAmount,
                         HasTenant = row.HasTenant,
-
-                        // Handle nullable DateTime fields
-                        LeaseOriginalStartDate = row.LeaseOriginalStartDate != null ? row.LeaseOriginalStartDate : DateTime.MinValue,
-                        CurrentLeaseStartDate = row.CurrentLeaseStartDate != null ? row.CurrentLeaseStartDate : DateTime.MinValue,
-                        LeaseEndDate = row.LeaseEndDate != null ? row.LeaseEndDate : DateTime.MinValue,
-
-                        // Handle nullable Guid fields
-                        CurrentTenantId = row.CurrentTenantId != null ? row.CurrentTenantId : Guid.Empty,
-                        CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-                        UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-
-                        // Handle other nullable DateTime fields
-                        CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-                        UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
+                        LeaseOriginalStartDate = row.LeaseOriginalStartDate,
+                        CurrentLeaseStartDate = row.CurrentLeaseStartDate,
+                        LeaseEndDate = row.LeaseEndDate,
+                        CurrentTenantId = row.CurrentTenantId,
+                        CreatedOn = row.CreatedOn,
+                        CreatedBy = row.CreatedBy,
+                        UpdatedDate = row.UpdatedDate,
+                        UpdatedBy = row.UpdatedBy,
 
                         // Map Address properties
                         Address = new Address
@@ -370,12 +368,15 @@ namespace Roovia.Services
                             PostalCode = row.PostalCode,
                             Country = row.Country,
                             GateCode = row.GateCode,
-                            IsResidential = row.IsResidential ?? true,
+                            IsResidential = row.IsResidential,
                             Latitude = row.Latitude,
                             Longitude = row.Longitude,
                             DeliveryInstructions = row.DeliveryInstructions
                         }
                     };
+
+                    // Ensure dates are handled properly
+                    property.EnsureValidDates();
 
                     // Now perform the deletion
                     string deleteSql = @"
@@ -432,20 +433,14 @@ namespace Roovia.Services
                             OwnerId = row.OwnerId,
                             RentalAmount = row.RentalAmount,
                             HasTenant = row.HasTenant,
-
-                            // Handle nullable DateTime fields
-                            LeaseOriginalStartDate = row.LeaseOriginalStartDate != null ? row.LeaseOriginalStartDate : DateTime.MinValue,
-                            CurrentLeaseStartDate = row.CurrentLeaseStartDate != null ? row.CurrentLeaseStartDate : DateTime.MinValue,
-                            LeaseEndDate = row.LeaseEndDate != null ? row.LeaseEndDate : DateTime.MinValue,
-
-                            // Handle nullable Guid fields
-                            CurrentTenantId = row.CurrentTenantId != null ? row.CurrentTenantId : Guid.Empty,
-                            CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-                            UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-
-                            // Handle other nullable DateTime fields
-                            CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-                            UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
+                            LeaseOriginalStartDate = row.LeaseOriginalStartDate,
+                            CurrentLeaseStartDate = row.CurrentLeaseStartDate,
+                            LeaseEndDate = row.LeaseEndDate,
+                            CurrentTenantId = row.CurrentTenantId,
+                            CreatedOn = row.CreatedOn,
+                            CreatedBy = row.CreatedBy,
+                            UpdatedDate = row.UpdatedDate,
+                            UpdatedBy = row.UpdatedBy,
 
                             // Map Address properties
                             Address = new Address
@@ -461,12 +456,15 @@ namespace Roovia.Services
                                 PostalCode = row.PostalCode,
                                 Country = row.Country,
                                 GateCode = row.GateCode,
-                                IsResidential = row.IsResidential ?? true,
+                                IsResidential = row.IsResidential,
                                 Latitude = row.Latitude,
                                 Longitude = row.Longitude,
                                 DeliveryInstructions = row.DeliveryInstructions
                             }
                         };
+
+                        // Ensure dates are handled properly
+                        property.EnsureValidDates();
 
                         return property;
                     }).ToList();
@@ -505,20 +503,14 @@ namespace Roovia.Services
                             OwnerId = row.OwnerId,
                             RentalAmount = row.RentalAmount,
                             HasTenant = row.HasTenant,
-
-                            // Handle nullable DateTime fields
-                            LeaseOriginalStartDate = row.LeaseOriginalStartDate != null ? row.LeaseOriginalStartDate : DateTime.MinValue,
-                            CurrentLeaseStartDate = row.CurrentLeaseStartDate != null ? row.CurrentLeaseStartDate : DateTime.MinValue,
-                            LeaseEndDate = row.LeaseEndDate != null ? row.LeaseEndDate : DateTime.MinValue,
-
-                            // Handle nullable Guid fields
-                            CurrentTenantId = row.CurrentTenantId != null ? row.CurrentTenantId : Guid.Empty,
-                            CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-                            UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-
-                            // Handle other nullable DateTime fields
-                            CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-                            UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
+                            LeaseOriginalStartDate = row.LeaseOriginalStartDate,
+                            CurrentLeaseStartDate = row.CurrentLeaseStartDate,
+                            LeaseEndDate = row.LeaseEndDate,
+                            CurrentTenantId = row.CurrentTenantId,
+                            CreatedOn = row.CreatedOn,
+                            CreatedBy = row.CreatedBy,
+                            UpdatedDate = row.UpdatedDate,
+                            UpdatedBy = row.UpdatedBy,
 
                             // Map Address properties
                             Address = new Address
@@ -534,12 +526,15 @@ namespace Roovia.Services
                                 PostalCode = row.PostalCode,
                                 Country = row.Country,
                                 GateCode = row.GateCode,
-                                IsResidential = row.IsResidential ?? true,
+                                IsResidential = row.IsResidential,
                                 Latitude = row.Latitude,
                                 Longitude = row.Longitude,
                                 DeliveryInstructions = row.DeliveryInstructions
                             }
                         };
+
+                        // Ensure dates are handled properly
+                        property.EnsureValidDates();
 
                         return property;
                     }).ToList();

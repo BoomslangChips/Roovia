@@ -229,7 +229,7 @@
             Tenant.Address.Floor = Property.Address.Floor;
             Tenant.PropertyId = Property.Id;
 
-            var response = await TenantService.CreateTenant(Tenant);
+            var response = await TenantService.CreateTenant(Tenant, CurrentUser.CompanyId.Value);
             if (!response.ResponseInfo.Success)
             {
                 ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");

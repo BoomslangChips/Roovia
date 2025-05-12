@@ -23,11 +23,11 @@
             <div class="d-flex flex-column justify-content-between align-items-center flex-wrap gap-3 mb-4">
                 <div class="position-relative">
                     <input type="text"
-                           class="form-control ps-4"
-                           placeholder="Search properties..."
-                           @bind-value="searchTerm"
-                           @bind-value:event="oninput"
-                           style="min-width: 280px; border-radius: var(--border-radius-md);">
+                    class="form-control ps-4"
+                    placeholder="Search properties..."
+                    @bind-value="searchTerm"
+                    @bind-value:event="oninput"
+                    style="min-width: 280px; border-radius: var(--border-radius-md);">
                     <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                 </div>
                 @if (isLoading)
@@ -305,6 +305,7 @@
     private async Task EditPropertyClosed()
     {
         editPropertyModal = true;
+        await LoadProperties();
         await InvokeAsync(() => this.StateHasChanged());
     }
 

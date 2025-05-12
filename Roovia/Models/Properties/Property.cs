@@ -32,13 +32,13 @@ namespace Roovia.Models.Properties
                 LeaseEndDate = DateTime.Now;
             }
         }
-        public Guid CurrentTenantId { get; set; }
-        public DateTime CreatedOn { get; set; }
-        public Guid CreatedBy { get; set; }
+        public int? CurrentTenantId { get; set; }
+        public DateTime? CreatedOn { get; set; }
+        public Guid? CreatedBy { get; set; }
 
-        public DateTime UpdatedDate { get; set; }
+        public DateTime? UpdatedDate { get; set; }
 
-        public Guid UpdatedBy { get; set; }
+        public Guid? UpdatedBy { get; set; }
     }
 
     public class PropertyValidator : AbstractValidator<Property>

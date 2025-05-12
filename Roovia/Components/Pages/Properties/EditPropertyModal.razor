@@ -169,12 +169,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <RVCheckbox Label="Has Tenant"
-                                    Value="@Property.HasTenant"
-                                    @onchange="(e => Property.HasTenant = (bool)e.Value)">
-                                    </RVCheckbox>
-                                </div>
                             </div>
                             <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3 mt-3">
                                 <div>
@@ -205,7 +199,7 @@
                 </div>
             </div>
         </div>
-    
+
         @if (Tenant != null && Tenant.Id > 0)
         {
             <div class="roovia-panel mb-4">
@@ -224,11 +218,11 @@
     <FooterContent>
         <div class="d-flex justify-content-between w-100">
             <div>
-                <RVButton CssClass="roovia-btn me-2" Disabled="Tenant.Id > 0" OnClick="LinkExistingTenant">
-                    <i class="fas fa-link"></i>
-                </RVButton>
-                <RVButton CssClass="roovia-btn me-2" Disabled="Tenant.Id > 0" OnClick="CreateNewTenant">
-                    <i class="fas fa-user-plus"></i>
+                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="LinkExistingTenant">  
+                    <i class="fas fa-link"></i>  
+                </RVButton>  
+                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="CreateNewTenant">  
+                    <i class="fas fa-user-plus"></i>  
                 </RVButton>
                 <RVButton CssClass="btn roovia-btn me-2" OnClick="SaveProperty" >
                     <i class="fas fa-save"></i>
@@ -245,10 +239,20 @@
 {
     <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
         <CascadingValue TValue="Property" Value="Property">
-            <Roovia.Components.Pages.Tenants.CreateTenantComponent></Roovia.Components.Pages.Tenants.CreateTenantComponent>
+            <Roovia.Components.Pages.Tenants.CreateTenantComponent OnModalClosed="LinkTenantClosed"></Roovia.Components.Pages.Tenants.CreateTenantComponent>
         </CascadingValue>
     </CascadingValue>
 }
+
+@if (linkTenantClicked)
+{
+    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
+        <CascadingValue TValue="Property" Value="Property">
+            <Roovia.Components.Pages.Tenants.LinkTenantDialog OnDialogClosed="LinkTenantClosed"></Roovia.Components.Pages.Tenants.LinkTenantDialog>
+        </CascadingValue>
+    </CascadingValue>
+}
+
 
 @code {
     [CascadingParameter]
@@ -279,6 +283,9 @@
 
     bool createTenantVisible = false;
 
+    bool linkTenantClicked = false;
+
+
     protected override async Task OnInitializedAsync()
     {
         // Assuming Property.OwnerId is set, load owner details to display name.
@@ -297,7 +304,7 @@
 
     private async Task GetTenant()
     {
-        var tenantResponse = await TenantService.GetTenantWithPropertyId(Property.Id);
+        var tenantResponse = await TenantService.GetTenantWithPropertyId(Property.Id, CurrentUser.CompanyId.Value);
         if (tenantResponse.ResponseInfo.Success)
         {
             Tenant = tenantResponse.Response as PropertyTenant;
@@ -336,11 +343,18 @@
         }
     }
 
+
     private async Task LinkExistingTenant()
     {
-        // Implement logic to link an existing tenant
-        ToastService.ShowInfo("Link Existing Tenant clicked", "Info");
-        await Task.CompletedTask;
+        IsVisible = false;
+        linkTenantClicked = true;
+    }
+
+    private async Task LinkTenantClosed()
+    {
+
+        linkTenantClicked = false;
+        await OnModalClosed.InvokeAsync();
     }
 
     private async Task CreateNewTenant()

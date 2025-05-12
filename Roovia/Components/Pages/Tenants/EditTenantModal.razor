@@ -1,0 +1,220 @@
+﻿@using Roovia.Interfaces
+@using Roovia.Models.Helper
+@using Roovia.Models.Tenant
+@using Roovia.Models.Users
+@using Roovia.Services
+
+@rendermode InteractiveServer
+
+<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user-edit" IsVisible="@IsVisible" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="roovia-panel">
+            <div class="roovia-panel-header">
+                <h3 class="roovia-panel-title">Edit Tenant Details</h3>
+            </div>
+            <div class="roovia-panel-body p-0">
+                <!-- Tab Navigation -->
+                <div class="d-flex border-bottom">
+                    <div class="@GetTabClass(1)" @onclick="() => ActiveTab = 1">
+                        <i class="fas fa-user me-2"></i>Personal Information
+                    </div>
+                    <div class="@GetTabClass(2)" @onclick="() => ActiveTab = 2">
+                        <i class="fas fa-map-marker-alt me-2"></i>Address
+                    </div>
+                    <div class="@GetTabClass(3)" @onclick="() => ActiveTab = 3">
+                        <i class="fas fa-university me-2"></i>Bank Details
+                    </div>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-4">
+                    @if (ActiveTab == 1)
+                    {
+                        <!-- Personal Information Tab -->
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-12 mb-4">
+                                    <h5 class="text-primary mb-3">Tenant Information</h5>
+                                    <div class="roovia-grid-cols-2 gap-4">
+                                        <div>
+                                            <RVTextbox Label="First Name" Value="@Tenant.FirstName" @onchange="(e => Tenant.FirstName = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Last Name" Value="@Tenant.LastName" @onchange="(e => Tenant.LastName = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="ID Number" Value="@Tenant.IdNumber" @onchange="(e => Tenant.IdNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">Contact Information</h5>
+                                    <div class="roovia-grid-cols-2 gap-4">
+                                        <div>
+                                            <RVTextbox Label="Email Address" Value="@Tenant.EmailAddress" @onchange="(e => Tenant.EmailAddress = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVTextbox Label="Mobile Number" Value="@Tenant.MobileNumber" @onchange="(e => Tenant.MobileNumber = e.Value.ToString())"></RVTextbox>
+                                        </div>
+                                        <div>
+                                            <RVCheckbox Label="Email Notifications" Value="@(Tenant.IsEmailNotificationsEnabled == "true")" @onchange="(e => Tenant.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                        </div>
+                                        <div>
+                                            <RVCheckbox Label="SMS Notifications" Value="@(Tenant.IsSmsNotificationsEnabled == "true")" @onchange="(e => Tenant.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ActiveTab == 2)
+                    {
+                        <!-- Address Tab -->
+                        <div class="container-fluid">
+                            <h5 class="text-primary mb-3">Address</h5>
+                            <div class="roovia-grid-cols-2 gap-4">  
+                               <div>  
+                                   <RVTextbox Label="Street" Value="@Tenant.Address?.Street" @onchange="(e => Tenant.Address.Street = e.Value?.ToString())"></RVTextbox>  
+                               </div>  
+                               <div>  
+                                   <RVTextbox Label="Unit Number" Value="@Tenant.Address?.UnitNumber" @onchange="(e => Tenant.Address.UnitNumber = e.Value?.ToString())"></RVTextbox>  
+                               </div>  
+                               <div>  
+                                   <RVTextbox Label="Complex Name" Value="@Tenant.Address?.ComplexName" @onchange="(e => Tenant.Address.ComplexName = e.Value?.ToString())"></RVTextbox>  
+                               </div>  
+                               <div>  
+                                   <RVTextbox Label="Building Name" Value="@Tenant.Address?.BuildingName" @onchange="(e => Tenant.Address.BuildingName = e.Value?.ToString())"></RVTextbox>  
+                               </div>  
+                            </div>
+                        </div>
+                    }
+                    else if (ActiveTab == 3)
+                    {
+                        <!-- Bank Details Tab -->
+                        <div class="container-fluid">
+                            <h5 class="text-primary mb-3">Bank Details</h5>
+                            <div class="roovia-grid-cols-3 gap-4">
+                                <div>
+                                    <RVTextbox Label="Account Type" Value="@Tenant.BankAccount.AccountType" @onchange="(e => Tenant.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Account Number" Value="@Tenant.BankAccount.AccountNumber" @onchange="(e => Tenant.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Branch Code" Value="@Tenant.BankAccount.BranchCode" @onchange="(e => Tenant.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (Tenant.Id != 0)
+                {
+                    <span class="text-muted">Tenant: @Tenant.FirstName @Tenant.LastName</span>
+                }
+            </div>
+            <div>
+                <button class="btn roovia-btn-primary me-2" @onclick="SaveTenant">
+                    <i class="fas fa-save me-1"></i> Save
+                </button>
+                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </FooterContent>
+</RVModal>
+
+@code {
+    [CascadingParameter] 
+    public ApplicationUser? CurrentUser { get; set; }
+
+    [CascadingParameter]
+    public PropertyTenant Tenant { get; set; } = new PropertyTenant();
+
+    [Parameter]
+    public EventCallback<bool> OnModalClosed { get; set; }
+
+    [Inject]
+    public ITenant TenantService { get; set; }
+
+    [Inject]
+    public ToastService ToastService { get; set; }
+
+    bool IsVisible = true;
+    int ActiveTab = 1;
+
+    private string GetTabClass(int tabNumber)
+    {
+        return tabNumber == ActiveTab ? "tab-item tab-active" : "tab-item tab-inactive";
+    }
+
+    private async Task SaveTenant()
+    {
+        try
+        {
+            // Set updated date/time and user
+            Tenant.UpdatedDate = DateTime.Now;
+            if (CurrentUser != null && Guid.TryParse(CurrentUser.Id, out Guid userId))
+            {
+                Tenant.UpdatedBy = userId;
+            }
+            else
+            {
+            }
+
+            var response = await TenantService.UpdateTenant(Tenant.Id, Tenant, CurrentUser.CompanyId.Value);
+            if (!response.ResponseInfo.Success)
+            {
+                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+            }
+            else
+            {
+                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                await CloseModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
+    }
+}
+
+<style>
+    .tab-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    .tab-active {
+        color: var(--primary) !important;
+        font-weight: 600;
+        background-color: var(--primary-lighter);
+        border-bottom: 2px solid var(--primary);
+    }
+    .tab-inactive {
+        color: var(--text-secondary);
+    }
+    .tab-inactive:hover {
+        background-color: var(--subtle-bg);
+        color: var(--text-primary);
+    }
+    @@media (min-width: 1000px) {
+        .roovia-modal {
+            max-width: 60em !important;
+        }
+    }
+</style>
