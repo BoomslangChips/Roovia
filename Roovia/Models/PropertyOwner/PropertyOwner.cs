@@ -40,6 +40,11 @@ namespace Roovia.Models.PropertyOwner
 
         public int CurrentTenantId { get; set; } = 0;
 
+        public bool? isRemoved { get; set; } = false;
+
+        public DateTime? RemovedDate { get; set; }
+
+        public Guid? RemovedBy { get; set; }
         public List<Property> Properties { get; set; } = new List<Property>();
 
     }

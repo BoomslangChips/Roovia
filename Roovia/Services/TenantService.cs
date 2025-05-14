@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Tenant;
+using Roovia.Models.Users;
 
 namespace Roovia.Services
 {
@@ -145,7 +146,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetTenantById(int id, int companyId)
         {
             ResponseModel response = new();
-            string sql = @"SELECT * FROM [PropertyTenants] WHERE Id = @Id AND CompanyId = @CompanyId";
+            string sql = @"SELECT * FROM [PropertyTenants] WHERE Id = @Id AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
 
             try
             {
@@ -273,16 +274,28 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> DeleteTenant(int id, int companyId)
+        public async Task<ResponseModel> DeleteTenant(int id, int companyId, ApplicationUser user)
         {
             ResponseModel response = new();
-            string sql = "DELETE FROM [PropertyTenants] WHERE Id = @Id AND CompanyId = @CompanyId";
+            string sql = @"
+                UPDATE [PropertyTenants]
+                SET 
+                    IsRemoved = 1,
+                    RemovedDate = @RemovedDate,
+                    RemovedBy = @RemovedBy
+                WHERE Id = @Id AND CompanyId = @CompanyId";
 
             try
             {
                 using (var conn = new SqlConnection(_connectionString))
                 {
-                    var result = await conn.ExecuteAsync(sql, new { Id = id, CompanyId = companyId });
+                    var result = await conn.ExecuteAsync(sql, new
+                    {
+                        Id = id,
+                        CompanyId = companyId,
+                        RemovedDate = DateTime.UtcNow,
+                        RemovedBy = user?.Id
+                    });
 
                     if (result > 0)
                     {
@@ -309,43 +322,43 @@ namespace Roovia.Services
         {
             ResponseModel response = new();
             string sql = @"
-        SELECT 
-            Id,
-            PropertyId,
-            CompanyId,
-            FirstName,
-            LastName,
-            IdNumber,
-            EmailAddress,
-            IsEmailNotificationsEnabled,
-            MobileNumber,
-            IsSmsNotificationsEnabled,
-            BankAccount_AccountType AS AccountType,
-            BankAccount_AccountNumber AS AccountNumber,
-            BankAccount_BankName AS BankName,
-            BankAccount_BranchCode AS BranchCode,
-            Address_Street AS Street,
-            Address_UnitNumber AS UnitNumber,
-            Address_ComplexName AS ComplexName,
-            Address_BuildingName AS BuildingName,
-            Address_Floor AS Floor,
-            Address_City AS City,
-            Address_Suburb AS Suburb,
-            Address_Province AS Province,
-            Address_PostalCode AS PostalCode,
-            Address_Country AS Country,
-            Address_GateCode AS GateCode,
-            Address_IsResidential AS IsResidential,
-            Address_Latitude AS Latitude,
-            Address_Longitude AS Longitude,
-            Address_DeliveryInstructions AS DeliveryInstructions,
-            DebitDayOfMonth,
-            CreatedOn,
-            CreatedBy,
-            UpdatedDate,
-            UpdatedBy
-        FROM [PropertyTenants]
-        WHERE CompanyId = @CompanyId";
+                SELECT 
+                    Id,
+                    PropertyId,
+                    CompanyId,
+                    FirstName,
+                    LastName,
+                    IdNumber,
+                    EmailAddress,
+                    IsEmailNotificationsEnabled,
+                    MobileNumber,
+                    IsSmsNotificationsEnabled,
+                    BankAccount_AccountType AS AccountType,
+                    BankAccount_AccountNumber AS AccountNumber,
+                    BankAccount_BankName AS BankName,
+                    BankAccount_BranchCode AS BranchCode,
+                    Address_Street AS Street,
+                    Address_UnitNumber AS UnitNumber,
+                    Address_ComplexName AS ComplexName,
+                    Address_BuildingName AS BuildingName,
+                    Address_Floor AS Floor,
+                    Address_City AS City,
+                    Address_Suburb AS Suburb,
+                    Address_Province AS Province,
+                    Address_PostalCode AS PostalCode,
+                    Address_Country AS Country,
+                    Address_GateCode AS GateCode,
+                    Address_IsResidential AS IsResidential,
+                    Address_Latitude AS Latitude,
+                    Address_Longitude AS Longitude,
+                    Address_DeliveryInstructions AS DeliveryInstructions,
+                    DebitDayOfMonth,
+                    CreatedOn,
+                    CreatedBy,
+                    UpdatedDate,
+                    UpdatedBy
+                FROM [PropertyTenants]
+                WHERE CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
 
             try
             {
@@ -426,7 +439,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetTenantWithPropertyId(int propertyId, int companyId)
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM [PropertyTenants] WHERE PropertyId = @PropertyId AND CompanyId = @CompanyId";
+            string sql = "SELECT * FROM [PropertyTenants] WHERE PropertyId = @PropertyId AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
 
             try
             {

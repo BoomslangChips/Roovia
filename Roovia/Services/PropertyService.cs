@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Properties;
+using Roovia.Models.Users;
 
 namespace Roovia.Services
 {
@@ -140,7 +141,7 @@ namespace Roovia.Services
                 SELECT p.* 
                 FROM Properties p
                 LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
-                WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
+                WHERE po.CompanyId = @CompanyId AND p.Id = @Id AND ISNULL(p.IsRemoved, 0) = 0";
 
             try
             {
@@ -314,7 +315,7 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> DeleteProperty(int id, int companyId)
+        public async Task<ResponseModel> DeleteProperty(int id, int companyId, ApplicationUser user)
         {
             ResponseModel response = new();
 
@@ -353,8 +354,6 @@ namespace Roovia.Services
                         CreatedBy = row.CreatedBy,
                         UpdatedDate = row.UpdatedDate,
                         UpdatedBy = row.UpdatedBy,
-
-                        // Map Address properties
                         Address = new Address
                         {
                             Street = row.Street,
@@ -375,17 +374,26 @@ namespace Roovia.Services
                         }
                     };
 
-                    // Ensure dates are handled properly
                     property.EnsureValidDates();
 
-                    // Now perform the deletion
-                    string deleteSql = @"
-                        DELETE p
+                    // Soft delete: update IsRemoved, RemovedDate, RemovedBy
+                    string updateSql = @"
+                        UPDATE p
+                        SET 
+                            IsRemoved = 1,
+                            RemovedDate = @RemovedDate,
+                            RemovedBy = @RemovedBy
                         FROM Properties p
                         LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
                         WHERE po.CompanyId = @CompanyId AND p.Id = @Id";
 
-                    var result = await conn.ExecuteAsync(deleteSql, new { CompanyId = companyId, Id = id });
+                    var result = await conn.ExecuteAsync(updateSql, new
+                    {
+                        CompanyId = companyId,
+                        Id = id,
+                        RemovedDate = DateTime.Now,
+                        RemovedBy = user?.Id
+                    });
 
                     if (result > 0)
                     {
@@ -416,7 +424,7 @@ namespace Roovia.Services
                 SELECT p.* 
                 FROM Properties p
                 LEFT JOIN PropertyOwners po ON po.Id = p.OwnerId
-                WHERE po.CompanyId = @CompanyId";
+                WHERE po.CompanyId = @CompanyId AND ISNULL(p.IsRemoved, 0) = 0";
 
             try
             {
@@ -426,7 +434,8 @@ namespace Roovia.Services
                     var propertiesRaw = await conn.QueryAsync(sql, new { CompanyId = companyId });
 
                     // Map the results to the object model
-                    var result = propertiesRaw.Select(row => {
+                    var result = propertiesRaw.Select(row =>
+                    {
                         var property = new Property
                         {
                             Id = row.Id,
@@ -486,7 +495,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetPropertiesByOwner(int ownerId)
         {
             ResponseModel response = new();
-            string sql = "SELECT * FROM Properties WHERE OwnerId = @OwnerId";
+            string sql = "SELECT * FROM Properties WHERE OwnerId = @OwnerId AND ISNULL(IsRemoved, 0) = 0";
 
             try
             {
@@ -496,7 +505,8 @@ namespace Roovia.Services
                     var propertiesRaw = await conn.QueryAsync(sql, new { OwnerId = ownerId });
 
                     // Map the results to the object model
-                    var result = propertiesRaw.Select(row => {
+                    var result = propertiesRaw.Select(row =>
+                    {
                         var property = new Property
                         {
                             Id = row.Id,

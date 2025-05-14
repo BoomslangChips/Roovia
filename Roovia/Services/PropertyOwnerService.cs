@@ -4,6 +4,7 @@ using Roovia.Interfaces;
 using Roovia.Models.Helper;
 using Roovia.Models.Properties;
 using Roovia.Models.PropertyOwner;
+using Roovia.Models.Users;
 
 namespace Roovia.Services
 {
@@ -151,7 +152,7 @@ namespace Roovia.Services
         public async Task<ResponseModel> GetPropertyOwnerById(int companyId, int id)
         {
             ResponseModel response = new();
-            string sql = @"SELECT * FROM PropertyOwners WHERE Id = @Id AND CompanyId = @CompanyId";
+            string sql = @"SELECT * FROM PropertyOwners WHERE Id = @Id AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
 
             try
             {
@@ -385,7 +386,7 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> DeleteProperty(int id)
+        public async Task<ResponseModel> DeleteProperty(int id, ApplicationUser user)
         {
             ResponseModel response = new();
 
@@ -417,14 +418,10 @@ namespace Roovia.Services
                         IsEmailNotificationsEnabled = row.IsEmailNotificationsEnabled,
                         MobileNumber = row.MobileNumber,
                         IsSmsNotificationsEnabled = row.IsSmsNotificationsEnabled,
-
-                        // Handle nullable DateTime fields
                         CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
                         CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
                         UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
                         UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-
-                        // Map BankAccount properties
                         BankAccount = new BankAccount
                         {
                             AccountType = row.AccountType,
@@ -434,8 +431,6 @@ namespace Roovia.Services
                                 : default,
                             BranchCode = row.BranchCode
                         },
-
-                        // Map Address properties
                         Address = new Address
                         {
                             Street = row.Street,
@@ -456,15 +451,22 @@ namespace Roovia.Services
                         }
                     };
 
-                    // Now execute the delete
-                    string deleteSql = "DELETE FROM PropertyOwners WHERE Id = @Id";
-                    var result = await conn.ExecuteAsync(deleteSql, new { Id = id });
+                    // Update IsRemoved, RemovedDate, RemovedBy
+                    string updateSql = @"UPDATE PropertyOwners 
+                                         SET IsRemoved = 1, RemovedDate = @RemovedDate, RemovedBy = @RemovedBy 
+                                         WHERE Id = @Id";
+                    var result = await conn.ExecuteAsync(updateSql, new
+                    {
+                        Id = id,
+                        RemovedDate = DateTime.UtcNow,
+                        RemovedBy = !string.IsNullOrEmpty(user?.Id) ? Guid.Parse(user.Id) : Guid.Empty
+                    });
 
                     if (result > 0)
                     {
                         response.Response = propertyOwner;
                         response.ResponseInfo.Success = true;
-                        response.ResponseInfo.Message = "Property owner deleted successfully.";
+                        response.ResponseInfo.Message = "Property owner removed successfully.";
                     }
                     else
                     {
@@ -476,7 +478,7 @@ namespace Roovia.Services
             catch (Exception ex)
             {
                 response.ResponseInfo.Success = false;
-                response.ResponseInfo.Message = "An error occurred while deleting the property owner: " + ex.Message;
+                response.ResponseInfo.Message = "An error occurred while removing the property owner: " + ex.Message;
             }
 
             return response;
@@ -486,9 +488,9 @@ namespace Roovia.Services
         {
             ResponseModel response = new();
             string sql = @"  
-SELECT *  
-FROM PropertyOwners 
-WHERE CompanyId = @CompanyId";
+        SELECT *  
+        FROM PropertyOwners 
+        WHERE CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
             try
             {
                 using (var conn = new SqlConnection(_connectionString))
@@ -497,7 +499,8 @@ WHERE CompanyId = @CompanyId";
                     var propertyOwnersRaw = await conn.QueryAsync(sql, new { CompanyId = companyId });
 
                     // Process the results to map flattened DB columns to nested objects
-                    var result = propertyOwnersRaw.Select(row => {
+                    var result = propertyOwnersRaw.Select(row =>
+                    {
                         var propertyOwner = new PropertyOwner
                         {
                             Id = row.Id,

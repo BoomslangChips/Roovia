@@ -100,7 +100,6 @@
     [CascadingParameter]
     private ApplicationUser? CurrentUser { get; set; }
 
-
     [Inject]
     public IUser UserService { get; set; }
 
@@ -127,7 +126,6 @@
                 Console.WriteLine($"Error loading property owners: {response.ResponseInfo.Message}");
             }
         }
-
     }
 
     private IEnumerable<PropertyOwner> FilteredPropertyOwners =>
@@ -147,10 +145,23 @@
         await InvokeAsync(() => StateHasChanged());
     }
 
-    private void DeletePropertyOwner(PropertyOwner owner)
+    private async Task DeletePropertyOwner(PropertyOwner owner)
     {
-        propertyOwners.Remove(owner);
-        Console.WriteLine($"Deleted property owner: {owner.FirstName} {owner.LastName}");
+        if (owner == null || CurrentUser == null)
+            return;
+
+        // Assuming PropertyOwnerService has a DeletePropertyOwner method that takes owner id and company id
+        var response = await PropertyOwnerService.DeleteProperty(owner.Id, CurrentUser);
+        if (response.ResponseInfo.Success)
+        {
+            propertyOwners.Remove(owner);
+            ToastService.Show("Property owner deleted successfully.", ToastType.Success);
+        }
+        else
+        {
+            ToastService.Show($"Failed to delete property owner: {response.ResponseInfo.Message}", ToastType.Error);
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task AddPropertyOwner()
@@ -158,7 +169,6 @@
         showPropertyOwnerModal = true;
         await InvokeAsync(StateHasChanged);
     }
-
 
     public async Task GetLoggedInUser()
     {

@@ -15,7 +15,7 @@
             <h3 class="mb-0">Tenants</h3>
             <div class="search-bar">
                 <input type="text" placeholder="Search tenants..."
-                class="form-control" style="max-width: 300px;" @bind="searchTerm" />
+                       class="form-control" style="max-width: 300px;" @bind="searchTerm" />
             </div>
         </div>
     </HeaderActions>
@@ -37,7 +37,7 @@
                                 @tenant.FirstName @tenant.LastName
                             </h5>
                             <p class="card-text">
-                                Status: 
+                                Status:
                                 @if (tenant.PropertyId > 0)
                                 {
                                     <span class="badge bg-success">Renting</span>
@@ -48,12 +48,12 @@
                                 }
                             </p>
                             <div class="d-flex justify-content-between">
-                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" 
-                                Text="Open" OnClick="() => OpenTenant(tenant)" />
-                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" 
-                                Text="Edit" OnClick="() => EditTenant(tenant)" />
-                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" 
-                                Text="Delete" OnClick="() => DeleteTenant(tenant)" />
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye"
+                                          Text="Open" OnClick="() => OpenTenant(tenant)" />
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit"
+                                          Text="Edit" OnClick="() => EditTenant(tenant)" />
+                                <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash"
+                                          Text="Delete" OnClick="() => DeleteTenant(tenant)" />
                             </div>
                         </div>
                     </div>
@@ -62,11 +62,11 @@
         }
         else
         {
-            <EmptyState Title="No tenants available" 
-            Description="There are no tenants to display at this time." 
-            Icon="fa-light fa-user-slash" 
-            ActionText="Refresh" 
-            OnAction="LoadTenants" />
+            <EmptyState Title="No tenants available"
+                        Description="There are no tenants to display at this time."
+                        Icon="fa-light fa-user-slash"
+                        ActionText="Refresh"
+                        OnAction="LoadTenants" />
         }
     </ChildContent>
 </CardView>
@@ -178,11 +178,25 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
+
     private async Task DeleteTenant(PropertyTenant tenant)
     {
-        // Optionally call a service to delete the tenant from the backend.
-        tenants.Remove(tenant);
-        ToastService.ShowInfo($"Tenant {tenant.FirstName} deleted.", "Delete Tenant");
-        await Task.CompletedTask;
+        if (CurrentUser == null || !CurrentUser.CompanyId.HasValue)
+        {
+            ToastService.ShowError("Company information is missing for the current user.", "User Error");
+            return;
+        }
+
+        var response = await TenantService.DeleteTenant(tenant.Id, CurrentUser.CompanyId.Value, CurrentUser);
+        if (response.ResponseInfo.Success)
+        {
+            tenants.Remove(tenant);
+            ToastService.ShowInfo($"Tenant {tenant.FirstName} deleted.", "Delete Tenant");
+        }
+        else
+        {
+            ToastService.ShowError($"Error deleting tenant: {response.ResponseInfo.Message}", "Delete Tenant");
+        }
     }
+
 }

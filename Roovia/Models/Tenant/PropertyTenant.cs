@@ -26,6 +26,11 @@ namespace Roovia.Models.Tenant
 
         public Guid UpdatedBy { get; set; }
 
+        public bool? isRemoved { get; set; } = false;
+
+        public DateTime? RemovedDate { get; set; }
+
+        public Guid? RemovedBy { get; set; }
         public PropertyTenant()
         {
             BankAccount = new();

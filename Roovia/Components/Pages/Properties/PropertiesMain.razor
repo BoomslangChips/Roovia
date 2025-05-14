@@ -189,6 +189,25 @@
         }
     }
 
+
+    private async Task DeleteProperty(Property property)
+    {
+        if (CurrentUser == null || CurrentUser.CompanyId == null)
+            return;
+
+        var response = await PropertyService.DeleteProperty(property.Id, CurrentUser.CompanyId.Value, CurrentUser);
+        if (response.ResponseInfo.Success)
+        {
+            // Remove from local list and update UI
+            properties.RemoveAll(p => p.Id == property.Id);
+            ApplyFiltersAndSort();
+        }
+        else
+        {
+            // Optionally show an error message (implement as needed)
+            Console.WriteLine($"Error deleting property: {response.ResponseInfo.Message}");
+        }
+    }
     private async Task LoadProperties()
     {
         isLoading = true;
