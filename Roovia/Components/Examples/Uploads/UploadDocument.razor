@@ -1,4 +1,4 @@
-﻿@page "/upload-document"
+﻿@* @page "/upload-document"
 @using Roovia.Interfaces
 @inject ICdnService CdnService
 @inject IJSRuntime JSRuntime
@@ -52,4 +52,4 @@
             await JSRuntime.InvokeVoidAsync("openUrlWithApiKey", uploadedFileUrl, apiKey);
         }
     }
-}
+} *@

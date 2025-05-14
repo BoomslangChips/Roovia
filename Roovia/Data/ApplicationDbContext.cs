@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Roovia.Models.Helper;
 using Roovia.Models.Users;
+using Roovia.Models.CDN;
+
 namespace Roovia.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
@@ -12,23 +14,19 @@ namespace Roovia.Data
         public DbSet<ContactNumber> ContactNumbers { get; set; }
         public DbSet<BranchLogo> BranchLogos { get; set; }
         public DbSet<Media> Media { get; set; }
-
-        // Security-related DbSets
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
 
-        public BankAccount BankDetails { get; set; } = new BankAccount();
-
         public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
         public DbSet<UserPermissionOverride> UserPermissionOverrides { get; set; }
-
-
-        public DbSet<Roovia.Models.CDN.CdnConfiguration> CdnConfigurations { get; set; }
-        public DbSet<Roovia.Models.CDN.CdnApiKey> CdnApiKeys { get; set; }
-        public DbSet<Roovia.Models.CDN.CdnUsageStatistic> CdnUsageStatistics { get; set; }
-        public DbSet<Roovia.Models.CDN.CdnFileMetadata> CdnFileMetadata { get; set; }
-        public DbSet<Roovia.Models.CDN.CdnAccessLog> CdnAccessLogs { get; set; }
+        public DbSet<CdnConfiguration> CdnConfigurations { get; set; }
+        public DbSet<CdnCategory> CdnCategories { get; set; }
+        public DbSet<CdnFolder> CdnFolders { get; set; }
+        public DbSet<CdnFileMetadata> CdnFileMetadata { get; set; }
+        public DbSet<CdnBase64Storage> CdnBase64Storage { get; set; }
+        public DbSet<CdnUsageStatistic> CdnUsageStatistics { get; set; }
+        public DbSet<CdnAccessLog> CdnAccessLogs { get; set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -44,6 +42,9 @@ namespace Roovia.Data
 
             // Configure Address as an owned entity for Branch
             modelBuilder.Entity<Branch>().OwnsOne(b => b.Address);
+
+            // Configure BankAccount as an owned entity for Branch
+            modelBuilder.Entity<Branch>().OwnsOne(b => b.BankDetails);
 
             // Configure Email entity
             modelBuilder.Entity<Email>(entity =>
@@ -171,10 +172,10 @@ namespace Roovia.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserPermissionOverride>()
-    .HasOne<ApplicationUser>()
-    .WithMany()
-    .HasForeignKey(upo => upo.UserId)
-    .OnDelete(DeleteBehavior.Cascade);
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(upo => upo.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserPermissionOverride>()
                 .HasOne(upo => upo.Permission)
@@ -183,7 +184,7 @@ namespace Roovia.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserPermissionOverride>().ToTable("UserPermissionOverrides");
-            modelBuilder.Entity<Branch>().OwnsOne(b => b.BankDetails);
+
             // Define table names
             modelBuilder.Entity<Company>().ToTable("Companies");
             modelBuilder.Entity<Branch>().ToTable("Branches");
@@ -195,13 +196,106 @@ namespace Roovia.Data
             modelBuilder.Entity<Role>().ToTable("Roles");
             modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
             modelBuilder.Entity<UserRoleAssignment>().ToTable("UserRoleAssignments");
-            // Configure CDN entities
-            modelBuilder.Entity<Roovia.Models.CDN.CdnConfiguration>().ToTable("CdnConfigurations");
-            modelBuilder.Entity<Roovia.Models.CDN.CdnApiKey>().ToTable("CdnApiKeys");
-            modelBuilder.Entity<Roovia.Models.CDN.CdnUsageStatistic>().ToTable("CdnUsageStatistics");
-            modelBuilder.Entity<Roovia.Models.CDN.CdnFileMetadata>().ToTable("CdnFileMetadata");
-            modelBuilder.Entity<Roovia.Models.CDN.CdnAccessLog>().ToTable("CdnAccessLogs");
 
+            // Configure CDN entities
+
+            // CdnConfiguration
+            modelBuilder.Entity<CdnConfiguration>(entity =>
+            {
+                entity.ToTable("CdnConfigurations");
+                entity.Property(e => e.BaseUrl).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.StoragePath).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.AllowedFileTypes).IsRequired().HasMaxLength(500);
+            });
+
+            // CdnCategory
+            modelBuilder.Entity<CdnCategory>(entity =>
+            {
+                entity.ToTable("CdnCategories");
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // CdnFolder
+            modelBuilder.Entity<CdnFolder>(entity =>
+            {
+                entity.ToTable("CdnFolders");
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Path).IsRequired().HasMaxLength(500);
+
+                entity.HasOne(f => f.Parent)
+                    .WithMany()
+                    .HasForeignKey(f => f.ParentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(f => f.Category)
+                    .WithMany()
+                    .HasForeignKey(f => f.CategoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.CategoryId, e.Path }).IsUnique();
+            });
+
+            // CdnFileMetadata
+            modelBuilder.Entity<CdnFileMetadata>(entity =>
+            {
+                entity.ToTable("CdnFileMetadata");
+                entity.Property(e => e.FilePath).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.FileName).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Url).IsRequired().HasMaxLength(255);
+
+                entity.HasOne(f => f.Category)
+                    .WithMany(c => c.Files)
+                    .HasForeignKey(f => f.CategoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(f => f.Folder)
+                    .WithMany(f => f.Files)
+                    .HasForeignKey(f => f.FolderId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.Url);
+                entity.HasIndex(e => e.IsDeleted);
+                entity.HasIndex(e => new { e.CategoryId, e.FolderId });
+            });
+
+            // CdnBase64Storage
+            modelBuilder.Entity<CdnBase64Storage>(entity =>
+            {
+                entity.ToTable("CdnBase64Storage");
+                entity.Property(e => e.Base64Data).IsRequired();
+                entity.Property(e => e.MimeType).IsRequired().HasMaxLength(100);
+
+                entity.HasOne(b => b.FileMetadata)
+                    .WithOne(f => f.Base64Storage)
+                    .HasForeignKey<CdnBase64Storage>(b => b.FileMetadataId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.FileMetadataId).IsUnique();
+            });
+
+            // CdnUsageStatistic
+            modelBuilder.Entity<CdnUsageStatistic>(entity =>
+            {
+                entity.ToTable("CdnUsageStatistics");
+
+                entity.HasOne(s => s.Category)
+                    .WithMany()
+                    .HasForeignKey(s => s.CategoryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => new { e.Date, e.CategoryId });
+            });
+
+            // CdnAccessLog
+            modelBuilder.Entity<CdnAccessLog>(entity =>
+            {
+                entity.ToTable("CdnAccessLogs");
+                entity.Property(e => e.ActionType).IsRequired().HasMaxLength(20);
+
+                entity.HasIndex(e => e.Timestamp);
+                entity.HasIndex(e => e.ActionType);
+            });
         }
     }
 }

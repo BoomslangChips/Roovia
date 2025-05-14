@@ -461,8 +461,7 @@
 }
 
 .roovia-content-container {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
+    margin: 0px;
     width: 100%;
     animation: fadeInUp 0.4s ease;
 }

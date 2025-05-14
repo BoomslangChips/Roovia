@@ -1,4 +1,4 @@
-﻿@page "/cdn-test"
+﻿@* @page "/cdn-test"
 @using Roovia.Interfaces
 @rendermode InteractiveServer
 @inject ICdnService CdnService
@@ -312,4 +312,4 @@
             await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the file. Please try again.");
         }
     }
-}
+} *@

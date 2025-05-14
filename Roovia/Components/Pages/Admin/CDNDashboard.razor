@@ -1,0 +1,1613 @@
+﻿@page "/cdn-dashboard"
+@using Microsoft.AspNetCore.Components.Forms
+@using Roovia.Interfaces
+@using Roovia.Models.CDN
+@using System.ComponentModel.DataAnnotations
+@using Roovia.Services
+@inject ICdnService CdnService
+@inject ToastService ToastService
+@rendermode InteractiveServer
+@inject ILogger<CDNDashboard> Logger
+@inject IJSRuntime JSRuntime
+<link rel="stylesheet" href="@Assets["css/CDNDashboard.css"]" />
+<PageTitle>CDN Dashboard</PageTitle>
+
+<RVToastContainer Position="bottom-right" />
+
+<div class="cdn-dashboard">
+    <!-- Animated Header with Gradient -->
+    <div class="cdn-header">
+        <div class="cdn-header-bg-pattern"></div>
+        <div class="cdn-header-content">
+            <div class="cdn-header-title-group">
+                <div class="cdn-header-icon-wrap">
+                    <i class="fa-light fa-cloud-upload-alt"></i>
+                </div>
+                <div class="cdn-header-text">
+                    <h1 class="cdn-header-title">CDN Management Dashboard</h1>
+                    <p class="cdn-header-subtitle">Manage files, folders, and monitor CDN usage</p>
+                </div>
+            </div>
+            <div class="cdn-header-actions">
+                <RVButton ButtonType="primary"
+                          IconLeft="fa-light fa-plus"
+                          Text="Quick Upload"
+                          OnClick="ShowUploadModal" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards with Glassmorphism -->
+    <div class="cdn-stats-grid">
+        <div class="cdn-stat-card" data-color="primary">
+            <div class="cdn-stat-gradient"></div>
+            <div class="cdn-stat-icon">
+                <i class="fa-light fa-files"></i>
+            </div>
+            <div class="cdn-stat-content">
+                <h3 class="cdn-stat-number">@totalFiles</h3>
+                <p class="cdn-stat-label">Total Files</p>
+                <div class="cdn-stat-trend">
+                    <i class="fa-light fa-arrow-up"></i>
+                    <span>12% increase</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="cdn-stat-card" data-color="success">
+            <div class="cdn-stat-gradient"></div>
+            <div class="cdn-stat-icon">
+                <i class="fa-light fa-hard-drive"></i>
+            </div>
+            <div class="cdn-stat-content">
+                <h3 class="cdn-stat-number">@FormatFileSize(totalStorage)</h3>
+                <p class="cdn-stat-label">Storage Used</p>
+                <div class="cdn-stat-progress">
+                    <div class="cdn-stat-progress-bar" style="width: 75%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cdn-stat-card" data-color="warning">
+            <div class="cdn-stat-gradient"></div>
+            <div class="cdn-stat-icon">
+                <i class="fa-light fa-upload"></i>
+            </div>
+            <div class="cdn-stat-content">
+                <h3 class="cdn-stat-number">@uploadsToday</h3>
+                <p class="cdn-stat-label">Uploads Today</p>
+                <div class="cdn-stat-chart">
+                    <div class="cdn-mini-bar" style="height: 40%"></div>
+                    <div class="cdn-mini-bar" style="height: 60%"></div>
+                    <div class="cdn-mini-bar" style="height: 80%"></div>
+                    <div class="cdn-mini-bar" style="height: 45%"></div>
+                    <div class="cdn-mini-bar" style="height: 90%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cdn-stat-card" data-color="info">
+            <div class="cdn-stat-gradient"></div>
+            <div class="cdn-stat-icon">
+                <i class="fa-light fa-download"></i>
+            </div>
+            <div class="cdn-stat-content">
+                <h3 class="cdn-stat-number">@downloadsToday</h3>
+                <p class="cdn-stat-label">Downloads Today</p>
+                <div class="cdn-stat-metric">
+                    <i class="fa-light fa-chart-line"></i>
+                    <span>+24% from yesterday</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modern Tab Navigation -->
+    <div class="cdn-tab-container">
+        <div class="cdn-tabs">
+            <button class="cdn-tab @(activeTab == "filemanager" ? "active" : "")"
+                    @onclick='() => SetActiveTab("filemanager")'>
+                <i class="fa-light fa-folder-tree"></i>
+                <span>File Manager</span>
+                <div class="cdn-tab-indicator"></div>
+            </button>
+            <button class="cdn-tab @(activeTab == "categories" ? "active" : "")"
+                    @onclick='() => SetActiveTab("categories")'>
+                <i class="fa-light fa-tags"></i>
+                <span>Categories</span>
+                <div class="cdn-tab-indicator"></div>
+            </button>
+            <button class="cdn-tab @(activeTab == "accesslogs" ? "active" : "")"
+                    @onclick='() => SetActiveTab("accesslogs")'>
+                <i class="fa-light fa-history"></i>
+                <span>Access Logs</span>
+                <div class="cdn-tab-indicator"></div>
+            </button>
+            <button class="cdn-tab @(activeTab == "config" ? "active" : "")"
+                    @onclick='() => SetActiveTab("config")'>
+                <i class="fa-light fa-cog"></i>
+                <span>Configuration</span>
+                <div class="cdn-tab-indicator"></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Content with Animation -->
+    <div class="cdn-content">
+        @if (activeTab == "filemanager")
+        {
+                    <!-- Enhanced File Manager -->
+                    <div class="cdn-file-manager">
+                        <div class="cdn-file-layout">
+                            <!-- Modern Category Sidebar -->
+                            <div class="cdn-category-sidebar">
+                                <div class="cdn-category-header">
+                                    <h5>Categories</h5>
+                                    <button class="cdn-category-add">
+                                        <i class="fa-light fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div class="cdn-category-list">
+                            @foreach (var category in categories)
+                            {
+                                                <div class="cdn-category-item @(selectedCategory?.Id == category.Id ? "active" : "")"
+                                                     @onclick="() => SelectCategory(category)">
+                                                    <div class="cdn-category-icon">
+                                                        <i class="fa-light fa-folder"></i>
+                                                    </div>
+                                                    <span class="cdn-category-name">@category.DisplayName</span>
+                                                    <span class="cdn-category-count">@categoryFileCounts.GetValueOrDefault(category.Id, 0)</span>
+                                                </div>
+                            }
+                                </div>
+                            </div>
+
+                            <!-- Main File Browser Area -->
+                            <div class="cdn-file-browser">
+                                <!-- Enhanced Toolbar -->
+                                <div class="cdn-toolbar">
+                                    <div class="cdn-toolbar-actions">
+                                        <RVButton ButtonType="primary"
+                                                  IconLeft="fa-light fa-upload"
+                                                  Text="Upload"
+                                                  OnClick="ShowUploadModal" />
+                                        <RVButton ButtonType="secondary"
+                                                  IconLeft="fa-light fa-folder-plus"
+                                                  Text="New Folder"
+                                                  OnClick="ShowCreateFolderModal"
+                                                  Disabled="@(selectedCategory == null)" />
+                                        <RVButton ButtonType="danger"
+                                                  IconLeft="fa-light fa-trash"
+                                                  Text="Delete"
+                                                  OnClick="DeleteSelected"
+                                                  Disabled="@(!selectedFiles.Any() && selectedFolder == null)" />
+                                    </div>
+                                    <div class="cdn-search-box">
+                                        <i class="fa-light fa-search cdn-search-icon"></i>
+                                        <input type="text"
+                                               class="cdn-search-input"
+                                               placeholder="Search files..."
+                                               @bind="searchTerm"
+                                               @oninput="@(async (e) => await SearchFiles(e.Value?.ToString()))" />
+                                    </div>
+                                </div>
+
+                                <!-- Modern Breadcrumb -->
+                                <div class="cdn-breadcrumb">
+                                    <div class="cdn-breadcrumb-item" @onclick='() => NavigateToPath("")'>
+                                        <i class="fa-light fa-home"></i>
+                                        <span>@(selectedCategory?.DisplayName ?? "Select a category")</span>
+                                    </div>
+                            @foreach (var segment in GetPathSegments())
+                            {
+                                                <div class="cdn-breadcrumb-separator">
+                                                    <i class="fa-light fa-chevron-right"></i>
+                                                </div>
+                                                <div class="cdn-breadcrumb-item" @onclick="() => NavigateToPath(segment.Path)">
+                                                    <span>@segment.Name</span>
+                                                </div>
+                            }
+                                </div>
+
+                                <!-- Advanced File Grid -->
+                                <div class="cdn-file-grid @(isLoading ? "loading" : "")">
+                            @if (isLoading)
+                            {
+                                                <div class="cdn-loading-overlay">
+                                                    <div class="cdn-loading-spinner">
+                                                        <div class="cdn-spinner"></div>
+                                                        <p>Loading files...</p>
+                                                    </div>
+                                                </div>
+                            }
+                            else
+                            {
+                                                <!-- Folders -->
+                                @foreach (var folder in folders)
+                                {
+                                                            <div class="cdn-file-item cdn-folder @(selectedFolder?.Id == folder.Id ? "selected" : "")"
+                                                                 @onclick="() => SelectFolder(folder)"
+                                                                 @ondblclick="() => NavigateToFolder(folder)">
+                                                                <div class="cdn-file-icon-wrap">
+                                                                    <i class="fa-light fa-folder"></i>
+                                                                </div>
+                                                                <div class="cdn-file-info">
+                                                                    <h4 class="cdn-file-name">@folder.Name</h4>
+                                                                    <p class="cdn-file-meta">Folder</p>
+                                                                </div>
+                                                                <div class="cdn-file-actions">
+                                                                    <button class="cdn-action-btn"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => RenameFolder(folder)"
+                                                                            title="Rename">
+                                                                        <i class="fa-light fa-pen"></i>
+                                                                    </button>
+                                                                    <button class="cdn-action-btn danger"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => DeleteFolder(folder)"
+                                                                            title="Delete">
+                                                                        <i class="fa-light fa-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                }
+
+                                                <!-- Files -->
+                                @foreach (var file in files)
+                                {
+                                                            <div class="cdn-file-item @(selectedFiles.Contains(file) ? "selected" : "")"
+                                                                 @onclick="() => ToggleFileSelection(file)">
+                                                                <div class="cdn-file-preview">
+                                            @if (IsImageFile(file.FileName))
+                                            {
+                                                                                <img src="@file.Url" alt="@file.FileName" loading="lazy" />
+                                                                                <div class="cdn-file-hover-overlay">
+                                                                                    <i class="fa-light fa-eye"></i>
+                                                                                </div>
+                                            }
+                                            else
+                                            {
+                                                                                <div class="cdn-file-icon-wrap">
+                                                                                    <i class="fa-light @GetFileIcon(file.FileName)"></i>
+                                                                                </div>
+                                            }
+                                                                </div>
+                                                                <div class="cdn-file-info">
+                                                                    <h4 class="cdn-file-name" title="@file.FileName">@file.FileName</h4>
+                                                                    <p class="cdn-file-meta">@FormatFileSize(file.FileSize)</p>
+                                                                </div>
+                                                                <div class="cdn-file-actions">
+                                                                    <button class="cdn-action-btn"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => DownloadFile(file)"
+                                                                            title="Download">
+                                                                        <i class="fa-light fa-download"></i>
+                                                                    </button>
+                                                                    <button class="cdn-action-btn info"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => ViewFileDetails(file)"
+                                                                            title="Details">
+                                                                        <i class="fa-light fa-info-circle"></i>
+                                                                    </button>
+                                            @if (file.HasBase64Backup)
+                                            {
+                                                                                <button class="cdn-action-btn warning"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => DownloadFromBase64(file)"
+                                                                                        title="Download Backup">
+                                                                                    <i class="fa-light fa-cloud-download"></i>
+                                                                                </button>
+                                            }
+                                            else
+                                            {
+                                                                                <button class="cdn-action-btn secondary"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => CreateBase64Backup(file)"
+                                                                                        title="Create Backup">
+                                                                                    <i class="fa-light fa-cloud-arrow-up"></i>
+                                                                                </button>
+                                            }
+                                                                </div>
+                                                            </div>
+                                }
+                            }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+        }
+        else if (activeTab == "categories")
+        {
+                    <!-- Modern Categories Management -->
+                    <div class="cdn-categories-section">
+                        <div class="cdn-section-header">
+                            <h3>Category Management</h3>
+                            <RVButton ButtonType="primary"
+                                      IconLeft="fa-light fa-plus"
+                                      Text="Add Category"
+                                      OnClick="ShowCreateCategoryModal" />
+                        </div>
+
+                        <div class="cdn-categories-grid">
+                    @foreach (var category in categories)
+                    {
+                                        <div class="cdn-category-card">
+                                            <div class="cdn-category-card-header">
+                                                <div class="cdn-category-card-icon">
+                                                    <i class="fa-light fa-folder"></i>
+                                                </div>
+                                                <div class="cdn-category-card-actions">
+                                                    <button class="cdn-action-btn sm"
+                                                            @onclick="() => EditCategory(category)"
+                                                            title="Edit">
+                                                        <i class="fa-light fa-edit"></i>
+                                                    </button>
+                                                    <button class="cdn-action-btn sm danger"
+                                                            @onclick="() => DeleteCategory(category)"
+                                                            disabled="@(categoryFileCounts.GetValueOrDefault(category.Id, 0) > 0)"
+                                                            title="Delete">
+                                                        <i class="fa-light fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="cdn-category-card-body">
+                                                <h4>@category.DisplayName</h4>
+                                                <p class="cdn-category-card-desc">@category.Description</p>
+                                                <div class="cdn-category-card-meta">
+                                                    <div class="cdn-meta-item">
+                                                        <i class="fa-light fa-file"></i>
+                                                        <span>@categoryFileCounts.GetValueOrDefault(category.Id, 0) files</span>
+                                                    </div>
+                                                    <div class="cdn-meta-item">
+                                                        <i class="fa-light fa-code"></i>
+                                                        <code>@category.AllowedFileTypes</code>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                    }
+                        </div>
+                    </div>
+        }
+        else if (activeTab == "accesslogs")
+        {
+                    <!-- Modern Access Logs -->
+                    <div class="cdn-logs-section">
+                        <div class="cdn-filters-bar">
+                            <div class="cdn-filter-group">
+                                <label>Start Date</label>
+                                <input type="date" class="cdn-filter-input" @bind="logStartDate" />
+                            </div>
+                            <div class="cdn-filter-group">
+                                <label>End Date</label>
+                                <input type="date" class="cdn-filter-input" @bind="logEndDate" />
+                            </div>
+                            <div class="cdn-filter-group">
+                                <label>Action Type</label>
+                                <select class="cdn-filter-select" @bind="logActionType">
+                                    <option value="">All Actions</option>
+                                    <option value="Upload">Upload</option>
+                                    <option value="Download">Download</option>
+                                    <option value="Delete">Delete</option>
+                                    <option value="Rename">Rename</option>
+                                    <option value="CreateFolder">Create Folder</option>
+                                </select>
+                            </div>
+                            <RVButton ButtonType="primary"
+                                      IconLeft="fa-light fa-search"
+                                      Text="Search Logs"
+                                      OnClick="LoadAccessLogs" />
+                        </div>
+
+                        <div class="cdn-logs-table-container">
+                            <table class="cdn-logs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Action</th>
+                                        <th>File/Path</th>
+                                        <th>User</th>
+                                        <th>Status</th>
+                                        <th>Size</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            @foreach (var log in accessLogs)
+                            {
+                                                <tr class="@(log.IsSuccess ? "" : "error-row")">
+                                                    <td>
+                                                        <span class="cdn-log-time">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="cdn-log-badge @GetActionBadgeClass(log.ActionType)">
+                                            @log.ActionType
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="cdn-log-path">@log.FilePath</span>
+                                                    </td>
+                                                    <td>@log.Username</td>
+                                                    <td>
+                                        @if (log.IsSuccess)
+                                        {
+                                                                    <i class="fa-light fa-check cdn-status-icon success"></i>
+                                        }
+                                        else
+                                        {
+                                                                    <i class="fa-light fa-times cdn-status-icon error"></i>
+                                        }
+                                                    </td>
+                                                    <td>@(log.FileSizeBytes.HasValue ? FormatFileSize(log.FileSizeBytes.Value) : "-")</td>
+                                                    <td>@log.ErrorMessage</td>
+                                                </tr>
+                            }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+        }
+        else if (activeTab == "config")
+        {
+                    <!-- Modern Configuration -->
+                    <div class="cdn-config-section">
+                        <RVCard Title="CDN Configuration" Icon="fa-light fa-cog" Type="border-primary">
+                    @if (cdnConfig != null)
+                    {
+                                        <EditForm Model="cdnConfig" OnValidSubmit="SaveConfiguration">
+                                            <DataAnnotationsValidator />
+                                            <ValidationSummary />
+
+                                            <div class="cdn-form-grid">
+                                                <div class="cdn-form-group">
+                                                    <label>Base URL</label>
+                                                    <InputText @bind-Value="cdnConfig.BaseUrl" class="cdn-form-input" />
+                                                    <small class="cdn-form-hint">The base URL for CDN access</small>
+                                                </div>
+
+                                                <div class="cdn-form-group">
+                                                    <label>Storage Path</label>
+                                                    <InputText @bind-Value="cdnConfig.StoragePath" class="cdn-form-input" />
+                                                    <small class="cdn-form-hint">Physical storage location</small>
+                                                </div>
+
+                                                <div class="cdn-form-group">
+                                                    <label>Max File Size (MB)</label>
+                                                    <InputNumber @bind-Value="cdnConfig.MaxFileSizeMB" class="cdn-form-input" />
+                                                    <small class="cdn-form-hint">Maximum allowed file size</small>
+                                                </div>
+
+                                                <div class="cdn-form-group full-width">
+                                                    <label>Allowed File Types</label>
+                                                    <InputTextArea @bind-Value="cdnConfig.AllowedFileTypes"
+                                                                   class="cdn-form-textarea"
+                                                                   rows="3" />
+                                                    <small class="cdn-form-hint">Comma-separated list of allowed extensions</small>
+                                                </div>
+
+                                                <div class="cdn-form-group full-width">
+                                                    <RVCheckbox @bind-Value="cdnConfig.EnableCaching"
+                                                                Label="Enable Caching"
+                                                                HelperText="Enable browser caching for improved performance" />
+                                                </div>
+                                            </div>
+
+                                            <div class="cdn-form-actions">
+                                                <RVButton ButtonType="primary"
+                                                          Type="submit"
+                                                          IconLeft="fa-light fa-save"
+                                                          Text="Save Configuration" />
+                                            </div>
+                                        </EditForm>
+                    }
+                        </RVCard>
+                    </div>
+        }
+    </div>
+</div>
+
+<!-- Modern Upload Modal -->
+<div class="cdn-modal @(showUploadModal ? "show" : "")">
+    <div class="cdn-modal-backdrop" @onclick="CloseUploadModal"></div>
+    <div class="cdn-modal-content">
+        <div class="cdn-modal-header">
+            <h3 class="cdn-modal-title">
+                <i class="fa-light fa-cloud-upload"></i>
+                Upload Files
+            </h3>
+            <button class="cdn-modal-close" @onclick="CloseUploadModal">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="cdn-modal-body">
+            <div class="cdn-upload-zone @(isDragging ? "dragging" : "")"
+                 @ondragenter="HandleDragEnter"
+                 @ondragleave="HandleDragLeave"
+                 @ondragover:preventDefault="true"
+                 @ondrop="HandleDrop">
+                <i class="fa-light fa-cloud-upload cdn-upload-icon"></i>
+                <h4>Drag & Drop files here</h4>
+                <p>or click to browse</p>
+                <InputFile OnChange="HandleFileSelection" multiple class="cdn-file-input" />
+            </div>
+
+            <div class="cdn-upload-options">
+                <div class="cdn-form-group">
+                    <label>Category</label>
+                    <select class="cdn-form-select" @bind="uploadCategory">
+                        @foreach (var category in categories)
+                        {
+                                    <option value="@category.Name">@category.DisplayName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="cdn-form-group">
+                    <label>Folder Path</label>
+                    <input type="text"
+                           class="cdn-form-input"
+                           @bind="uploadFolderPath"
+                           placeholder="Optional: folder1/subfolder" />
+                </div>
+
+                <RVCheckbox @bind-Value="createBase64Backup"
+                            Label="Create Base64 Backup"
+                            HelperText="Store an additional base64 encoded backup" />
+            </div>
+
+            @if (selectedUploadFiles.Any())
+            {
+                        <div class="cdn-upload-files">
+                            <h5>Selected Files</h5>
+                            <div class="cdn-upload-file-list">
+                        @foreach (var file in selectedUploadFiles)
+                        {
+                                            <div class="cdn-upload-file-item">
+                                                <i class="fa-light @GetFileIcon(file.Name)"></i>
+                                                <span class="cdn-upload-file-name">@file.Name</span>
+                                                <span class="cdn-upload-file-size">@FormatFileSize(file.Size)</span>
+                                            </div>
+                        }
+                            </div>
+                        </div>
+            }
+
+            @if (uploadProgress > 0)
+            {
+                        <div class="cdn-upload-progress">
+                            <div class="cdn-upload-progress-bar" style="width: @uploadProgress%"></div>
+                            <span class="cdn-upload-progress-text">@uploadProgress%</span>
+                        </div>
+            }
+        </div>
+        <div class="cdn-modal-footer">
+            <RVButton ButtonType="secondary" Text="Cancel" OnClick="CloseUploadModal" />
+            <RVButton ButtonType="primary"
+                      Text="Upload"
+                      IconLeft="fa-light fa-upload"
+                      OnClick="UploadFiles"
+                      Disabled="@(!selectedUploadFiles.Any() || isUploading)"
+                      Loading="@isUploading" />
+        </div>
+    </div>
+</div>
+
+<!-- Folder Creation Modal -->
+<div class="cdn-modal @(showCreateFolderModal ? "show" : "")">
+    <div class="cdn-modal-backdrop" @onclick="() => showCreateFolderModal = false"></div>
+    <div class="cdn-modal-content small">
+        <div class="cdn-modal-header">
+            <h3 class="cdn-modal-title">
+                <i class="fa-light fa-folder-plus"></i>
+                Create New Folder
+            </h3>
+            <button class="cdn-modal-close" @onclick="() => showCreateFolderModal = false">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="cdn-modal-body">
+            <div class="cdn-form-group">
+                <label>Folder Name</label>
+                <input type="text"
+                       class="cdn-form-input"
+                       @bind="newFolderName"
+                       placeholder="Enter folder name" />
+            </div>
+        </div>
+        <div class="cdn-modal-footer">
+            <RVButton ButtonType="secondary" Text="Cancel" OnClick="() => showCreateFolderModal = false" />
+            <RVButton ButtonType="primary" Text="Create Folder" OnClick="CreateFolder" />
+        </div>
+    </div>
+</div>
+
+<!-- File Details Modal -->
+<div class="cdn-modal @(showFileDetailsModal ? "show" : "")">
+    <div class="cdn-modal-backdrop" @onclick="() => showFileDetailsModal = false"></div>
+    <div class="cdn-modal-content medium">
+        <div class="cdn-modal-header">
+            <h3 class="cdn-modal-title">
+                <i class="fa-light fa-info-circle"></i>
+                File Details
+            </h3>
+            <button class="cdn-modal-close" @onclick="() => showFileDetailsModal = false">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="cdn-modal-body">
+            @if (selectedFileDetails != null)
+            {
+                        <div class="cdn-details-grid">
+                            <div class="cdn-details-preview">
+                        @if (IsImageFile(selectedFileDetails.FileName))
+                        {
+                                            <img src="@selectedFileDetails.Url" alt="@selectedFileDetails.FileName" />
+                        }
+                        else
+                        {
+                                            <div class="cdn-details-icon">
+                                                <i class="fa-light @GetFileIcon(selectedFileDetails.FileName)"></i>
+                                            </div>
+                        }
+                            </div>
+                            <div class="cdn-details-info">
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">File Name</span>
+                                    <span class="cdn-detail-value">@selectedFileDetails.FileName</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">File Size</span>
+                                    <span class="cdn-detail-value">@FormatFileSize(selectedFileDetails.FileSize)</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Content Type</span>
+                                    <span class="cdn-detail-value">@selectedFileDetails.ContentType</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Upload Date</span>
+                                    <span class="cdn-detail-value">@selectedFileDetails.UploadDate.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Uploaded By</span>
+                                    <span class="cdn-detail-value">@selectedFileDetails.UploadedBy</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Access Count</span>
+                                    <span class="cdn-detail-value">@selectedFileDetails.AccessCount</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Last Access</span>
+                                    <span class="cdn-detail-value">@(selectedFileDetails.LastAccessDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never")</span>
+                                </div>
+                                <div class="cdn-detail-row">
+                                    <span class="cdn-detail-label">Has Backup</span>
+                                    <span class="cdn-detail-value">
+                                @if (selectedFileDetails.HasBase64Backup)
+                                {
+                                                    <span class="cdn-badge success">Yes</span>
+                                }
+                                else
+                                {
+                                                    <span class="cdn-badge secondary">No</span>
+                                }
+                                    </span>
+                                </div>
+                                <div class="cdn-detail-row full-width">
+                                    <span class="cdn-detail-label">URL</span>
+                                    <div class="cdn-url-input-group">
+                                        <input type="text" class="cdn-form-input" value="@selectedFileDetails.Url" readonly />
+                                        <RVButton ButtonType="secondary"
+                                                  IconLeft="fa-light fa-copy"
+                                                  OnClick="() => CopyToClipboard(selectedFileDetails.Url)" />
+                                    </div>
+                                </div>
+                                <div class="cdn-detail-row full-width">
+                                    <span class="cdn-detail-label">Checksum</span>
+                                    <code class="cdn-checksum">@selectedFileDetails.Checksum</code>
+                                </div>
+                            </div>
+                        </div>
+            }
+        </div>
+        <div class="cdn-modal-footer">
+            <RVButton ButtonType="secondary" Text="Close" OnClick="() => showFileDetailsModal = false" />
+            <RVButton ButtonType="primary"
+                      Text="Download"
+                      IconLeft="fa-light fa-download"
+                      OnClick="() => DownloadFile(selectedFileDetails)" />
+            @if (selectedFileDetails?.HasBase64Backup == true)
+            {
+                        <RVButton ButtonType="warning"
+                                  Text="Restore from Backup"
+                                  IconLeft="fa-light fa-cloud-download"
+                                  OnClick="() => RestoreFromBase64(selectedFileDetails)" />
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div class="cdn-modal @(showCategoryModal ? "show" : "")">
+    <div class="cdn-modal-backdrop" @onclick="CloseCategoryModal"></div>
+    <div class="cdn-modal-content small">
+        <div class="cdn-modal-header">
+            <h3 class="cdn-modal-title">
+                <i class="fa-light @(isEditingCategory ? "fa-edit" : "fa-plus")"></i>
+                @(isEditingCategory ? "Edit" : "Create") Category
+            </h3>
+            <button class="cdn-modal-close" @onclick="CloseCategoryModal">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="cdn-modal-body">
+            <EditForm Model="categoryForm" OnValidSubmit="SaveCategory">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="cdn-form-grid">
+                    <div class="cdn-form-group">
+                        <label>Name (URL-friendly)</label>
+                        <InputText @bind-Value="categoryForm.Name"
+                                   class="cdn-form-input"
+                                   disabled="@isEditingCategory" />
+                    </div>
+
+                    <div class="cdn-form-group">
+                        <label>Display Name</label>
+                        <InputText @bind-Value="categoryForm.DisplayName" class="cdn-form-input" />
+                    </div>
+
+                    <div class="cdn-form-group full-width">
+                        <label>Description</label>
+                        <InputTextArea @bind-Value="categoryForm.Description"
+                                       class="cdn-form-textarea"
+                                       rows="3" />
+                    </div>
+
+                    <div class="cdn-form-group full-width">
+                        <label>Allowed File Types</label>
+                        <InputText @bind-Value="categoryForm.AllowedFileTypes"
+                                   class="cdn-form-input"
+                                   placeholder=".pdf,.doc,.docx or * for all" />
+                        <small class="cdn-form-hint">Comma-separated file extensions or * for all types</small>
+                    </div>
+                </div>
+
+                <div class="cdn-form-actions">
+                    <RVButton ButtonType="secondary" Text="Cancel" OnClick="CloseCategoryModal" />
+                    <RVButton ButtonType="primary" Type="submit" Text="Save" />
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    // State Management
+    private string activeTab = "filemanager";
+    private List<CdnCategory> categories = new();
+    private List<CdnFolder> folders = new();
+    private List<CdnFileMetadata> files = new();
+    private List<CdnAccessLog> accessLogs = new();
+    private CdnConfiguration? cdnConfig;
+
+    // Selected Items
+    private CdnCategory? selectedCategory;
+    private CdnFolder? selectedFolder;
+    private HashSet<CdnFileMetadata> selectedFiles = new();
+    private CdnFileMetadata? selectedFileDetails;
+
+    // Navigation
+    private string currentPath = "";
+    private string searchTerm = "";
+
+    // Statistics
+    private int totalFiles = 0;
+    private long totalStorage = 0;
+    private int uploadsToday = 0;
+    private int downloadsToday = 0;
+    private Dictionary<int, int> categoryFileCounts = new();
+
+    // Modals
+    private bool showUploadModal = false;
+    private bool showCreateFolderModal = false;
+    private bool showFileDetailsModal = false;
+    private bool showCategoryModal = false;
+
+    // Upload
+    private List<IBrowserFile> selectedUploadFiles = new();
+    private string uploadCategory = "documents";
+    private string uploadFolderPath = "";
+    private bool createBase64Backup = false;
+    private int uploadProgress = 0;
+    private bool isUploading = false;
+    private bool isDragging = false;
+
+    // Forms
+    private string newFolderName = "";
+    private CategoryForm categoryForm = new();
+    private bool isEditingCategory = false;
+
+    // Access Logs
+    private DateTime logStartDate = DateTime.Today.AddDays(-7);
+    private DateTime logEndDate = DateTime.Today;
+    private string logActionType = "";
+
+    // Loading States
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+        await LoadStatistics();
+        await LoadConfiguration();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            categories = await CdnService.GetCategoriesAsync();
+            foreach (var category in categories)
+            {
+                var fileCount = await CdnService.GetFileCountAsync(category.Name);
+                categoryFileCounts[category.Id] = fileCount;
+            }
+            ToastService.ShowSuccess("Categories loaded successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading categories");
+            ToastService.ShowError("Failed to load categories");
+        }
+    }
+
+    private async Task LoadStatistics()
+    {
+        try
+        {
+            var today = DateTime.Today;
+            var stats = await CdnService.GetUsageStatisticsAsync(today);
+            if (stats != null)
+            {
+                uploadsToday = stats.UploadCount;
+                downloadsToday = stats.DownloadCount;
+            }
+
+            // Get total files and storage across all categories
+            foreach (var category in categories)
+            {
+                var categoryStats = await CdnService.GetUsageStatisticsAsync(today, category.Id);
+                if (categoryStats != null)
+                {
+                    totalFiles += categoryStats.FileCount;
+                    totalStorage += categoryStats.StorageUsedBytes;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading statistics");
+            ToastService.ShowError("Failed to load statistics");
+        }
+    }
+
+    private async Task LoadConfiguration()
+    {
+        try
+        {
+            cdnConfig = await CdnService.GetConfigurationAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading configuration");
+            ToastService.ShowError("Failed to load configuration");
+        }
+    }
+
+    private async Task SelectCategory(CdnCategory category)
+    {
+        selectedCategory = category;
+        currentPath = "";
+        await LoadContent();
+    }
+
+    private async Task LoadContent()
+    {
+        if (selectedCategory == null)
+        {
+            ToastService.ShowWarning("Please select a category first");
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var content = await CdnService.GetContentAsync(selectedCategory.Name, currentPath);
+            folders = content.folders;
+            files = content.files;
+
+            // Apply search filter if active
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                files = files.Where(f => f.FileName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading content");
+            ToastService.ShowError("Failed to load content");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task NavigateToFolder(CdnFolder folder)
+    {
+        currentPath = folder.Path;
+        selectedFolder = null;
+        selectedFiles.Clear();
+        await LoadContent();
+    }
+
+    private async Task NavigateToPath(string path)
+    {
+        currentPath = path;
+        selectedFolder = null;
+        selectedFiles.Clear();
+        await LoadContent();
+    }
+
+    private List<(string Name, string Path)> GetPathSegments()
+    {
+        if (string.IsNullOrEmpty(currentPath))
+            return new List<(string, string)>();
+
+        var segments = currentPath.Split('/');
+        var result = new List<(string, string)>();
+        var path = "";
+
+        foreach (var segment in segments)
+        {
+            if (!string.IsNullOrEmpty(segment))
+            {
+                path = string.IsNullOrEmpty(path) ? segment : $"{path}/{segment}";
+                result.Add((segment, path));
+            }
+        }
+
+        return result;
+    }
+
+    // File Operations
+    private void ShowUploadModal()
+    {
+        if (selectedCategory == null)
+        {
+            ToastService.ShowWarning("Please select a category first");
+            return;
+        }
+
+        showUploadModal = true;
+        uploadCategory = selectedCategory?.Name ?? "documents";
+        uploadFolderPath = currentPath;
+        selectedUploadFiles.Clear();
+        uploadProgress = 0;
+    }
+
+    private void CloseUploadModal()
+    {
+        showUploadModal = false;
+        selectedUploadFiles.Clear();
+        uploadProgress = 0;
+        isUploading = false;
+        isDragging = false;
+    }
+
+    private void HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedUploadFiles = e.GetMultipleFiles().ToList();
+
+        // Check file sizes
+        if (cdnConfig != null)
+        {
+            var maxSize = cdnConfig.MaxFileSizeMB * 1024 * 1024;
+            var oversizedFiles = selectedUploadFiles.Where(f => f.Size > maxSize).ToList();
+
+            if (oversizedFiles.Any())
+            {
+                ToastService.ShowWarning($"{oversizedFiles.Count} file(s) exceed the {cdnConfig.MaxFileSizeMB}MB size limit");
+                selectedUploadFiles = selectedUploadFiles.Except(oversizedFiles).ToList();
+            }
+        }
+    }
+
+    private async Task UploadFiles()
+    {
+        if (!selectedUploadFiles.Any())
+        {
+            ToastService.ShowWarning("No files selected for upload");
+            return;
+        }
+
+        isUploading = true;
+        uploadProgress = 0;
+
+        try
+        {
+            var totalFiles = selectedUploadFiles.Count;
+            var uploadedCount = 0;
+            var failedFiles = new List<string>();
+            var backupCreatedCount = 0;
+
+            foreach (var file in selectedUploadFiles)
+            {
+                try
+                {
+                    using var stream = file.OpenReadStream(maxAllowedSize: long.MaxValue);
+
+                    if (createBase64Backup)
+                    {
+                        await CdnService.UploadFileWithBase64BackupAsync(stream, file.Name, file.ContentType, uploadCategory, uploadFolderPath);
+                        backupCreatedCount++;
+                    }
+                    else
+                    {
+                        await CdnService.UploadFileAsync(stream, file.Name, file.ContentType, uploadCategory, uploadFolderPath);
+                    }
+
+                    uploadedCount++;
+                    uploadProgress = (uploadedCount * 100) / totalFiles;
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, $"Error uploading file {file.Name}");
+                    failedFiles.Add(file.Name);
+                }
+            }
+
+            if (failedFiles.Any())
+            {
+                ToastService.ShowWarning($"Uploaded {uploadedCount} files successfully. Failed: {string.Join(", ", failedFiles)}");
+            }
+            else
+            {
+                if (createBase64Backup)
+                {
+                    ToastService.ShowSuccess($"Successfully uploaded {uploadedCount} file(s) with base64 backups");
+                }
+                else
+                {
+                    ToastService.ShowSuccess($"Successfully uploaded {uploadedCount} file(s)");
+                }
+            }
+
+            CloseUploadModal();
+            await LoadContent();
+            await LoadStatistics();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error uploading files");
+            ToastService.ShowError("Failed to upload files");
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    // Drag and Drop
+    private void HandleDragEnter(DragEventArgs e)
+    {
+        isDragging = true;
+    }
+
+    private void HandleDragLeave(DragEventArgs e)
+    {
+        isDragging = false;
+    }
+
+    private async Task HandleDrop(DragEventArgs e)
+    {
+        isDragging = false;
+        ToastService.ShowInfo("Drag and drop requires JavaScript interop implementation");
+    }
+
+    private async Task DownloadFile(CdnFileMetadata file)
+    {
+        try
+        {
+            var (stream, isFromBase64) = await CdnService.GetFileStreamAsync(file.Url);
+            if (stream != null)
+            {
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                var bytes = memoryStream.ToArray();
+
+                await JSRuntime.InvokeVoidAsync("downloadFile", file.FileName, Convert.ToBase64String(bytes));
+
+                if (isFromBase64)
+                {
+                    ToastService.ShowInfo($"Downloaded {file.FileName} from backup storage (physical file not found)");
+                }
+                else
+                {
+                    ToastService.ShowSuccess($"Downloaded {file.FileName}");
+                }
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to download {file.FileName} - File not found in storage or backup");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading file");
+            ToastService.ShowError($"Failed to download {file.FileName}");
+        }
+    }
+
+    private async Task DownloadFromBase64(CdnFileMetadata file)
+    {
+        try
+        {
+            var stream = await CdnService.GetBase64StreamAsync(file.Url);
+            if (stream != null)
+            {
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                var bytes = memoryStream.ToArray();
+
+                await JSRuntime.InvokeVoidAsync("downloadFile", file.FileName + "_backup", Convert.ToBase64String(bytes));
+                ToastService.ShowSuccess($"Downloaded backup copy of {file.FileName}");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to download backup - No base64 backup found for {file.FileName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading from base64");
+            ToastService.ShowError($"Failed to download backup of {file.FileName}");
+        }
+    }
+
+    private async Task CreateBase64Backup(CdnFileMetadata file)
+    {
+        try
+        {
+            // Check if physical file exists
+            var physicalPath = CdnService.GetPhysicalPath(file.Url);
+            if (string.IsNullOrEmpty(physicalPath) || !File.Exists(physicalPath))
+            {
+                ToastService.ShowWarning($"Cannot create backup - physical file not found for {file.FileName}");
+                return;
+            }
+
+            await CdnService.MigrateFileToBase64Async(file.Url);
+            await LoadContent();
+            ToastService.ShowSuccess($"Created backup for {file.FileName}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating base64 backup");
+            ToastService.ShowError($"Failed to create backup for {file.FileName}");
+        }
+    }
+
+    private async Task RestoreFromBase64(CdnFileMetadata file)
+    {
+        try
+        {
+            // Check if the physical file already exists
+            var physicalPath = CdnService.GetPhysicalPath(file.Url);
+            if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
+            {
+                var confirm = await JSRuntime.InvokeAsync<bool>("confirm",
+                    $"Physical file already exists for {file.FileName}. Overwrite with backup version?");
+
+                if (!confirm)
+                {
+                    return;
+                }
+            }
+
+            var restored = await CdnService.RestoreFromBase64Async(file.Url);
+            if (restored)
+            {
+                await LoadContent();
+                ToastService.ShowSuccess($"Restored {file.FileName} from backup");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to restore {file.FileName} - backup may not exist");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error restoring from base64");
+            ToastService.ShowError($"Failed to restore {file.FileName} from backup");
+        }
+    }
+
+    private void ViewFileDetails(CdnFileMetadata file)
+    {
+        selectedFileDetails = file;
+        showFileDetailsModal = true;
+    }
+
+    private void SelectFolder(CdnFolder folder)
+    {
+        selectedFolder = folder;
+        selectedFiles.Clear();
+    }
+
+    private void ToggleFileSelection(CdnFileMetadata file)
+    {
+        if (selectedFiles.Contains(file))
+            selectedFiles.Remove(file);
+        else
+            selectedFiles.Add(file);
+
+        selectedFolder = null;
+    }
+
+    private async Task DeleteSelected()
+    {
+        if (selectedFolder != null)
+        {
+            await DeleteFolder(selectedFolder);
+        }
+        else if (selectedFiles.Any())
+        {
+            var count = selectedFiles.Count;
+            var deletedCount = 0;
+
+            foreach (var file in selectedFiles)
+            {
+                try
+                {
+                    await CdnService.DeleteFileAsync(file.Url);
+                    deletedCount++;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, $"Error deleting file {file.FileName}");
+                }
+            }
+
+            if (deletedCount == count)
+            {
+                ToastService.ShowSuccess($"Deleted {deletedCount} file(s) successfully");
+            }
+            else
+            {
+                ToastService.ShowWarning($"Deleted {deletedCount} of {count} files. Some files could not be deleted.");
+            }
+
+            selectedFiles.Clear();
+            await LoadContent();
+            await LoadStatistics();
+        }
+    }
+
+    private async Task DeleteFile(CdnFileMetadata file)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Delete file '{file.FileName}'?"))
+        {
+            try
+            {
+                await CdnService.DeleteFileAsync(file.Url);
+                await LoadContent();
+                await LoadStatistics();
+                ToastService.ShowSuccess($"Deleted {file.FileName}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting file");
+                ToastService.ShowError($"Failed to delete {file.FileName}");
+            }
+        }
+    }
+
+    // Folder Operations
+    private void ShowCreateFolderModal()
+    {
+        if (selectedCategory == null)
+        {
+            ToastService.ShowWarning("Please select a category first");
+            return;
+        }
+
+        showCreateFolderModal = true;
+        newFolderName = "";
+    }
+
+    private async Task CreateFolder()
+    {
+        if (string.IsNullOrEmpty(newFolderName))
+        {
+            ToastService.ShowWarning("Please enter a folder name");
+            return;
+        }
+
+        if (selectedCategory == null)
+        {
+            ToastService.ShowWarning("Please select a category first");
+            return;
+        }
+
+        try
+        {
+            await CdnService.CreateFolderAsync(selectedCategory.Name, currentPath, newFolderName);
+            showCreateFolderModal = false;
+            await LoadContent();
+            ToastService.ShowSuccess($"Created folder '{newFolderName}'");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating folder");
+            ToastService.ShowError($"Failed to create folder '{newFolderName}'");
+        }
+    }
+
+    private async Task DeleteFolder(CdnFolder folder)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Delete folder '{folder.Name}'?"))
+        {
+            try
+            {
+                await CdnService.DeleteFolderAsync(selectedCategory.Name, folder.Path);
+                await LoadContent();
+                ToastService.ShowSuccess($"Deleted folder '{folder.Name}'");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting folder");
+                ToastService.ShowError(ex.Message);
+            }
+        }
+    }
+
+    private async Task RenameFolder(CdnFolder folder)
+    {
+        var newName = await JSRuntime.InvokeAsync<string>("prompt", "New folder name:", folder.Name);
+        if (!string.IsNullOrEmpty(newName) && newName != folder.Name)
+        {
+            try
+            {
+                await CdnService.RenameFolderAsync(selectedCategory.Name, folder.Path, newName);
+                await LoadContent();
+                ToastService.ShowSuccess($"Renamed folder to '{newName}'");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error renaming folder");
+                ToastService.ShowError($"Failed to rename folder");
+            }
+        }
+    }
+
+    // Category Operations
+    private void ShowCreateCategoryModal()
+    {
+        showCategoryModal = true;
+        isEditingCategory = false;
+        categoryForm = new CategoryForm();
+    }
+
+    private void EditCategory(CdnCategory category)
+    {
+        showCategoryModal = true;
+        isEditingCategory = true;
+        categoryForm = new CategoryForm
+            {
+                Id = category.Id,
+                Name = category.Name,
+                DisplayName = category.DisplayName,
+                Description = category.Description,
+                AllowedFileTypes = category.AllowedFileTypes
+            };
+    }
+
+    private void CloseCategoryModal()
+    {
+        showCategoryModal = false;
+        categoryForm = new CategoryForm();
+    }
+
+    private async Task SaveCategory()
+    {
+        try
+        {
+            if (isEditingCategory)
+            {
+                await CdnService.UpdateCategoryAsync(categoryForm.Id!.Value, categoryForm.DisplayName,
+                    categoryForm.AllowedFileTypes, categoryForm.Description);
+                ToastService.ShowSuccess("Category updated successfully");
+            }
+            else
+            {
+                await CdnService.CreateCategoryAsync(categoryForm.Name, categoryForm.DisplayName,
+                    categoryForm.AllowedFileTypes, categoryForm.Description);
+                ToastService.ShowSuccess("Category created successfully");
+            }
+
+            CloseCategoryModal();
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving category");
+            ToastService.ShowError("Failed to save category");
+        }
+    }
+
+    private async Task DeleteCategory(CdnCategory category)
+    {
+        if (categoryFileCounts.GetValueOrDefault(category.Id, 0) > 0)
+        {
+            ToastService.ShowWarning("Cannot delete category with existing files");
+            return;
+        }
+
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Delete category '{category.DisplayName}'?"))
+        {
+            try
+            {
+                await CdnService.DeleteCategoryAsync(category.Id);
+                await LoadCategories();
+                ToastService.ShowSuccess($"Deleted category '{category.DisplayName}'");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting category");
+                ToastService.ShowError(ex.Message);
+            }
+        }
+    }
+
+    // Access Logs
+    private async Task LoadAccessLogs()
+    {
+        try
+        {
+            accessLogs = await CdnService.GetAccessLogsAsync(logStartDate, logEndDate, logActionType);
+            ToastService.ShowSuccess("Access logs loaded");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading access logs");
+            ToastService.ShowError("Failed to load access logs");
+        }
+    }
+
+    // Configuration
+    private async Task SaveConfiguration()
+    {
+        try
+        {
+            await CdnService.UpdateConfigurationAsync(cdnConfig);
+            await LoadConfiguration();
+            ToastService.ShowSuccess("Configuration saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving configuration");
+            ToastService.ShowError("Failed to save configuration");
+        }
+    }
+
+    // Helper Methods
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        if (tab == "accesslogs")
+        {
+            _ = LoadAccessLogs();
+        }
+    }
+
+    private async Task SearchFiles(string searchValue)
+    {
+        searchTerm = searchValue;
+        await LoadContent();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private bool IsImageFile(string fileName)
+    {
+        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg" };
+        var extension = Path.GetExtension(fileName).ToLower();
+        return imageExtensions.Contains(extension);
+    }
+
+    private string GetFileIcon(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLower();
+        return extension switch
+        {
+            ".pdf" => "fa-file-pdf",
+            ".doc" or ".docx" => "fa-file-word",
+            ".xls" or ".xlsx" => "fa-file-excel",
+            ".ppt" or ".pptx" => "fa-file-powerpoint",
+            ".zip" or ".rar" => "fa-file-archive",
+            ".mp4" or ".avi" or ".mov" => "fa-file-video",
+            ".mp3" or ".wav" => "fa-file-audio",
+            ".txt" => "fa-file-text",
+            ".csv" => "fa-file-csv",
+            _ => "fa-file"
+        };
+    }
+
+    private string GetActionBadgeClass(string actionType)
+    {
+        return actionType switch
+        {
+            "Upload" => "primary",
+            "Download" => "success",
+            "Delete" => "danger",
+            "Rename" => "warning",
+            "CreateFolder" => "info",
+            _ => "secondary"
+        };
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ToastService.ShowSuccess("Copied to clipboard");
+        }
+        catch
+        {
+            ToastService.ShowError("Failed to copy to clipboard");
+        }
+    }
+
+    // Form Models
+    public class CategoryForm
+    {
+        public int? Id { get; set; }
+
+        [Required]
+        public string Name { get; set; } = "";
+
+        [Required]
+        public string DisplayName { get; set; } = "";
+
+        public string? Description { get; set; }
+
+        [Required]
+        public string AllowedFileTypes { get; set; } = "*";
+    }
+}
+
+<script>
+    window.downloadFile = (filename, base64) => {
+        const link = document.createElement('a');
+        link.href = `data:application/octet-stream;base64,${base64}`;
+        link.download = filename;
+        link.click();
+    };
+</script>

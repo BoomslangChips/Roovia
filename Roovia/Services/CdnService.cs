@@ -1,652 +1,268 @@
-﻿using System;
+﻿// CdnService.cs
+using System;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Roovia.Interfaces;
-using System.Linq;
-using Microsoft.AspNetCore.Hosting;
-using System.Threading;
-using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
-using Roovia.Models.CDN;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
+using Roovia.Data;
+using Roovia.Interfaces;
+using Roovia.Models.CDN;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Net.Http.Json;
 
-namespace Roovia.Services
+
+namespace Roovia.Interfaces
 {
+    public interface ICdnService
+    {
+        // File operations
+        Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "");
+        Task<string> UploadFileAsync(IFormFile file, string category = "documents", string folderPath = "");
+        Task<string> UploadFileWithBase64BackupAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "");
+        Task<(Stream stream, bool isFromBase64)> GetFileStreamAsync(string cdnUrl);
+        Task<Stream> GetBase64StreamAsync(string cdnUrl);
+        Task<bool> DeleteFileAsync(string cdnUrl);
+        Task<string> RenameFileAsync(string cdnUrl, string newFileName);
+        Task<bool> FileExistsAsync(string cdnUrl);
+        Task<CdnFileMetadata> GetFileMetadataAsync(string cdnUrl);
+        Task MigrateFileToBase64Async(string cdnUrl);
+        Task<bool> RestoreFromBase64Async(string cdnUrl);
+
+        // Folder operations
+        Task<CdnFolder> CreateFolderAsync(string category, string folderPath, string folderName);
+        Task<bool> DeleteFolderAsync(string category, string folderPath);
+        Task<List<CdnFolder>> GetFoldersAsync(string category, string parentPath = null);
+        Task<bool> RenameFolderAsync(string category, string oldPath, string newName);
+        Task<bool> MoveFolderAsync(string category, string sourcePath, string destinationPath);
+
+        // File/folder listing
+        Task<List<CdnFileMetadata>> GetFilesAsync(string category = "documents", string folderPath = null, string searchTerm = null);
+        Task<(List<CdnFolder> folders, List<CdnFileMetadata> files)> GetContentAsync(string category, string folderPath = null);
+        Task<long> GetFolderSizeAsync(string category, string folderPath);
+        Task<int> GetFileCountAsync(string category, string folderPath = null);
+
+        // Category management
+        Task<List<CdnCategory>> GetCategoriesAsync();
+        Task<CdnCategory> GetCategoryAsync(string name);
+        Task<CdnCategory> CreateCategoryAsync(string name, string displayName, string allowedFileTypes = "*", string description = null);
+        Task<CdnCategory> UpdateCategoryAsync(int categoryId, string displayName, string allowedFileTypes, string description);
+        Task<bool> DeleteCategoryAsync(int categoryId);
+        Task<bool> CategoryExistsAsync(string name);
+
+        // Configuration management
+        Task<CdnConfiguration> GetConfigurationAsync();
+        Task<CdnConfiguration> UpdateConfigurationAsync(CdnConfiguration config);
+        Task<bool> ValidateFileTypeAsync(string fileName, string category);
+        Task<bool> ValidateFileSizeAsync(long fileSize);
+
+        // Usage statistics
+        Task<CdnUsageStatistic> GetUsageStatisticsAsync(DateTime date, int? categoryId = null);
+        Task<List<CdnUsageStatistic>> GetUsageStatisticsRangeAsync(DateTime startDate, DateTime endDate, int? categoryId = null);
+        Task UpdateUsageStatisticsAsync(int categoryId, int fileCountChange, long storageBytesChange, int uploadCount = 0, int downloadCount = 0, int deleteCount = 0);
+
+        // Access logs
+        Task LogAccessAsync(string actionType, string filePath, string username, bool isSuccess, string errorMessage = null, long? fileSizeBytes = null);
+        Task<List<CdnAccessLog>> GetAccessLogsAsync(DateTime startDate, DateTime endDate, string actionType = null);
+
+        // Utility methods
+        string GetCdnUrl(string path);
+        bool IsDirectAccessAvailable();
+        string GetPhysicalPath(string cdnUrl);
+        Task<string> CalculateChecksumAsync(string filePath);
+        Task CleanupDeletedFilesAsync(int daysOld = 30);
+    }
+
+
     public class CdnService : ICdnService
     {
         private readonly IConfiguration _configuration;
-        private readonly string _bootstrapApiKey;
-        private readonly string _bootstrapCdnBaseUrl;
-        private readonly string _bootstrapCdnStoragePath;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IWebHostEnvironment _environment;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<CdnService> _logger;
         private readonly IMemoryCache _memoryCache;
+        private readonly string _storagePath;
+        private readonly string _baseUrl;
 
-        // Production API URL - no longer needed for direct access
-        private readonly string _productionApiUrl;
-        private readonly bool _forceRemoteApiInTestEnv;
-
-        // Cache keys
-        private const string CONFIG_CACHE_KEY = "CdnConfiguration";
+        // Cache settings
         private const string CATEGORIES_CACHE_KEY = "CdnCategories";
+        private const string CONFIG_CACHE_KEY = "CdnConfiguration";
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
 
-        // Cache common API responses to avoid redundant disk operations
-        private static readonly ConcurrentDictionary<string, string> _filePathCache = new();
-        private static readonly ConcurrentDictionary<string, DateTime> _cacheExpiry = new();
-        private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(15);
-
-        // Large buffer size for improved I/O performance
-        private const int LargeBufferSize = 262144; // 256KB buffer
-
-        // HttpClient optimized for CDN uploads - only kept for backward compatibility
-        private readonly HttpClient _optimizedHttpClient;
-
-        // Database configuration 
-        private CdnConfiguration _cdnConfig;
-        private List<CdnCategory> _categories;
-        private DateTime _configLastRefreshed;
-        private readonly TimeSpan _configRefreshInterval = TimeSpan.FromMinutes(5);
-
-        // File operation retry settings
-        private const int MaxRetryAttempts = 3;
-        private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(500);
+        // Buffer size for file operations
+        private const int BufferSize = 81920; // 80KB
 
         public CdnService(
             IConfiguration configuration,
-            IHttpClientFactory httpClientFactory,
-            IWebHostEnvironment environment,
             IServiceProvider serviceProvider,
             ILogger<CdnService> logger,
             IMemoryCache memoryCache)
         {
             _configuration = configuration;
-            _httpClientFactory = httpClientFactory;
-            _environment = environment;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _memoryCache = memoryCache;
 
-            // Get bootstrap configuration from appsettings.json
-            _bootstrapCdnBaseUrl = configuration["CDN:BaseUrl"] ?? "https://cdn.roovia.co.za";
-            _bootstrapCdnStoragePath = configuration["CDN:StoragePath"] ?? Path.Combine(environment.ContentRootPath, "wwwroot", "cdn");
-            _bootstrapApiKey = configuration["CDN:ApiKey"] ?? "RooviaCDNKey";
+            // Configure storage path and base URL from config
+            _storagePath = configuration["CDN:StoragePath"] ?? "/var/www/cdn";
+            _baseUrl = configuration["CDN:BaseUrl"] ?? "https://portal.roovia.co.za/cdn";
 
-            // These are no longer used for actual API calls but kept for backward compatibility
-            _productionApiUrl = configuration["CDN:ProductionApiUrl"] ?? "https://portal.roovia.co.za/api/cdn";
-            _forceRemoteApiInTestEnv = false; // Force direct access always
+            // Ensure root storage path exists
+            EnsureDirectoryExists(_storagePath);
 
-            _logger.LogInformation("CdnService initialized with base URL: {BaseUrl}, storage path: {StoragePath}",
-                _bootstrapCdnBaseUrl, _bootstrapCdnStoragePath);
+            // Initialize configuration if needed
+            Task.Run(async () => await InitializeConfigurationAsync());
 
-            // Create an optimized HttpClient for CDN operations with longer timeout
-            _optimizedHttpClient = _httpClientFactory.CreateClient("CdnClient");
-            _optimizedHttpClient.Timeout = TimeSpan.FromMinutes(10); // 10 minute timeout for large file uploads
-
-            // Load the database configuration asynchronously
-            Task.Run(async () => await LoadConfigFromDatabaseAsync());
-
-            // Ensure bootstrap storage path exists
-            if (!Directory.Exists(_bootstrapCdnStoragePath))
-            {
-                try
-                {
-                    Directory.CreateDirectory(_bootstrapCdnStoragePath);
-                    _logger.LogInformation("Created bootstrap CDN storage path: {Path}", _bootstrapCdnStoragePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning("Failed to create bootstrap CDN storage path: {Path}. Error: {Error}",
-                        _bootstrapCdnStoragePath, ex.Message);
-                }
-            }
+            _logger.LogInformation("CDN Service initialized with storage path: {Path}, base URL: {BaseUrl}", _storagePath, _baseUrl);
         }
 
-        private async Task LoadConfigFromDatabaseAsync()
+        private async Task InitializeConfigurationAsync()
         {
             try
             {
-                // First check if we have the config cached
-                if (_memoryCache.TryGetValue(CONFIG_CACHE_KEY, out CdnConfiguration cachedConfig))
-                {
-                    _cdnConfig = cachedConfig;
-                    _logger.LogDebug("Loaded CDN configuration from cache");
-                }
-                else
-                {
-                    // Create a scope to resolve the DbContext
-                    using var scope = _serviceProvider.CreateScope();
-                    var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                    // Get the active configuration
-                    var config = await dbContext.Set<CdnConfiguration>()
-                        .Where(c => c.IsActive)
-                        .OrderByDescending(c => c.Id)
-                        .FirstOrDefaultAsync();
-
-                    if (config != null)
+                // Check if configuration exists
+                if (!await dbContext.Set<CdnConfiguration>().AnyAsync())
+                {
+                    var config = new CdnConfiguration
                     {
-                        // Update cache
-                        _memoryCache.Set(CONFIG_CACHE_KEY, config, TimeSpan.FromMinutes(15));
-
-                        // Update the configuration values
-                        _cdnConfig = config;
-                        _logger.LogInformation("Loaded CDN configuration from database: ID={Id}, BaseUrl={BaseUrl}",
-                            config.Id, config.BaseUrl);
-                    }
-                    else
-                    {
-                        // If no config in DB, use the bootstrap values
-                        _cdnConfig = new CdnConfiguration
-                        {
-                            BaseUrl = _bootstrapCdnBaseUrl,
-                            StoragePath = _bootstrapCdnStoragePath,
-                            ApiKey = _bootstrapApiKey,
-                            MaxFileSizeMB = 200,
-                            AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
-                            EnforceAuthentication = true,
-                            AllowDirectAccess = true,
-                            EnableCaching = true
-                        };
-                        _logger.LogInformation("No CDN configuration found in database. Using bootstrap values: BaseUrl={BaseUrl}",
-                            _bootstrapCdnBaseUrl);
-                    }
-                }
-
-                // Check if categories are cached
-                if (_memoryCache.TryGetValue(CATEGORIES_CACHE_KEY, out List<CdnCategory> cachedCategories))
-                {
-                    _categories = cachedCategories;
-                    _logger.LogDebug("Loaded CDN categories from cache: Count={Count}", cachedCategories.Count);
-                }
-                else
-                {
-                    // Load categories from database
-                    using var scope = _serviceProvider.CreateScope();
-                    var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                    var categories = await dbContext.Set<CdnCategory>()
-                        .Where(c => c.IsActive)
-                        .ToListAsync();
-
-                    if (categories.Any())
-                    {
-                        _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, TimeSpan.FromMinutes(15));
-                        _categories = categories;
-                        _logger.LogInformation("Loaded {Count} CDN categories from database", categories.Count);
-                    }
-                    else
-                    {
-                        // Create default categories if none exist
-                        _categories = new List<CdnCategory>
-                        {
-                            new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
-                            new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                            new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
-                        };
-                        _logger.LogInformation("No CDN categories found in database. Using default categories");
-                    }
-                }
-
-                // Ensure storage directory exists for each category
-                EnsureCategoryDirectoriesExist();
-
-                // No longer needed but kept for compatibility
-                if (_optimizedHttpClient.DefaultRequestHeaders.Contains("X-Api-Key"))
-                {
-                    _optimizedHttpClient.DefaultRequestHeaders.Remove("X-Api-Key");
-                }
-                _optimizedHttpClient.DefaultRequestHeaders.Add("X-Api-Key", GetApiKey());
-
-                _configLastRefreshed = DateTime.Now;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading CDN configuration from database");
-
-                // Use bootstrap settings as fallback
-                if (_cdnConfig == null)
-                {
-                    _cdnConfig = new CdnConfiguration
-                    {
-                        BaseUrl = _bootstrapCdnBaseUrl,
-                        StoragePath = _bootstrapCdnStoragePath,
-                        ApiKey = _bootstrapApiKey,
+                        BaseUrl = _baseUrl,
+                        StoragePath = _storagePath,
                         MaxFileSizeMB = 200,
                         AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
-                        EnforceAuthentication = true,
-                        AllowDirectAccess = true,
-                        EnableCaching = true
-                    };
-                }
-
-                // Default categories if not set
-                if (_categories == null)
-                {
-                    _categories = new List<CdnCategory>
-                    {
-                        new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
-                        new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                        new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
-                    };
-                }
-
-                // Ensure storage directory exists for each category
-                EnsureCategoryDirectoriesExist();
-            }
-        }
-
-        private void EnsureCategoryDirectoriesExist()
-        {
-            if (_categories == null)
-                return;
-
-            string storagePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-            if (string.IsNullOrEmpty(storagePath))
-                return;
-
-            // Try to create the storage path if it doesn't exist
-            if (!Directory.Exists(storagePath))
-            {
-                try
-                {
-                    Directory.CreateDirectory(storagePath);
-                    _logger.LogInformation("Created CDN storage path: {Path}", storagePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning("Failed to create CDN storage path: {Error}", ex.Message);
-                    return;
-                }
-            }
-
-            foreach (var category in _categories)
-            {
-                string categoryPath = Path.Combine(storagePath, category.Name);
-                if (!Directory.Exists(categoryPath))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(categoryPath);
-                        _logger.LogInformation("Created directory for category {Category}: {Path}",
-                            category.Name, categoryPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("Failed to create directory for category {Category}: {Error}",
-                            category.Name, ex.Message);
-                    }
-                }
-            }
-        }
-
-        public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
-        {
-            try
-            {
-                _logger.LogInformation("Uploading file: {FileName}, ContentType: {ContentType}, Category: {Category}, Folder: {Folder}",
-                    fileName, contentType, category, folderPath);
-
-                // Ensure category is valid
-                category = await ValidateCategoryAsync(category);
-
-                // Clean up folder path for security
-                folderPath = CleanFolderPath(folderPath);
-
-                // Check if we need to refresh configuration
-                await RefreshConfigIfNeededAsync();
-
-                // Generate a unique file name to avoid collisions
-                string uniqueFileName = GenerateUniqueFileName(fileName);
-
-                // Get storage path from configuration
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-                // Create category directory path
-                string categoryPath = Path.Combine(cdnStoragePath, category);
-                if (!Directory.Exists(categoryPath))
-                {
-                    Directory.CreateDirectory(categoryPath);
-                    _logger.LogInformation("Created category directory: {Path}", categoryPath);
-                }
-
-                // Create folder path if specified
-                string targetFolderPath = categoryPath;
-                if (!string.IsNullOrEmpty(folderPath))
-                {
-                    string[] folders = folderPath.Split('/', '\\');
-                    string currentPath = categoryPath;
-
-                    foreach (var folder in folders)
-                    {
-                        if (string.IsNullOrWhiteSpace(folder)) continue;
-
-                        currentPath = Path.Combine(currentPath, folder);
-                        if (!Directory.Exists(currentPath))
-                        {
-                            Directory.CreateDirectory(currentPath);
-                            _logger.LogDebug("Created subfolder: {Path}", currentPath);
-                        }
-                    }
-
-                    targetFolderPath = currentPath;
-                }
-
-                // Full path where the file will be saved
-                string fullFilePath = Path.Combine(targetFolderPath, uniqueFileName);
-
-                // Save the file to disk with optimized buffer
-                using (var fileStream2 = new FileStream(
-                    fullFilePath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    LargeBufferSize,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan))
-                {
-                    await fileStream.CopyToAsync(fileStream2, LargeBufferSize);
-                }
-
-                _logger.LogInformation("File saved to: {Path}", fullFilePath);
-
-                // Create database folder record if needed
-                int? folderId = null;
-                if (!string.IsNullOrEmpty(folderPath))
-                {
-                    folderId = await GetOrCreateFolderAsync(category, folderPath);
-                }
-
-                // Get file size
-                var fileInfo = new FileInfo(fullFilePath);
-                long fileSize = fileInfo.Length;
-
-                // Build the CDN URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativeUrlPath = string.IsNullOrEmpty(folderPath)
-                    ? $"{category}/{uniqueFileName}"
-                    : $"{category}/{folderPath.TrimStart('/').TrimEnd('/')}/{uniqueFileName}";
-
-                string fileUrl = $"{cdnBaseUrl.TrimEnd('/')}/{relativeUrlPath}";
-
-                // Save metadata to database
-                await SaveFileMetadataAsync(category, uniqueFileName, fullFilePath, contentType, fileSize, folderId, folderPath);
-
-                // Update usage statistics for the category
-                var categoryId = await GetCategoryIdAsync(category);
-                if (categoryId.HasValue)
-                {
-                    await UpdateUsageStatisticsAsync(categoryId.Value, 1, fileSize, 1, 0, 0);
-                }
-
-                _logger.LogInformation("File uploaded successfully: {Url}", fileUrl);
-                return fileUrl;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error uploading file: {FileName}", fileName);
-                throw new Exception($"Failed to upload file: {ex.Message}", ex);
-            }
-        }
-
-        private string CleanFolderPath(string folderPath)
-        {
-            if (string.IsNullOrEmpty(folderPath))
-                return string.Empty;
-
-            // Remove any potentially dangerous path characters
-            folderPath = folderPath.Replace("..", string.Empty);
-
-            // Replace backslashes with forward slashes
-            folderPath = folderPath.Replace("\\", "/");
-
-            // Trim leading and trailing slashes
-            folderPath = folderPath.Trim('/');
-
-            // Remove any double slashes
-            while (folderPath.Contains("//"))
-            {
-                folderPath = folderPath.Replace("//", "/");
-            }
-
-            return folderPath;
-        }
-
-        public bool IsDirectAccessAvailable()
-        {
-            // Always return true since we're using direct access
-            string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-            // Check if storage path exists
-            bool pathExists = !string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath);
-
-            // If in development, we might use local storage
-            if (_environment.IsDevelopment() && !pathExists)
-            {
-                // Check if we can use local storage
-                string localStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
-                if (!Directory.Exists(localStoragePath))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(localStoragePath);
-                        _logger.LogInformation("Created local CDN storage directory: {Path}", localStoragePath);
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("Failed to create local CDN storage directory: {Error}", ex.Message);
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            return pathExists;
-        }
-
-        private async Task<int?> GetOrCreateFolderAsync(string categoryName, string folderPath)
-        {
-            if (string.IsNullOrEmpty(folderPath))
-                return null;
-
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                // Find the category ID
-                var category = await dbContext.Set<CdnCategory>()
-                    .FirstOrDefaultAsync(c => c.Name == categoryName && c.IsActive);
-
-                if (category == null)
-                {
-                    // Create the category if it doesn't exist
-                    category = new CdnCategory
-                    {
-                        Name = categoryName,
-                        DisplayName = char.ToUpper(categoryName[0]) + categoryName.Substring(1),
-                        IsActive = true,
+                        EnableCaching = true,
                         CreatedDate = DateTime.Now,
-                        CreatedBy = "System"
+                        ModifiedDate = DateTime.Now,
+                        ModifiedBy = "System",
+                        IsActive = true
                     };
-                    dbContext.Add(category);
+
+                    dbContext.Add(config);
                     await dbContext.SaveChangesAsync();
+                    _logger.LogInformation("Created default CDN configuration");
                 }
 
-                // Split path into segments
-                var segments = folderPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-
-                int? parentId = null;
-                string currentPath = "";
-
-                // Process each segment, creating folders as needed
-                foreach (var segment in segments)
+                // Create default category if none exist
+                if (!await dbContext.Set<CdnCategory>().AnyAsync())
                 {
-                    currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}/{segment}";
-
-                    // Look for existing folder
-                    var folder = await dbContext.Set<CdnFolder>()
-                        .FirstOrDefaultAsync(f => f.CategoryId == category.Id && f.Path == currentPath);
-
-                    if (folder == null)
+                    var defaultCategory = new CdnCategory
                     {
-                        // Create new folder
-                        folder = new CdnFolder
-                        {
-                            Name = segment,
-                            Path = currentPath,
-                            ParentId = parentId,
-                            CategoryId = category.Id,
-                            CreatedDate = DateTime.Now,
-                            CreatedBy = "System",
-                            IsActive = true
-                        };
-
-                        dbContext.Add(folder);
-                        await dbContext.SaveChangesAsync();
-                    }
-
-                    parentId = folder.Id;
-                }
-
-                return parentId;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating folder structure: {Path}", folderPath);
-                return null;
-            }
-        }
-
-        private async Task SaveFileMetadataAsync(string categoryName, string fileName, string filePath, string contentType, long fileSize, int? folderId, string folderPath)
-        {
-            try
-            {
-                // Create a scope to resolve the DbContext
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                // Get category ID
-                var category = await dbContext.Set<CdnCategory>()
-                    .FirstOrDefaultAsync(c => c.Name == categoryName && c.IsActive);
-
-                if (category == null)
-                {
-                    // Create default category if not found
-                    category = new CdnCategory
-                    {
-                        Name = categoryName,
-                        DisplayName = char.ToUpper(categoryName[0]) + categoryName.Substring(1),
+                        Name = "documents",
+                        DisplayName = "Documents",
                         AllowedFileTypes = "*",
                         IsActive = true,
                         CreatedDate = DateTime.Now,
                         CreatedBy = "System"
                     };
 
-                    dbContext.Add(category);
+                    dbContext.Add(defaultCategory);
                     await dbContext.SaveChangesAsync();
+
+                    // Create physical directory
+                    var categoryPath = Path.Combine(_storagePath, "documents");
+                    EnsureDirectoryExists(categoryPath);
+
+                    _logger.LogInformation("Created default CDN category");
                 }
-
-                // Create URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string url = string.IsNullOrEmpty(folderPath)
-                    ? $"{cdnBaseUrl.TrimEnd('/')}/{categoryName}/{fileName}"
-                    : $"{cdnBaseUrl.TrimEnd('/')}/{categoryName}/{folderPath.TrimStart('/').TrimEnd('/')}/{fileName}";
-
-                // Create metadata record
-                var metadata = new CdnFileMetadata
-                {
-                    FilePath = filePath,
-                    FileName = fileName,
-                    ContentType = contentType,
-                    FileSize = fileSize,
-                    CategoryId = category.Id,
-                    FolderId = folderId,
-                    UploadDate = DateTime.Now,
-                    UploadedBy = "System", // Ideally this would come from the current user
-                    Url = url,
-                    Checksum = null // Could calculate MD5 or SHA hash if needed
-                };
-
-                dbContext.Add(metadata);
-                await dbContext.SaveChangesAsync();
-
-                // Update usage statistics
-                await UpdateUsageStatisticsAsync(category.Id, 0, fileSize, 1, 0, 0);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving file metadata for {FileName}", fileName);
-                // Don't rethrow to avoid failing the upload process
+                _logger.LogError(ex, "Error initializing CDN configuration");
             }
         }
 
-        private async Task UpdateUsageStatisticsAsync(
-            int categoryId,
-            int fileCountChange,
-            long storageBytesChange,
-            int uploadCountChange,
-            int downloadCountChange,
-            int deleteCountChange)
+        // File Operations
+        public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
         {
             try
             {
-                // Create a scope to resolve the DbContext
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                // Ensure category exists or create it
+                category = await EnsureAndValidateCategoryAsync(category);
+                folderPath = CleanPath(folderPath);
 
-                // Get today's statistics record or create a new one
-                var today = DateTime.Today;
-                var stat = await dbContext.Set<CdnUsageStatistic>()
-                    .Where(s => s.Date.Date == today && s.CategoryId == categoryId)
-                    .FirstOrDefaultAsync();
-
-                if (stat == null)
+                // Validate file
+                if (!await ValidateFileTypeAsync(fileName, category))
                 {
-                    // Create a new record
-                    stat = new CdnUsageStatistic
-                    {
-                        Date = today,
-                        CategoryId = categoryId,
-                        FileCount = fileCountChange,
-                        StorageUsedBytes = storageBytesChange,
-                        UploadCount = uploadCountChange,
-                        DownloadCount = downloadCountChange,
-                        DeleteCount = deleteCountChange,
-                        RecordedBy = "System" // Ideally this would come from the current user
-                    };
-
-                    dbContext.Add(stat);
-                }
-                else
-                {
-                    // Update existing record
-                    stat.FileCount += fileCountChange;
-                    stat.StorageUsedBytes += storageBytesChange;
-                    stat.UploadCount += uploadCountChange;
-                    stat.DownloadCount += downloadCountChange;
-                    stat.DeleteCount += deleteCountChange;
+                    throw new InvalidOperationException($"File type not allowed for category {category}");
                 }
 
-                await dbContext.SaveChangesAsync();
+                if (!await ValidateFileSizeAsync(fileStream.Length))
+                {
+                    throw new InvalidOperationException("File size exceeds maximum allowed size");
+                }
+
+                // Generate unique filename
+                string uniqueFileName = GenerateUniqueFileName(fileName);
+
+                // Create full directory path
+                string fullDirectoryPath = Path.Combine(_storagePath, category);
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    fullDirectoryPath = Path.Combine(fullDirectoryPath, folderPath);
+                }
+
+                // Ensure directory exists
+                EnsureDirectoryExists(fullDirectoryPath);
+
+                // Full file path
+                string fullFilePath = Path.Combine(fullDirectoryPath, uniqueFileName);
+
+                // Save file to disk
+                using (var fileStreamDisk = new FileStream(fullFilePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, true))
+                {
+                    await fileStream.CopyToAsync(fileStreamDisk, BufferSize);
+                }
+
+                // Calculate checksum
+                string checksum = await CalculateChecksumAsync(fullFilePath);
+
+                // Save metadata to database
+                var metadata = await SaveFileMetadataAsync(category, uniqueFileName, fullFilePath, contentType,
+                    new FileInfo(fullFilePath).Length, checksum, folderPath);
+
+                // Update usage statistics
+                await UpdateUsageStatisticsAsync(metadata.CategoryId, 1, metadata.FileSize, 1);
+
+                // Log access
+                await LogAccessAsync("Upload", fullFilePath, "System", true, null, metadata.FileSize);
+
+                // Generate URL - This is what the browser will use to request the file
+                string relativeUrl = string.IsNullOrEmpty(folderPath)
+                    ? $"{category}/{uniqueFileName}"
+                    : $"{category}/{folderPath}/{uniqueFileName}";
+
+                string url = $"{_baseUrl}/{relativeUrl}";
+
+                _logger.LogInformation("File uploaded successfully: {Url}", url);
+                return url;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating usage statistics for category {CategoryId}", categoryId);
-                // Don't rethrow to avoid failing the main process
+                _logger.LogError(ex, "Error uploading file: {FileName}", fileName);
+                await LogAccessAsync("Upload", fileName, "System", false, ex.Message);
+                throw;
             }
         }
+        private async Task<bool> OnlyBase64ExistsAsync(string cdnUrl)
+        {
+            var physicalPath = GetPhysicalPath(cdnUrl);
+            bool physicalExists = !string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath);
 
+            if (physicalExists)
+                return false;
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            return await dbContext.Set<CdnFileMetadata>()
+                .AnyAsync(f => f.Url == cdnUrl && f.HasBase64Backup && !f.IsDeleted);
+        }
         public async Task<string> UploadFileAsync(IFormFile file, string category = "documents", string folderPath = "")
         {
             if (file == null || file.Length == 0)
@@ -656,832 +272,1406 @@ namespace Roovia.Services
             return await UploadFileAsync(stream, file.FileName, file.ContentType, category, folderPath);
         }
 
-        public string GetCdnUrl(string path)
+        public async Task<string> UploadFileWithBase64BackupAsync(Stream fileStream, string fileName, string contentType, string category = "documents", string folderPath = "")
         {
-            // If path is null or empty, return the base CDN URL
-            string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-            if (string.IsNullOrEmpty(path))
-                return cdnBaseUrl;
-
-            // If path already starts with the CDN base URL, return it as is
-            if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
-                return path;
-
-            // Handle local development URLs
-            if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
-            {
-                // Return the local URL as is
-                return path;
-            }
-
-            // If path starts with a slash, remove it
-            if (path.StartsWith("/"))
-                path = path.Substring(1);
-
-            // If path is now empty after removing the slash, return just the base URL
-            if (string.IsNullOrEmpty(path))
-                return cdnBaseUrl;
-
-            return $"{cdnBaseUrl.TrimEnd('/')}/{path}";
-        }
-
-        // Improved file path resolution and file operation with retries
-        private (string RelativePath, string PhysicalPath) ResolveFilePaths(string path)
-        {
-            _logger.LogInformation("Resolving path: {Path}", path);
-
-            // Extract the relative path from the URL
-            string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-            string relativePath = "";
-
-            // Handle local development URLs
-            if (_environment.IsDevelopment() && path.StartsWith("/cdn/"))
-            {
-                relativePath = path.Substring(5); // Remove "/cdn/"
-                _logger.LogDebug("Development path detected, relative path: {RelativePath}", relativePath);
-            }
-            else if (path.StartsWith(cdnBaseUrl, StringComparison.OrdinalIgnoreCase))
-            {
-                relativePath = path.Substring(cdnBaseUrl.Length).TrimStart('/');
-                _logger.LogDebug("CDN URL detected, relative path: {RelativePath}", relativePath);
-            }
-            else if (path.StartsWith("http://") || path.StartsWith("https://"))
-            {
-                // Try to extract relative path from any URL by looking for category names
-                var segments = path.Split('/');
-                bool foundCategory = false;
-                for (int i = 0; i < segments.Length - 1; i++)
-                {
-                    if (_categories?.Any(c => c.Name.Equals(segments[i], StringComparison.OrdinalIgnoreCase)) == true)
-                    {
-                        foundCategory = true;
-                        relativePath = string.Join("/", segments.Skip(i));
-                        _logger.LogDebug("Found category in URL path, relative path: {RelativePath}", relativePath);
-                        break;
-                    }
-                }
-
-                if (!foundCategory)
-                {
-                    // If no category found, treat as relative path
-                    relativePath = path.TrimStart('/');
-                    _logger.LogDebug("No category found in URL, treating as relative path: {RelativePath}", relativePath);
-                }
-            }
-            else
-            {
-                // If path doesn't start with the base URL, treat it as a relative path
-                relativePath = path.TrimStart('/');
-                _logger.LogDebug("Treating as relative path: {RelativePath}", relativePath);
-            }
-
-            // Get CDN storage path
-            string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-            // If in development and storage path doesn't exist, try local storage path
-            if (_environment.IsDevelopment() &&
-                (!Directory.Exists(cdnStoragePath) || !File.Exists(Path.Combine(cdnStoragePath, relativePath))))
-            {
-                string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
-
-                // If the file exists in the local path, use it
-                if (Directory.Exists(localPath) && File.Exists(Path.Combine(localPath, relativePath)))
-                {
-                    cdnStoragePath = localPath;
-                    _logger.LogDebug("Using local storage path: {Path}", cdnStoragePath);
-                }
-            }
-
-            string physicalPath = Path.Combine(cdnStoragePath, relativePath);
-            _logger.LogDebug("Resolved to physical path: {PhysicalPath}", physicalPath);
-
-            return (relativePath, physicalPath);
-        }
-
-        // Verify file permissions before attempting operations
-        private bool VerifyFileAccess(string path, FileAccess access)
-        {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
-            {
-                _logger.LogWarning("File does not exist: {Path}", path);
-                return false;
-            }
-
             try
             {
-                // Try to open the file with the requested access to check permissions
-                using (var fileStream = new FileStream(
-                    path,
-                    FileMode.Open,
-                    access,
-                    FileShare.ReadWrite,
-                    4096,
-                    FileOptions.None))
-                {
-                    _logger.LogDebug("File access verified for {Path} with {Access} access", path, access);
-                    return true;
-                }
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogError(ex, "Permission denied for file {Path} with {Access} access", path, access);
-                return false;
-            }
-            catch (IOException ex)
-            {
-                _logger.LogError(ex, "File is locked or in use: {Path}", path);
-                return false;
+                // Create a memory stream to hold the file data for reuse
+                using var memoryStream = new MemoryStream();
+                await fileStream.CopyToAsync(memoryStream);
+
+                // Reset position for first upload
+                memoryStream.Position = 0;
+
+                // First upload the file normally
+                string url = await UploadFileAsync(memoryStream, fileName, contentType, category, folderPath);
+
+                // Reset stream position for base64 encoding
+                memoryStream.Position = 0;
+
+                // Convert to base64
+                byte[] bytes = memoryStream.ToArray();
+                string base64Data = Convert.ToBase64String(bytes);
+
+                // Save base64 backup
+                await SaveBase64BackupAsync(url, base64Data, contentType);
+
+                return url;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying file access for {Path}", path);
-                return false;
+                _logger.LogError(ex, "Error uploading file with base64 backup: {FileName}", fileName);
+                throw;
             }
         }
 
-        // Attempt file operation with retries
-        private async Task<bool> TryFileOperationAsync(Func<Task<bool>> operation, string operationName, string path)
-        {
-            int attempts = 0;
-            while (attempts < MaxRetryAttempts)
-            {
-                try
-                {
-                    _logger.LogDebug("Attempting {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
-                        operationName, path, attempts + 1, MaxRetryAttempts);
-
-                    var result = await operation();
-
-                    if (result)
-                    {
-                        _logger.LogInformation("{Operation} successful on {Path}", operationName, path);
-                        return true;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("{Operation} returned false on {Path}", operationName, path);
-                    }
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    _logger.LogError(ex, "Permission denied for {Operation} on {Path}", operationName, path);
-                    // Don't retry permission issues
-                    return false;
-                }
-                catch (IOException ex)
-                {
-                    _logger.LogWarning(ex, "IO Exception during {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
-                        operationName, path, attempts + 1, MaxRetryAttempts);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during {Operation} on {Path}, attempt {Attempt}/{MaxAttempts}",
-                        operationName, path, attempts + 1, MaxRetryAttempts);
-                }
-
-                attempts++;
-                if (attempts < MaxRetryAttempts)
-                {
-                    await Task.Delay(RetryDelay);
-                }
-            }
-
-            _logger.LogError("Failed {Operation} on {Path} after {MaxAttempts} attempts",
-                operationName, path, MaxRetryAttempts);
-            return false;
-        }
-
-        // Improved delete file implementation
-        public async Task<bool> DeleteFileAsync(string path)
-        {
-            // Check if we need to refresh the configuration
-            await RefreshConfigIfNeededAsync();
-
-            try
-            {
-                _logger.LogInformation("Deleting file: {Path}", path);
-
-                // Resolve paths
-                var (relativePath, physicalPath) = ResolveFilePaths(path);
-
-                _logger.LogDebug("Delete file - Physical path: {Path}", physicalPath);
-
-                // Update database record first to mark as deleted
-                await MarkFileAsDeletedAsync(path);
-
-                // Check if file exists and is accessible
-                if (!File.Exists(physicalPath))
-                {
-                    _logger.LogWarning("File not found for deletion: {Path}", physicalPath);
-                    return false;
-                }
-
-                if (!VerifyFileAccess(physicalPath, FileAccess.ReadWrite))
-                {
-                    _logger.LogWarning("File access denied for deletion: {Path}", physicalPath);
-
-                    // Try alternate delete methods if permission issues
-                    return await TryFileOperationAsync(
-                        async () =>
-                        {
-                            try
-                            {
-                                // Try to use alternative delete method
-                                if (File.Exists(physicalPath))
-                                {
-                                    File.SetAttributes(physicalPath, FileAttributes.Normal);
-                                    File.Delete(physicalPath);
-                                    await Task.CompletedTask; // Just to make it async
-                                    return true;
-                                }
-                                return false;
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Alternative delete method failed: {Path}", physicalPath);
-                                return false;
-                            }
-                        },
-                        "Alternative Delete",
-                        physicalPath);
-                }
-
-                // Try to get file info before deletion (for statistics update)
-                long fileSize = 0;
-                try
-                {
-                    var fileInfo = new FileInfo(physicalPath);
-                    fileSize = fileInfo.Length;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not get file size for {Path}", physicalPath);
-                }
-
-                // Try to determine category from path
-                string categoryName = relativePath.Split('/').FirstOrDefault() ?? "";
-                var categoryId = await GetCategoryIdAsync(categoryName);
-
-                // Delete with retry
-                bool deleteSuccess = await TryFileOperationAsync(
-                    async () =>
-                    {
-                        try
-                        {
-                            if (File.Exists(physicalPath))
-                            {
-                                // Reset any read-only attribute
-                                File.SetAttributes(physicalPath, FileAttributes.Normal);
-                                File.Delete(physicalPath);
-                                await Task.CompletedTask; // Just to make it async
-                                return true;
-                            }
-                            return false;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    },
-                    "Delete",
-                    physicalPath);
-
-                if (deleteSuccess)
-                {
-                    _logger.LogInformation("Successfully deleted file: {Path}", physicalPath);
-
-                    // Remove from cache if exists
-                    _filePathCache.TryRemove(path, out _);
-                    _cacheExpiry.TryRemove(path, out _);
-
-                    // Update usage statistics
-                    if (categoryId.HasValue && fileSize > 0)
-                    {
-                        await UpdateUsageStatisticsAsync(
-                            categoryId.Value,
-                            -1,
-                            -fileSize,
-                            0,
-                            0,
-                            1);
-                    }
-
-                    return true;
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting file: {Path}", path);
-                return false;
-            }
-        }
-
-        // Improved rename file implementation
-        public async Task<string> RenameFileAsync(string path, string newName)
+        // Folder Operations
+        public async Task<List<CdnFolder>> GetFoldersAsync(string category, string parentPath = null)
         {
             try
             {
-                _logger.LogInformation("Renaming file: {Path} to {NewName}", path, newName);
+                category = await EnsureAndValidateCategoryAsync(category);
 
-                // Check if we need to refresh the configuration
-                await RefreshConfigIfNeededAsync();
-
-                // Resolve paths
-                var (relativePath, oldFullPath) = ResolveFilePaths(path);
-
-                _logger.LogDebug("Rename file - Old physical path: {Path}", oldFullPath);
-
-                // Get directory, old filename, and extension
-                string directory = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? string.Empty;
-                string oldFileName = Path.GetFileName(relativePath);
-                string extension = Path.GetExtension(oldFileName);
-
-                // If newName already has the extension, don't add it again
-                if (!newName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-                {
-                    newName = $"{newName}{extension}";
-                }
-
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-                // If in development and storage path doesn't exist, try local storage path
-                if (_environment.IsDevelopment() &&
-                    (!Directory.Exists(cdnStoragePath) || !File.Exists(oldFullPath)))
-                {
-                    cdnStoragePath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn");
-                }
-
-                string newRelativePath = string.IsNullOrEmpty(directory) ?
-                    newName :
-                    Path.Combine(directory, newName).Replace('\\', '/');
-                string newFullPath = Path.Combine(cdnStoragePath, newRelativePath);
-
-                _logger.LogDebug("Rename file - New physical path: {Path}", newFullPath);
-
-                // Check if the old file exists and is accessible
-                if (!File.Exists(oldFullPath))
-                {
-                    _logger.LogWarning("File not found for rename: {Path}", oldFullPath);
-                    return null;
-                }
-
-                if (!VerifyFileAccess(oldFullPath, FileAccess.ReadWrite))
-                {
-                    _logger.LogWarning("File access denied for rename: {Path}", oldFullPath);
-                    return null;
-                }
-
-                // Check if the new filename already exists
-                if (File.Exists(newFullPath))
-                {
-                    _logger.LogWarning("Destination file already exists: {Path}", newFullPath);
-                    throw new Exception($"A file with the name '{newName}' already exists in this location.");
-                }
-
-                // Ensure the directory for the new path exists
-                string newDir = Path.GetDirectoryName(newFullPath);
-                if (!string.IsNullOrEmpty(newDir) && !Directory.Exists(newDir))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(newDir);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to create directory for rename: {Path}", newDir);
-                        throw new Exception($"Failed to create directory for the renamed file: {ex.Message}", ex);
-                    }
-                }
-
-                // Rename with retry
-                bool renameSuccess = await TryFileOperationAsync(
-                    async () =>
-                    {
-                        try
-                        {
-                            if (File.Exists(oldFullPath))
-                            {
-                                // Reset any read-only attribute
-                                File.SetAttributes(oldFullPath, FileAttributes.Normal);
-
-                                // Use copy + delete as a more reliable alternative to Move
-                                File.Copy(oldFullPath, newFullPath, false);
-                                File.Delete(oldFullPath);
-                                await Task.CompletedTask; // Just to make it async
-                                return true;
-                            }
-                            return false;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    },
-                    "Rename",
-                    oldFullPath);
-
-                if (!renameSuccess)
-                {
-                    _logger.LogError("Failed to rename file after multiple attempts: {Path}", oldFullPath);
-                    return null;
-                }
-
-                _logger.LogInformation("Successfully renamed file from {OldPath} to {NewPath}", oldFullPath, newFullPath);
-
-                // Create new URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string newUrl = $"{cdnBaseUrl.TrimEnd('/')}/{newRelativePath}";
-
-                // Update database record
-                await UpdateFileMetadataAsync(path, newUrl, newName);
-
-                // Remove from cache if exists
-                _filePathCache.TryRemove(path, out _);
-                _cacheExpiry.TryRemove(path, out _);
-
-                return newUrl;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error renaming file: {Path} to {NewName}", path, newName);
-                throw new Exception($"Failed to rename file: {ex.Message}", ex);
-            }
-        }
-
-        private async Task UpdateFileMetadataAsync(string oldUrl, string newUrl, string newFileName)
-        {
-            try
-            {
-                // Create a scope to resolve the DbContext
                 using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                // Find the file metadata
-                var metadata = await dbContext.Set<CdnFileMetadata>()
-                    .FirstOrDefaultAsync(f => f.Url == oldUrl && !f.IsDeleted);
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
 
-                if (metadata != null)
+                if (categoryEntity == null)
                 {
-                    // Update with new information
-                    metadata.Url = newUrl;
-                    metadata.FileName = newFileName;
-                    // metadata.UpdatedDate = DateTime.Now;
+                    return new List<CdnFolder>();
+                }
 
-                    await dbContext.SaveChangesAsync();
-                    _logger.LogInformation("Updated file metadata for rename: {OldUrl} -> {NewUrl}", oldUrl, newUrl);
+                var query = dbContext.Set<CdnFolder>()
+                    .Where(f => f.CategoryId == categoryEntity.Id && f.IsActive);
+
+                if (string.IsNullOrEmpty(parentPath))
+                {
+                    query = query.Where(f => f.ParentId == null);
                 }
                 else
                 {
-                    // Try finding by matching the ending portion of the URL
-                    var allFiles = await dbContext.Set<CdnFileMetadata>()
-                        .Where(f => !f.IsDeleted)
-                        .ToListAsync();
+                    var parentFolder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == parentPath);
 
-                    var match = allFiles.FirstOrDefault(f => oldUrl.EndsWith(f.Url.TrimStart('/')) || f.Url.EndsWith(oldUrl.TrimStart('/')));
-
-                    if (match != null)
+                    if (parentFolder != null)
                     {
-                        match.Url = newUrl;
-                        match.FileName = newFileName;
-                        //  match.UpdatedDate = DateTime.Now;
-
-                        await dbContext.SaveChangesAsync();
-                        _logger.LogInformation("Updated file metadata for rename (partial URL match): {OldUrl} -> {NewUrl}", match.Url, newUrl);
+                        query = query.Where(f => f.ParentId == parentFolder.Id);
                     }
                     else
                     {
-                        _logger.LogWarning("File metadata not found in database for rename: {Url}", oldUrl);
+                        return new List<CdnFolder>();
                     }
                 }
+
+                return await query.OrderBy(f => f.Name).ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating file metadata for rename: {Url}", oldUrl);
-                // Don't rethrow to avoid failing the rename process
+                _logger.LogError(ex, "Error getting folders: {Category}/{ParentPath}", category, parentPath);
+                return new List<CdnFolder>();
             }
         }
 
-        private async Task<int?> GetCategoryIdAsync(string categoryName)
-        {
-            if (string.IsNullOrEmpty(categoryName))
-                return null;
-
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                var category = await dbContext.Set<CdnCategory>()
-                    .FirstOrDefaultAsync(c => c.Name == categoryName && c.IsActive);
-
-                return category?.Id;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting category ID for {CategoryName}", categoryName);
-                return null;
-            }
-        }
-
-        private async Task MarkFileAsDeletedAsync(string url)
+        public async Task<bool> DeleteFolderAsync(string category, string folderPath)
         {
             try
             {
-                // Create a scope to resolve the DbContext
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                category = await EnsureAndValidateCategoryAsync(category);
+                folderPath = CleanPath(folderPath);
 
-                // Find the file metadata
-                var metadata = await dbContext.Set<CdnFileMetadata>()
-                    .Where(f => f.Url == url && !f.IsDeleted)
-                    .FirstOrDefaultAsync();
+                // Get full path
+                string fullPath = Path.Combine(_storagePath, category, folderPath);
 
-                if (metadata != null)
+                // Check if folder exists
+                if (!Directory.Exists(fullPath))
                 {
-                    // Mark as deleted
-                    metadata.IsDeleted = true;
-                    // metadata.DeletedDate = DateTime.Now;
-                    await dbContext.SaveChangesAsync();
-                    _logger.LogInformation("Marked file as deleted in database: {Url}", url);
+                    return false;
+                }
+
+                // Check if folder is empty
+                if (Directory.GetFiles(fullPath).Any() || Directory.GetDirectories(fullPath).Any())
+                {
+                    throw new InvalidOperationException("Cannot delete non-empty folder");
+                }
+
+                // Delete physical directory
+                Directory.Delete(fullPath);
+
+                // Mark as inactive in database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity != null)
+                {
+                    var folder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
+
+                    if (folder != null)
+                    {
+                        folder.IsActive = false;
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+
+                await LogAccessAsync("DeleteFolder", fullPath, "System", true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting folder: {Category}/{Path}", category, folderPath);
+                throw;
+            }
+        }
+
+        public async Task<bool> RenameFolderAsync(string category, string oldPath, string newName)
+        {
+            try
+            {
+                category = await EnsureAndValidateCategoryAsync(category);
+                oldPath = CleanPath(oldPath);
+
+                string parentPath = Path.GetDirectoryName(oldPath)?.Replace('\\', '/') ?? "";
+                string oldFullPath = Path.Combine(_storagePath, category, oldPath);
+                string newFullPath = Path.Combine(_storagePath, category, parentPath, newName);
+
+                if (!Directory.Exists(oldFullPath))
+                {
+                    return false;
+                }
+
+                if (Directory.Exists(newFullPath))
+                {
+                    throw new InvalidOperationException("A folder with this name already exists");
+                }
+
+                // Rename physical directory
+                Directory.Move(oldFullPath, newFullPath);
+
+                // Update database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity != null)
+                {
+                    var folder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == oldPath);
+
+                    if (folder != null)
+                    {
+                        string newPath = string.IsNullOrEmpty(parentPath) ? newName : $"{parentPath}/{newName}";
+                        folder.Name = newName;
+                        folder.Path = newPath;
+
+                        // Update all child folders' paths
+                        var childFolders = await dbContext.Set<CdnFolder>()
+                            .Where(f => f.Path.StartsWith(oldPath + "/"))
+                            .ToListAsync();
+
+                        foreach (var child in childFolders)
+                        {
+                            child.Path = child.Path.Replace(oldPath, newPath);
+                        }
+
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+
+                await LogAccessAsync("RenameFolder", newFullPath, "System", true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error renaming folder: {Category}/{OldPath} to {NewName}", category, oldPath, newName);
+                await LogAccessAsync("RenameFolder", $"{category}/{oldPath}", "System", false, ex.Message);
+                return false;
+            }
+        }
+
+        public async Task<bool> MoveFolderAsync(string category, string sourcePath, string destinationPath)
+        {
+            try
+            {
+                category = await EnsureAndValidateCategoryAsync(category);
+                sourcePath = CleanPath(sourcePath);
+                destinationPath = CleanPath(destinationPath);
+
+                string sourceFullPath = Path.Combine(_storagePath, category, sourcePath);
+                string folderName = Path.GetFileName(sourcePath);
+                string destinationFullPath = Path.Combine(_storagePath, category, destinationPath, folderName);
+
+                if (!Directory.Exists(sourceFullPath))
+                {
+                    return false;
+                }
+
+                if (Directory.Exists(destinationFullPath))
+                {
+                    throw new InvalidOperationException("A folder with this name already exists in the destination");
+                }
+
+                // Move physical directory
+                Directory.Move(sourceFullPath, destinationFullPath);
+
+                // Update database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity != null)
+                {
+                    var folder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == sourcePath);
+
+                    if (folder != null)
+                    {
+                        string newPath = string.IsNullOrEmpty(destinationPath) ? folderName : $"{destinationPath}/{folderName}";
+                        folder.Path = newPath;
+
+                        // Find new parent folder
+                        var newParent = await dbContext.Set<CdnFolder>()
+                            .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == destinationPath);
+
+                        folder.ParentId = newParent?.Id;
+
+                        // Update all child folders' paths
+                        var childFolders = await dbContext.Set<CdnFolder>()
+                            .Where(f => f.Path.StartsWith(sourcePath + "/"))
+                            .ToListAsync();
+
+                        foreach (var child in childFolders)
+                        {
+                            child.Path = child.Path.Replace(sourcePath, newPath);
+                        }
+
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+
+                await LogAccessAsync("MoveFolder", destinationFullPath, "System", true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error moving folder: {Category}/{SourcePath} to {DestinationPath}", category, sourcePath, destinationPath);
+                await LogAccessAsync("MoveFolder", $"{category}/{sourcePath}", "System", false, ex.Message);
+                return false;
+            }
+        }
+
+        // Files and folders listing
+        public async Task<(List<CdnFolder> folders, List<CdnFileMetadata> files)> GetContentAsync(string category, string folderPath = null)
+        {
+            var folders = await GetFoldersAsync(category, folderPath);
+            var files = await GetFilesAsync(category, folderPath);
+
+            return (folders, files);
+        }
+
+        public async Task<long> GetFolderSizeAsync(string category, string folderPath)
+        {
+            try
+            {
+                category = await EnsureAndValidateCategoryAsync(category);
+                folderPath = CleanPath(folderPath);
+
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity == null)
+                {
+                    return 0;
+                }
+
+                var folder = await dbContext.Set<CdnFolder>()
+                    .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
+
+                if (folder == null)
+                {
+                    return 0;
+                }
+
+                // Get all files in this folder and subfolders
+                var totalSize = await dbContext.Set<CdnFileMetadata>()
+                    .Where(f => f.CategoryId == categoryEntity.Id && !f.IsDeleted)
+                    .Where(f => f.FolderId == folder.Id || dbContext.Set<CdnFolder>()
+                        .Where(sub => sub.Path.StartsWith(folderPath + "/"))
+                        .Select(sub => sub.Id)
+                        .Contains(f.FolderId.Value))
+                    .SumAsync(f => f.FileSize);
+
+                return totalSize;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting folder size: {Category}/{FolderPath}", category, folderPath);
+                return 0;
+            }
+        }
+
+        public async Task<int> GetFileCountAsync(string category, string folderPath = null)
+        {
+            try
+            {
+                category = await EnsureAndValidateCategoryAsync(category);
+
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity == null)
+                {
+                    return 0;
+                }
+
+                var query = dbContext.Set<CdnFileMetadata>()
+                    .Where(f => f.CategoryId == categoryEntity.Id && !f.IsDeleted);
+
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    folderPath = CleanPath(folderPath);
+                    var folder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
+
+                    if (folder != null)
+                    {
+                        query = query.Where(f => f.FolderId == folder.Id);
+                    }
+                    else
+                    {
+                        return 0;
+                    }
                 }
                 else
                 {
-                    // Try finding by matching the ending portion of the URL
-                    var allFiles = await dbContext.Set<CdnFileMetadata>()
-                        .Where(f => !f.IsDeleted)
-                        .ToListAsync();
-
-                    var match = allFiles.FirstOrDefault(f => url.EndsWith(f.Url.TrimStart('/')) || f.Url.EndsWith(url.TrimStart('/')));
-
-                    if (match != null)
-                    {
-                        match.IsDeleted = true;
-                        // match.DeletedDate = DateTime.Now;
-                        await dbContext.SaveChangesAsync();
-                        _logger.LogInformation("Marked file as deleted in database (partial URL match): {Url}", match.Url);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("File metadata not found in database: {Url}", url);
-                    }
+                    query = query.Where(f => f.FolderId == null);
                 }
+
+                return await query.CountAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking file as deleted: {Url}", url);
-                // Don't rethrow to avoid failing the deletion process
+                _logger.LogError(ex, "Error getting file count: {Category}/{FolderPath}", category, folderPath);
+                return 0;
             }
         }
 
-        public string GetApiKey()
+        // Configuration management
+        public async Task<CdnConfiguration> UpdateConfigurationAsync(CdnConfiguration config)
         {
-            // If _cdnConfig is null or ApiKey is empty, use the fallback
-            if (_cdnConfig == null || string.IsNullOrEmpty(_cdnConfig.ApiKey))
+            try
             {
-                return _configuration["CDN:ApiKey"] ?? "RooviaCDNKey";
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var existingConfig = await dbContext.Set<CdnConfiguration>()
+                    .FirstOrDefaultAsync(c => c.Id == config.Id);
+
+                if (existingConfig == null)
+                {
+                    throw new InvalidOperationException("Configuration not found");
+                }
+
+                existingConfig.BaseUrl = config.BaseUrl;
+                existingConfig.StoragePath = config.StoragePath;
+                existingConfig.MaxFileSizeMB = config.MaxFileSizeMB;
+                existingConfig.AllowedFileTypes = config.AllowedFileTypes;
+                existingConfig.EnableCaching = config.EnableCaching;
+                existingConfig.ModifiedDate = DateTime.Now;
+                existingConfig.ModifiedBy = "System"; // Should come from current user
+
+                await dbContext.SaveChangesAsync();
+
+                // Clear cache
+                _memoryCache.Remove(CONFIG_CACHE_KEY);
+
+                return existingConfig;
             }
-            return _cdnConfig.ApiKey;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating configuration");
+                throw;
+            }
         }
 
-        public string GetPhysicalPath(string cdnUrl)
+        // Usage statistics
+        public async Task<CdnUsageStatistic> GetUsageStatisticsAsync(DateTime date, int? categoryId = null)
         {
-            if (IsDirectAccessAvailable())
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var query = dbContext.Set<CdnUsageStatistic>()
+                .Where(s => s.Date.Date == date.Date);
+
+            if (categoryId.HasValue)
             {
-                // Check cache first for better performance
-                if (_filePathCache.TryGetValue(cdnUrl, out var cachedPath))
-                {
-                    // Check if cache is expired
-                    if (_cacheExpiry.TryGetValue(cdnUrl, out var expiry) && expiry > DateTime.UtcNow)
-                    {
-                        return cachedPath;
-                    }
-                }
-
-                // Get storage path
-                string cdnStoragePath = _cdnConfig?.StoragePath ?? _bootstrapCdnStoragePath;
-
-                // Handle development environment URLs
-                if (_environment.IsDevelopment())
-                {
-                    if (cdnUrl.StartsWith("/cdn/"))
-                    {
-                        // Local development URL
-                        string relativePath2 = cdnUrl.Substring(5); // Remove "/cdn/"
-                        string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath2);
-
-                        // Cache the result
-                        _filePathCache[cdnUrl] = localPath;
-                        _cacheExpiry[cdnUrl] = DateTime.UtcNow.Add(_cacheDuration);
-
-                        return localPath;
-                    }
-                }
-
-                // Use the more robust path resolution
-                var (_, physicalPath) = ResolveFilePaths(cdnUrl);
-
-                // Cache the result
-                _filePathCache[cdnUrl] = physicalPath;
-                _cacheExpiry[cdnUrl] = DateTime.UtcNow.Add(_cacheDuration);
-
-                return physicalPath;
+                query = query.Where(s => s.CategoryId == categoryId);
             }
 
-            // In development, try to use local storage
-            if (_environment.IsDevelopment())
-            {
-                if (cdnUrl.StartsWith("/cdn/"))
-                {
-                    // Local development URL
-                    string relativePath2 = cdnUrl.Substring(5); // Remove "/cdn/"
-                    return Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath2);
-                }
-
-                // Extract the relative path from the URL
-                string cdnBaseUrl = _cdnConfig?.BaseUrl ?? _bootstrapCdnBaseUrl;
-                string relativePath = cdnUrl.Replace(cdnBaseUrl, "").TrimStart('/');
-
-                return Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath);
-            }
-
-            return null;
+            return await query.FirstOrDefaultAsync();
         }
 
-        public Stream GetFileStream(string cdnUrl)
+        public async Task<List<CdnUsageStatistic>> GetUsageStatisticsRangeAsync(DateTime startDate, DateTime endDate, int? categoryId = null)
         {
-            if (IsDirectAccessAvailable())
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var query = dbContext.Set<CdnUsageStatistic>()
+                .Where(s => s.Date >= startDate.Date && s.Date <= endDate.Date);
+
+            if (categoryId.HasValue)
             {
-                var physicalPath = GetPhysicalPath(cdnUrl);
+                query = query.Where(s => s.CategoryId == categoryId);
+            }
+
+            return await query.OrderBy(s => s.Date).ToListAsync();
+        }
+
+
+
+        // Utility methods
+        public async Task MigrateFileToBase64Async(string cdnUrl)
+        {
+            try
+            {
+                var metadata = await GetFileMetadataAsync(cdnUrl);
+                if (metadata == null)
+                {
+                    _logger.LogWarning("Metadata not found for migration: {Url}", cdnUrl);
+                    return;
+                }
+
+                // Check if base64 backup already exists
+                if (metadata.HasBase64Backup)
+                {
+                    _logger.LogInformation("Base64 backup already exists for: {Url}", cdnUrl);
+                    return;
+                }
+
+                string physicalPath = GetPhysicalPath(cdnUrl);
                 if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
                 {
-                    // Use optimized file stream settings for better performance
-                    return new FileStream(
-                        physicalPath,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.Read,
-                        LargeBufferSize,
-                        FileOptions.Asynchronous | FileOptions.SequentialScan);
-                }
-            }
+                    // Read file and convert to base64
+                    var bytes = await File.ReadAllBytesAsync(physicalPath);
+                    string base64Data = Convert.ToBase64String(bytes);
 
-            // In development, try to use local storage
-            if (_environment.IsDevelopment())
-            {
-                if (cdnUrl.StartsWith("/cdn/"))
+                    // Save base64 backup
+                    await SaveBase64BackupAsync(cdnUrl, base64Data, metadata.ContentType);
+
+                    _logger.LogInformation("Successfully migrated file to base64: {Url}, Size: {Size} bytes",
+                        cdnUrl, bytes.Length);
+                }
+                else
                 {
-                    // Local development URL
-                    string relativePath = cdnUrl.Substring(5); // Remove "/cdn/"
-                    string localPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "cdn", relativePath);
-
-                    if (File.Exists(localPath))
-                    {
-                        return new FileStream(
-                            localPath,
-                            FileMode.Open,
-                            FileAccess.Read,
-                            FileShare.Read,
-                            LargeBufferSize,
-                            FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    }
+                    _logger.LogWarning("Physical file not found for migration: {Url}", cdnUrl);
                 }
             }
-
-            return null;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error migrating file to base64: {Url}", cdnUrl);
+                throw;
+            }
         }
 
-        public bool IsDevEnvironment()
+        public async Task<bool> RestoreFromBase64Async(string cdnUrl)
         {
-            return _environment.IsDevelopment();
+            try
+            {
+                var base64Data = await GetBase64FallbackAsync(cdnUrl);
+                if (base64Data == null)
+                {
+                    return false;
+                }
+
+                var metadata = await GetFileMetadataAsync(cdnUrl);
+                if (metadata == null)
+                {
+                    return false;
+                }
+
+                string physicalPath = metadata.FilePath;
+                string directory = Path.GetDirectoryName(physicalPath);
+
+                EnsureDirectoryExists(directory);
+
+                byte[] bytes = Convert.FromBase64String(base64Data.Base64Data);
+                await File.WriteAllBytesAsync(physicalPath, bytes);
+
+                await LogAccessAsync("RestoreFromBase64", physicalPath, "System", true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring from base64: {Url}", cdnUrl);
+                await LogAccessAsync("RestoreFromBase64", cdnUrl, "System", false, ex.Message);
+                return false;
+            }
+        }
+
+        public async Task CleanupDeletedFilesAsync(int daysOld = 30)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var cutoffDate = DateTime.Now.AddDays(-daysOld);
+
+                var deletedFiles = await dbContext.Set<CdnFileMetadata>()
+                    .Where(f => f.IsDeleted && f.DeletedDate < cutoffDate)
+                    .ToListAsync();
+
+                foreach (var file in deletedFiles)
+                {
+                    // Remove base64 backup if exists
+                    var base64Storage = await dbContext.Set<CdnBase64Storage>()
+                        .FirstOrDefaultAsync(b => b.FileMetadataId == file.Id);
+
+                    if (base64Storage != null)
+                    {
+                        dbContext.Remove(base64Storage);
+                    }
+
+                    // Remove file metadata
+                    dbContext.Remove(file);
+                }
+
+                await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Cleaned up {Count} deleted files older than {Days} days", deletedFiles.Count, daysOld);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up deleted files");
+            }
+        }
+
+        // Helper methods (these are private implementation details)
+        private void EnsureDirectoryExists(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+                _logger.LogDebug("Created directory: {Path}", path);
+            }
+        }
+
+        private string CleanPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+
+            // Remove dangerous path elements
+            path = path.Replace("..", "");
+            path = path.Replace("\\", "/");
+            path = path.Trim('/');
+
+            // Remove double slashes
+            while (path.Contains("//"))
+            {
+                path = path.Replace("//", "/");
+            }
+
+            return path;
+        }
+
+        private string GetRelativePath(string cdnUrl)
+        {
+            if (string.IsNullOrEmpty(cdnUrl))
+                return null;
+
+            // Remove base URL to get relative path
+            if (cdnUrl.StartsWith(_baseUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                return cdnUrl.Substring(_baseUrl.Length).TrimStart('/');
+            }
+
+            // Handle relative paths
+            if (cdnUrl.StartsWith("/cdn/"))
+            {
+                return cdnUrl.Substring(5);
+            }
+
+            return cdnUrl.TrimStart('/');
+        }
+
+        private string GenerateUniqueFileName(string fileName)
+        {
+            string extension = Path.GetExtension(fileName);
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+
+            // Clean the filename
+            nameWithoutExtension = System.Text.RegularExpressions.Regex.Replace(nameWithoutExtension, @"[^a-zA-Z0-9_-]", "-");
+
+            // Generate unique identifier
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string uniqueId = Guid.NewGuid().ToString("N").Substring(0, 8);
+
+            return $"{nameWithoutExtension}_{timestamp}_{uniqueId}{extension}";
+        }
+
+        private async Task<CdnFileMetadata> SaveFileMetadataAsync(string category, string fileName, string filePath,
+            string contentType, long fileSize, string checksum, string folderPath)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            // Get category
+            var categoryEntity = await dbContext.Set<CdnCategory>()
+                .FirstOrDefaultAsync(c => c.Name == category);
+
+            if (categoryEntity == null)
+            {
+                throw new InvalidOperationException($"Category '{category}' not found");
+            }
+
+            // Get folder ID if specified
+            int? folderId = null;
+            if (!string.IsNullOrEmpty(folderPath))
+            {
+                var folder = await dbContext.Set<CdnFolder>()
+                    .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
+
+                folderId = folder?.Id;
+            }
+
+            // Create URL
+            string relativeUrl = string.IsNullOrEmpty(folderPath)
+                ? $"{category}/{fileName}"
+                : $"{category}/{folderPath}/{fileName}";
+            string url = $"{_baseUrl}/{relativeUrl}";
+
+            // Create metadata
+            var metadata = new CdnFileMetadata
+            {
+                FileName = fileName,
+                FilePath = filePath,
+                Url = url,
+                ContentType = contentType,
+                FileSize = fileSize,
+                CategoryId = categoryEntity.Id,
+                FolderId = folderId,
+                Checksum = checksum,
+                UploadDate = DateTime.Now,
+                UploadedBy = "System",
+                IsDeleted = false,
+                HasBase64Backup = false
+            };
+
+            dbContext.Add(metadata);
+            await dbContext.SaveChangesAsync();
+
+            return metadata;
+        }
+
+        private async Task<string> EnsureAndValidateCategoryAsync(string category)
+        {
+            if (string.IsNullOrEmpty(category))
+                category = "documents";
+
+            // Sanitize category name
+            category = System.Text.RegularExpressions.Regex.Replace(category.ToLower(), @"[^a-z0-9_-]", "-");
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var existingCategory = await dbContext.Set<CdnCategory>()
+                .FirstOrDefaultAsync(c => c.Name == category && c.IsActive);
+
+            if (existingCategory == null)
+            {
+                // Create category if it doesn't exist
+                existingCategory = new CdnCategory
+                {
+                    Name = category,
+                    DisplayName = char.ToUpper(category[0]) + category.Substring(1),
+                    AllowedFileTypes = "*",
+                    IsActive = true,
+                    CreatedDate = DateTime.Now,
+                    CreatedBy = "System"
+                };
+
+                dbContext.Add(existingCategory);
+                await dbContext.SaveChangesAsync();
+
+                // Clear cache
+                _memoryCache.Remove(CATEGORIES_CACHE_KEY);
+
+                // Create physical directory
+                var categoryPath = Path.Combine(_storagePath, category);
+                EnsureDirectoryExists(categoryPath);
+
+                _logger.LogInformation("Auto-created category: {Category}", category);
+            }
+
+            return category;
+        }
+
+        private async Task SaveBase64BackupAsync(string fileUrl, string base64Data, string contentType)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var metadata = await dbContext.Set<CdnFileMetadata>()
+                    .FirstOrDefaultAsync(f => f.Url == fileUrl);
+
+                if (metadata != null)
+                {
+                    // Check if base64 storage already exists
+                    var existingBase64 = await dbContext.Set<CdnBase64Storage>()
+                        .FirstOrDefaultAsync(b => b.FileMetadataId == metadata.Id);
+
+                    if (existingBase64 != null)
+                    {
+                        // Update existing base64 data
+                        existingBase64.Base64Data = base64Data;
+                        existingBase64.MimeType = contentType;
+                        existingBase64.CreatedDate = DateTime.Now;
+                    }
+                    else
+                    {
+                        // Create new base64 storage
+                        var base64Storage = new CdnBase64Storage
+                        {
+                            FileMetadataId = metadata.Id,
+                            Base64Data = base64Data,
+                            MimeType = contentType,
+                            CreatedDate = DateTime.Now
+                        };
+
+                        dbContext.Add(base64Storage);
+                    }
+
+                    metadata.HasBase64Backup = true;
+                    await dbContext.SaveChangesAsync();
+
+                    _logger.LogInformation("Base64 backup saved for file: {Url}, Data length: {Length}", fileUrl, base64Data.Length);
+                }
+                else
+                {
+                    _logger.LogWarning("Metadata not found for URL: {Url}", fileUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving base64 backup for URL: {Url}", fileUrl);
+                throw;
+            }
+        }
+
+        private async Task<CdnBase64Storage> GetBase64FallbackAsync(string cdnUrl)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var metadata = await dbContext.Set<CdnFileMetadata>()
+                    .Include(f => f.Base64Storage)
+                    .FirstOrDefaultAsync(f => f.Url == cdnUrl && !f.IsDeleted);
+
+                if (metadata?.Base64Storage != null)
+                {
+                    _logger.LogInformation("Base64 fallback found for: {Url}, Data length: {Length}",
+                        cdnUrl, metadata.Base64Storage.Base64Data?.Length ?? 0);
+                    return metadata.Base64Storage;
+                }
+
+                _logger.LogWarning("No base64 fallback found for: {Url}", cdnUrl);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting base64 fallback for: {Url}", cdnUrl);
+                return null;
+            }
+        }
+
+        // Implement all remaining public interface methods...
+        public async Task<(Stream stream, bool isFromBase64)> GetFileStreamAsync(string cdnUrl)
+        {
+            try
+            {
+                // Try to get physical file first
+                string physicalPath = GetPhysicalPath(cdnUrl);
+
+                if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
+                {
+                    var stream = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, true);
+                    return (stream, false);
+                }
+
+                // If file doesn't exist physically, try base64 fallback
+                var base64Data = await GetBase64FallbackAsync(cdnUrl);
+                if (base64Data != null)
+                {
+                    byte[] bytes = Convert.FromBase64String(base64Data.Base64Data);
+                    _logger.LogInformation("Serving file from base64 backup: {Url}", cdnUrl);
+                    return (new MemoryStream(bytes), true);
+                }
+
+                return (null, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file stream for: {Url}", cdnUrl);
+                return (null, false);
+            }
+        }
+
+        public async Task<bool> DeleteFileAsync(string cdnUrl)
+        {
+            try
+            {
+                string physicalPath = GetPhysicalPath(cdnUrl);
+
+                // Delete physical file if exists
+                if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
+                {
+                    File.Delete(physicalPath);
+                }
+
+                // Update database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var metadata = await dbContext.Set<CdnFileMetadata>()
+                    .FirstOrDefaultAsync(f => f.Url == cdnUrl);
+
+                if (metadata != null)
+                {
+                    metadata.IsDeleted = true;
+                    metadata.DeletedDate = DateTime.Now;
+                    await dbContext.SaveChangesAsync();
+
+                    // Update usage statistics
+                    await UpdateUsageStatisticsAsync(metadata.CategoryId, -1, -metadata.FileSize, 0, 0, 1);
+
+                    // Log access
+                    await LogAccessAsync("Delete", physicalPath ?? cdnUrl, "System", true, null, metadata.FileSize);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting file: {Url}", cdnUrl);
+                await LogAccessAsync("Delete", cdnUrl, "System", false, ex.Message);
+                return false;
+            }
+        }
+
+        public async Task<string> RenameFileAsync(string cdnUrl, string newFileName)
+        {
+            try
+            {
+                string physicalPath = GetPhysicalPath(cdnUrl);
+
+                if (string.IsNullOrEmpty(physicalPath) || !File.Exists(physicalPath))
+                {
+                    throw new FileNotFoundException("File not found");
+                }
+
+                string directory = Path.GetDirectoryName(physicalPath);
+                string extension = Path.GetExtension(physicalPath);
+
+                if (!newFileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    newFileName += extension;
+                }
+
+                string newPath = Path.Combine(directory, newFileName);
+
+                if (File.Exists(newPath))
+                {
+                    throw new InvalidOperationException("A file with this name already exists");
+                }
+
+                // Rename file
+                File.Move(physicalPath, newPath);
+
+                // Update database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var metadata = await dbContext.Set<CdnFileMetadata>()
+                    .FirstOrDefaultAsync(f => f.Url == cdnUrl);
+
+                if (metadata != null)
+                {
+                    string relativePath = GetRelativePath(cdnUrl);
+                    string newRelativePath = Path.GetDirectoryName(relativePath).Replace('\\', '/') + "/" + newFileName;
+                    string newUrl = $"{_baseUrl}/{newRelativePath}";
+
+                    metadata.FileName = newFileName;
+                    metadata.FilePath = newPath;
+                    metadata.Url = newUrl;
+
+                    await dbContext.SaveChangesAsync();
+
+                    await LogAccessAsync("Rename", newPath, "System", true);
+
+                    return newUrl;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error renaming file: {Url}", cdnUrl);
+                await LogAccessAsync("Rename", cdnUrl, "System", false, ex.Message);
+                throw;
+            }
+        }
+        // New method to get only base64 stream
+        public async Task<Stream> GetBase64StreamAsync(string cdnUrl)
+        {
+            try
+            {
+                var base64Data = await GetBase64FallbackAsync(cdnUrl);
+                if (base64Data != null && !string.IsNullOrEmpty(base64Data.Base64Data))
+                {
+                    byte[] bytes = Convert.FromBase64String(base64Data.Base64Data);
+                    _logger.LogInformation("Serving base64 stream for: {Url}, Size: {Size} bytes", cdnUrl, bytes.Length);
+                    return new MemoryStream(bytes);
+                }
+
+                _logger.LogWarning("No base64 data found for: {Url}", cdnUrl);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting base64 stream for: {Url}", cdnUrl);
+                return null;
+            }
+        }
+        public async Task<bool> FileExistsAsync(string cdnUrl)
+        {
+            // Check physical file first
+            var physicalPath = GetPhysicalPath(cdnUrl);
+            if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
+                return true;
+
+            // Check if exists in database with base64 backup
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var metadata = await dbContext.Set<CdnFileMetadata>()
+                .FirstOrDefaultAsync(f => f.Url == cdnUrl && !f.IsDeleted);
+
+            return metadata != null;
+        }
+
+        public async Task<CdnFileMetadata> GetFileMetadataAsync(string cdnUrl)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            return await dbContext.Set<CdnFileMetadata>()
+                .Include(f => f.Category)
+                .Include(f => f.Folder)
+                .FirstOrDefaultAsync(f => f.Url == cdnUrl && !f.IsDeleted);
+        }
+
+        public async Task<CdnFolder> CreateFolderAsync(string category, string folderPath, string folderName)
+        {
+            try
+            {
+                category = await EnsureAndValidateCategoryAsync(category);
+                folderPath = CleanPath(folderPath);
+
+                // Create physical directory
+                string fullPath = Path.Combine(_storagePath, category);
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    fullPath = Path.Combine(fullPath, folderPath);
+                }
+                fullPath = Path.Combine(fullPath, folderName);
+
+                EnsureDirectoryExists(fullPath);
+
+                // Save to database
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity == null)
+                {
+                    throw new InvalidOperationException($"Category '{category}' not found");
+                }
+
+                // Find parent folder if specified
+                int? parentId = null;
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    var parentFolder = await dbContext.Set<CdnFolder>()
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
+
+                    parentId = parentFolder?.Id;
+                }
+
+                // Create folder entity
+                string fullFolderPath = string.IsNullOrEmpty(folderPath)
+                    ? folderName
+                    : $"{folderPath}/{folderName}";
+
+                var folder = new CdnFolder
+                {
+                    Name = folderName,
+                    Path = fullFolderPath,
+                    CategoryId = categoryEntity.Id,
+                    ParentId = parentId,
+                    CreatedDate = DateTime.Now,
+                    CreatedBy = "System",
+                    IsActive = true
+                };
+
+                dbContext.Add(folder);
+                await dbContext.SaveChangesAsync();
+
+                await LogAccessAsync("CreateFolder", fullPath, "System", true);
+
+                return folder;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating folder: {Category}/{Path}/{Name}", category, folderPath, folderName);
+                await LogAccessAsync("CreateFolder", $"{category}/{folderPath}/{folderName}", "System", false, ex.Message);
+                throw;
+            }
         }
 
         public async Task<List<CdnCategory>> GetCategoriesAsync()
         {
-            // Check cache first
-            if (_memoryCache.TryGetValue(CATEGORIES_CACHE_KEY, out List<CdnCategory> cachedCategories))
+            if (_memoryCache.TryGetValue(CATEGORIES_CACHE_KEY, out List<CdnCategory> categories))
             {
-                return cachedCategories;
+                return categories;
             }
 
-            // Check if we need to refresh the configuration
-            await RefreshConfigIfNeededAsync();
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            // If we have categories loaded, return them
-            if (_categories != null && _categories.Any())
-            {
-                return _categories;
-            }
+            categories = await dbContext.Set<CdnCategory>()
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.DisplayName)
+                .ToListAsync();
 
-            // Otherwise, load from database
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+            _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, CacheDuration);
 
-                var categories = await dbContext.Set<CdnCategory>()
-                    .Where(c => c.IsActive)
-                    .ToListAsync();
-
-                if (categories.Any())
-                {
-                    // Update cache
-                    _memoryCache.Set(CATEGORIES_CACHE_KEY, categories, TimeSpan.FromMinutes(15));
-                    _categories = categories;
-                    return categories;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving categories from database");
-            }
-
-            // If no categories found or error occurred, return default ones
-            var defaultCategories = new List<CdnCategory>
-            {
-                new CdnCategory { Id = 1, Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" },
-                new CdnCategory { Id = 2, Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg" },
-                new CdnCategory { Id = 3, Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*" },
-            };
-
-            // Try to save default categories to database
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                foreach (var category in defaultCategories)
-                {
-                    if (!await dbContext.Set<CdnCategory>().AnyAsync(c => c.Name == category.Name))
-                    {
-                        var newCategory = new CdnCategory
-                        {
-                            Name = category.Name,
-                            DisplayName = category.DisplayName,
-                            AllowedFileTypes = category.AllowedFileTypes,
-                            IsActive = true,
-                            CreatedDate = DateTime.Now,
-                            CreatedBy = "System"
-                        };
-
-                        dbContext.Add(newCategory);
-                    }
-                }
-
-                await dbContext.SaveChangesAsync();
-                _logger.LogInformation("Saved default categories to database");
-
-                // Reload categories
-                var savedCategories = await dbContext.Set<CdnCategory>()
-                    .Where(c => c.IsActive)
-                    .ToListAsync();
-
-                if (savedCategories.Any())
-                {
-                    _memoryCache.Set(CATEGORIES_CACHE_KEY, savedCategories, TimeSpan.FromMinutes(15));
-                    _categories = savedCategories;
-                    return savedCategories;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving default categories to database");
-            }
-
-            return defaultCategories;
+            return categories;
         }
 
-        public async Task<List<CdnFolder>> GetFoldersAsync(string category)
+        public async Task<CdnCategory> GetCategoryAsync(string name)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            return await dbContext.Set<CdnCategory>()
+                .FirstOrDefaultAsync(c => c.Name == name && c.IsActive);
+        }
+
+        public async Task<CdnCategory> CreateCategoryAsync(string name, string displayName, string allowedFileTypes = "*", string description = null)
         {
             try
             {
-                // Ensure the category is valid
-                category = await ValidateCategoryAsync(category);
-
-                // Get category ID
-                var categoryId = await GetCategoryIdAsync(category);
-                if (!categoryId.HasValue)
-                {
-                    _logger.LogWarning("Category not found for folder lookup: {Category}", category);
-                    return new List<CdnFolder>();
-                }
+                // Sanitize name for filesystem
+                name = System.Text.RegularExpressions.Regex.Replace(name.ToLower(), @"[^a-z0-9_-]", "-");
 
                 using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                var folders = await dbContext.Set<CdnFolder>()
-                    .Where(f => f.CategoryId == categoryId && f.IsActive)
-                    .OrderBy(f => f.Path)
-                    .ToListAsync();
+                // Check if category already exists
+                if (await dbContext.Set<CdnCategory>().AnyAsync(c => c.Name == name))
+                {
+                    throw new InvalidOperationException($"Category '{name}' already exists");
+                }
 
-                _logger.LogInformation("Found {Count} folders for category {Category}", folders.Count, category);
-                return folders;
+                var category = new CdnCategory
+                {
+                    Name = name,
+                    DisplayName = displayName,
+                    Description = description,
+                    AllowedFileTypes = allowedFileTypes,
+                    IsActive = true,
+                    CreatedDate = DateTime.Now,
+                    CreatedBy = "System"
+                };
+
+                dbContext.Add(category);
+                await dbContext.SaveChangesAsync();
+
+                // Clear cache
+                _memoryCache.Remove(CATEGORIES_CACHE_KEY);
+
+                // Create physical directory
+                var categoryPath = Path.Combine(_storagePath, name);
+                EnsureDirectoryExists(categoryPath);
+
+                _logger.LogInformation("Created CDN category: {Name}", name);
+
+                return category;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving folders for category {Category}", category);
-                return new List<CdnFolder>();
+                _logger.LogError(ex, "Error creating category: {Name}", name);
+                throw;
+            }
+        }
+
+        public async Task<CdnCategory> UpdateCategoryAsync(int categoryId, string displayName, string allowedFileTypes, string description)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var category = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+                if (category == null)
+                {
+                    throw new InvalidOperationException("Category not found");
+                }
+
+                category.DisplayName = displayName;
+                category.AllowedFileTypes = allowedFileTypes;
+                category.Description = description;
+
+                await dbContext.SaveChangesAsync();
+
+                // Clear cache
+                _memoryCache.Remove(CATEGORIES_CACHE_KEY);
+
+                return category;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating category: {Id}", categoryId);
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteCategoryAsync(int categoryId)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var category = await dbContext.Set<CdnCategory>()
+                    .Include(c => c.Files)
+                    .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+                if (category == null)
+                    return false;
+
+                // Check if category has active files
+                if (category.Files.Any(f => !f.IsDeleted))
+                {
+                    throw new InvalidOperationException("Cannot delete category with active files");
+                }
+
+                // Soft delete
+                category.IsActive = false;
+                await dbContext.SaveChangesAsync();
+
+                // Clear cache
+                _memoryCache.Remove(CATEGORIES_CACHE_KEY);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting category: {Id}", categoryId);
+                throw;
+            }
+        }
+
+        public async Task<bool> CategoryExistsAsync(string name)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            return await dbContext.Set<CdnCategory>()
+                .AnyAsync(c => c.Name == name && c.IsActive);
+        }
+
+        public async Task<CdnConfiguration> GetConfigurationAsync()
+        {
+            if (_memoryCache.TryGetValue(CONFIG_CACHE_KEY, out CdnConfiguration config))
+            {
+                return config;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            config = await dbContext.Set<CdnConfiguration>()
+                .Where(c => c.IsActive)
+                .OrderByDescending(c => c.Id)
+                .FirstOrDefaultAsync();
+
+            if (config != null)
+            {
+                _memoryCache.Set(CONFIG_CACHE_KEY, config, CacheDuration);
+            }
+
+            return config;
+        }
+
+        public async Task<bool> ValidateFileTypeAsync(string fileName, string category)
+        {
+            var categoryEntity = await GetCategoryAsync(category);
+            if (categoryEntity == null || categoryEntity.AllowedFileTypes == "*")
+                return true;
+
+            var extension = Path.GetExtension(fileName).ToLower();
+            var allowedTypes = categoryEntity.AllowedFileTypes.Split(',').Select(t => t.Trim().ToLower());
+
+            return allowedTypes.Contains(extension);
+        }
+
+        public async Task<bool> ValidateFileSizeAsync(long fileSize)
+        {
+            var config = await GetConfigurationAsync();
+            if (config == null)
+                return true;
+
+            var maxSizeBytes = config.MaxFileSizeMB * 1024 * 1024;
+            return fileSize <= maxSizeBytes;
+        }
+
+
+
+        public async Task UpdateUsageStatisticsAsync(int categoryId, int fileCountChange, long storageBytesChange,
+            int uploadCount = 0, int downloadCount = 0, int deleteCount = 0)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var today = DateTime.Today;
+                var stat = await dbContext.Set<CdnUsageStatistic>()
+                    .Where(s => s.Date.Date == today && s.CategoryId == categoryId)
+                    .FirstOrDefaultAsync();
+
+                if (stat == null)
+                {
+                    stat = new CdnUsageStatistic
+                    {
+                        Date = today,
+                        CategoryId = categoryId,
+                        FileCount = fileCountChange,
+                        StorageUsedBytes = storageBytesChange,
+                        UploadCount = uploadCount,
+                        DownloadCount = downloadCount,
+                        DeleteCount = deleteCount,
+                        RecordedBy = "System"
+                    };
+
+                    dbContext.Add(stat);
+                }
+                else
+                {
+                    stat.FileCount += fileCountChange;
+                    stat.StorageUsedBytes += storageBytesChange;
+                    stat.UploadCount += uploadCount;
+                    stat.DownloadCount += downloadCount;
+                    stat.DeleteCount += deleteCount;
+                }
+
+                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating usage statistics");
+            }
+        }
+
+        public async Task LogAccessAsync(string actionType, string filePath, string username, bool isSuccess,
+            string errorMessage = null, long? fileSizeBytes = null)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var log = new CdnAccessLog
+                {
+                    Timestamp = DateTime.Now,
+                    ActionType = actionType,
+                    FilePath = filePath,
+                    Username = username,
+                    IsSuccess = isSuccess,
+                    ErrorMessage = errorMessage,
+                    FileSizeBytes = fileSizeBytes
+                };
+
+                dbContext.Add(log);
+                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error logging access");
+            }
+        }
+
+        public async Task<List<CdnAccessLog>> GetAccessLogsAsync(DateTime startDate, DateTime endDate, string actionType = null)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var query = dbContext.Set<CdnAccessLog>()
+                .Where(l => l.Timestamp >= startDate && l.Timestamp <= endDate);
+
+            if (!string.IsNullOrEmpty(actionType))
+            {
+                query = query.Where(l => l.ActionType == actionType);
+            }
+
+            return await query.OrderByDescending(l => l.Timestamp).ToListAsync();
+        }
+
+        public string GetCdnUrl(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return _baseUrl;
+
+            if (path.StartsWith(_baseUrl, StringComparison.OrdinalIgnoreCase))
+                return path;
+
+            return $"{_baseUrl}/{path.TrimStart('/')}";
+        }
+
+        public bool IsDirectAccessAvailable()
+        {
+            return Directory.Exists(_storagePath);
+        }
+
+        public string GetPhysicalPath(string cdnUrl)
+        {
+            if (string.IsNullOrEmpty(cdnUrl))
+                return null;
+
+            string relativePath = GetRelativePath(cdnUrl);
+            if (string.IsNullOrEmpty(relativePath))
+                return null;
+
+            return Path.Combine(_storagePath, relativePath);
+        }
+
+        public async Task<string> CalculateChecksumAsync(string filePath)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, true))
+                {
+                    byte[] hash = await Task.Run(() => sha256.ComputeHash(stream));
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
             }
         }
 
@@ -1489,145 +1679,54 @@ namespace Roovia.Services
         {
             try
             {
-                // Ensure the category is valid
-                category = await ValidateCategoryAsync(category);
+                category = await EnsureAndValidateCategoryAsync(category);
 
-                // Get category ID
-                var categoryId = await GetCategoryIdAsync(category);
-                if (!categoryId.HasValue)
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                var categoryEntity = await dbContext.Set<CdnCategory>()
+                    .FirstOrDefaultAsync(c => c.Name == category);
+
+                if (categoryEntity == null)
                 {
-                    _logger.LogWarning("Category not found for file lookup: {Category}", category);
                     return new List<CdnFileMetadata>();
                 }
 
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                // Start with base query
                 var query = dbContext.Set<CdnFileMetadata>()
-                    .Where(f => f.CategoryId == categoryId && !f.IsDeleted);
+                    .Where(f => f.CategoryId == categoryEntity.Id && !f.IsDeleted);
 
-                // If folder path is specified, get the folder ID
                 if (!string.IsNullOrEmpty(folderPath))
                 {
-                    folderPath = CleanFolderPath(folderPath);
-
+                    folderPath = CleanPath(folderPath);
                     var folder = await dbContext.Set<CdnFolder>()
-                        .FirstOrDefaultAsync(f => f.CategoryId == categoryId && f.Path == folderPath && f.IsActive);
+                        .FirstOrDefaultAsync(f => f.CategoryId == categoryEntity.Id && f.Path == folderPath);
 
                     if (folder != null)
                     {
                         query = query.Where(f => f.FolderId == folder.Id);
-                        _logger.LogDebug("Found folder {FolderPath}, ID: {FolderId}", folderPath, folder.Id);
                     }
                     else
                     {
-                        // If folder doesn't exist, return empty list
-                        _logger.LogWarning("Folder not found: {Category}/{FolderPath}", category, folderPath);
                         return new List<CdnFileMetadata>();
                     }
                 }
-                else if (folderPath == "") // Root folder specifically
+                else
                 {
                     query = query.Where(f => f.FolderId == null);
-                    _logger.LogDebug("Looking up files in root folder of category {Category}", category);
                 }
 
-                // If search term is specified, filter by filename
                 if (!string.IsNullOrEmpty(searchTerm))
                 {
                     query = query.Where(f => f.FileName.Contains(searchTerm));
-                    _logger.LogDebug("Applied search filter: {SearchTerm}", searchTerm);
                 }
 
-                var files = await query.OrderByDescending(f => f.UploadDate).ToListAsync();
-                _logger.LogInformation("Found {Count} files for category {Category}, folder {Folder}",
-                    files.Count, category, folderPath ?? "root");
-
-                return files;
+                return await query.OrderByDescending(f => f.UploadDate).ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving files for category {Category}, folder {Folder}",
-                    category, folderPath ?? "root");
+                _logger.LogError(ex, "Error getting files");
                 return new List<CdnFileMetadata>();
             }
-        }
-
-        private async Task<string> ValidateCategoryAsync(string category)
-        {
-            if (string.IsNullOrEmpty(category))
-                return "documents";
-
-            // Check if the category exists in the database
-            var categories = await GetCategoriesAsync();
-
-            if (categories.Any(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase)))
-                return category.ToLowerInvariant();
-
-            // Check if it's a standard category
-            string[] standardCategories = { "documents", "images", "hr", "weighbridge", "lab", "test-uploads" };
-            if (standardCategories.Contains(category.ToLowerInvariant()))
-                return category.ToLowerInvariant();
-
-            // Default to documents if not found
-            return "documents";
-        }
-
-        private string GenerateUniqueFileName(string fileName)
-        {
-            // Remove any potentially dangerous characters from the filename
-            string extension = Path.GetExtension(fileName);
-
-            // Process the file name to make it safe
-            var safeName = Path.GetFileNameWithoutExtension(fileName)
-                .Replace(" ", "-")
-                .Replace("_", "-");
-
-            // Remove any invalid characters
-            var invalidChars = Path.GetInvalidFileNameChars();
-            foreach (var c in invalidChars)
-            {
-                safeName = safeName.Replace(c.ToString(), "");
-            }
-
-            if (string.IsNullOrWhiteSpace(safeName))
-            {
-                safeName = "file";
-            }
-
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var random = Guid.NewGuid().ToString().Substring(0, 8);
-
-            return $"{safeName}_{timestamp}_{random}{extension}";
-        }
-
-        private async Task RefreshConfigIfNeededAsync()
-        {
-            // Check if we need to refresh the database configuration
-            if (_configLastRefreshed.Add(_configRefreshInterval) < DateTime.Now || _cdnConfig == null)
-            {
-                await LoadConfigFromDatabaseAsync();
-            }
-        }
-
-        // These classes are used for JSON deserialization - kept for backward compatibility
-        private class UploadResult
-        {
-            public bool Success { get; set; }
-            public string? Url { get; set; }
-            public string? FileName { get; set; }
-            public string? ContentType { get; set; }
-            public long? Size { get; set; }
-            public string? Category { get; set; }
-            public string? Message { get; set; }
-        }
-
-        private class ApiResponse<T>
-        {
-            public bool? success { get; set; }
-            public T? data { get; set; }
-            public string? message { get; set; }
         }
     }
 }

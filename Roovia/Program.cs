@@ -8,17 +8,13 @@ using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
 using Roovia.Interfaces;
-using Roovia.Middleware;
 using Roovia.Models.Users;
 using Roovia.Security;
 using Roovia.Services;
 using System.IO;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Mvc;
-using Roovia.Extensions;
 using Roovia.Models.CDN;
-using System.Collections.Concurrent;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +36,9 @@ builder.Services.Configure<IISServerOptions>(options =>
 {
     options.MaxRequestBodySize = null; // No limit
 });
+
 builder.Services.AddMemoryCache();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -53,16 +51,11 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartHeadersLengthLimit = 32768; // 32KB
 });
 
-// Add custom HTTP client for CDN operations with optimized settings
-builder.Services.AddHttpClient("CdnClient", client =>
-{
-    client.Timeout = TimeSpan.FromMinutes(10); // 10 minute timeout for large file uploads
-});
-
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
 // Register Email Services
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailSender<ApplicationUser>, IdentityEmailSender>();
@@ -103,40 +96,10 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
-// Register CDN service with HttpClientFactory - Updated to use singleton for better caching
-builder.Services.AddHttpClient();
+// Register CDN service as singleton for better performance
 builder.Services.AddSingleton<ICdnService, CdnService>();
 
-// Register API controllers for CDN endpoints with increased body size limit
-builder.Services.AddControllers(options =>
-{
-    options.MaxModelBindingCollectionSize = 10000; // Allow up to 10,000 items in collections
-})
-.AddJsonOptions(options => {
-    options.JsonSerializerOptions.PropertyNamingPolicy = null;
-    options.JsonSerializerOptions.WriteIndented = true;
-})
-.ConfigureApiBehaviorOptions(options =>
-{
-    // Customize model binding error responses
-    options.InvalidModelStateResponseFactory = context =>
-    {
-        var errors = context.ModelState
-            .Where(e => e.Value?.Errors.Count > 0)
-            .Select(e => new { Field = e.Key, Errors = e.Value?.Errors.Select(err => err.ErrorMessage) })
-            .ToList();
-
-        return new BadRequestObjectResult(new
-        {
-            success = false,
-            message = "Validation errors occurred",
-            errors = errors
-        });
-    };
-});
-
 // Register authorization configuration
-// [Authorization configuration code can stay the same]
 builder.Services.AddAuthorization(options =>
 {
     // Register pre-defined policies
@@ -195,8 +158,6 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    // Only in development, set up static file serving for local debugging
-    // But don't interfere with actual CDN storage
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "wwwroot")),
@@ -213,40 +174,27 @@ else
     app.UseHsts();
 }
 
-// Add global exception handler
-app.Use(async (context, next) =>
+// Add CDN static file serving
+var cdnStoragePath = builder.Configuration["CDN:StoragePath"];
+if (!string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath))
 {
-    try
+    app.UseStaticFiles(new StaticFileOptions
     {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        // Log the exception
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Unhandled exception in middleware pipeline: {Message}", ex.Message);
-
-        // Return JSON error for API requests
-        if (!context.Response.HasStarted && context.Request.Path.StartsWithSegments("/api"))
+        FileProvider = new PhysicalFileProvider(cdnStoragePath),
+        RequestPath = "/cdn",
+        OnPrepareResponse = ctx =>
         {
-            context.Response.StatusCode = 500;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync($"{{\"success\":false,\"error\":\"Server error: {ex.Message}\"}}");
+            // Set cache control for CDN files
+            var headers = ctx.Context.Response.Headers;
+            headers.Add("Cache-Control", "public, max-age=31536000"); // 1 year
+            headers.Add("Access-Control-Allow-Origin", "*");
         }
-        else if (!context.Response.HasStarted)
-        {
-            // Re-throw for non-API requests to be handled by the error page
-            throw;
-        }
-    }
-});
+    });
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
-
-// Use API key validation middleware for CDN endpoints
-app.UseApiKeyValidation();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
@@ -254,12 +202,7 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
-// Map controllers for CDN API endpoints
-app.MapControllers();
-
 // Create and ensure permissions for CDN storage directory
-// This is now used in BOTH development and production
-var cdnStoragePath = builder.Configuration["CDN:StoragePath"];
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 if (string.IsNullOrEmpty(cdnStoragePath))
@@ -278,7 +221,7 @@ else
         }
 
         // Create standard category directories
-        var standardCategories = new[] { "documents", "images", "test-uploads" };
+        var standardCategories = new[] { "documents", "images", "logos", "hr", "profiles", "test-uploads" };
         foreach (var category in standardCategories)
         {
             var categoryPath = Path.Combine(cdnStoragePath, category);
@@ -312,76 +255,6 @@ else
     }
 }
 
-// Optional: Create initial CDN configuration in database if not exists
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var dbLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-        // Check if any categories exist
-        if (!dbContext.Set<CdnCategory>().Any())
-        {
-            // Create default categories
-            var defaultCategories = new List<CdnCategory>
-            {
-                new CdnCategory { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
-                new CdnCategory { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.webp,.svg", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
-                new CdnCategory { Name = "test-uploads", DisplayName = "Test Uploads", AllowedFileTypes = "*", IsActive = true, CreatedDate = DateTime.Now, CreatedBy = "System" },
-            };
-
-            dbContext.AddRange(defaultCategories);
-            await dbContext.SaveChangesAsync();
-
-            dbLogger.LogInformation("Created default CDN categories");
-        }
-
-        // Check if configuration exists
-        if (!dbContext.Set<CdnConfiguration>().Any())
-        {
-            // Create default configuration
-            var config = new CdnConfiguration
-            {
-                BaseUrl = "https://cdn.roovia.co.za",
-                StoragePath = "/var/www/cdn",
-                ApiKey = Guid.NewGuid().ToString("N").Substring(0, 24),
-                MaxFileSizeMB = 200,
-                AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
-                EnforceAuthentication = true,
-                AllowDirectAccess = true,
-                EnableCaching = true,
-                CreatedDate = DateTime.Now,
-                ModifiedDate = DateTime.Now,
-                ModifiedBy = "System",
-                IsActive = true
-            };
-
-            dbContext.Add(config);
-
-            // Create default API key
-            var apiKey = new CdnApiKey
-            {
-                Key = config.ApiKey,
-                Name = "Default API Key",
-                Description = "Default API key for CDN operations",
-                IsActive = true,
-                CreatedDate = DateTime.Now,
-                CreatedBy = "System"
-            };
-
-            dbContext.Add(apiKey);
-            await dbContext.SaveChangesAsync();
-
-            dbLogger.LogInformation("Created default CDN configuration and API key");
-        }
-    }
-    catch (Exception ex)
-    {
-        var scopeLogger = app.Services.GetRequiredService<ILogger<Program>>();
-        scopeLogger.LogError(ex, "An error occurred while initializing CDN configuration");
-    }
-}
 
 // Optional: Seed permissions and roles
 if (app.Environment.IsDevelopment())

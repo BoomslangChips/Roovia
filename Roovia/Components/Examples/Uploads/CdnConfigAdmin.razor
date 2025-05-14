@@ -1,4 +1,4 @@
-﻿@page "/admin/cdn-config"
+﻿@* @page "/admin/cdn-config"
 @using Microsoft.AspNetCore.Authorization
 @using Roovia.Interfaces
 @using Roovia.Models.CDN
@@ -2161,4 +2161,4 @@
         await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", apiKey);
         await JSRuntime.InvokeVoidAsync("alert", "API key copied to clipboard");
     }
-}
+} *@
