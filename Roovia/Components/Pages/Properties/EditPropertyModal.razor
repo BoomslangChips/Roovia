@@ -24,102 +24,113 @@
                     <div class="roovia-panel-body">
                         <!-- Owner Information (read-only) -->
                         <div class="roovia-col-md-12 p-5">
-                            <h6 class="text-primary mb-3">Owner Information</h6>
+                            <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Owner Information</h6>
                             <RVTextbox Label="Owner"
-                            Value="@OwnerName"
-                            Disabled="true">
+                                       Value="@OwnerName"
+                                       Disabled="true"
+                                       IconLeft="fas fa-user">
                             </RVTextbox>
                         </div>
 
                         <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
                             <!-- Location Information -->
                             <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3">Location Information</h6>
+                                <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Location Information</h6>
                                 <div class="mb-3">
                                     <RVTextbox Label="Street"
-                                    Value="@Property.Address.Street"
-                                    @onchange="(e => Property.Address.Street = e.Value.ToString())"
-                                    Placeholder="Street address">
+                                               Value="@Property.Address.Street"
+                                               @onchange="(e => Property.Address.Street = e.Value.ToString())"
+                                               Placeholder="Street address"
+                                               IconLeft="fas fa-road">
                                     </RVTextbox>
                                 </div>
                                 <div class="roovia-grid-cols-2 roovia-grid gap-3">
                                     <div>
                                         <RVTextbox Label="Unit Number"
-                                        Value="@Property.Address.UnitNumber"
-                                        @onchange="(e => Property.Address.UnitNumber = e.Value.ToString())"
-                                        Placeholder="Unit #">
+                                                   Value="@Property.Address.UnitNumber"
+                                                   @onchange="(e => Property.Address.UnitNumber = e.Value.ToString())"
+                                                   Placeholder="Unit #"
+                                                   IconLeft="fas fa-building">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Floor"
-                                        Value="@Property.Address.Floor"
-                                        @onchange="(e => Property.Address.Floor = e.Value.ToString())"
-                                        Placeholder="Floor level">
+                                                   Value="@Property.Address.Floor"
+                                                   @onchange="(e => Property.Address.Floor = e.Value.ToString())"
+                                                   Placeholder="Floor level"
+                                                   IconLeft="fas fa-layer-group">
                                         </RVTextbox>
                                     </div>
                                 </div>
                                 <div class="mb-3">
                                     <RVTextbox Label="Complex Name"
-                                    Value="@Property.Address.ComplexName"
-                                    @onchange="(e => Property.Address.ComplexName = e.Value.ToString())"
-                                    Placeholder="Complex name">
+                                               Value="@Property.Address.ComplexName"
+                                               @onchange="(e => Property.Address.ComplexName = e.Value.ToString())"
+                                               Placeholder="Complex name"
+                                               IconLeft="fas fa-hotel">
                                     </RVTextbox>
                                 </div>
                                 <div class="mb-3">
                                     <RVTextbox Label="Building Name"
-                                    Value="@Property.Address.BuildingName"
-                                    @onchange="(e => Property.Address.BuildingName = e.Value.ToString())"
-                                    Placeholder="Building name">
+                                               Value="@Property.Address.BuildingName"
+                                               @onchange="(e => Property.Address.BuildingName = e.Value.ToString())"
+                                               Placeholder="Building name"
+                                               IconLeft="fas fa-building">
                                     </RVTextbox>
                                 </div>
                             </div>
 
                             <!-- City/Region Information -->
                             <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3">City/Region Information</h6>
+                                <h6 class="text-primary mb-3"><i class="fas fa-city me-2"></i>City/Region Information</h6>
                                 <div class="roovia-grid-cols-2 roovia-grid gap-3">
                                     <div>
                                         <RVTextbox Label="City"
-                                        Value="@Property.Address.City"
-                                        @onchange="(e => Property.Address.City = e.Value.ToString())"
-                                        Placeholder="City">
+                                                   Value="@Property.Address.City"
+                                                   @onchange="(e => Property.Address.City = e.Value.ToString())"
+                                                   Placeholder="City"
+                                                   IconLeft="fas fa-city">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Suburb"
-                                        Value="@Property.Address.Suburb"
-                                        @onchange="(e => Property.Address.Suburb = e.Value.ToString())"
-                                        Placeholder="Suburb">
+                                                   Value="@Property.Address.Suburb"
+                                                   @onchange="(e => Property.Address.Suburb = e.Value.ToString())"
+                                                   Placeholder="Suburb"
+                                                   IconLeft="fas fa-map-pin">
                                         </RVTextbox>
                                     </div>
                                 </div>
                                 <div class="roovia-grid-cols-2 roovia-grid gap-3 mt-3">
                                     <div>
                                         <RVTextbox Label="Province"
-                                        Value="@Property.Address.Province"
-                                        @onchange="(e => Property.Address.Province = e.Value.ToString())"
-                                        Placeholder="Province/State">
+                                                   Value="@Property.Address.Province"
+                                                   @onchange="(e => Property.Address.Province = e.Value.ToString())"
+                                                   Placeholder="Province/State"
+                                                   IconLeft="fas fa-map">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Postal Code"
-                                        Value="@Property.Address.PostalCode"
-                                        @onchange="(e => Property.Address.PostalCode = e.Value.ToString())"
-                                        Placeholder="Postal/ZIP Code">
+                                                   Value="@Property.Address.PostalCode"
+                                                   @onchange="(e => Property.Address.PostalCode = e.Value.ToString())"
+                                                   Placeholder="Postal/ZIP Code"
+                                                   IconLeft="fas fa-mail-bulk">
                                         </RVTextbox>
                                     </div>
                                 </div>
                                 <div class="mb-3 mt-3">
                                     <RVTextbox Label="Country"
-                                    Value="@Property.Address.Country"
-                                    @onchange="(e => Property.Address.Country = e.Value.ToString())"
-                                    Placeholder="Country">
+                                               Value="@Property.Address.Country"
+                                               @onchange="(e => Property.Address.Country = e.Value.ToString())"
+                                               Placeholder="Country"
+                                               IconLeft="fas fa-globe">
                                     </RVTextbox>
                                 </div>
                                 <div class="mb-3">
                                     <RVCheckbox Label="Is Residential"
-                                    Value="@Property.Address.IsResidential"
-                                    @onchange="(e => Property.Address.IsResidential = e.Value is bool value && value)">
+                                                Value="@Property.Address.IsResidential"
+                                                @onchange="(e => Property.Address.IsResidential = e.Value is bool value && value)">
                                     </RVCheckbox>
                                 </div>
                             </div>
@@ -127,20 +138,22 @@
 
                         <!-- Access Information Section -->
                         <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3">Access Information</h6>
+                            <h6 class="text-primary mb-3"><i class="fas fa-unlock-alt me-2"></i>Access Information</h6>
                             <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3">
                                 <div>
                                     <RVTextbox Label="Gate Code"
-                                    Value="@Property.Address.GateCode"
-                                    @onchange="(e => Property.Address.GateCode = e.Value.ToString())"
-                                    Placeholder="Gate code">
+                                               Value="@Property.Address.GateCode"
+                                               @onchange="(e => Property.Address.GateCode = e.Value.ToString())"
+                                               Placeholder="Gate code"
+                                               IconLeft="fas fa-key">
                                     </RVTextbox>
                                 </div>
                                 <div>
                                     <RVTextbox Label="Delivery Instructions"
-                                    Value="@Property.Address.DeliveryInstructions"
-                                    @onchange="(e => Property.Address.DeliveryInstructions = e.Value.ToString())"
-                                    Placeholder="Delivery instructions">
+                                               Value="@Property.Address.DeliveryInstructions"
+                                               @onchange="(e => Property.Address.DeliveryInstructions = e.Value.ToString())"
+                                               Placeholder="Delivery instructions"
+                                               IconLeft="fas fa-info-circle">
                                     </RVTextbox>
                                 </div>
                             </div>
@@ -148,24 +161,25 @@
 
                         <!-- Lease Information Section -->
                         <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3">Lease Information</h6>
+                            <h6 class="text-primary mb-3"><i class="fas fa-file-contract me-2"></i>Lease Information</h6>
                             <div class="roovia-grid-cols-1 roovia-grid-cols-md-3 roovia-grid gap-3">
                                 <div>
                                     <RVTextbox Label="Rental Amount"
-                                    Type="decimal"
-                                    Value="@Property.RentalAmount.ToString()"
-                                    @onchange="(e => Property.RentalAmount = decimal.TryParse(e.Value?.ToString(), out var val) ? val : Property.RentalAmount)"
-                                    Placeholder="Monthly rent">
+                                               Type="decimal"
+                                               Value="@Property.RentalAmount.ToString()"
+                                               @onchange="(e => Property.RentalAmount = decimal.TryParse(e.Value?.ToString(), out var val) ? val : Property.RentalAmount)"
+                                               Placeholder="Monthly rent"
+                                               IconLeft="fas fa-money-bill-wave">
                                     </RVTextbox>
                                 </div>
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="form-label">Lease Original Start Date</label>
+                                            <label class="form-label"><i class="fas fa-calendar-alt me-2"></i>Lease Original Start Date</label>
                                             <input type="datetime-local"
-                                            class="custom-datetime-input"
-                                            value="@(Property.LeaseOriginalStartDate.HasValue && Property.LeaseOriginalStartDate.Value != DateTime.MinValue ? Property.LeaseOriginalStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                            @onchange="(e => Property.LeaseOriginalStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseOriginalStartDate)" />
+                                                   class="custom-datetime-input"
+                                                   value="@(Property.LeaseOriginalStartDate.HasValue && Property.LeaseOriginalStartDate.Value != DateTime.MinValue ? Property.LeaseOriginalStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
+                                                   @onchange="(e => Property.LeaseOriginalStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseOriginalStartDate)" />
                                         </div>
                                     </div>
                                 </div>
@@ -174,22 +188,22 @@
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="roovia-textbox-label">Current Lease Start Date</label>
+                                            <label class="roovia-textbox-label"><i class="fas fa-calendar-check me-2"></i>Current Lease Start Date</label>
                                             <input type="datetime-local"
-                                            class="custom-datetime-input"
-                                            value="@(Property.CurrentLeaseStartDate.HasValue && Property.CurrentLeaseStartDate.Value != DateTime.MinValue ? Property.CurrentLeaseStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                            @onchange="(e => Property.CurrentLeaseStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.CurrentLeaseStartDate)" />
+                                                   class="custom-datetime-input"
+                                                   value="@(Property.CurrentLeaseStartDate.HasValue && Property.CurrentLeaseStartDate.Value != DateTime.MinValue ? Property.CurrentLeaseStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
+                                                   @onchange="(e => Property.CurrentLeaseStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.CurrentLeaseStartDate)" />
                                         </div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="roovia-textbox-label">Lease End Date</label>
+                                            <label class="roovia-textbox-label"><i class="fas fa-calendar-times me-2"></i>Lease End Date</label>
                                             <input type="datetime-local"
-                                            class="custom-datetime-input"
-                                            value="@(Property.LeaseEndDate.HasValue && Property.LeaseEndDate.Value != DateTime.MinValue ? Property.LeaseEndDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                            @onchange="(e => Property.LeaseEndDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseEndDate)" />
+                                                   class="custom-datetime-input"
+                                                   value="@(Property.LeaseEndDate.HasValue && Property.LeaseEndDate.Value != DateTime.MinValue ? Property.LeaseEndDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
+                                                   @onchange="(e => Property.LeaseEndDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseEndDate)" />
                                         </div>
                                     </div>
                                 </div>
@@ -197,37 +211,36 @@
                         </div>
                     </div>
                 </div>
+                @if (Tenant != null && Tenant.Id > 0)
+                {
+                    <div class="roovia-panel mb-4">
+                        <div class="roovia-panel-header">
+                            <h5 class="roovia-panel-title"><i class="fas fa-user me-2"></i>Tenant Summary</h5>
+                        </div>
+                        <div class="roovia-panel-body">
+                            <p><i class="fas fa-user me-2"></i><strong>Name:</strong> @Tenant.FirstName @Tenant.LastName</p>
+                            <p><i class="fas fa-envelope me-2"></i><strong>Email:</strong> @Tenant.EmailAddress</p>
+                            <p><i class="fas fa-mobile-alt me-2"></i><strong>Mobile:</strong> @Tenant.MobileNumber</p>
+                            <p><i class="fas fa-id-card me-2"></i><strong>ID Number:</strong> @Tenant.IdNumber</p>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
-
-        @if (Tenant != null && Tenant.Id > 0)
-        {
-            <div class="roovia-panel mb-4">
-                <div class="roovia-panel-header">
-                    <h5 class="roovia-panel-title"><i class="fas fa-user"></i> Tenant Summary</h5>
-                </div>
-                <div class="roovia-panel-body">
-                    <p><strong>Name:</strong> @Tenant.FirstName @Tenant.LastName</p>
-                    <p><strong>Email:</strong> @Tenant.EmailAddress</p>
-                    <p><strong>Mobile:</strong> @Tenant.MobileNumber</p>
-                    <p><strong>ID Number:</strong> @Tenant.IdNumber</p>
-                </div>
-            </div>
-        }
     </ChildContent>
     <FooterContent>
         <div class="d-flex justify-content-between w-100">
             <div>
-                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="LinkExistingTenant">  
-                    <i class="fas fa-link"></i>  
-                </RVButton>  
-                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="CreateNewTenant">  
-                    <i class="fas fa-user-plus"></i>  
+                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="LinkExistingTenant">
+                    <i class="fas fa-link"></i>
                 </RVButton>
-                <RVButton CssClass="btn roovia-btn me-2" OnClick="SaveProperty" >
+                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="CreateNewTenant">
+                    <i class="fas fa-user-plus"></i>
+                </RVButton>
+                <RVButton CssClass="btn roovia-btn me-2" OnClick="SaveProperty">
                     <i class="fas fa-save"></i>
                 </RVButton>
-                <RVButton CssClass="btn roovia-btn" OnClick="CloseModal" >
+                <RVButton CssClass="btn roovia-btn" OnClick="CloseModal">
                     <i class="fas fa-times"></i>
                 </RVButton>
             </div>
@@ -252,7 +265,6 @@
         </CascadingValue>
     </CascadingValue>
 }
-
 
 @code {
     [CascadingParameter]
@@ -282,9 +294,7 @@
     PropertyTenant Tenant = new();
 
     bool createTenantVisible = false;
-
     bool linkTenantClicked = false;
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -298,7 +308,6 @@
                 OwnerName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "Unknown Owner";
             }
         }
-
         await GetTenant();
     }
 
@@ -343,7 +352,6 @@
         }
     }
 
-
     private async Task LinkExistingTenant()
     {
         IsVisible = false;
@@ -352,7 +360,6 @@
 
     private async Task LinkTenantClosed()
     {
-
         linkTenantClicked = false;
         await OnModalClosed.InvokeAsync();
     }

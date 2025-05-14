@@ -309,67 +309,107 @@ namespace Roovia.Services
         {
             ResponseModel response = new();
             string sql = @"
-                SELECT 
-                    Id,
-                    PropertyId,
-                    CompanyId,
-                    FirstName,
-                    LastName,
-                    IdNumber,
-                    EmailAddress,
-                    IsEmailNotificationsEnabled,
-                    MobileNumber,
-                    IsSmsNotificationsEnabled,
-                    BankAccount_AccountType AS AccountType,
-                    BankAccount_AccountNumber AS AccountNumber,
-                    BankAccount_BankName AS BankName,
-                    BankAccount_BranchCode AS BranchCode,
-                    Address_Street AS Street,
-                    Address_UnitNumber AS UnitNumber,
-                    Address_ComplexName AS ComplexName,
-                    Address_BuildingName AS BuildingName,
-                    Address_Floor AS Floor,
-                    Address_City AS City,
-                    Address_Suburb AS Suburb,
-                    Address_Province AS Province,
-                    Address_PostalCode AS PostalCode,
-                    Address_Country AS Country,
-                    Address_GateCode AS GateCode,
-                    Address_IsResidential AS IsResidential,
-                    Address_Latitude AS Latitude,
-                    Address_Longitude AS Longitude,
-                    Address_DeliveryInstructions AS DeliveryInstructions,
-                    DebitDayOfMonth,
-                    CreatedOn,
-                    CreatedBy,
-                    UpdatedDate,
-                    UpdatedBy
-                FROM [PropertyTenants]
-                WHERE CompanyId = @CompanyId";
+        SELECT 
+            Id,
+            PropertyId,
+            CompanyId,
+            FirstName,
+            LastName,
+            IdNumber,
+            EmailAddress,
+            IsEmailNotificationsEnabled,
+            MobileNumber,
+            IsSmsNotificationsEnabled,
+            BankAccount_AccountType AS AccountType,
+            BankAccount_AccountNumber AS AccountNumber,
+            BankAccount_BankName AS BankName,
+            BankAccount_BranchCode AS BranchCode,
+            Address_Street AS Street,
+            Address_UnitNumber AS UnitNumber,
+            Address_ComplexName AS ComplexName,
+            Address_BuildingName AS BuildingName,
+            Address_Floor AS Floor,
+            Address_City AS City,
+            Address_Suburb AS Suburb,
+            Address_Province AS Province,
+            Address_PostalCode AS PostalCode,
+            Address_Country AS Country,
+            Address_GateCode AS GateCode,
+            Address_IsResidential AS IsResidential,
+            Address_Latitude AS Latitude,
+            Address_Longitude AS Longitude,
+            Address_DeliveryInstructions AS DeliveryInstructions,
+            DebitDayOfMonth,
+            CreatedOn,
+            CreatedBy,
+            UpdatedDate,
+            UpdatedBy
+        FROM [PropertyTenants]
+        WHERE CompanyId = @CompanyId";
 
             try
             {
                 using (var conn = new SqlConnection(_connectionString))
                 {
-                    var result = await conn.QueryAsync<PropertyTenant, BankAccount, Address, PropertyTenant>(
+                    var result = await conn.QueryAsync<PropertyTenant>(
                         sql,
-                        (tenant, bankAccount, address) =>
-                        {
-                            tenant.BankAccount = bankAccount;
-                            tenant.Address = address;
-
-                            if (tenant.CreatedOn == DateTime.MinValue)
-                            {
-                                tenant.CreatedOn = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
-                            }
-
-                            return tenant;
-                        },
-                        new { CompanyId = companyId },
-                        splitOn: "AccountType,Street"
+                        new { CompanyId = companyId }
                     );
 
-                    response.Response = result.ToList();
+                    var tenants = result.ToList();
+
+                    // Process each tenant manually
+                    foreach (var tenant in tenants)
+                    {
+                        // Ensure BankAccount object exists
+                        tenant.BankAccount = new BankAccount
+                        {
+                            AccountType = tenant.GetType().GetProperty("AccountType")?.GetValue(tenant)?.ToString(),
+                            AccountNumber = tenant.GetType().GetProperty("AccountNumber")?.GetValue(tenant)?.ToString(),
+                            BankName = Enum.TryParse<BankName>(tenant.GetType().GetProperty("BankName")?.GetValue(tenant)?.ToString(), out var bankNameEnum) ? bankNameEnum : default,
+                            BranchCode = tenant.GetType().GetProperty("BranchCode")?.GetValue(tenant)?.ToString()
+                        };
+
+                        // Ensure Address object exists
+                        tenant.Address = new Address
+                        {
+                            Street = tenant.GetType().GetProperty("Street")?.GetValue(tenant)?.ToString(),
+                            UnitNumber = tenant.GetType().GetProperty("UnitNumber")?.GetValue(tenant)?.ToString(),
+                            ComplexName = tenant.GetType().GetProperty("ComplexName")?.GetValue(tenant)?.ToString(),
+                            BuildingName = tenant.GetType().GetProperty("BuildingName")?.GetValue(tenant)?.ToString(),
+                            Floor = tenant.GetType().GetProperty("Floor")?.GetValue(tenant)?.ToString(),
+                            City = tenant.GetType().GetProperty("City")?.GetValue(tenant)?.ToString(),
+                            Suburb = tenant.GetType().GetProperty("Suburb")?.GetValue(tenant)?.ToString(),
+                            Province = tenant.GetType().GetProperty("Province")?.GetValue(tenant)?.ToString(),
+                            PostalCode = tenant.GetType().GetProperty("PostalCode")?.GetValue(tenant)?.ToString(),
+                            Country = tenant.GetType().GetProperty("Country")?.GetValue(tenant)?.ToString(),
+                            GateCode = tenant.GetType().GetProperty("GateCode")?.GetValue(tenant)?.ToString(),
+                            IsResidential = tenant.GetType().GetProperty("IsResidential")?.GetValue(tenant) as bool? ?? false,
+                            Latitude = tenant.GetType().GetProperty("Latitude")?.GetValue(tenant) as double?,
+                            Longitude = tenant.GetType().GetProperty("Longitude")?.GetValue(tenant) as double?,
+                            DeliveryInstructions = tenant.GetType().GetProperty("DeliveryInstructions")?.GetValue(tenant)?.ToString()
+                        };
+
+                        // Handle DateTime and GUID conversions
+                        if (tenant.CreatedOn != DateTime.MinValue && tenant.CreatedOn.Kind == DateTimeKind.Unspecified)
+                            tenant.CreatedOn = DateTime.SpecifyKind(tenant.CreatedOn, DateTimeKind.Utc);
+
+                        if (tenant.UpdatedDate != DateTime.MinValue && tenant.UpdatedDate.Kind == DateTimeKind.Unspecified)
+                            tenant.UpdatedDate = DateTime.SpecifyKind(tenant.UpdatedDate, DateTimeKind.Utc);
+
+                        if (tenant.CreatedBy == Guid.Empty && tenant.CreatedBy != null)
+                        {
+                            Guid.TryParse(tenant.CreatedBy.ToString(), out var createdBy);
+                            tenant.CreatedBy = createdBy;
+                        }
+                        if (tenant.UpdatedBy == Guid.Empty && tenant.UpdatedBy != null)
+                        {
+                            Guid.TryParse(tenant.UpdatedBy.ToString(), out var updatedBy);
+                            tenant.UpdatedBy = updatedBy;
+                        }
+                    }
+
+                    response.Response = tenants;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Tenants retrieved successfully.";
                 }

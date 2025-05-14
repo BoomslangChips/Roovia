@@ -1,72 +1,97 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Authorization
+@using Roovia.Components.Elements
 
 @attribute [Authorize]
 @rendermode InteractiveServer
 
 <div class="container my-4">
-    <div class="text-center mb-4">
-        <img src="images/roovia-logo.png" alt="Roovia Logo" class="roovia-logo img-fluid" style="width:25%; display:block; margin:auto;" />
+    <div class="d-flex justify-content-center mb-4">
+        <img src="images/roovia-logo.png" alt="Roovia Logo" class="roovia-logo img-fluid" style="width:25%;" />
     </div>
 
     <div class="mb-4">
-        <input type="text" class="form-control" placeholder="Universal Search..." @bind="searchTerm" />
+        <input type="text" class="form-control shadow-sm" placeholder="Universal Search..." @bind="searchTerm" />
     </div>
 
-    <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="card shadow-sm">
+    <div class="row g-4">
+        <div class="col-sm-12 col-md-4 col-lg-4">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     Beneficiaries
                 </div>
                 <div class="card-body text-center">
-                    <i class="bi bi-people-fill display-4"></i>
-                    <p class="mt-2">View Beneficiaries</p>
-                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToBeneficiaries">
-                        <i class="bi bi-eye"></i> View
-                    </button>
+                    <i class="fa fa-users display-4 text-primary"></i>
+                    <p class="mt-2 fw-semibold">View Beneficiaries</p>
+                    <RVButton Text="View"
+                              Size="sm"
+                              IconLeft="fa fa-eye"
+                              ButtonType="primary"
+                              OnClick="NavigateToBeneficiaries" />
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card shadow-sm">
+        <div class="col-sm-12 col-md-4 col-lg-4">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     Properties
                 </div>
                 <div class="card-body text-center">
-                    <i class="bi bi-building display-4"></i>
-                    <p class="mt-2">View Properties</p>
-                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToProperties">
-                        <i class="bi bi-eye"></i> View
-                    </button>
+                    <i class="fa fa-building display-4 text-primary"></i>
+                    <p class="mt-2 fw-semibold">View Properties</p>
+                    <RVButton Text="View"
+                              Size="sm"
+                              IconLeft="fa fa-eye"
+                              ButtonType="primary"
+                              OnClick="NavigateToProperties" />
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card shadow-sm">
+        <div class="col-sm-12 col-md-4 col-lg-4">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     Tenants
                 </div>
                 <div class="card-body text-center">
-                    <i class="bi bi-person-lines-fill display-4"></i>
-                    <p class="mt-2">View Tenants</p>
-                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToTenants">
-                        <i class="bi bi-eye"></i> View
-                    </button>
+                    <i class="fa fa-user-friends display-4 text-primary"></i>
+                    <p class="mt-2 fw-semibold">View Tenants</p>
+                    <RVButton Text="View"
+                              Size="sm"
+                              IconLeft="fa fa-eye"
+                              ButtonType="primary"
+                              OnClick="NavigateToTenants" />
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card shadow-sm">
+        <div class="col-sm-12 col-md-4 col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    Owners
+                </div>
+                <div class="card-body text-center">
+                    <i class="fa fa-user-tie display-4 text-primary"></i>
+                    <p class="mt-2 fw-semibold">View Owners</p>
+                    <RVButton Text="View"
+                              Size="sm"
+                              IconLeft="fa fa-eye"
+                              ButtonType="primary"
+                              OnClick="NavigateToPropertyOwners" />
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-12 col-md-4 col-lg-4">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     User Management
                 </div>
                 <div class="card-body text-center">
-                    <i class="bi bi-gear-fill display-4"></i>
-                    <p class="mt-2">Manage Users</p>
-                    <button class="btn roovia-btn btn-sm" @onclick="NavigateToUserManagement">
-                        <i class="bi bi-eye"></i> View
-                    </button>
+                    <i class="fa fa-user-cog display-4 text-primary"></i>
+                    <p class="mt-2 fw-semibold">Manage Users</p>
+                    <RVButton Text="View"
+                              Size="sm"
+                              IconLeft="fa fa-eye"
+                              ButtonType="primary"
+                              OnClick="NavigateToUserManagement" />
                 </div>
             </div>
         </div>
@@ -92,6 +117,11 @@
     private void NavigateToTenants()
     {
         NavigationManager.NavigateTo("/tenants");
+    }
+
+    private void NavigateToPropertyOwners()
+    {
+        NavigationManager.NavigateTo("/propertyowners");
     }
 
     private void NavigateToUserManagement()

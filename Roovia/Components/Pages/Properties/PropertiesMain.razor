@@ -8,7 +8,7 @@
 
 @rendermode InteractiveServer
 
-<div class="roovia-section">
+<div style="padding:1em" class="roovia-section">
     <div class="roovia-section-header">
         <h2 class="roovia-section-title">Properties</h2>
         <div class="d-flex gap-3">
@@ -109,12 +109,12 @@
                                         }
 
                                         <div class="d-flex justify-content-between mt-3">
-                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewProperty(property)">
-                                                <i class="bi bi-eye me-1"></i> View
-                                            </button>
-                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditProperty(property)">
-                                                <i class="bi bi-pencil me-1"></i> Edit
-                                            </button>
+                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => ViewProperty(property)" Title="View property">
+                                                <i class="fas fa-eye me-1"></i> View
+                                            </RVButton>
+                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => EditProperty(property)" Title="Edit property">
+                                                <i class="fas fa-pen me-1"></i> Edit
+                                            </RVButton>
                                         </div>
                                     </div>
                                 </div>

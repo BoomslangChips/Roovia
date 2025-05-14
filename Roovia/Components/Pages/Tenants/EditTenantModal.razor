@@ -57,10 +57,16 @@
                                             <RVTextbox Label="Mobile Number" Value="@Tenant.MobileNumber" @onchange="(e => Tenant.MobileNumber = e.Value.ToString())"></RVTextbox>
                                         </div>
                                         <div>
-                                            <RVCheckbox Label="Email Notifications" Value="@(Tenant.IsEmailNotificationsEnabled == "true")" @onchange="(e => Tenant.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                            <RVCheckbox Label="Email Notifications"
+                                                        Value="@(Tenant.IsEmailNotificationsEnabled == "true")"
+                                                        @onchange="OnEmailNotificationsChanged">
+                                            </RVCheckbox>
                                         </div>
                                         <div>
-                                            <RVCheckbox Label="SMS Notifications" Value="@(Tenant.IsSmsNotificationsEnabled == "true")" @onchange="(e => Tenant.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                                            <RVCheckbox Label="SMS Notifications"
+                                                        Value="@(Tenant.IsSmsNotificationsEnabled == "true")"
+                                                        @onchange="OnSmsNotificationsChanged">
+                                            </RVCheckbox>
                                         </div>
                                     </div>
                                 </div>
@@ -72,19 +78,19 @@
                         <!-- Address Tab -->
                         <div class="container-fluid">
                             <h5 class="text-primary mb-3">Address</h5>
-                            <div class="roovia-grid-cols-2 gap-4">  
-                               <div>  
-                                   <RVTextbox Label="Street" Value="@Tenant.Address?.Street" @onchange="(e => Tenant.Address.Street = e.Value?.ToString())"></RVTextbox>  
-                               </div>  
-                               <div>  
-                                   <RVTextbox Label="Unit Number" Value="@Tenant.Address?.UnitNumber" @onchange="(e => Tenant.Address.UnitNumber = e.Value?.ToString())"></RVTextbox>  
-                               </div>  
-                               <div>  
-                                   <RVTextbox Label="Complex Name" Value="@Tenant.Address?.ComplexName" @onchange="(e => Tenant.Address.ComplexName = e.Value?.ToString())"></RVTextbox>  
-                               </div>  
-                               <div>  
-                                   <RVTextbox Label="Building Name" Value="@Tenant.Address?.BuildingName" @onchange="(e => Tenant.Address.BuildingName = e.Value?.ToString())"></RVTextbox>  
-                               </div>  
+                            <div class="roovia-grid-cols-2 gap-4">
+                                <div>
+                                    <RVTextbox Label="Street" Value="@Tenant.Address?.Street" @onchange="(e => Tenant.Address.Street = e.Value?.ToString())"></RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Unit Number" Value="@Tenant.Address?.UnitNumber" @onchange="(e => Tenant.Address.UnitNumber = e.Value?.ToString())"></RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Complex Name" Value="@Tenant.Address?.ComplexName" @onchange="(e => Tenant.Address.ComplexName = e.Value?.ToString())"></RVTextbox>
+                                </div>
+                                <div>
+                                    <RVTextbox Label="Building Name" Value="@Tenant.Address?.BuildingName" @onchange="(e => Tenant.Address.BuildingName = e.Value?.ToString())"></RVTextbox>
+                                </div>
                             </div>
                         </div>
                     }
@@ -95,13 +101,13 @@
                             <h5 class="text-primary mb-3">Bank Details</h5>
                             <div class="roovia-grid-cols-3 gap-4">
                                 <div>
-                                    <RVTextbox Label="Account Type" Value="@Tenant.BankAccount.AccountType" @onchange="(e => Tenant.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                                    <RVTextbox Label="Account Type" Value="@Tenant.BankAccount?.AccountType" @onchange="(e => { if (Tenant.BankAccount != null) Tenant.BankAccount.AccountType = e.Value?.ToString(); })"></RVTextbox>
                                 </div>
                                 <div>
-                                    <RVTextbox Label="Account Number" Value="@Tenant.BankAccount.AccountNumber" @onchange="(e => Tenant.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                                    <RVTextbox Label="Account Number" Value="@Tenant.BankAccount?.AccountNumber" @onchange="(e => { if (Tenant.BankAccount != null) Tenant.BankAccount.AccountNumber = e.Value?.ToString(); })"></RVTextbox>
                                 </div>
                                 <div>
-                                    <RVTextbox Label="Branch Code" Value="@Tenant.BankAccount.BranchCode" @onchange="(e => Tenant.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
+                                    <RVTextbox Label="Branch Code" Value="@Tenant.BankAccount?.BranchCode" @onchange="(e => { if (Tenant.BankAccount != null) Tenant.BankAccount.BranchCode = e.Value?.ToString(); })"></RVTextbox>
                                 </div>
                             </div>
                         </div>
@@ -131,7 +137,7 @@
 </RVModal>
 
 @code {
-    [CascadingParameter] 
+    [CascadingParameter]
     public ApplicationUser? CurrentUser { get; set; }
 
     [CascadingParameter]
@@ -153,6 +159,33 @@
     {
         return tabNumber == ActiveTab ? "tab-item tab-active" : "tab-item tab-inactive";
     }
+
+
+    private void OnEmailNotificationsChanged(ChangeEventArgs e)
+    {
+        // RVCheckbox likely returns a bool value
+        if (e.Value is bool isChecked)
+        {
+            Tenant.IsEmailNotificationsEnabled = isChecked ? "true" : "false";
+        }
+        else if (e.Value is string str)
+        {
+            Tenant.IsEmailNotificationsEnabled = str.ToLower() == "true" ? "true" : "false";
+        }
+    }
+
+    private void OnSmsNotificationsChanged(ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked)
+        {
+            Tenant.IsSmsNotificationsEnabled = isChecked ? "true" : "false";
+        }
+        else if (e.Value is string str)
+        {
+            Tenant.IsSmsNotificationsEnabled = str.ToLower() == "true" ? "true" : "false";
+        }
+    }
+
 
     private async Task SaveTenant()
     {
@@ -199,19 +232,23 @@
         transition: all 0.2s ease;
         position: relative;
     }
+
     .tab-active {
         color: var(--primary) !important;
         font-weight: 600;
         background-color: var(--primary-lighter);
         border-bottom: 2px solid var(--primary);
     }
+
     .tab-inactive {
         color: var(--text-secondary);
     }
-    .tab-inactive:hover {
-        background-color: var(--subtle-bg);
-        color: var(--text-primary);
-    }
+
+        .tab-inactive:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+        }
+
     @@media (min-width: 1000px) {
         .roovia-modal {
             max-width: 60em !important;

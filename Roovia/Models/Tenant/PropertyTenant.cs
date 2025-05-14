@@ -25,6 +25,12 @@ namespace Roovia.Models.Tenant
         public DateTime UpdatedDate { get; set; }
 
         public Guid UpdatedBy { get; set; }
+
+        public PropertyTenant()
+        {
+            BankAccount = new();
+            Address = new();
+        }
     }
 
     public class PropertyTenantValidator : AbstractValidator<PropertyTenant>

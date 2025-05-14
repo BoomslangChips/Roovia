@@ -18,26 +18,34 @@
                 <!-- Property Details Section -->
                 <div class="roovia-panel mb-4">
                     <div class="roovia-panel-header">
-                        <h5 class="roovia-panel-title"><i class="fas fa-building me-2"></i>Property Details</h5>
+                        <h5 class="roovia-panel-title">
+                            <i class="fas fa-building me-2"></i>Property Details
+                        </h5>
                     </div>
                     <div class="roovia-panel-body">
-                        @* Owner Information *@
+                        <!-- Owner Information (read-only) -->
                         <div class="roovia-col-md-12 p-5">
-                            <h6 class="text-primary mb-3">Owner Information</h6>
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-user me-2"></i>Owner Information
+                            </h6>
                             <RVTextbox Label="Owner"
                                        Value="@($"{owner.FirstName} {owner.LastName}")"
-                                       Disabled="true">
+                                       Disabled="true"
+                                       IconLeft="fas fa-user">
                             </RVTextbox>
                         </div>
                         <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
                             <!-- Location Information -->
                             <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3">Location Information</h6>
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Location Information
+                                </h6>
                                 <div class="mb-3">
                                     <RVTextbox Label="Street"
                                                Value="@Property.Address?.Street"
                                                Disabled="true"
-                                               Placeholder="Street address">
+                                               Placeholder="Street address"
+                                               IconLeft="fas fa-road">
                                     </RVTextbox>
                                 </div>
                                 <div class="roovia-grid-cols-2 roovia-grid gap-3">
@@ -45,14 +53,16 @@
                                         <RVTextbox Label="Unit Number"
                                                    Value="@Property.Address?.UnitNumber"
                                                    Disabled="true"
-                                                   Placeholder="Unit #">
+                                                   Placeholder="Unit #"
+                                                   IconLeft="fas fa-building">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Floor"
                                                    Value="@Property.Address?.Floor"
                                                    Disabled="true"
-                                                   Placeholder="Floor level">
+                                                   Placeholder="Floor level"
+                                                   IconLeft="fas fa-layer-group">
                                         </RVTextbox>
                                     </div>
                                 </div>
@@ -60,34 +70,40 @@
                                     <RVTextbox Label="Complex Name"
                                                Value="@Property.Address?.ComplexName"
                                                Disabled="true"
-                                               Placeholder="Complex name">
+                                               Placeholder="Complex name"
+                                               IconLeft="fas fa-hotel">
                                     </RVTextbox>
                                 </div>
                                 <div class="mb-3">
                                     <RVTextbox Label="Building Name"
                                                Value="@Property.Address?.BuildingName"
                                                Disabled="true"
-                                               Placeholder="Building name">
+                                               Placeholder="Building name"
+                                               IconLeft="fas fa-building">
                                     </RVTextbox>
                                 </div>
                             </div>
 
                             <!-- City/Region Information -->
                             <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3">City/Region Information</h6>
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-city me-2"></i>City/Region Information
+                                </h6>
                                 <div class="roovia-grid-cols-2 roovia-grid gap-3">
                                     <div>
                                         <RVTextbox Label="City"
                                                    Value="@Property.Address?.City"
                                                    Disabled="true"
-                                                   Placeholder="City">
+                                                   Placeholder="City"
+                                                   IconLeft="fas fa-city">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Suburb"
                                                    Value="@Property.Address?.Suburb"
                                                    Disabled="true"
-                                                   Placeholder="Suburb">
+                                                   Placeholder="Suburb"
+                                                   IconLeft="fas fa-map-pin">
                                         </RVTextbox>
                                     </div>
                                 </div>
@@ -96,14 +112,16 @@
                                         <RVTextbox Label="Province"
                                                    Value="@Property.Address?.Province"
                                                    Disabled="true"
-                                                   Placeholder="Province/State">
+                                                   Placeholder="Province/State"
+                                                   IconLeft="fas fa-map">
                                         </RVTextbox>
                                     </div>
                                     <div>
                                         <RVTextbox Label="Postal Code"
                                                    Value="@Property.Address?.PostalCode"
                                                    Disabled="true"
-                                                   Placeholder="Postal/ZIP Code">
+                                                   Placeholder="Postal/ZIP Code"
+                                                   IconLeft="fas fa-mail-bulk">
                                         </RVTextbox>
                                     </div>
                                 </div>
@@ -111,7 +129,8 @@
                                     <RVTextbox Label="Country"
                                                Value="@Property.Address?.Country"
                                                Disabled="true"
-                                               Placeholder="Country">
+                                               Placeholder="Country"
+                                               IconLeft="fas fa-globe">
                                     </RVTextbox>
                                 </div>
                                 <div class="mb-3">
@@ -125,20 +144,24 @@
 
                         <!-- Access Information Section -->
                         <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3">Access Information</h6>
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-unlock-alt me-2"></i>Access Information
+                            </h6>
                             <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3">
                                 <div>
                                     <RVTextbox Label="Gate Code"
                                                Value="@Property.Address?.GateCode"
                                                Disabled="true"
-                                               Placeholder="Gate code">
+                                               Placeholder="Gate code"
+                                               IconLeft="fas fa-key">
                                     </RVTextbox>
                                 </div>
                                 <div>
                                     <RVTextbox Label="Delivery Instructions"
                                                Value="@Property.Address?.DeliveryInstructions"
                                                Disabled="true"
-                                               Placeholder="Delivery instructions">
+                                               Placeholder="Delivery instructions"
+                                               IconLeft="fas fa-info-circle">
                                     </RVTextbox>
                                 </div>
                             </div>
@@ -146,19 +169,24 @@
 
                         <!-- Lease Information Section -->
                         <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3">Lease Information</h6>
-                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-3 roovia-grid gap-3">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-file-contract me-2"></i>Lease Information
+                            </h6>
+                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3">
                                 <div>
                                     <RVTextbox Label="Rental Amount"
                                                Value="@Property.RentalAmount.ToString()"
                                                Disabled="true"
-                                               Placeholder="Monthly rent">
+                                               Placeholder="Monthly rent"
+                                               IconLeft="fas fa-money-bill-wave">
                                     </RVTextbox>
                                 </div>
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="form-label">Lease Original Start Date</label>
+                                            <label class="form-label">
+                                                <i class="fas fa-calendar-alt me-2"></i>Lease Original Start Date
+                                            </label>
                                             <input type="datetime-local"
                                                    class="custom-datetime-input"
                                                    value="@(Property.LeaseOriginalStartDate.HasValue ? Property.LeaseOriginalStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
@@ -166,19 +194,14 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <RVCheckbox Label="Has Tenant"
-                                                Value="@Property.HasTenant"
-                                                Disabled="true">
-                                    </RVCheckbox>
-                                </div>
                             </div>
-
                             <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3 mt-3">
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="roovia-textbox-label">Current Lease Start Date</label>
+                                            <label class="roovia-textbox-label">
+                                                <i class="fas fa-calendar-check me-2"></i>Current Lease Start Date
+                                            </label>
                                             <input type="datetime-local"
                                                    class="custom-datetime-input"
                                                    value="@(Property.CurrentLeaseStartDate.HasValue ? Property.CurrentLeaseStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
@@ -189,10 +212,12 @@
                                 <div>
                                     <div class="form-floating mb-3">
                                         <div class="rv-form-group">
-                                            <label class="roovia-textbox-label">Lease End Date</label>
+                                            <label class="roovia-textbox-label">
+                                                <i class="fas fa-calendar-times me-2"></i>Lease End Date
+                                            </label>
                                             <input type="datetime-local"
                                                    class="custom-datetime-input"
-                                                   value="@(Property.LeaseEndDate.HasValue ? Property.LeaseEndDate.Value.ToString("yyyy-MM-dd") : string.Empty)"
+                                                   value="@(Property.LeaseEndDate.HasValue ? Property.LeaseEndDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
                                                    disabled />
                                         </div>
                                     </div>
@@ -205,7 +230,7 @@
         </div>
     </ChildContent>
     <FooterContent>
-        <div class="d-flex justify-content-end w-100">
+        <div class="d-flex justify-end w-100">
             <button class="btn roovia-btn-secondary" @onclick="CloseModal">
                 <i class="fas fa-times me-1"></i> Close
             </button>
@@ -236,7 +261,6 @@
         {
             await LoadOwnerDetails();
         }
-
     }
     public async Task LoadOwnerDetails()
     {

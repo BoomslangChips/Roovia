@@ -128,8 +128,8 @@
                                                 <th>Rental Amount</th>
                                                 <th>Lease Status</th>
                                                 <th>Lease End Date</th>
-                                                <th>Actions</th>
-                                            </tr>
+@*                                                 <th>Actions</th>
+ *@                                            </tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var prop in selectedOwner.Properties)
@@ -151,16 +151,16 @@
                                                         }
                                                     </td>
                                                     <td>@prop.LeaseEndDate.Value.ToShortDateString()</td>
-                                                    <td>
+                                            @*         <td>
                                                         <div class="d-flex gap-2">
-                                                            <button class="btn-primary btn-sm rounded-md" @onclick="() => ViewProperty(prop)">
-                                                                <i class="fas fa-eye"></i> View
-                                                            </button>
-                                                            <button class="btn-secondary btn-sm rounded-md" @onclick="() => EditProperty(prop)">
-                                                                <i class="fas fa-pencil-alt"></i> Edit
-                                                            </button>
+                                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => ViewProperty(prop)" Title="View property">
+                                                                <i class="fas fa-eye me-1"></i> View
+                                                            </RVButton>
+                                                            <RVButton ButtonType="secondary" Size="sm" OnClick="() => EditProperty(prop)" Title="Edit property">
+                                                                <i class="fas fa-pencil-alt me-1"></i> Edit
+                                                            </RVButton>
                                                         </div>
-                                                    </td>
+                                                    </td> *@
                                                 </tr>
                                             }
                                         </tbody>
