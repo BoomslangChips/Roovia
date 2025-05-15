@@ -8,6 +8,7 @@ using System.Net.Mime;
 using Roovia.Models.UserCompanyModels;
 using Microsoft.Extensions.Configuration;
 using Roovia.Models.BusinessModels;
+using Roovia.Interfaces;
 
 namespace Roovia.Services.General
 {
