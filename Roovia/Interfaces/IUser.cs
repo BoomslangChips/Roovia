@@ -52,4 +52,6 @@ namespace Roovia.Interfaces
         Task<ResponseModel> GetContactNumbers(string entityType, object entityId);
         #endregion
     }
+
+
 }

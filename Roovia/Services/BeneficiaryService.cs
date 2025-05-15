@@ -265,6 +265,8 @@ namespace Roovia.Services
 
                 var beneficiary = await context.PropertyBeneficiaries
                     .Include(b => b.Payments)
+                    .Include(b => b.EmailAddresses)
+                    .Include(b => b.ContactNumbers)
                     .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId && b.IsActive);
 
                 if (beneficiary == null)
@@ -898,5 +900,56 @@ namespace Roovia.Services
 
             return response;
         }
+
+        #region Private Helper Methods
+
+        private async Task<PropertyBeneficiary> GetBeneficiaryWithDetails(ApplicationDbContext context, int beneficiaryId)
+        {
+            return await context.PropertyBeneficiaries
+                .Include(b => b.EmailAddresses.Where(e => e.IsActive))
+                .Include(b => b.ContactNumbers.Where(c => c.IsActive))
+                .Include(b => b.Property)
+                    .ThenInclude(p => p.Owner)
+                .Include(b => b.BenType)
+                .Include(b => b.CommissionType)
+                .Include(b => b.BenStatus)
+                .Include(b => b.Company)
+                .FirstOrDefaultAsync(b => b.Id == beneficiaryId);
+        }
+
+        private async Task SendStatusChangeNotification(PropertyBeneficiary beneficiary, string oldStatus, string newStatus)
+        {
+            try
+            {
+                var primaryEmail = beneficiary.PrimaryEmail;
+                if (string.IsNullOrEmpty(primaryEmail))
+                    return;
+
+                var emailContent = $@"
+                    <p>Dear {beneficiary.Name},</p>
+                    <p>Your beneficiary status has been updated.</p>
+                    <p><strong>Previous Status:</strong> {oldStatus}</p>
+                    <p><strong>New Status:</strong> {newStatus}</p>
+                    <p>If you have any questions regarding this change, please contact our support team.</p>
+                    <br>
+                    <p>Best regards,<br>The Roovia Team</p>
+                ";
+
+                await _emailService.SendEmailAsync(
+                    primaryEmail,
+                    "Beneficiary Status Update",
+                    emailContent
+                );
+
+                _logger.LogInformation("Status change notification sent to beneficiary {BeneficiaryId}", beneficiary.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending status change notification to beneficiary {BeneficiaryId}", beneficiary.Id);
+                // Don't throw - notification failure shouldn't break the status update
+            }
+        }
+
+        #endregion
     }
 }
