@@ -41,60 +41,60 @@ namespace Roovia.Security
             var permissions = new List<Permission>
             {
                 // Properties
-                new Permission { Name = "Create/Update Properties", Description = "Create or update properties", Category = "Properties", SystemName = "properties.create" },
-                new Permission { Name = "Archive/Restore Properties", Description = "Archive or restore properties", Category = "Properties", SystemName = "properties.archive" },
-                new Permission { Name = "Access All Properties", Description = "Access all properties", Category = "Properties", SystemName = "properties.view.all" },
-                new Permission { Name = "Access Budgets", Description = "Access property budgets", Category = "Properties", SystemName = "properties.budgets" },
+                new Permission { Name = "Create/Update Properties", Description = "Create or update properties", Category = "Properties", SystemName = "properties.create", CreatedBy = "System" },
+                new Permission { Name = "Archive/Restore Properties", Description = "Archive or restore properties", Category = "Properties", SystemName = "properties.archive", CreatedBy = "System" },
+                new Permission { Name = "Access All Properties", Description = "Access all properties", Category = "Properties", SystemName = "properties.view.all", CreatedBy = "System" },
+                new Permission { Name = "Access Budgets", Description = "Access property budgets", Category = "Properties", SystemName = "properties.budgets", CreatedBy = "System" },
                 
                 // Beneficiaries
-                new Permission { Name = "Create Beneficiaries", Description = "Create beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.create" },
-                new Permission { Name = "Update Beneficiaries", Description = "Update beneficiaries (excluding bank details)", Category = "Beneficiaries", SystemName = "beneficiaries.update" },
-                new Permission { Name = "Update Bank Details", Description = "Update beneficiary bank details", Category = "Beneficiaries", SystemName = "beneficiaries.update.bank" },
-                new Permission { Name = "Archive/Restore Beneficiaries", Description = "Archive or restore beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.archive" },
-                new Permission { Name = "Manage Payments", Description = "Create or update beneficiary payments", Category = "Beneficiaries", SystemName = "beneficiaries.payments" },
-                new Permission { Name = "Approve Details", Description = "Approve beneficiary details", Category = "Beneficiaries", SystemName = "beneficiaries.approve" },
+                new Permission { Name = "Create Beneficiaries", Description = "Create beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.create", CreatedBy = "System" },
+                new Permission { Name = "Update Beneficiaries", Description = "Update beneficiaries (excluding bank details)", Category = "Beneficiaries", SystemName = "beneficiaries.update", CreatedBy = "System" },
+                new Permission { Name = "Update Bank Details", Description = "Update beneficiary bank details", Category = "Beneficiaries", SystemName = "beneficiaries.update.bank", CreatedBy = "System" },
+                new Permission { Name = "Archive/Restore Beneficiaries", Description = "Archive or restore beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.archive", CreatedBy = "System" },
+                new Permission { Name = "Manage Payments", Description = "Create or update beneficiary payments", Category = "Beneficiaries", SystemName = "beneficiaries.payments", CreatedBy = "System" },
+                new Permission { Name = "Approve Details", Description = "Approve beneficiary details", Category = "Beneficiaries", SystemName = "beneficiaries.approve", CreatedBy = "System" },
                 
                 // Tenants
-                new Permission { Name = "Create/Update Tenants", Description = "Create or update tenants", Category = "Tenants", SystemName = "tenants.create" },
-                new Permission { Name = "Archive/Restore Tenants", Description = "Archive or restore tenants", Category = "Tenants", SystemName = "tenants.archive" },
-                new Permission { Name = "Change Bank Details", Description = "Change tenant's bank details", Category = "Tenants", SystemName = "tenants.update.bank" },
-                new Permission { Name = "Manage Invoices", Description = "Create or update tenant invoices", Category = "Tenants", SystemName = "tenants.invoices" },
-                new Permission { Name = "Create Notes", Description = "Create credit/debit notes", Category = "Tenants", SystemName = "tenants.notes" },
-                new Permission { Name = "Request Deposit Release", Description = "Request damage deposit release", Category = "Tenants", SystemName = "tenants.deposit.request" },
-                new Permission { Name = "Approve Deposit Release", Description = "Approve damage deposit release", Category = "Tenants", SystemName = "tenants.deposit.approve" },
-                new Permission { Name = "View TPN Reports", Description = "View tenant TPN reports", Category = "Tenants", SystemName = "tenants.tpn.view" },
-                new Permission { Name = "Do Credit Checks", Description = "Perform credit checks", Category = "Tenants", SystemName = "tenants.credit.check" },
-                new Permission { Name = "Export TPN Data", Description = "Download TPN data exports", Category = "Tenants", SystemName = "tenants.tpn.export" },
-                new Permission { Name = "Send Payment Reminders", Description = "Send payment reminders", Category = "Tenants", SystemName = "tenants.reminders" },
-                new Permission { Name = "Send Demand Letters", Description = "Send letters of demand", Category = "Tenants", SystemName = "tenants.demand.letters" },
-                new Permission { Name = "View Arrears", Description = "View tenants in arrears", Category = "Tenants", SystemName = "tenants.arrears.view" },
+                new Permission { Name = "Create/Update Tenants", Description = "Create or update tenants", Category = "Tenants", SystemName = "tenants.create", CreatedBy = "System" },
+                new Permission { Name = "Archive/Restore Tenants", Description = "Archive or restore tenants", Category = "Tenants", SystemName = "tenants.archive", CreatedBy = "System" },
+                new Permission { Name = "Change Bank Details", Description = "Change tenant's bank details", Category = "Tenants", SystemName = "tenants.update.bank", CreatedBy = "System" },
+                new Permission { Name = "Manage Invoices", Description = "Create or update tenant invoices", Category = "Tenants", SystemName = "tenants.invoices", CreatedBy = "System" },
+                new Permission { Name = "Create Notes", Description = "Create credit/debit notes", Category = "Tenants", SystemName = "tenants.notes", CreatedBy = "System" },
+                new Permission { Name = "Request Deposit Release", Description = "Request damage deposit release", Category = "Tenants", SystemName = "tenants.deposit.request", CreatedBy = "System" },
+                new Permission { Name = "Approve Deposit Release", Description = "Approve damage deposit release", Category = "Tenants", SystemName = "tenants.deposit.approve", CreatedBy = "System" },
+                new Permission { Name = "View TPN Reports", Description = "View tenant TPN reports", Category = "Tenants", SystemName = "tenants.tpn.view", CreatedBy = "System" },
+                new Permission { Name = "Do Credit Checks", Description = "Perform credit checks", Category = "Tenants", SystemName = "tenants.credit.check", CreatedBy = "System" },
+                new Permission { Name = "Export TPN Data", Description = "Download TPN data exports", Category = "Tenants", SystemName = "tenants.tpn.export", CreatedBy = "System" },
+                new Permission { Name = "Send Payment Reminders", Description = "Send payment reminders", Category = "Tenants", SystemName = "tenants.reminders", CreatedBy = "System" },
+                new Permission { Name = "Send Demand Letters", Description = "Send letters of demand", Category = "Tenants", SystemName = "tenants.demand.letters", CreatedBy = "System" },
+                new Permission { Name = "View Arrears", Description = "View tenants in arrears", Category = "Tenants", SystemName = "tenants.arrears.view", CreatedBy = "System" },
                 
                 // Reports
-                new Permission { Name = "View Commission Reports", Description = "View commission reports", Category = "Reports", SystemName = "reports.commission" },
-                new Permission { Name = "View Transaction History", Description = "View transaction history reports", Category = "Reports", SystemName = "reports.transactions" },
-                new Permission { Name = "View Payment Confirmations", Description = "View payment confirmations", Category = "Reports", SystemName = "reports.payments" },
-                new Permission { Name = "Download Bulk Statements", Description = "Download bulk statements", Category = "Reports", SystemName = "reports.statements" },
-                new Permission { Name = "View Audit Log", Description = "View audit log", Category = "Reports", SystemName = "reports.audit" },
-                new Permission { Name = "View Commission QuickStats", Description = "View commission quickstats", Category = "Reports", SystemName = "reports.quickstats" },
-                new Permission { Name = "View Contact Details", Description = "View contact details", Category = "Reports", SystemName = "reports.contacts" },
-                new Permission { Name = "View Management Reports", Description = "View management reports", Category = "Reports", SystemName = "reports.management" },
+                new Permission { Name = "View Commission Reports", Description = "View commission reports", Category = "Reports", SystemName = "reports.commission", CreatedBy = "System" },
+                new Permission { Name = "View Transaction History", Description = "View transaction history reports", Category = "Reports", SystemName = "reports.transactions", CreatedBy = "System" },
+                new Permission { Name = "View Payment Confirmations", Description = "View payment confirmations", Category = "Reports", SystemName = "reports.payments", CreatedBy = "System" },
+                new Permission { Name = "Download Bulk Statements", Description = "Download bulk statements", Category = "Reports", SystemName = "reports.statements", CreatedBy = "System" },
+                new Permission { Name = "View Audit Log", Description = "View audit log", Category = "Reports", SystemName = "reports.audit", CreatedBy = "System" },
+                new Permission { Name = "View Commission QuickStats", Description = "View commission quickstats", Category = "Reports", SystemName = "reports.quickstats", CreatedBy = "System" },
+                new Permission { Name = "View Contact Details", Description = "View contact details", Category = "Reports", SystemName = "reports.contacts", CreatedBy = "System" },
+                new Permission { Name = "View Management Reports", Description = "View management reports", Category = "Reports", SystemName = "reports.management", CreatedBy = "System" },
                 
                 // Bank Statements & Payments
-                new Permission { Name = "Reject Beneficiary Payments", Description = "Reject beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.reject" },
-                new Permission { Name = "View Direct Deposits", Description = "View direct deposits", Category = "Bank Statements & Payments", SystemName = "payments.deposits.view" },
-                new Permission { Name = "Reconcile Direct Deposits", Description = "Reconcile direct deposits", Category = "Bank Statements & Payments", SystemName = "payments.deposits.reconcile" },
-                new Permission { Name = "Request Early Clearance", Description = "Request early cheque clearance", Category = "Bank Statements & Payments", SystemName = "payments.clearance.request" },
-                new Permission { Name = "Approve Payments", Description = "Approve beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.approve" },
-                new Permission { Name = "Send Payment Proofs", Description = "Send proof of payment requests", Category = "Bank Statements & Payments", SystemName = "payments.proofs" },
+                new Permission { Name = "Reject Beneficiary Payments", Description = "Reject beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.reject", CreatedBy = "System" },
+                new Permission { Name = "View Direct Deposits", Description = "View direct deposits", Category = "Bank Statements & Payments", SystemName = "payments.deposits.view", CreatedBy = "System" },
+                new Permission { Name = "Reconcile Direct Deposits", Description = "Reconcile direct deposits", Category = "Bank Statements & Payments", SystemName = "payments.deposits.reconcile", CreatedBy = "System" },
+                new Permission { Name = "Request Early Clearance", Description = "Request early cheque clearance", Category = "Bank Statements & Payments", SystemName = "payments.clearance.request", CreatedBy = "System" },
+                new Permission { Name = "Approve Payments", Description = "Approve beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.approve", CreatedBy = "System" },
+                new Permission { Name = "Send Payment Proofs", Description = "Send proof of payment requests", Category = "Bank Statements & Payments", SystemName = "payments.proofs", CreatedBy = "System" },
                 
                 // System Settings
-                new Permission { Name = "Manage Users", Description = "Create or update users", Category = "System Settings", SystemName = "settings.users" },
-                new Permission { Name = "Update Profile", Description = "Update profile settings", Category = "System Settings", SystemName = "settings.profile" },
-                new Permission { Name = "Import Data", Description = "Import data", Category = "System Settings", SystemName = "settings.import" },
-                new Permission { Name = "Export Data", Description = "Export data", Category = "System Settings", SystemName = "settings.export" },
-                new Permission { Name = "Manage Application Settings", Description = "Manage application settings", Category = "System Settings", SystemName = "settings.application" },
-                new Permission { Name = "Upload Documents", Description = "Upload documents", Category = "System Settings", SystemName = "settings.documents" },
-                new Permission { Name = "Manage Roles & Permissions", Description = "Manage roles and permissions", Category = "System Settings", SystemName = "settings.permissions" }
+                new Permission { Name = "Manage Users", Description = "Create or update users", Category = "System Settings", SystemName = "settings.users", CreatedBy = "System" },
+                new Permission { Name = "Update Profile", Description = "Update profile settings", Category = "System Settings", SystemName = "settings.profile", CreatedBy = "System" },
+                new Permission { Name = "Import Data", Description = "Import data", Category = "System Settings", SystemName = "settings.import", CreatedBy = "System" },
+                new Permission { Name = "Export Data", Description = "Export data", Category = "System Settings", SystemName = "settings.export", CreatedBy = "System" },
+                new Permission { Name = "Manage Application Settings", Description = "Manage application settings", Category = "System Settings", SystemName = "settings.application", CreatedBy = "System" },
+                new Permission { Name = "Upload Documents", Description = "Upload documents", Category = "System Settings", SystemName = "settings.documents", CreatedBy = "System" },
+                new Permission { Name = "Manage Roles & Permissions", Description = "Manage roles and permissions", Category = "System Settings", SystemName = "settings.permissions", CreatedBy = "System" }
             };
 
             await dbContext.Permissions.AddRangeAsync(permissions);
@@ -194,7 +194,8 @@ namespace Roovia.Security
             {
                 RoleId = adminRole.Id,
                 PermissionId = p.Id,
-                IsActive = true
+                IsActive = true,
+                CreatedBy = "System"
             }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(adminPermissions);
@@ -208,7 +209,8 @@ namespace Roovia.Security
                 {
                     RoleId = propertyManagerRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(propertyManagerPermissions);
@@ -230,7 +232,8 @@ namespace Roovia.Security
                 {
                     RoleId = financialRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(financialPermissions);
@@ -250,7 +253,8 @@ namespace Roovia.Security
                 {
                     RoleId = tenantRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(tenantPermissions);
@@ -270,7 +274,8 @@ namespace Roovia.Security
                 {
                     RoleId = reportsRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(reportPermissions);
@@ -288,7 +293,8 @@ namespace Roovia.Security
                 {
                     RoleId = branchManagerRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(branchManagerPermissions);
@@ -305,7 +311,8 @@ namespace Roovia.Security
                 {
                     RoleId = companyAdminRole.Id,
                     PermissionId = p.Id,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedBy = "System"
                 }).ToList();
 
             await dbContext.RolePermissions.AddRangeAsync(companyAdminPermissions);

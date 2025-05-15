@@ -9,6 +9,8 @@
 @using Roovia.Interfaces
 @using System.Linq.Expressions
 @using Roovia.Components.Layout
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
 @rendermode InteractiveServer
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -684,7 +686,7 @@
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
-    private RVModal ErrorModal;
+    private RVModal ErrorModal = default!;
     private bool ShowErrorModal = false;
 
     [SupplyParameterFromForm]
@@ -744,13 +746,6 @@
                     }
                 });
             ");
-        }
-
-        // Show error modal if there are identity errors
-        if (identityErrors != null && identityErrors.Any() && !ShowErrorModal)
-        {
-            //ShowErrorModal = true;
-            StateHasChanged();
         }
     }
 
@@ -1016,7 +1011,7 @@
         var memberExpression = expression.Body as MemberExpression;
         var propertyName = memberExpression?.Member.Name;
 
-        return ValidationErrors.Any(e => e.MemberNames.Contains(propertyName));
+        return ValidationErrors.Any(e => e.MemberNames.Contains($"Input.{propertyName}"));
     }
 
     private string GetValidationMessage(Expression<Func<object>> expression)
@@ -1024,7 +1019,7 @@
         var memberExpression = expression.Body as MemberExpression;
         var propertyName = memberExpression?.Member.Name;
 
-        return ValidationErrors.FirstOrDefault(e => e.MemberNames.Contains(propertyName))?.ErrorMessage ?? "";
+        return ValidationErrors.FirstOrDefault(e => e.MemberNames.Contains($"Input.{propertyName}"))?.ErrorMessage ?? "";
     }
 
     private async Task HandleSubmit()
@@ -1046,7 +1041,7 @@
         }
     }
 
-    public async Task RegisterUser(EditContext editContext)
+    public async Task RegisterUser(EditContext? editContext)
     {
         try
         {
@@ -1057,7 +1052,7 @@
             user.FirstName = Input.FirstName;
             user.LastName = Input.LastName;
             user.Role = SystemRole.CompanyAdmin; // Set as Company Admin
-            user.IsActive = false; // Set to pending status
+            user.IsActive = false; // Set to pending status until email confirmation
             user.CreatedDate = DateTime.Now;
             user.CreatedBy = "Self-Registration";
 
@@ -1065,9 +1060,6 @@
             await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
             var emailStore = GetEmailStore();
             await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-
-            // Set phone number directly on the base class to avoid triggering our override
-            ((IdentityUser)user).PhoneNumber = Input.PhoneNumber;
 
             // Create the user with password
             var result = await UserManager.CreateAsync(user, Input.Password);
@@ -1081,31 +1073,31 @@
 
             // Get the newly created user ID
             var userId = await UserManager.GetUserIdAsync(user);
+            Logger.LogInformation("Created user with ID: {UserId}", userId);
 
             // 2. Create the company
             var company = new Company
+            {
+                Name = Input.CompanyName,
+                RegistrationNumber = Input.RegistrationNumber,
+                VatNumber = Input.VatNumber,
+                Website = Input.Website,
+                IsActive = false, // Set to pending until approved
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId,
+                Address = new Address
                 {
-                    Name = Input.CompanyName,
-                    RegistrationNumber = Input.RegistrationNumber,
-                    VatNumber = Input.VatNumber,
-                    Website = Input.Website,
-                    IsActive = false, // Set to pending until approved
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId,
-                    Address = new Address
-                    {
-                        Street = Input.Street,
-                        City = Input.City,
-                        Suburb = Input.Suburb,
-                        Province = Input.Province,
-                        PostalCode = Input.PostalCode,
-                        Country = Input.Country,
-                        IsResidential = false // Business address
-                    },
-                // IMPORTANT: Don't initialize EmailAddresses and ContactNumbers here
-                };
+                    Street = Input.Street,
+                    City = Input.City,
+                    Suburb = Input.Suburb,
+                    Province = Input.Province,
+                    PostalCode = Input.PostalCode,
+                    Country = Input.Country,
+                    IsResidential = false // Business address
+                }
+            };
 
-            // Create the company first without related entities
+            // Create the company
             var companyResult = await UserService.CreateCompany(company);
 
             if (!companyResult.ResponseInfo.Success)
@@ -1118,52 +1110,59 @@
             }
 
             // Get the newly created company
-            var createdCompany = (Company)companyResult.Response;
+            var createdCompany = (Company)companyResult.Response!;
+            Logger.LogInformation("Created company with ID: {CompanyId}", createdCompany.Id);
 
             // 3. Update the user with the company ID
             await UserService.UpdateUserCompanyId(userId, createdCompany.Id);
+            Logger.LogInformation("Updated user with company ID: {CompanyId}", createdCompany.Id);
 
-            // 4. Now add email and contact number to the company separately
+            // 4. Add email and contact number to the company
             var companyEmail = new Email
-                {
-                    EmailAddress = Input.CompanyEmail,
-                    Description = "Primary",
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = createdCompany.Id,
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId
-                };
+            {
+                EmailAddress = Input.CompanyEmail,
+                Description = "Primary",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Company",
+                RelatedEntityId = createdCompany.Id,
+                CompanyId = createdCompany.Id,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
 
             await UserService.AddEmailAddress(companyEmail);
+            Logger.LogInformation("Added company email");
 
             var companyPhone = new ContactNumber
-                {
-                    Number = Input.CompanyPhone,
-                    Type = ContactNumberType.Landline,
-                    Description = "Main Office",
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Company",
-                    RelatedEntityId = createdCompany.Id,
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId
-                };
+            {
+                Number = Input.CompanyPhone,
+                Type = ContactNumberType.Landline,
+                Description = "Main Office",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Company",
+                RelatedEntityId = createdCompany.Id,
+                CompanyId = createdCompany.Id,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
 
             await UserService.AddContactNumber(companyPhone);
+            Logger.LogInformation("Added company phone");
 
-            // 5. Create a default branch without related entities
+            // 5. Create a default branch
             var branch = new Branch
-                {
-                    Name = "Main Office",
-                    CompanyId = createdCompany.Id,
-                    Address = company.Address, // Use the same address
-                    IsActive = false, // Set to pending
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId,
-                // IMPORTANT: Don't initialize EmailAddresses and ContactNumbers here
-                };
+            {
+                Name = "Main Office",
+                Code = "HQ",
+                CompanyId = createdCompany.Id,
+                Address = company.Address, // Use the same address
+                IsActive = false, // Set to pending
+                IsHeadOffice = true,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
 
             var branchResult = await UserService.CreateBranch(branch);
 
@@ -1174,42 +1173,82 @@
                 return;
             }
 
-            var createdBranch = (Branch)branchResult.Response;
+            var createdBranch = (Branch)branchResult.Response!;
+            Logger.LogInformation("Created branch with ID: {BranchId}", createdBranch.Id);
 
             // Update user with branch ID
-            await UserService.UpdateUserBranch(userId, createdBranch.Id);
+            await UserService.UpdateUserBranchId(userId, createdBranch.Id);
+            Logger.LogInformation("Updated user with branch ID: {BranchId}", createdBranch.Id);
 
-            // 6. Now add email and contact number to the branch separately
+            // 6. Add email and contact number to the branch
             var branchEmail = new Email
-                {
-                    EmailAddress = Input.CompanyEmail,
-                    Description = "Primary",
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Branch",
-                    RelatedEntityId = createdBranch.Id,
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId
-                };
+            {
+                EmailAddress = Input.CompanyEmail,
+                Description = "Primary",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Branch",
+                RelatedEntityId = createdBranch.Id,
+                BranchId = createdBranch.Id,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
 
             await UserService.AddEmailAddress(branchEmail);
+            Logger.LogInformation("Added branch email");
 
             var branchPhone = new ContactNumber
-                {
-                    Number = Input.CompanyPhone,
-                    Type = ContactNumberType.Landline,
-                    Description = "Reception",
-                    IsPrimary = true,
-                    IsActive = true,
-                    RelatedEntityType = "Branch",
-                    RelatedEntityId = createdBranch.Id,
-                    CreatedOn = DateTime.Now,
-                    CreatedBy = userId
-                };
+            {
+                Number = Input.CompanyPhone,
+                Type = ContactNumberType.Landline,
+                Description = "Reception",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Branch",
+                RelatedEntityId = createdBranch.Id,
+                BranchId = createdBranch.Id,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
 
             await UserService.AddContactNumber(branchPhone);
+            Logger.LogInformation("Added branch phone");
 
-            // 7. Send email confirmation
+            // 7. Add user's personal email and phone number
+            var userEmail = new Email
+            {
+                EmailAddress = Input.Email,
+                Description = "Primary",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "User",
+                RelatedEntityStringId = userId,
+                ApplicationUserId = userId,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
+
+            await UserService.AddEmailAddress(userEmail);
+            Logger.LogInformation("Added user email");
+
+            var userPhone = new ContactNumber
+            {
+                Number = Input.PhoneNumber,
+                Type = ContactNumberType.Mobile,
+                Description = "Mobile",
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "User",
+                RelatedEntityStringId = userId,
+                ApplicationUserId = userId,
+                CreatedOn = DateTime.Now,
+                CreatedBy = userId
+            };
+
+            await UserService.AddContactNumber(userPhone);
+            Logger.LogInformation("Added user phone");
+
+            // 8. Send email confirmation
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
             var callbackUrl = NavigationManager.GetUriWithQueryParameters(
@@ -1217,13 +1256,14 @@
                 new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
 
             await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+            Logger.LogInformation("Sent confirmation email to {Email}", Input.Email);
 
-            // 8. Navigate to registration confirmation
+            // 9. Navigate to registration confirmation
             RedirectManager.RedirectTo(
                 "Account/RegistrationPending",
                 new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
         }
-        catch (Exception ex) when (ex is not NavigationException) // Add exception filter
+        catch (Exception ex)
         {
             Logger.LogError(ex, "Registration failed");
             identityErrors = new[]
@@ -1865,19 +1905,23 @@
 
     .custom-checkbox {
         position: relative;
+        display: flex;
+        align-items: center;
         padding-left: 36px;
         margin-bottom: var(--spacing-2);
         cursor: pointer;
         user-select: none;
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
     }
 
-        .custom-checkbox input {
-            position: absolute;
-            opacity: 0;
-            height: 0;
-            width: 0;
-            cursor: pointer;
-        }
+    .checkbox-input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
 
     .checkbox-visual {
         position: absolute;
@@ -1889,6 +1933,7 @@
         border: 1.5px solid var(--border-divider);
         border-radius: var(--border-radius-sm);
         transition: all 0.2s ease;
+        display: inline-block;
     }
 
     .custom-checkbox input:checked ~ .checkbox-visual {
@@ -1927,6 +1972,7 @@
 
         .terms-link:hover {
             text-decoration: underline;
+            color: var(--primary-hover);
         }
 
     .terms-error {
@@ -2394,245 +2440,5 @@
         font-size: var(--font-size-xs);
         color: var(--danger);
         animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-    }
-
-    /* Terms Container */
-    .terms-container {
-        margin-top: var(--spacing-4);
-    }
-
-    .custom-checkbox {
-        position: relative;
-        display: flex;
-        align-items: center;
-        padding-left: 36px;
-        margin-bottom: var(--spacing-2);
-        cursor: pointer;
-        user-select: none;
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-    }
-
-    .checkbox-input {
-        position: absolute;
-        opacity: 0;
-        cursor: pointer;
-        height: 0;
-        width: 0;
-    }
-
-    .checkbox-visual {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 24px;
-        width: 24px;
-        background-color: var(--input-bg);
-        border: 1.5px solid var(--border-divider);
-        border-radius: var(--border-radius-sm);
-        transition: all 0.2s ease;
-        display: inline-block;
-    }
-
-    .custom-checkbox input:checked ~ .checkbox-visual {
-        background-color: var(--primary);
-        border-color: var(--primary);
-    }
-
-    .checkbox-visual:after {
-        content: "";
-        position: absolute;
-        display: none;
-        left: 8px;
-        top: 3px;
-        width: 6px;
-        height: 12px;
-        border: solid white;
-        border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
-    }
-
-    .custom-checkbox input:checked ~ .checkbox-visual:after {
-        display: block;
-    }
-
-    .checkbox-text {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        line-height: 24px;
-    }
-
-    .terms-link {
-        color: var(--primary);
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-
-        .terms-link:hover {
-            text-decoration: underline;
-            color: var(--primary-hover);
-        }
-
-    .terms-error {
-        margin-top: var(--spacing-2);
-    }
-
-    /* Auth alert styles for all auth pages */
-    .auth-page {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
-        animation: fadeIn 0.5s ease-in-out;
-    }
-
-    .auth-container {
-        background: var(--content-bg);
-        border-radius: 15px;
-        padding: 2.5rem;
-        width: 100%;
-        max-width: 550px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        animation: slideUp 0.5s ease-in-out;
-    }
-
-    .auth-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .auth-logo {
-        height: 50px;
-        margin-bottom: 1.5rem;
-    }
-
-    .auth-header h1 {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 0.5rem;
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .auth-header h2 {
-        color: var(--text-secondary);
-        font-size: 1rem;
-        font-weight: 400;
-        margin-top: 0;
-    }
-
-    .auth-alert {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        padding: 1.25rem;
-        border-radius: 8px;
-    }
-
-    .auth-alert-success {
-        background-color: #e8f6ee;
-        color: #155724;
-        border-left: 4px solid #28a745;
-    }
-
-    .auth-alert-danger {
-        background-color: #FFF4F4;
-        color: #721c24;
-        border-left: 4px solid #d9534f;
-    }
-
-    .auth-alert i {
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-
-    .auth-alert-content h3 {
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-
-    .auth-alert-content p {
-        margin: 0;
-    }
-
-    .auth-form {
-        margin-bottom: 1.5rem;
-    }
-
-        .auth-form .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-    .auth-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        width: 100%;
-        padding: 0.875rem;
-        background: var(--primary-gradient);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 1rem;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: center;
-    }
-
-        .auth-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
-        }
-
-        .auth-button i {
-            transition: transform 0.2s ease;
-        }
-
-        .auth-button:hover i.fal.fa-arrow-right,
-        .auth-button:hover i.fal.fa-paper-plane,
-        .auth-button:hover i.fal.fa-sign-in {
-            transform: translateX(4px);
-        }
-
-    .auth-footer {
-        text-align: center;
-        margin-top: 1.5rem;
-        color: var(--text-secondary);
-    }
-
-    .auth-link {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-        .auth-link:hover {
-            text-decoration: underline;
-        }
-
-    .auth-actions {
-        margin-top: 1.5rem;
-    }
-
-    @@media (max-width: 576px) {
-        .auth-container
-
-    {
-        padding: 1.5rem;
-    }
-
-    .auth-header h1 {
-        font-size: 1.5rem;
-    }
-
     }
 </style>

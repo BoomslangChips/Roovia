@@ -88,7 +88,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 //builder.Services.AddScoped<ITenant, TenantService>();
 //builder.Services.AddScoped<IProperty, PropertyService>();
 //builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
-//builder.Services.AddScoped<IUser, UserService>();
+builder.Services.AddScoped<IUser, UserService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 // Register utility services
@@ -96,6 +96,9 @@ builder.Services.AddScoped<ToastService>();
 
 // Register CDN service as singleton for better performance
 builder.Services.AddSingleton<ICdnService, CdnService>();
+
+// Register the seed data service
+builder.Services.AddScoped<ISeedDataService, SeedDataService>();
 
 // Register authorization configuration
 builder.Services.AddAuthorization(options =>
@@ -219,7 +222,7 @@ else
         }
 
         // Create standard category directories
-        var standardCategories = new[] { "documents", "images", "logos", "hr", "profiles", "test-uploads" };
+        var standardCategories = new[] { "documents", "images", "logos", "profiles"};
         foreach (var category in standardCategories)
         {
             var categoryPath = Path.Combine(cdnStoragePath, category);
@@ -253,18 +256,34 @@ else
     }
 }
 
-
-// Optional: Seed permissions and roles
-if (app.Environment.IsDevelopment())
+// Initialize database and seed data
+using (var scope = app.Services.CreateScope())
 {
+    var services = scope.ServiceProvider;
+
     try
     {
-        await PermissionSeeder.SeedPermissionsAndRoles(app.Services);
+        // First, ensure the database exists and is migrated
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+
+        // Seed all lookup tables
+        var seedDataService = services.GetRequiredService<ISeedDataService>();
+        await seedDataService.InitializeAsync();
+
+        // Seed permissions and roles
+        await PermissionSeeder.SeedPermissionsAndRoles(services);
+
+        logger.LogInformation("Database initialization and seeding completed successfully");
     }
     catch (Exception ex)
     {
-        var permLogger = app.Services.GetRequiredService<ILogger<Program>>();
-        permLogger.LogError(ex, "An error occurred while seeding the database.");
+        logger.LogError(ex, "An error occurred while initializing the database");
+        // In production, you might want to handle this differently
+        if (app.Environment.IsDevelopment())
+        {
+            throw;
+        }
     }
 }
 
