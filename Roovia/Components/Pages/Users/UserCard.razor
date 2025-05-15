@@ -32,8 +32,8 @@
             <div class="user-badges">
                 @if (User.Role.HasValue)
                 {
-                    <span class="role-badge @GetRoleBadgeClass(User.Role.Value)">
-                        @GetRoleDisplayName(User.Role.Value)
+                    <span class="role-badge @PermissionFormat.GetRoleBadgeClass(User.Role.Value)">
+                        @PermissionFormat.GetRoleDisplayName(User.Role.Value)
                     </span>
                 }
                 @if (CustomRoles != null && CustomRoles.Any())
@@ -200,79 +200,6 @@
         }
     }
 
-    private string GetRoleBadgeClass(SystemRole role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "role-admin",
-            SystemRole.SystemAdministrator => "role-admin",
-            SystemRole.CompanyAdministrator => "role-company-admin",
-            SystemRole.CompanyFinancialDirector => "role-financial",
-            SystemRole.RegionalManager => "role-regional-manager",
-            SystemRole.BranchManager => "role-branch-manager",
-            SystemRole.SeniorPropertyManager => "role-property-manager",
-            SystemRole.PropertyManager => "role-property-manager",
-            SystemRole.AssistantPropertyManager => "role-property-manager",
-            SystemRole.FinancialManager => "role-financial",
-            SystemRole.SeniorAccountant => "role-financial",
-            SystemRole.Accountant => "role-financial",
-            SystemRole.AccountsClerk => "role-financial",
-            SystemRole.TenantRelationsManager => "role-tenant",
-            SystemRole.TenantOfficer => "role-tenant",
-            SystemRole.LeasingAgent => "role-tenant",
-            SystemRole.MaintenanceManager => "role-maintenance-manager",
-            SystemRole.MaintenanceCoordinator => "role-maintenance",
-            SystemRole.SeniorInspector => "role-inspector",
-            SystemRole.PropertyInspector => "role-inspector",
-            SystemRole.CustomerSupportManager => "role-support",
-            SystemRole.CustomerSupportAgent => "role-support",
-            SystemRole.ComplianceOfficer => "role-compliance",
-            SystemRole.LegalOfficer => "role-legal",
-            SystemRole.DataAnalyst => "role-analyst",
-            SystemRole.ReportsViewer => "role-reports",
-            SystemRole.Auditor => "role-auditor",
-            SystemRole.PropertyOwnerPortal => "role-owner",
-            SystemRole.TenantPortal => "role-tenant",
-            SystemRole.VendorPortal => "role-vendor",
-            _ => "role-default"
-        };
-    }
+ 
 
-    private string GetRoleDisplayName(SystemRole role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "CEO/Executive",
-            SystemRole.SystemAdministrator => "System Admin",
-            SystemRole.CompanyAdministrator => "Company Admin",
-            SystemRole.CompanyFinancialDirector => "Financial Director",
-            SystemRole.RegionalManager => "Regional Manager",
-            SystemRole.BranchManager => "Branch Manager",
-            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
-            SystemRole.PropertyManager => "Property Manager",
-            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
-            SystemRole.FinancialManager => "Financial Manager",
-            SystemRole.SeniorAccountant => "Sr. Accountant",
-            SystemRole.Accountant => "Accountant",
-            SystemRole.AccountsClerk => "Accounts Clerk",
-            SystemRole.TenantRelationsManager => "Tenant Relations",
-            SystemRole.TenantOfficer => "Tenant Officer",
-            SystemRole.LeasingAgent => "Leasing Agent",
-            SystemRole.MaintenanceManager => "Maintenance Manager",
-            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
-            SystemRole.SeniorInspector => "Sr. Inspector",
-            SystemRole.PropertyInspector => "Inspector",
-            SystemRole.CustomerSupportManager => "Support Manager",
-            SystemRole.CustomerSupportAgent => "Support Agent",
-            SystemRole.ComplianceOfficer => "Compliance",
-            SystemRole.LegalOfficer => "Legal Officer",
-            SystemRole.DataAnalyst => "Data Analyst",
-            SystemRole.ReportsViewer => "Reports Viewer",
-            SystemRole.Auditor => "Auditor",
-            SystemRole.PropertyOwnerPortal => "Property Owner",
-            SystemRole.TenantPortal => "Tenant Portal",
-            SystemRole.VendorPortal => "Vendor Portal",
-            _ => "Unknown"
-        };
-    }
 }

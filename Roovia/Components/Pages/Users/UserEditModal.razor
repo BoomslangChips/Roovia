@@ -273,7 +273,7 @@ Size="lg">
                                             IconLeft="fa-light fa-shield-check">
                                                 @foreach (var role in availableRoles)
                                                 {
-                                                    <option value="@role">@GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
+                                                    <option value="@role">@PermissionFormat.GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
                                                 }
                                             </RVSelect>
                                             <div class="field-info">
@@ -727,39 +727,45 @@ Size="lg">
                 case SystemRole.CompanyAdministrator:
                     // Company admin can assign roles below their level
                     availableRoles = new List<string>
-                    {
-                        SystemRole.BranchManager.ToString(),
-                        SystemRole.PropertyManager.ToString(),
-                        SystemRole.AssistantPropertyManager.ToString(),
-                        SystemRole.FinancialManager.ToString(),
-                        SystemRole.TenantOfficer.ToString(),
-                        SystemRole.ReportsViewer.ToString()
-                    };
+                {
+                    SystemRole.BranchManager.ToString(),
+                    SystemRole.PropertyManager.ToString(),
+                    SystemRole.FinancialOfficer.ToString(),
+                    SystemRole.TenantOfficer.ToString(),
+                    SystemRole.ReportsViewer.ToString()
+                };
                     break;
 
                 case SystemRole.BranchManager:
                     // Branch manager can assign roles below their level
                     availableRoles = new List<string>
-                    {
-                        SystemRole.PropertyManager.ToString(),
-                        SystemRole.AssistantPropertyManager.ToString(),
-                        SystemRole.TenantOfficer.ToString(),
-                        SystemRole.ReportsViewer.ToString()
-                    };
+                {
+                    SystemRole.PropertyManager.ToString(),
+                    SystemRole.FinancialOfficer.ToString(),
+                    SystemRole.TenantOfficer.ToString(),
+                    SystemRole.ReportsViewer.ToString()
+                };
+                    break;
+
+                case SystemRole.PropertyManager:
+                    // Property manager can only assign tenant officer and reports viewer
+                    availableRoles = new List<string>
+                {
+                    SystemRole.TenantOfficer.ToString(),
+                    SystemRole.ReportsViewer.ToString()
+                };
                     break;
 
                 default:
-                    // Other roles can only assign property manager and reports viewer
+                    // Other roles can only assign reports viewer
                     availableRoles = new List<string>
-                    {
-                        SystemRole.PropertyManager.ToString(),
-                        SystemRole.ReportsViewer.ToString()
-                    };
+                {
+                    SystemRole.ReportsViewer.ToString()
+                };
                     break;
             }
         }
     }
-
     private void ConfigureTabs()
     {
         // Configure top-level tabs
@@ -1307,44 +1313,6 @@ Size="lg">
         }
     }
 
-    private string GetRoleNameForSystemRole(SystemRole systemRole)
-    {
-        // This maps system roles to role names that exist in the database
-        return systemRole switch
-        {
-            SystemRole.CEOExecutive => "CEO/Executive",
-            SystemRole.SystemAdministrator => "System Administrator",
-            SystemRole.CompanyAdministrator => "Company Administrator",
-            SystemRole.CompanyFinancialDirector => "Company Financial Director",
-            SystemRole.RegionalManager => "Regional Manager",
-            SystemRole.BranchManager => "Branch Manager",
-            SystemRole.SeniorPropertyManager => "Senior Property Manager",
-            SystemRole.PropertyManager => "Property Manager",
-            SystemRole.AssistantPropertyManager => "Assistant Property Manager",
-            SystemRole.FinancialManager => "Financial Manager",
-            SystemRole.SeniorAccountant => "Senior Accountant",
-            SystemRole.Accountant => "Accountant",
-            SystemRole.AccountsClerk => "Accounts Clerk",
-            SystemRole.TenantRelationsManager => "Tenant Relations Manager",
-            SystemRole.TenantOfficer => "Tenant Officer",
-            SystemRole.LeasingAgent => "Leasing Agent",
-            SystemRole.MaintenanceManager => "Maintenance Manager",
-            SystemRole.MaintenanceCoordinator => "Maintenance Coordinator",
-            SystemRole.SeniorInspector => "Senior Inspector",
-            SystemRole.PropertyInspector => "Property Inspector",
-            SystemRole.CustomerSupportManager => "Customer Support Manager",
-            SystemRole.CustomerSupportAgent => "Customer Support Agent",
-            SystemRole.ComplianceOfficer => "Compliance Officer",
-            SystemRole.LegalOfficer => "Legal Officer",
-            SystemRole.DataAnalyst => "Data Analyst",
-            SystemRole.ReportsViewer => "Reports Viewer",
-            SystemRole.Auditor => "Auditor",
-            SystemRole.PropertyOwnerPortal => "Property Owner Portal",
-            SystemRole.TenantPortal => "Tenant Portal",
-            SystemRole.VendorPortal => "Vendor Portal",
-            _ => systemRole.ToString() // Fallback to the enum name
-        };
-    }
 
     private async Task SaveUser()
     {
@@ -1460,7 +1428,7 @@ Size="lg">
                 {
                     // Add the user to the appropriate role based on their SystemRole
                     using var dbContext = await _contextFactory.CreateDbContextAsync();
-                    string roleName = GetRoleNameForSystemRole(userModel.Role.Value);
+                    string roleName = PermissionFormat.GetRoleDisplayName(userModel.Role.Value);
                     var dbRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
 
                     if (dbRole != null)
@@ -1519,7 +1487,7 @@ Size="lg">
                         using var dbContext = await _contextFactory.CreateDbContextAsync();
 
                         // Get the role ID for the selected role
-                        string roleName = GetRoleNameForSystemRole(userModel.Role.Value);
+                        string roleName = PermissionFormat.GetRoleDisplayName(userModel.Role.Value);
                         var dbRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
 
                         if (dbRole != null)
@@ -1596,41 +1564,5 @@ Size="lg">
         return userModel.UserName ?? "New User";
     }
 
-    private string GetRoleDisplayName(SystemRole role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "CEO/Executive",
-            SystemRole.SystemAdministrator => "System Admin",
-            SystemRole.CompanyAdministrator => "Company Admin",
-            SystemRole.CompanyFinancialDirector => "Financial Director",
-            SystemRole.RegionalManager => "Regional Manager",
-            SystemRole.BranchManager => "Branch Manager",
-            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
-            SystemRole.PropertyManager => "Property Manager",
-            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
-            SystemRole.FinancialManager => "Financial Manager",
-            SystemRole.SeniorAccountant => "Sr. Accountant",
-            SystemRole.Accountant => "Accountant",
-            SystemRole.AccountsClerk => "Accounts Clerk",
-            SystemRole.TenantRelationsManager => "Tenant Relations",
-            SystemRole.TenantOfficer => "Tenant Officer",
-            SystemRole.LeasingAgent => "Leasing Agent",
-            SystemRole.MaintenanceManager => "Maintenance Manager",
-            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
-            SystemRole.SeniorInspector => "Sr. Inspector",
-            SystemRole.PropertyInspector => "Inspector",
-            SystemRole.CustomerSupportManager => "Support Manager",
-            SystemRole.CustomerSupportAgent => "Support Agent",
-            SystemRole.ComplianceOfficer => "Compliance",
-            SystemRole.LegalOfficer => "Legal Officer",
-            SystemRole.DataAnalyst => "Data Analyst",
-            SystemRole.ReportsViewer => "Reports Viewer",
-            SystemRole.Auditor => "Auditor",
-            SystemRole.PropertyOwnerPortal => "Property Owner",
-            SystemRole.TenantPortal => "Tenant Portal",
-            SystemRole.VendorPortal => "Vendor Portal",
-            _ => "Unknown"
-        };
-    }
+
 }

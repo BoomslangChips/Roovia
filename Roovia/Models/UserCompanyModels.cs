@@ -384,38 +384,15 @@ namespace Roovia.Models.UserCompanyModels
 
     public enum SystemRole
     {
-        CEOExecutive = 0,           // CEO/Executive
-        SystemAdministrator = 1,    // System Administrator
-        CompanyAdministrator = 2,   // Company Administrator
-        CompanyFinancialDirector = 3, // Company Financial Director
-        RegionalManager = 4,        // Regional Manager
-        BranchManager = 5,          // Branch Manager
-        SeniorPropertyManager = 6,  // Senior Property Manager
-        PropertyManager = 7,        // Property Manager
-        AssistantPropertyManager = 8, // Assistant Property Manager
-        FinancialManager = 9,       // Financial Manager
-        SeniorAccountant = 10,      // Senior Accountant
-        Accountant = 11,            // Accountant
-        AccountsClerk = 12,         // Accounts Clerk
-        TenantRelationsManager = 13, // Tenant Relations Manager
-        TenantOfficer = 14,         // Tenant Officer
-        LeasingAgent = 15,          // Leasing Agent
-        MaintenanceManager = 16,    // Maintenance Manager
-        MaintenanceCoordinator = 17, // Maintenance Coordinator
-        SeniorInspector = 18,       // Senior Inspector
-        PropertyInspector = 19,     // Property Inspector
-        CustomerSupportManager = 20, // Customer Support Manager
-        CustomerSupportAgent = 21,  // Customer Support Agent
-        ComplianceOfficer = 22,     // Compliance Officer
-        LegalOfficer = 23,          // Legal Officer
-        DataAnalyst = 24,           // Data Analyst
-        ReportsViewer = 25,         // Reports Viewer
-        Auditor = 26,               // Auditor
-        PropertyOwnerPortal = 27,   // Property Owner Portal
-        TenantPortal = 28,          // Tenant Portal
-        VendorPortal = 29           // Vendor Portal
+        SystemAdministrator = 1,      // Full system access with all permissions
+        PropertyManager = 2,          // Manages properties, tenants, and related operations
+        FinancialOfficer = 3,         // Manages financial operations, payments and reports
+        TenantOfficer = 4,            // Manages tenant relationships and operations
+        ReportsViewer = 5,            // View-only access to reports and dashboards
+        BranchManager = 6,            // Manages operations for a specific branch
+        CompanyAdministrator = 7      // Administrates all branches within a company
     }
-
+   
     #endregion
 
     #region Permissions and Roles

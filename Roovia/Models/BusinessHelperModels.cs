@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using FluentValidation;
+using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Models.BusinessHelperModels
 {
@@ -438,7 +439,7 @@ namespace Roovia.Models.BusinessHelperModels
     #endregion
 
     #region Extensions
-
+  
     public static class FileNameExtensions
     {
         public static string InsertBeforeExtension(this string fileName, string insert)
@@ -462,5 +463,85 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
+    #endregion
+
+    #region Permission
+    public static class PermissionFormat
+    {
+        public static string GetRoleBadgeClass(SystemRole role)
+        {
+            return role switch
+            {
+                SystemRole.SystemAdministrator => "role-admin",
+                SystemRole.CompanyAdministrator => "role-company-admin",
+                SystemRole.BranchManager => "role-branch-manager",
+                SystemRole.PropertyManager => "role-property-manager",
+                SystemRole.FinancialOfficer => "role-financial",
+                SystemRole.TenantOfficer => "role-tenant",
+                SystemRole.ReportsViewer => "role-reports",
+                _ => "role-default"
+            };
+        }
+
+        public static string GetRoleDisplayName(SystemRole role)
+        {
+            return role switch
+            {
+                SystemRole.SystemAdministrator => "System Admin",
+                SystemRole.CompanyAdministrator => "Company Admin",
+                SystemRole.BranchManager => "Branch Manager",
+                SystemRole.PropertyManager => "Property Manager",
+                SystemRole.FinancialOfficer => "Financial Officer",
+                SystemRole.TenantOfficer => "Tenant Officer",
+                SystemRole.ReportsViewer => "Reports Viewer",
+                _ => "Unknown"
+            };
+        }
+
+        public static string GetRoleIcon(SystemRole? role)
+        {
+            return role switch
+            {
+                SystemRole.SystemAdministrator => "fa-light fa-user-crown",
+                SystemRole.CompanyAdministrator => "fa-light fa-user-tie",
+                SystemRole.BranchManager => "fa-light fa-user-hard-hat",
+                SystemRole.PropertyManager => "fa-light fa-user-chart",
+                SystemRole.FinancialOfficer => "fa-light fa-user-dollar",
+                SystemRole.TenantOfficer => "fa-light fa-user-headset",
+                SystemRole.ReportsViewer => "fa-light fa-user-chart",
+                _ => "fa-light fa-user"
+            };
+        }
+
+        public static string GetRoleIconSmall(SystemRole? role)
+        {
+            return role switch
+            {
+                SystemRole.SystemAdministrator => "fa-light fa-shield-check",
+                SystemRole.CompanyAdministrator => "fa-light fa-tie",
+                SystemRole.BranchManager => "fa-light fa-hard-hat",
+                SystemRole.PropertyManager => "fa-light fa-chart-line",
+                SystemRole.FinancialOfficer => "fa-light fa-dollar-sign",
+                SystemRole.TenantOfficer => "fa-light fa-headset",
+                SystemRole.ReportsViewer => "fa-light fa-chart-pie",
+                _ => "fa-light fa-user"
+            };
+        }
+
+        public static string GetRoleDescription(SystemRole? role)
+        {
+            return role switch
+            {
+                SystemRole.SystemAdministrator => "Full system access with all permissions",
+                SystemRole.CompanyAdministrator => "Administrates all branches within a company",
+                SystemRole.BranchManager => "Manages operations for a specific branch",
+                SystemRole.PropertyManager => "Manages properties, tenants, and related operations",
+                SystemRole.FinancialOfficer => "Manages financial operations, payments and reports",
+                SystemRole.TenantOfficer => "Manages tenant relationships and operations",
+                SystemRole.ReportsViewer => "View-only access to reports and dashboards",
+                _ => "Standard user role with limited permissions"
+            };
+        }
+    }
     #endregion
 }

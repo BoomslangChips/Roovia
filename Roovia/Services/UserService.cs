@@ -317,36 +317,13 @@ namespace Roovia.Services
                 // Map SystemRole enum to the actual role names in the database
                 string roleName = role switch
                 {
-                    SystemRole.CEOExecutive => "CEO/Executive",
                     SystemRole.SystemAdministrator => "System Administrator",
                     SystemRole.CompanyAdministrator => "Company Administrator",
-                    SystemRole.CompanyFinancialDirector => "Company Financial Director",
-                    SystemRole.RegionalManager => "Regional Manager",
                     SystemRole.BranchManager => "Branch Manager",
-                    SystemRole.SeniorPropertyManager => "Senior Property Manager",
                     SystemRole.PropertyManager => "Property Manager",
-                    SystemRole.AssistantPropertyManager => "Assistant Property Manager",
-                    SystemRole.FinancialManager => "Financial Manager",
-                    SystemRole.SeniorAccountant => "Senior Accountant",
-                    SystemRole.Accountant => "Accountant",
-                    SystemRole.AccountsClerk => "Accounts Clerk",
-                    SystemRole.TenantRelationsManager => "Tenant Relations Manager",
+                    SystemRole.FinancialOfficer => "Financial Officer",
                     SystemRole.TenantOfficer => "Tenant Officer",
-                    SystemRole.LeasingAgent => "Leasing Agent",
-                    SystemRole.MaintenanceManager => "Maintenance Manager",
-                    SystemRole.MaintenanceCoordinator => "Maintenance Coordinator",
-                    SystemRole.SeniorInspector => "Senior Inspector",
-                    SystemRole.PropertyInspector => "Property Inspector",
-                    SystemRole.CustomerSupportManager => "Customer Support Manager",
-                    SystemRole.CustomerSupportAgent => "Customer Support Agent",
-                    SystemRole.ComplianceOfficer => "Compliance Officer",
-                    SystemRole.LegalOfficer => "Legal Officer",
-                    SystemRole.DataAnalyst => "Data Analyst",
                     SystemRole.ReportsViewer => "Reports Viewer",
-                    SystemRole.Auditor => "Auditor",
-                    SystemRole.PropertyOwnerPortal => "Property Owner Portal",
-                    SystemRole.TenantPortal => "Tenant Portal",
-                    SystemRole.VendorPortal => "Vendor Portal",
                     _ => role.ToString()
                 };
 

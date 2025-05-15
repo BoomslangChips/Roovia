@@ -40,7 +40,7 @@
                     <div class="user-info">
                         <h3>@(string.IsNullOrEmpty(user.FullName) ? user.UserName : user.FullName)</h3>
                         <div class="user-meta">
-                            <span class="role-badge @GetRoleBadgeClass(user.Role)">@GetRoleDisplayName(user.Role)</span>
+                            <span class="role-badge @PermissionFormat.GetRoleBadgeClass(user.Role.Value)">@PermissionFormat.GetRoleDisplayName(user.Role.Value)</span>
                             <span class="meta-item">@user.Email</span>
                         </div>
                     </div>
@@ -68,7 +68,6 @@
                                 </button>
                             }
                         </div>
-
                         <div class="filter-controls">
                             <RVDropdown TriggerText="@GetFilterText()" ButtonType="outline" Position="bottom-end"
                                         CssClass="filter-dropdown">
@@ -127,7 +126,6 @@
                         {
                             bool isAssigned = assignedRoleIds.Contains(role.Id);
                             bool canAssignRole = CanAssignRole(role);
-
                             <div class="role-card @(role.IsPreset ? "preset" : "custom") @(!role.IsActive ? "inactive" : "")">
                                 <div class="role-header">
                                     <div class="role-checkbox">
@@ -136,13 +134,20 @@
                                                     Disabled="@(!canAssignRole || !role.IsActive)" />
                                     </div>
                                     <div class="role-icon">
-                                        @if (role.IsPreset)
-                                        {
-                                            <i class="fa-light fa-shield"></i>
-                                        }
-                                        else
-                                        {
-                                            <i class="fa-light fa-tools"></i>
+                                        @{
+                                            var systemRole = GetSystemRoleFromName(role.Name);
+                                            if (systemRole.HasValue)
+                                            {
+                                                <i class="@PermissionFormat.GetRoleIcon(systemRole)"></i>
+                                            }
+                                            else if (role.IsPreset)
+                                            {
+                                                <i class="fa-light fa-shield"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-light fa-tools"></i>
+                                            }
                                         }
                                     </div>
                                     <div class="role-title">
@@ -168,11 +173,9 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="role-description">
                                     <p>@role.Description</p>
                                 </div>
-
                                 @if (isAssigned && userRoles.FirstOrDefault(ur => ur.RoleId == role.Id) is UserRoleAssignment assignment)
                                 {
                                     <div class="role-assignment-info">
@@ -238,10 +241,8 @@
     private ApplicationUser currentUser = null;
     private List<Role> allRoles = new List<Role>();
     private List<UserRoleAssignment> userRoles = new List<UserRoleAssignment>();
-
     private HashSet<int> assignedRoleIds = new HashSet<int>();
     private HashSet<int> originalAssignedRoleIds = new HashSet<int>();
-
     private bool isLoading = true;
     private bool isSaving = false;
     private bool permissionIssue = false;
@@ -260,7 +261,6 @@
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
             if (!string.IsNullOrEmpty(userId))
             {
                 var response = await UserService.GetUserById(userId);
@@ -287,7 +287,6 @@
             if (userResponse.ResponseInfo.Success)
             {
                 user = (ApplicationUser)userResponse.Response;
-
                 // Check if current user has permission to manage this user's roles
                 permissionIssue = !CanManageUserRoles();
             }
@@ -297,7 +296,6 @@
             if (userRolesResponse.ResponseInfo.Success)
             {
                 userRoles = (List<UserRoleAssignment>)userRolesResponse.Response;
-
                 // Set initially assigned roles
                 assignedRoleIds = new HashSet<int>(userRoles.Select(ur => ur.RoleId));
                 originalAssignedRoleIds = new HashSet<int>(assignedRoleIds);
@@ -319,23 +317,8 @@
                     ).ToList();
                 }
 
-                // Filter out roles that current user cannot assign
-                if (currentUser?.Role != SystemRole.SystemAdministrator)
-                {
-                    // Only System Admins can assign System Admin roles
-                    allRoles = allRoles.Where(r =>
-                        !r.Name.Contains("System Admin", StringComparison.OrdinalIgnoreCase)).ToList();
-
-                    // Company Admins can only assign roles below Company Admin
-                    if (currentUser?.Role == SystemRole.CompanyAdministrator)
-                    {
-                        allRoles = allRoles.Where(r =>
-                            !r.Name.Contains("CEO", StringComparison.OrdinalIgnoreCase) &&
-                            !r.Name.Contains("Executive", StringComparison.OrdinalIgnoreCase) &&
-                            !r.Name.Contains("Company Admin", StringComparison.OrdinalIgnoreCase) &&
-                            !r.Name.Contains("Financial Director", StringComparison.OrdinalIgnoreCase)).ToList();
-                    }
-                }
+                // Apply role hierarchy filter based on current user's role
+                allRoles = FilterRolesByHierarchy(allRoles);
             }
         }
         catch (Exception ex)
@@ -346,6 +329,55 @@
         {
             isLoading = false;
         }
+    }
+
+    private List<Role> FilterRolesByHierarchy(List<Role> roles)
+    {
+        if (currentUser?.Role == null)
+            return roles;
+
+        var rolesToExclude = new List<string>();
+
+        switch (currentUser.Role.Value)
+        {
+            case SystemRole.SystemAdministrator:
+                // System Admin can see all roles
+                return roles;
+
+            case SystemRole.CompanyAdministrator:
+                // Company Admin cannot assign System Admin or Company Admin
+                rolesToExclude.AddRange(new[] {
+                    "System Administrator",
+                    "Company Administrator"
+                });
+                break;
+
+            case SystemRole.BranchManager:
+                // Branch Manager cannot assign any admin or manager roles
+                rolesToExclude.AddRange(new[] {
+                    "System Administrator",
+                    "Company Administrator",
+                    "Branch Manager"
+                });
+                break;
+
+            case SystemRole.PropertyManager:
+                // Property Manager can only assign subordinate roles
+                rolesToExclude.AddRange(new[] {
+                    "System Administrator",
+                    "Company Administrator",
+                    "Branch Manager",
+                    "Property Manager",
+                    "Financial Officer"
+                });
+                break;
+
+            default:
+                // Other roles typically cannot assign any roles
+                return new List<Role>();
+        }
+
+        return roles.Where(r => !rolesToExclude.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList();
     }
 
     private bool CanManageUserRoles()
@@ -364,11 +396,9 @@
         // Company Admin can manage users below them in the hierarchy
         if (currentUser.Role == SystemRole.CompanyAdministrator)
         {
-            // Can't manage other admins
+            // Cannot manage System Administrators or other Company Administrators
             if (user.Role == SystemRole.SystemAdministrator ||
-                user.Role == SystemRole.CompanyAdministrator ||
-                user.Role == SystemRole.CEOExecutive ||
-                user.Role == SystemRole.CompanyFinancialDirector)
+                user.Role == SystemRole.CompanyAdministrator)
                 return false;
 
             // Company Admin can only manage users in their company
@@ -378,17 +408,27 @@
         // Branch Manager can only manage users below them in the hierarchy
         if (currentUser.Role == SystemRole.BranchManager)
         {
-            // Can't manage admins or other managers
+            // Cannot manage administrators or other managers
             if (user.Role == SystemRole.SystemAdministrator ||
                 user.Role == SystemRole.CompanyAdministrator ||
-                user.Role == SystemRole.BranchManager ||
-                user.Role == SystemRole.CEOExecutive ||
-                user.Role == SystemRole.CompanyFinancialDirector ||
-                user.Role == SystemRole.RegionalManager)
+                user.Role == SystemRole.BranchManager)
                 return false;
 
             // Branch Manager can only manage users in their branch
             return user.BranchId == currentUser.BranchId;
+        }
+
+        // Property Manager can manage limited roles
+        if (currentUser.Role == SystemRole.PropertyManager)
+        {
+            // Can only manage Tenant Officers and Report Viewers
+            if (user.Role == SystemRole.TenantOfficer ||
+                user.Role == SystemRole.ReportsViewer)
+            {
+                // Must be in the same company
+                return user.CompanyId == currentUser.CompanyId;
+            }
+            return false;
         }
 
         // Other roles can't manage user roles
@@ -400,40 +440,58 @@
         if (currentUser == null)
             return false;
 
-        // System Admins can assign any role
-        if (currentUser.Role == SystemRole.SystemAdministrator)
-            return true;
+        var targetSystemRole = GetSystemRoleFromName(role.Name);
+        if (!targetSystemRole.HasValue)
+            return false; // Can't assign unknown roles
 
-        // Company Admin restrictions
-        if (currentUser.Role == SystemRole.CompanyAdministrator)
+        switch (currentUser.Role)
         {
-            // Can't assign admin roles
-            if (role.Name.Contains("System Admin") ||
-                role.Name.Contains("CEO") ||
-                role.Name.Contains("Executive") ||
-                role.Name.Contains("Company Admin") ||
-                role.Name.Contains("Financial Director"))
+            case SystemRole.SystemAdministrator:
+                // System Admin can assign any role
+                return true;
+
+            case SystemRole.CompanyAdministrator:
+                // Company Admin cannot assign admin roles
+                return targetSystemRole.Value != SystemRole.SystemAdministrator &&
+                       targetSystemRole.Value != SystemRole.CompanyAdministrator;
+
+            case SystemRole.BranchManager:
+                // Branch Manager can only assign operational roles
+                return targetSystemRole.Value == SystemRole.PropertyManager ||
+                       targetSystemRole.Value == SystemRole.FinancialOfficer ||
+                       targetSystemRole.Value == SystemRole.TenantOfficer ||
+                       targetSystemRole.Value == SystemRole.ReportsViewer;
+
+            case SystemRole.PropertyManager:
+                // Property Manager can only assign support roles
+                return targetSystemRole.Value == SystemRole.TenantOfficer ||
+                       targetSystemRole.Value == SystemRole.ReportsViewer;
+
+            default:
+                // Other roles cannot assign any roles
                 return false;
-
-            return true;
         }
+    }
 
-        // Branch Manager restrictions
-        if (currentUser.Role == SystemRole.BranchManager)
-        {
-            // Can't assign admin or manager roles
-            if (role.Name.Contains("Admin") ||
-                role.Name.Contains("Manager") ||
-                role.Name.Contains("CEO") ||
-                role.Name.Contains("Executive") ||
-                role.Name.Contains("Director"))
-                return false;
+    private SystemRole? GetSystemRoleFromName(string roleName)
+    {
+        // Map role names to SystemRole enum values
+        if (roleName.Contains("System Admin", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.SystemAdministrator;
+        if (roleName.Contains("Company Admin", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.CompanyAdministrator;
+        if (roleName.Contains("Branch Manager", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.BranchManager;
+        if (roleName.Contains("Property Manager", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.PropertyManager;
+        if (roleName.Contains("Financial Officer", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.FinancialOfficer;
+        if (roleName.Contains("Tenant Officer", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.TenantOfficer;
+        if (roleName.Contains("Reports Viewer", StringComparison.OrdinalIgnoreCase))
+            return SystemRole.ReportsViewer;
 
-            return true;
-        }
-
-        // Other roles can't assign roles
-        return false;
+        return null;
     }
 
     private List<Role> filteredRoles
@@ -467,7 +525,7 @@
                     break;
             }
 
-            return roles.OrderBy(r => r.Name).ToList();
+            return roles.OrderBy(r => r.DisplayOrder).ThenBy(r => r.Name).ToList();
         }
     }
 
@@ -545,6 +603,9 @@
 
             if (OnSaved.HasDelegate)
                 await OnSaved.InvokeAsync();
+
+            if (OnClose.HasDelegate)
+                await OnClose.InvokeAsync();
         }
         catch (Exception ex)
         {
@@ -565,82 +626,6 @@
             "preset" => "System Roles",
             "custom" => "Custom Roles",
             _ => "All Roles"
-        };
-    }
-
-    private string GetRoleBadgeClass(SystemRole? role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "role-executive",
-            SystemRole.SystemAdministrator => "role-admin",
-            SystemRole.CompanyAdministrator => "role-company-admin",
-            SystemRole.CompanyFinancialDirector => "role-financial-director",
-            SystemRole.RegionalManager => "role-regional-manager",
-            SystemRole.BranchManager => "role-branch-manager",
-            SystemRole.SeniorPropertyManager => "role-senior-property-manager",
-            SystemRole.PropertyManager => "role-property-manager",
-            SystemRole.AssistantPropertyManager => "role-assistant-property-manager",
-            SystemRole.FinancialManager => "role-financial-manager",
-            SystemRole.SeniorAccountant => "role-senior-accountant",
-            SystemRole.Accountant => "role-accountant",
-            SystemRole.AccountsClerk => "role-accounts-clerk",
-            SystemRole.TenantRelationsManager => "role-tenant-relations",
-            SystemRole.TenantOfficer => "role-tenant",
-            SystemRole.LeasingAgent => "role-leasing",
-            SystemRole.MaintenanceManager => "role-maintenance-manager",
-            SystemRole.MaintenanceCoordinator => "role-maintenance",
-            SystemRole.SeniorInspector => "role-senior-inspector",
-            SystemRole.PropertyInspector => "role-inspector",
-            SystemRole.CustomerSupportManager => "role-support-manager",
-            SystemRole.CustomerSupportAgent => "role-support",
-            SystemRole.ComplianceOfficer => "role-compliance",
-            SystemRole.LegalOfficer => "role-legal",
-            SystemRole.DataAnalyst => "role-analyst",
-            SystemRole.ReportsViewer => "role-reports",
-            SystemRole.Auditor => "role-auditor",
-            SystemRole.PropertyOwnerPortal => "role-owner",
-            SystemRole.TenantPortal => "role-tenant-portal",
-            SystemRole.VendorPortal => "role-vendor",
-            _ => "role-default"
-        };
-    }
-
-    private string GetRoleDisplayName(SystemRole? role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "CEO/Executive",
-            SystemRole.SystemAdministrator => "System Admin",
-            SystemRole.CompanyAdministrator => "Company Admin",
-            SystemRole.CompanyFinancialDirector => "Financial Director",
-            SystemRole.RegionalManager => "Regional Manager",
-            SystemRole.BranchManager => "Branch Manager",
-            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
-            SystemRole.PropertyManager => "Property Manager",
-            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
-            SystemRole.FinancialManager => "Financial Manager",
-            SystemRole.SeniorAccountant => "Sr. Accountant",
-            SystemRole.Accountant => "Accountant",
-            SystemRole.AccountsClerk => "Accounts Clerk",
-            SystemRole.TenantRelationsManager => "Tenant Relations",
-            SystemRole.TenantOfficer => "Tenant Officer",
-            SystemRole.LeasingAgent => "Leasing Agent",
-            SystemRole.MaintenanceManager => "Maintenance Manager",
-            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
-            SystemRole.SeniorInspector => "Sr. Inspector",
-            SystemRole.PropertyInspector => "Inspector",
-            SystemRole.CustomerSupportManager => "Support Manager",
-            SystemRole.CustomerSupportAgent => "Support Agent",
-            SystemRole.ComplianceOfficer => "Compliance",
-            SystemRole.LegalOfficer => "Legal Officer",
-            SystemRole.DataAnalyst => "Data Analyst",
-            SystemRole.ReportsViewer => "Reports Viewer",
-            SystemRole.Auditor => "Auditor",
-            SystemRole.PropertyOwnerPortal => "Property Owner",
-            SystemRole.TenantPortal => "Tenant Portal",
-            SystemRole.VendorPortal => "Vendor Portal",
-            _ => "Unknown"
         };
     }
 }

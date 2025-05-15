@@ -75,8 +75,8 @@
                         var roleValue = role.ToString();
                         <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == roleValue ? "active" : "")"
                                 @onclick="async () => await SelectRole(roleValue)">
-                            <i class="@GetRoleIcon((SystemRole)role)"></i>
-                            <span>@GetRoleDisplayName((SystemRole)role)</span>
+                            <i class="@PermissionFormat.GetRoleIcon((SystemRole)role)"></i>
+                            <span>@PermissionFormat.GetRoleDisplayName((SystemRole)role)</span>
                             @if (SelectedRoleFilter == roleValue)
                             {
                                 <i class="fa-light fa-check"></i>
@@ -367,7 +367,7 @@
         {
             if (Enum.TryParse<SystemRole>(SelectedRoleFilter, out var roleEnum))
             {
-                return $"Role: {GetRoleDisplayName(roleEnum)}";
+                return $"Role: {PermissionFormat.GetRoleDisplayName(roleEnum)}";
             }
         }
 
@@ -419,80 +419,5 @@
             _ => "fa-light fa-circle"
         };
     }
+}
 
-    private string GetRoleDisplayName(SystemRole role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "CEO/Executive",
-            SystemRole.SystemAdministrator => "System Admin",
-            SystemRole.CompanyAdministrator => "Company Admin",
-            SystemRole.CompanyFinancialDirector => "Financial Director",
-            SystemRole.RegionalManager => "Regional Manager",
-            SystemRole.BranchManager => "Branch Manager",
-            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
-            SystemRole.PropertyManager => "Property Manager",
-            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
-            SystemRole.FinancialManager => "Financial Manager",
-            SystemRole.SeniorAccountant => "Sr. Accountant",
-            SystemRole.Accountant => "Accountant",
-            SystemRole.AccountsClerk => "Accounts Clerk",
-            SystemRole.TenantRelationsManager => "Tenant Relations",
-            SystemRole.TenantOfficer => "Tenant Officer",
-            SystemRole.LeasingAgent => "Leasing Agent",
-            SystemRole.MaintenanceManager => "Maintenance Manager",
-            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
-            SystemRole.SeniorInspector => "Sr. Inspector",
-            SystemRole.PropertyInspector => "Inspector",
-            SystemRole.CustomerSupportManager => "Support Manager",
-            SystemRole.CustomerSupportAgent => "Support Agent",
-            SystemRole.ComplianceOfficer => "Compliance",
-            SystemRole.LegalOfficer => "Legal Officer",
-            SystemRole.DataAnalyst => "Data Analyst",
-            SystemRole.ReportsViewer => "Reports Viewer",
-            SystemRole.Auditor => "Auditor",
-            SystemRole.PropertyOwnerPortal => "Property Owner",
-            SystemRole.TenantPortal => "Tenant Portal",
-            SystemRole.VendorPortal => "Vendor Portal",
-            _ => "Unknown"
-        };
-    }
-
-    private string GetRoleIcon(SystemRole role)
-    {
-        return role switch
-        {
-            SystemRole.CEOExecutive => "fa-light fa-crown",
-            SystemRole.SystemAdministrator => "fa-light fa-user-crown",
-            SystemRole.CompanyAdministrator => "fa-light fa-user-tie",
-            SystemRole.CompanyFinancialDirector => "fa-light fa-user-chart",
-            SystemRole.RegionalManager => "fa-light fa-user-tag",
-            SystemRole.BranchManager => "fa-light fa-user-hard-hat",
-            SystemRole.SeniorPropertyManager => "fa-light fa-user-shield",
-            SystemRole.PropertyManager => "fa-light fa-user-chart",
-            SystemRole.AssistantPropertyManager => "fa-light fa-user-plus",
-            SystemRole.FinancialManager => "fa-light fa-user-dollar",
-            SystemRole.SeniorAccountant => "fa-light fa-user-chart",
-            SystemRole.Accountant => "fa-light fa-user-chart",
-            SystemRole.AccountsClerk => "fa-light fa-user-pen",
-            SystemRole.TenantRelationsManager => "fa-light fa-user-friends",
-            SystemRole.TenantOfficer => "fa-light fa-user-headset",
-            SystemRole.LeasingAgent => "fa-light fa-user-tag",
-            SystemRole.MaintenanceManager => "fa-light fa-user-wrench",
-            SystemRole.MaintenanceCoordinator => "fa-light fa-user-cog",
-            SystemRole.SeniorInspector => "fa-light fa-user-search",
-            SystemRole.PropertyInspector => "fa-light fa-user-search",
-            SystemRole.CustomerSupportManager => "fa-light fa-user-headset",
-            SystemRole.CustomerSupportAgent => "fa-light fa-user-question",
-            SystemRole.ComplianceOfficer => "fa-light fa-user-shield",
-            SystemRole.LegalOfficer => "fa-light fa-user-balance-scale",
-            SystemRole.DataAnalyst => "fa-light fa-user-chart",
-            SystemRole.ReportsViewer => "fa-light fa-user-chart",
-            SystemRole.Auditor => "fa-light fa-user-check",
-            SystemRole.PropertyOwnerPortal => "fa-light fa-user-key",
-            SystemRole.TenantPortal => "fa-light fa-user-house",
-            SystemRole.VendorPortal => "fa-light fa-user-tools",
-            _ => "fa-light fa-user"
-        };
-    }
-    }
