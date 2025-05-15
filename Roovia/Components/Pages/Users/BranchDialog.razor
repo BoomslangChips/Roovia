@@ -1,11 +1,17 @@
-﻿@* @using Roovia.Interfaces
+﻿@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
-
-
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.UserCompanyMappingModels
 @using Roovia.Services
 @using Microsoft.AspNetCore.Components.Forms
+@using Roovia.Components
+@using Roovia.Components.Elements.Forms
 @inject IUser UserService
+@inject ICdnService CdnService
 @inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
 <RVModal IsVisible="true"
          Title="@GetDialogTitle()"
@@ -14,7 +20,7 @@
          OnCancel="OnCancel"
          OnConfirm="HandleConfirmAction"
          ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
-         CancelText="@(IsEditMode ? "Cancel" : "Close")"
+         CancelText="@(IsView ? "Close" : "Cancel")"
          DefaultFooter="false"
          Size="lg">
     <ChildContent>
@@ -34,9 +40,16 @@
                         <div class="branch-header">
                             <div class="branch-header-flex">
                                 <div class="branch-icon-wrapper">
-                                    <div class="branch-icon-large">
-                                        <i class="fa-light fa-code-branch"></i>
-                                    </div>
+                                    @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
+                                    {
+                                        <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name" class="branch-logo-large" />
+                                    }
+                                    else
+                                    {
+                                        <div class="branch-icon-large">
+                                            <i class="fa-light fa-code-branch"></i>
+                                        </div>
+                                    }
                                     <div class="status-indicator @(BranchModel.IsActive ? "active" : "inactive")"></div>
                                 </div>
 
@@ -48,6 +61,10 @@
                                         {
                                             <span class="branch-meta-item"><i class="fa-light fa-building"></i>@Company.Name</span>
                                         }
+                                        @if (BranchModel.IsHeadOffice)
+                                        {
+                                            <span class="badge bg-primary"><i class="fa-light fa-star"></i> Head Office</span>
+                                        }
                                     </div>
 
                                     <div class="branch-badges">
@@ -55,10 +72,13 @@
                                             <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
                                             @(BranchModel.IsActive ? "Active" : "Inactive")
                                         </span>
+                                        @if (BranchModel.Status != null)
+                                        {
+                                            <span class="status-badge">@BranchModel.Status.Name</span>
+                                        }
                                     </div>
                                 </div>
                             </div>
-
                         </div>
 
                         <div class="branch-details-tabs">
@@ -116,6 +136,10 @@
                                                     <div class="detail-value">@BranchModel.Name</div>
                                                 </div>
                                                 <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
+                                                    <div class="detail-value">@(BranchModel.Code ?? "Not set")</div>
+                                                </div>
+                                                <div class="detail-row">
                                                     <div class="detail-label"><i class="fa-light fa-building"></i> Company</div>
                                                     <div class="detail-value">@(Company?.Name ?? "Not assigned")</div>
                                                 </div>
@@ -128,11 +152,29 @@
                                                         </span>
                                                     </div>
                                                 </div>
-                                                @if (BranchModel.CreatedOn.HasValue)
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-star"></i> Head Office</div>
+                                                    <div class="detail-value">@(BranchModel.IsHeadOffice ? "Yes" : "No")</div>
+                                                </div>
+                                                @if (BranchModel.MaxUsers.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-users"></i> Max Users</div>
+                                                        <div class="detail-value">@BranchModel.MaxUsers</div>
+                                                    </div>
+                                                }
+                                                @if (BranchModel.MaxProperties.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-home"></i> Max Properties</div>
+                                                        <div class="detail-value">@BranchModel.MaxProperties</div>
+                                                    </div>
+                                                }
+                                                @if (BranchModel.CreatedOn != default)
                                                 {
                                                     <div class="detail-row">
                                                         <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
-                                                        <div class="detail-value">@BranchModel.CreatedOn?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                        <div class="detail-value">@BranchModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</div>
                                                     </div>
                                                 }
                                                 @if (!string.IsNullOrEmpty(BranchModel.CreatedBy))
@@ -347,23 +389,23 @@
                                                 <h4><i class="fa-light fa-university"></i> Banking Details</h4>
                                             </div>
                                             <div class="card-body">
-                                                @if (BranchModel.BankDetails != null && !string.IsNullOrEmpty(BranchModel.BankDetails.AccountNumber))
+                                                @if (BranchModel.BankAccount != null && !string.IsNullOrEmpty(BranchModel.BankAccount.AccountNumber))
                                                 {
                                                     <div class="detail-row">
                                                         <div class="detail-label"><i class="fa-light fa-university"></i> Bank Name</div>
-                                                        <div class="detail-value">@BranchModel.BankDetails.BankName.ToString()</div>
+                                                        <div class="detail-value">@(BranchModel.BankAccount.BankName?.ToString() ?? "Not set")</div>
                                                     </div>
                                                     <div class="detail-row">
                                                         <div class="detail-label"><i class="fa-light fa-credit-card"></i> Account Type</div>
-                                                        <div class="detail-value">@BranchModel.BankDetails.AccountType</div>
+                                                        <div class="detail-value">@(BranchModel.BankAccount.AccountType ?? "Not set")</div>
                                                     </div>
                                                     <div class="detail-row">
                                                         <div class="detail-label"><i class="fa-light fa-hashtag"></i> Account Number</div>
-                                                        <div class="detail-value">@BranchModel.BankDetails.AccountNumber</div>
+                                                        <div class="detail-value">@BranchModel.BankAccount.AccountNumber</div>
                                                     </div>
                                                     <div class="detail-row">
                                                         <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
-                                                        <div class="detail-value">@BranchModel.BankDetails.BranchCode</div>
+                                                        <div class="detail-value">@BranchModel.BankAccount.BranchCode</div>
                                                     </div>
                                                 }
                                                 else
@@ -385,33 +427,29 @@
                                                 <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
                                             </div>
                                             <div class="card-body">
-                                                <div class="logos-gallery">
-                                                    @if (BranchModel.Logos != null && BranchModel.Logos.Any())
-                                                    {
-                                                        foreach (var logo in BranchModel.Logos.OrderBy(l => l.Size))
-                                                        {
-                                                            <div class="logo-item">
-                                                                <div class="logo-container">
-                                                                    <img src="@logo.FilePath" alt="@logo.Size Logo" class="logo-image" />
-                                                                </div>
-                                                                <div class="logo-info">
-                                                                    <div class="logo-title">@logo.Size Logo</div>
-                                                                    <div class="logo-meta">
-                                                                        <span><i class="fa-light fa-ruler-combined"></i> @logo.Size</span>
-                                                                        <span><i class="fa-light fa-file-image"></i> @(logo.FileSize / 1024) KB</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="empty-message">
-                                                            <i class="fa-light fa-file-image"></i>
-                                                            <p>No logos uploaded</p>
+                                                @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
+                                                {
+                                                    <div class="logo-display">
+                                                        <div class="logo-container">
+                                                            <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name Logo" class="logo-image" />
                                                         </div>
-                                                    }
-                                                </div>
+                                                        <div class="logo-info">
+                                                            <div class="logo-title">@BranchModel.MainLogo.FileName</div>
+                                                            <div class="logo-meta">
+                                                                <span><i class="fa-light fa-file-image"></i> @BranchModel.MainLogo.ContentType</span>
+                                                                <span><i class="fa-light fa-weight"></i> @((BranchModel.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
+                                                                <span><i class="fa-light fa-calendar"></i> @BranchModel.MainLogo.UploadDate.ToString("dd MMM yyyy")</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-file-image"></i>
+                                                        <p>No logo uploaded</p>
+                                                    </div>
+                                                }
                                             </div>
                                         </div>
                                     </div>
@@ -443,7 +481,7 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="name">Branch Name</label>
+                                        <label for="name">Branch Name *</label>
                                         <RVTextbox Id="name"
                                                    Value="@BranchModel.Name"
                                                    ValueChanged="value => BranchModel.Name = value"
@@ -453,16 +491,25 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="company">Company</label>
+                                        <label for="code">Branch Code</label>
+                                        <RVTextbox Id="code"
+                                                   Value="@BranchModel.Code"
+                                                   ValueChanged="value => BranchModel.Code = value"
+                                                   Placeholder="Enter unique branch code"
+                                                   IconLeft="fa-light fa-code" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="company">Company *</label>
                                         <RVSelect Id="company"
                                                   Value="@BranchModel.CompanyId.ToString()"
                                                   ValueChanged="HandleCompanyChange"
                                                   Placeholder="Select company"
                                                   IconLeft="fa-light fa-building"
-                                                  Disabled="@(CompaniesList == null || !CompaniesList.Any() || !CanEditCompany)">
-                                            @if (CompaniesList != null)
+                                                  Disabled="@(Companies == null || !Companies.Any() || !CanEditCompany)">
+                                            @if (Companies != null)
                                             {
-                                                @foreach (var company in CompaniesList.OrderBy(c => c.Name))
+                                                @foreach (var company in Companies.OrderBy(c => c.Name))
                                                 {
                                                     <option value="@company.Id">@company.Name</option>
                                                 }
@@ -472,10 +519,57 @@
                                     </div>
 
                                     <div class="form-group">
+                                        <label for="status">Status</label>
+                                        <RVSelect Id="status"
+                                                  Value="@(BranchModel.StatusId?.ToString() ?? "")"
+                                                  ValueChanged="value => BranchModel.StatusId = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                                  Placeholder="Select status"
+                                                  IconLeft="fa-light fa-toggle-on">
+                                            <option value="">-- No Status --</option>
+                                            @if (StatusTypes != null)
+                                            {
+                                                @foreach (var status in StatusTypes.OrderBy(s => s.DisplayOrder))
+                                                {
+                                                    <option value="@status.Id">@status.Name</option>
+                                                }
+                                            }
+                                        </RVSelect>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="maxUsers">Max Users</label>
+                                            <RVTextbox Id="maxUsers"
+                                                       Type="number"
+                                                       Value="@(BranchModel.MaxUsers?.ToString() ?? "")"
+                                                       ValueChanged="value => BranchModel.MaxUsers = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                                       Placeholder="Maximum users allowed"
+                                                       IconLeft="fa-light fa-users" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="maxProperties">Max Properties</label>
+                                            <RVTextbox Id="maxProperties"
+                                                       Type="number"
+                                                       Value="@(BranchModel.MaxProperties?.ToString() ?? "")"
+                                                       ValueChanged="value => BranchModel.MaxProperties = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                                       Placeholder="Maximum properties allowed"
+                                                       IconLeft="fa-light fa-home" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
                                         <RVSwitch Label="Active"
                                                   Value="BranchModel.IsActive"
                                                   ValueChanged="value => BranchModel.IsActive = value"
                                                   HelperText="Inactive branches will not be accessible to users" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <RVSwitch Label="Head Office"
+                                                  Value="BranchModel.IsHeadOffice"
+                                                  ValueChanged="value => BranchModel.IsHeadOffice = value"
+                                                  HelperText="Designate this branch as the head office" />
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -544,7 +638,7 @@
                                         else
                                         {
                                             <div class="empty-list">
-                                                <i class="fa-light fa-inbox-empty"></i>
+                                                <i class="fa-light fa-inbox"></i>
                                                 <p>No additional email addresses</p>
                                             </div>
                                         }
@@ -611,7 +705,7 @@
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-12">
                                             <label for="street">Street</label>
                                             <RVTextbox Id="street"
                                                        Value="@BranchModel.Address.Street"
@@ -622,38 +716,38 @@
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-4">
                                             <label for="unitNumber">Unit Number</label>
                                             <RVTextbox Id="unitNumber"
                                                        Value="@BranchModel.Address.UnitNumber"
                                                        ValueChanged="value => BranchModel.Address.UnitNumber = value"
-                                                       Placeholder="Enter unit number (optional)"
+                                                       Placeholder="Unit number"
                                                        IconLeft="fa-light fa-door-closed" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-8">
                                             <label for="complexName">Complex Name</label>
                                             <RVTextbox Id="complexName"
                                                        Value="@BranchModel.Address.ComplexName"
                                                        ValueChanged="value => BranchModel.Address.ComplexName = value"
-                                                       Placeholder="Enter complex name (optional)"
+                                                       Placeholder="Complex name"
                                                        IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-12">
                                             <label for="buildingName">Building Name</label>
                                             <RVTextbox Id="buildingName"
                                                        Value="@BranchModel.Address.BuildingName"
                                                        ValueChanged="value => BranchModel.Address.BuildingName = value"
-                                                       Placeholder="Enter building name (optional)"
+                                                       Placeholder="Building name"
                                                        IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="suburb">Suburb</label>
                                             <RVTextbox Id="suburb"
                                                        Value="@BranchModel.Address.Suburb"
@@ -662,7 +756,7 @@
                                                        IconLeft="fa-light fa-map" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="city">City</label>
                                             <RVTextbox Id="city"
                                                        Value="@BranchModel.Address.City"
@@ -673,7 +767,7 @@
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="province">Province</label>
                                             <RVTextbox Id="province"
                                                        Value="@BranchModel.Address.Province"
@@ -682,7 +776,7 @@
                                                        IconLeft="fa-light fa-map-marked" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="postalCode">Postal Code</label>
                                             <RVTextbox Id="postalCode"
                                                        Value="@BranchModel.Address.PostalCode"
@@ -712,12 +806,13 @@
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="bank">Bank Name</label>
                                             <RVSelect Id="bank"
-                                                      Value="@BranchModel.BankDetails.BankName.ToString()"
+                                                      Value="@(BranchModel.BankAccount.BankName?.ToString() ?? "")"
                                                       ValueChanged="value => UpdateBankName(value)"
                                                       IconLeft="fa-light fa-university">
+                                                <option value="">-- Select Bank --</option>
                                                 @foreach (var bank in Enum.GetValues(typeof(BankName)))
                                                 {
                                                     <option value="@bank">@bank</option>
@@ -725,36 +820,36 @@
                                             </RVSelect>
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="accountType">Account Type</label>
                                             <RVTextbox Id="accountType"
-                                                       Value="@BranchModel.BankDetails.AccountType"
-                                                       ValueChanged="value => BranchModel.BankDetails.AccountType = value"
+                                                       Value="@BranchModel.BankAccount.AccountType"
+                                                       ValueChanged="value => BranchModel.BankAccount.AccountType = value"
                                                        Placeholder="E.g. Current, Savings, Business"
                                                        IconLeft="fa-light fa-credit-card" />
-                                            <ValidationMessage For="@(() => BranchModel.BankDetails.AccountType)" />
+                                            <ValidationMessage For="@(() => BranchModel.BankAccount.AccountType)" />
                                         </div>
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="accountNumber">Account Number</label>
                                             <RVTextbox Id="accountNumber"
-                                                       Value="@BranchModel.BankDetails.AccountNumber"
-                                                       ValueChanged="value => BranchModel.BankDetails.AccountNumber = value"
+                                                       Value="@BranchModel.BankAccount.AccountNumber"
+                                                       ValueChanged="value => BranchModel.BankAccount.AccountNumber = value"
                                                        Placeholder="Enter account number"
                                                        IconLeft="fa-light fa-hashtag" />
-                                            <ValidationMessage For="@(() => BranchModel.BankDetails.AccountNumber)" />
+                                            <ValidationMessage For="@(() => BranchModel.BankAccount.AccountNumber)" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="branchCode">Branch Code</label>
                                             <RVTextbox Id="branchCode"
-                                                       Value="@BranchModel.BankDetails.BranchCode"
-                                                       ValueChanged="value => BranchModel.BankDetails.BranchCode = value"
+                                                       Value="@BranchModel.BankAccount.BranchCode"
+                                                       ValueChanged="value => BranchModel.BankAccount.BranchCode = value"
                                                        Placeholder="Enter branch code"
                                                        IconLeft="fa-light fa-code" />
-                                            <ValidationMessage For="@(() => BranchModel.BankDetails.BranchCode)" />
+                                            <ValidationMessage For="@(() => BranchModel.BankAccount.BranchCode)" />
                                         </div>
                                     </div>
                                 </div>
@@ -764,108 +859,44 @@
                                 <div class="form-section">
                                     <div class="section-title">
                                         <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
-                                        <p>Upload logos for the branch</p>
+                                        <p>Upload a logo for the branch</p>
                                     </div>
 
-                                    <div class="logos-grid">
-                                        <!-- Small Logo -->
-                                        <div class="logo-upload-card">
-                                            <h5>Small Logo</h5>
-                                            <p class="logo-description">Used for login screens (64x64px recommended)</p>
-                                            <div class="logo-upload-content">
-                                                @{
-                                                    var smallLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Small);
-                                                }
-
-                                                @if (smallLogo != null)
-                                                {
-                                                    <div class="logo-preview">
-                                                        <img src="@smallLogo.FilePath" alt="Small Logo" class="logo-image" />
-                                                    </div>
-                                                    <div class="logo-actions">
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  Text="Remove" OnClick="() => RemoveLogo(smallLogo)" />
-                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
-                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Small)" />
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <div class="empty-logo-upload">
-                                                        <i class="fa-light fa-image fa-2x"></i>
-                                                        <p>No logo uploaded</p>
-                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
-                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Small)" />
-                                                    </div>
-                                                }
+                                    <div class="logo-upload-container">
+                                        @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
+                                        {
+                                            <div class="current-logo">
+                                                <h5>Current Logo</h5>
+                                                <div class="logo-preview">
+                                                    <img src="@BranchModel.MainLogo.Url" alt="Branch Logo" class="logo-image" />
+                                                </div>
+                                                <div class="logo-actions">
+                                                    <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-trash"
+                                                              Text="Remove" OnClick="RemoveLogo" />
+                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-exchange"
+                                                              Text="Replace" OnClick="ShowUploadDialog" />
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        <!-- Medium Logo -->
-                                        <div class="logo-upload-card">
-                                            <h5>Medium Logo</h5>
-                                            <p class="logo-description">Used for general purposes (256x256px recommended)</p>
-                                            <div class="logo-upload-content">
-                                                @{
-                                                    var mediumLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Medium);
-                                                }
-
-                                                @if (mediumLogo != null)
-                                                {
-                                                    <div class="logo-preview">
-                                                        <img src="@mediumLogo.FilePath" alt="Medium Logo" class="logo-image" />
-                                                    </div>
-                                                    <div class="logo-actions">
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  Text="Remove" OnClick="() => RemoveLogo(mediumLogo)" />
-                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
-                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Medium)" />
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <div class="empty-logo-upload">
-                                                        <i class="fa-light fa-image fa-2x"></i>
-                                                        <p>No logo uploaded</p>
-                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
-                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Medium)" />
-                                                    </div>
-                                                }
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-logo-upload">
+                                                <i class="fa-light fa-image fa-3x"></i>
+                                                <p>No logo uploaded</p>
+                                                <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-cloud-upload"
+                                                          Text="Upload Logo" OnClick="ShowUploadDialog" />
                                             </div>
-                                        </div>
+                                        }
 
-                                        <!-- Large Logo -->
-                                        <div class="logo-upload-card">
-                                            <h5>Large Logo</h5>
-                                            <p class="logo-description">Used for invoices and high-res needs (512x512px recommended)</p>
-                                            <div class="logo-upload-content">
-                                                @{
-                                                    var largeLogo = BranchModel.Logos?.FirstOrDefault(l => l.Size == LogoSize.Large);
-                                                }
-
-                                                @if (largeLogo != null)
-                                                {
-                                                    <div class="logo-preview">
-                                                        <img src="@largeLogo.FilePath" alt="Large Logo" class="logo-image" />
-                                                    </div>
-                                                    <div class="logo-actions">
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  Text="Remove" OnClick="() => RemoveLogo(largeLogo)" />
-                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-exchange"
-                                                                  Text="Replace" OnClick="() => ShowUploadDialog(LogoSize.Large)" />
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <div class="empty-logo-upload">
-                                                        <i class="fa-light fa-image fa-2x"></i>
-                                                        <p>No logo uploaded</p>
-                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-cloud-upload"
-                                                                  Text="Upload Logo" OnClick="() => ShowUploadDialog(LogoSize.Large)" />
-                                                    </div>
-                                                }
+                                        @if (isUploading)
+                                        {
+                                            <div class="upload-progress">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: @uploadProgress%"></div>
+                                                </div>
+                                                <span class="progress-text">Uploading... @uploadProgress%</span>
                                             </div>
-                                        </div>
+                                        }
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -882,6 +913,7 @@
     </ChildContent>
 </RVModal>
 
+@* Logo Upload Modal *@
 @if (showLogoUploadDialog)
 {
     <RVModal IsVisible="true"
@@ -896,41 +928,26 @@
         <ChildContent>
             <div class="logo-upload-dialog">
                 <div class="upload-instructions">
-                    <h4>@($"Upload {currentLogoSize} Logo")</h4>
+                    <h4>Upload Branch Logo</h4>
                     <p>Please select an image file to upload as the branch logo.</p>
-
-                    @if (currentLogoSize == LogoSize.Small)
-                    {
-                        <p>Recommended size: 64x64 pixels</p>
-                    }
-                    else if (currentLogoSize == LogoSize.Medium)
-                    {
-                        <p>Recommended size: 256x256 pixels</p>
-                    }
-                    else
-                    {
-                        <p>Recommended size: 512x512 pixels</p>
-                    }
+                    <p>Recommended size: 512x512 pixels</p>
+                    <p>Maximum file size: 5MB</p>
+                    <p>Supported formats: JPG, PNG, GIF</p>
                 </div>
 
                 <div class="upload-area">
-                    <InputFile OnChange="OnLogoInputChange" class="upload-input" accept="image/*" />
-                    <div class="upload-placeholder @(isUploading ? "d-none" : "")">
-                        <i class="fa-light fa-cloud-upload fa-2x"></i>
+                    <InputFile OnChange="OnLogoFileSelected" class="upload-input" accept="image/*" />
+                    <div class="upload-placeholder @(logoFile != null ? "d-none" : "")">
+                        <i class="fa-light fa-cloud-upload fa-3x"></i>
                         <p>Drag and drop your logo here, or click to browse</p>
-                        <span class="file-hint">JPG or PNG format recommended</span>
+                        <span class="file-hint">JPG, PNG or GIF format recommended</span>
                     </div>
-                    @if (isUploading)
+                    @if (logoFile != null)
                     {
-                        <div class="upload-progress">
-                            <div class="loading-spinner sm"></div>
-                            <span>Uploading logo... @uploadProgress%</span>
-                        </div>
-                    }
-                    @if (!string.IsNullOrEmpty(logoPreview))
-                    {
-                        <div class="logo-preview-new">
-                            <img src="@logoPreview" alt="Logo Preview" class="preview-image" />
+                        <div class="file-selected">
+                            <i class="fa-light fa-file-image"></i>
+                            <span>@logoFile.Name</span>
+                            <span class="file-size">(@((logoFile.Size / 1024).ToString("N0")) KB)</span>
                         </div>
                     }
                 </div>
@@ -947,9 +964,10 @@
     </RVModal>
 }
 
-
 @code {
     [Parameter] public Branch BranchModel { get; set; } = new Branch();
+    [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public IEnumerable<BranchStatusType>? StatusTypes { get; set; }
     [Parameter] public int CompanyId { get; set; } = 0;
     [Parameter] public bool IsEdit { get; set; } = false;
     [Parameter] public bool IsView { get; set; } = false;
@@ -965,12 +983,9 @@
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
     private Company? Company { get; set; }
-    private List<Company>? CompaniesList { get; set; }
 
     // Logo upload related fields
     private bool showLogoUploadDialog = false;
-    private LogoSize currentLogoSize = LogoSize.Medium;
-    private string logoPreview = string.Empty;
     private IBrowserFile? logoFile;
     private bool isUploading = false;
     private int uploadProgress = 0;
@@ -989,8 +1004,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCompanies();
-
         if (BranchModel.Id != 0)
         {
             await LoadBranchData();
@@ -1023,30 +1036,70 @@
         }
     }
 
-    private async Task HandleConfirmAction()
+    private void InitializeNewBranch()
     {
-        if (IsView)
-        {
-            await OnCancel.InvokeAsync();
-        }
-        else if (IsEditMode)
-        {
-            await Save();
-        }
-        else
-        {
-            SwitchToEditMode();
-        }
+        BranchModel = new Branch
+            {
+                CompanyId = CompanyId,
+                IsActive = true,
+                Address = new Address { Country = "South Africa" },
+                BankAccount = new BankAccount { BankName = BankName.StandardBank },
+                EmailAddresses = new List<Email>(),
+                ContactNumbers = new List<ContactNumber>(),
+                CreatedOn = DateTime.Now
+            };
+
+        // Initialize collections if null
+        if (BranchModel.EmailAddresses == null)
+            BranchModel.EmailAddresses = new List<Email>();
+        if (BranchModel.ContactNumbers == null)
+            BranchModel.ContactNumbers = new List<ContactNumber>();
     }
 
-    private async Task LoadCompanies()
+    private async Task LoadBranchData()
     {
+        isLoading = true;
+
         try
         {
-            var response = await UserService.GetAllCompanies();
+            var response = await UserService.GetBranchById(BranchModel.Id);
             if (response.ResponseInfo.Success)
             {
-                CompaniesList = (List<Company>)response.Response;
+                BranchModel = (Branch)response.Response;
+
+                // Initialize collections if null
+                if (BranchModel.EmailAddresses == null)
+                    BranchModel.EmailAddresses = new List<Email>();
+                if (BranchModel.ContactNumbers == null)
+                    BranchModel.ContactNumbers = new List<ContactNumber>();
+
+                // Initialize bank account if null
+                if (BranchModel.BankAccount == null)
+                {
+                    BranchModel.BankAccount = new BankAccount { BankName = BankName.StandardBank };
+                }
+
+                // Load the company details
+                if (BranchModel.CompanyId > 0)
+                {
+                    await LoadCompanyDetails(BranchModel.CompanyId);
+                }
+
+                // Load the logo if there's one
+                if (BranchModel.MainLogoId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    BranchModel.MainLogo = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == BranchModel.MainLogoId.Value);
+                }
+
+                // Load status if there's one
+                if (BranchModel.StatusId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    BranchModel.Status = await context.BranchStatusTypes
+                        .FirstOrDefaultAsync(s => s.Id == BranchModel.StatusId.Value);
+                }
             }
             else
             {
@@ -1055,7 +1108,11 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Error loading companies: {ex.Message}", "Error");
+            ToastService.ShowError($"Error loading branch: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
@@ -1072,59 +1129,6 @@
         catch (Exception ex)
         {
             ToastService.ShowError($"Error loading company details: {ex.Message}", "Error");
-        }
-    }
-
-    private void InitializeNewBranch()
-    {
-        BranchModel = new Branch
-            {
-                CompanyId = CompanyId,
-                IsActive = true,
-                Address = new Address { Country = "South Africa" },
-                BankDetails = new BankAccount { BankName = BankName.StandardBank },
-                EmailAddresses = new List<Email>(),
-                ContactNumbers = new List<ContactNumber>(),
-                Logos = new List<BranchLogo>(),
-                CreatedOn = DateTime.Now
-            };
-    }
-
-    private async Task LoadBranchData()
-    {
-        isLoading = true;
-
-        try
-        {
-            var response = await UserService.GetBranchById(BranchModel.Id);
-            if (response.ResponseInfo.Success)
-            {
-                BranchModel = (Branch)response.Response;
-
-                // Initialize bank details if null
-                if (BranchModel.BankDetails == null)
-                {
-                    BranchModel.BankDetails = new BankAccount { BankName = BankName.StandardBank };
-                }
-
-                // Load the company details
-                if (BranchModel.CompanyId > 0)
-                {
-                    await LoadCompanyDetails(BranchModel.CompanyId);
-                }
-            }
-            else
-            {
-                ToastService.ShowError(response.ResponseInfo.Message, "Error");
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error loading branch: {ex.Message}", "Error");
-        }
-        finally
-        {
-            isLoading = false;
         }
     }
 
@@ -1152,19 +1156,19 @@
         }
         else if (BranchModel.Id == 0)
         {
-            return "fa-light fa-code-branch-circle-plus";
+            return "fa-light fa-plus-circle";
         }
         else
         {
-            return "fa-light fa-code-branch-circle-check";
+            return "fa-light fa-edit";
         }
     }
 
     private void SwitchToEditMode()
     {
         isInEditMode = true;
-        IsView = false;  // Add this line to override the IsView parameter
-        StateHasChanged(); // Force UI to update
+        IsView = false;
+        StateHasChanged();
     }
 
     private void HandleTabChange(string tabId)
@@ -1186,10 +1190,28 @@
         }
     }
 
+    private async Task HandleConfirmAction()
+    {
+        if (IsView)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else if (IsEditMode)
+        {
+            await Save();
+        }
+        else
+        {
+            SwitchToEditMode();
+        }
+    }
+
     private async Task Save()
     {
         try
         {
+            isLoading = true;
+
             if (BranchModel.Id == 0)
             {
                 // Create new branch
@@ -1202,7 +1224,9 @@
                 BranchModel.UpdatedBy = "CurrentUser"; // Replace with actual current user ID
                 BranchModel.UpdatedDate = DateTime.Now;
             }
+
             await OnSave.InvokeAsync(BranchModel);
+
             if (isInEditMode)
             {
                 // If we're in "switch to edit mode" state, go back to view mode after save
@@ -1213,6 +1237,10 @@
         {
             ToastService.ShowError($"Error saving branch: {ex.Message}", "Error");
         }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     // Helper method for banking details
@@ -1220,7 +1248,7 @@
     {
         if (Enum.TryParse<BankName>(value, out var bankName))
         {
-            BranchModel.BankDetails.BankName = bankName;
+            BranchModel.BankAccount.BankName = bankName;
         }
     }
 
@@ -1248,13 +1276,11 @@
 
         if (primaryEmail != null)
         {
-            // If there's already a primary email, just update its value
             primaryEmail.EmailAddress = value;
             primaryEmail.UpdatedDate = DateTime.Now;
         }
         else if (!string.IsNullOrEmpty(value))
         {
-            // If there's no primary email yet, create a new one
             var newEmail = new Email
                 {
                     EmailAddress = value,
@@ -1264,7 +1290,6 @@
                     CreatedOn = DateTime.Now
                 };
 
-            // For existing branches
             if (BranchModel.Id > 0)
             {
                 newEmail.SetRelatedEntity("Branch", BranchModel.Id);
@@ -1285,13 +1310,11 @@
 
         if (primaryPhone != null)
         {
-            // If there's already a primary phone, just update its value
             primaryPhone.Number = value;
             primaryPhone.UpdatedDate = DateTime.Now;
         }
         else if (!string.IsNullOrEmpty(value))
         {
-            // If there's no primary phone yet, create a new one
             var newPhone = new ContactNumber
                 {
                     Number = value,
@@ -1302,7 +1325,6 @@
                     CreatedOn = DateTime.Now
                 };
 
-            // For existing branches
             if (BranchModel.Id > 0)
             {
                 newPhone.SetRelatedEntity("Branch", BranchModel.Id);
@@ -1390,76 +1412,44 @@
     }
 
     // Logo handling methods
-    private void ShowUploadDialog(LogoSize size)
+    private void ShowUploadDialog()
     {
-        currentLogoSize = size;
-        logoPreview = string.Empty;
-        logoFile = null;
         uploadError = string.Empty;
+        logoFile = null;
         showLogoUploadDialog = true;
     }
 
     private void CloseUploadDialog()
     {
         showLogoUploadDialog = false;
+        logoFile = null;
+        uploadError = string.Empty;
     }
 
-    private async Task OnLogoInputChange(InputFileChangeEventArgs e)
+    private void OnLogoFileSelected(InputFileChangeEventArgs e)
     {
-        try
+        logoFile = e.File;
+        uploadError = string.Empty;
+
+        if (logoFile.Size > maxFileSize)
         {
-            uploadError = string.Empty;
-            logoFile = e.File;
-
-            if (logoFile.Size > maxFileSize)
-            {
-                uploadError = "File size exceeds 5MB limit";
-                return;
-            }
-
-            // Validate file type
-            if (!logoFile.ContentType.StartsWith("image/"))
-            {
-                uploadError = "Please select an image file";
-                return;
-            }
-
-            // Generate preview
-            isUploading = true;
-            uploadProgress = 0;
-
-            // Simulate upload progress
-            for (int i = 0; i <= 100; i += 10)
-            {
-                uploadProgress = i;
-                await Task.Delay(50); // Simulated delay
-                StateHasChanged();
-            }
-
-            var imageFormat = logoFile.ContentType.Split('/')[1];
-            var resizedImageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 512, 512);
-
-            using var stream = resizedImageFile.OpenReadStream();
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            byte[] imageData = ms.ToArray();
-
-            // Generate base64 preview
-            logoPreview = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(imageData)}";
-
-            isUploading = false;
-            uploadProgress = 100;
+            uploadError = "File size exceeds 5MB limit";
+            logoFile = null;
+            return;
         }
-        catch (Exception ex)
+
+        // Validate file type
+        if (!logoFile.ContentType.StartsWith("image/"))
         {
-            isUploading = false;
-            uploadError = $"Error uploading logo: {ex.Message}";
+            uploadError = "Please select an image file";
+            logoFile = null;
+            return;
         }
     }
 
     private async Task UploadLogo()
     {
-        if (logoFile == null || string.IsNullOrEmpty(logoPreview))
+        if (logoFile == null)
         {
             uploadError = "Please select a logo file to upload";
             return;
@@ -1469,95 +1459,74 @@
         {
             isUploading = true;
             uploadProgress = 0;
+            StateHasChanged();
 
-            // Simulate upload progress
-            for (int i = 0; i <= 100; i += 10)
+            // Create a unique filename
+            var fileName = $"branch-logo-{BranchModel.Id}-{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(logoFile.Name)}";
+
+            // Update progress as we prepare the upload
+            uploadProgress = 30;
+            StateHasChanged();
+
+            // Use the CDN service to upload the file
+            using var stream = logoFile.OpenReadStream(maxFileSize);
+            var result = await CdnService.UploadFileAsync(
+                stream,
+                fileName,
+                "logos",
+                logoFile.ContentType
+            );
+
+            uploadProgress = 80;
+            StateHasChanged();
+
+            if (result.Success && result.FileMetadata != null)
             {
-                uploadProgress = i;
-                await Task.Delay(50);
-                StateHasChanged();
-            }
+                // Update the branch model with the new logo
+                BranchModel.MainLogoId = result.FileMetadata.Id;
+                BranchModel.MainLogo = result.FileMetadata;
 
-            // Create a logo entry
-            if (BranchModel.Logos == null)
+                uploadProgress = 100;
+                ToastService.ShowSuccess("Logo uploaded successfully", "Success");
+                showLogoUploadDialog = false;
+            }
+            else
             {
-                BranchModel.Logos = new List<BranchLogo>();
+                uploadError = result.ErrorMessage ?? "Failed to upload logo";
             }
-
-            // Remove existing logo of same size if exists
-            var existingLogo = BranchModel.Logos.FirstOrDefault(l => l.Size == currentLogoSize);
-            if (existingLogo != null)
-            {
-                BranchModel.Logos.Remove(existingLogo);
-            }
-
-            // In a real app, you would upload this file to a server and get the URL back
-            // Here we'll just simulate it
-            string fileName = $"{Guid.NewGuid()}.{logoFile.ContentType.Split('/')[1]}";
-            string filePath = $"/branch-logos/{fileName}";
-
-            // Add new logo
-            BranchModel.Logos.Add(new BranchLogo
-                {
-                    BranchId = BranchModel.Id,
-                    FileName = fileName,
-                    FilePath = filePath, // In a real app, this would be the URL from the server
-                    Size = currentLogoSize,
-                    ContentType = logoFile.ContentType,
-                    FileSize = logoFile.Size,
-                    UploadedDate = DateTime.Now,
-                    UploadedBy = "CurrentUser" // Replace with actual user
-                });
-
-            // Update the appropriate path in the BranchModel based on size
-            switch (currentLogoSize)
-            {
-                case LogoSize.Small:
-                    BranchModel.LogoSmallPath = filePath;
-                    break;
-                case LogoSize.Medium:
-                    BranchModel.LogoMediumPath = filePath;
-                    break;
-                case LogoSize.Large:
-                    BranchModel.LogoLargePath = filePath;
-                    break;
-            }
-
-            ToastService.ShowSuccess($"{currentLogoSize} logo uploaded successfully", "Success");
-            showLogoUploadDialog = false;
         }
         catch (Exception ex)
         {
-            uploadError = $"Error saving logo: {ex.Message}";
-            isUploading = false;
+            uploadError = $"Error uploading logo: {ex.Message}";
+            ToastService.ShowError(uploadError, "Error");
         }
         finally
         {
             isUploading = false;
+            uploadProgress = 0;
+            StateHasChanged();
         }
     }
 
-    private void RemoveLogo(BranchLogo logo)
+    private async Task RemoveLogo()
     {
-        if (BranchModel.Logos != null)
+        try
         {
-            BranchModel.Logos.Remove(logo);
-
-            // Also remove the path in the BranchModel
-            switch (logo.Size)
+            if (BranchModel.MainLogoId.HasValue)
             {
-                case LogoSize.Small:
-                    BranchModel.LogoSmallPath = null;
-                    break;
-                case LogoSize.Medium:
-                    BranchModel.LogoMediumPath = null;
-                    break;
-                case LogoSize.Large:
-                    BranchModel.LogoLargePath = null;
-                    break;
-            }
+                // Remove from CDN
+                await CdnService.DeleteFileAsync(BranchModel.MainLogoId.Value);
 
-            ToastService.ShowSuccess($"{logo.Size} logo removed", "Success");
+                // Update the model
+                BranchModel.MainLogoId = null;
+                BranchModel.MainLogo = null;
+
+                ToastService.ShowSuccess("Logo removed successfully", "Success");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
         }
     }
-} *@
+}
