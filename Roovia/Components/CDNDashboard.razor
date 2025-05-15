@@ -49,8 +49,30 @@
                 <h3 class="cdn-stat-number">@totalFiles</h3>
                 <p class="cdn-stat-label">Total Files</p>
                 <div class="cdn-stat-trend">
-                    <i class="fa-light fa-arrow-up"></i>
-                    <span>12% increase</span>
+                    @if (yesterdayFiles > 0)
+                    {
+                        var percentChange = ((totalFiles - yesterdayFiles) / (double)yesterdayFiles * 100);
+                        if (percentChange > 0)
+                        {
+                                    <i class="fa-light fa-arrow-up"></i>
+                                    <span>@percentChange.ToString("0.#")% increase</span>
+                        }
+                        else if (percentChange < 0)
+                        {
+                                    <i class="fa-light fa-arrow-down"></i>
+                                    <span>@Math.Abs(percentChange).ToString("0.#")% decrease</span>
+                        }
+                        else
+                        {
+                                    <i class="fa-light fa-equals"></i>
+                                    <span>No change</span>
+                        }
+                    }
+                    else
+                    {
+                            <i class="fa-light fa-chart-line"></i>
+                            <span>No previous data</span>
+                    }
                 </div>
             </div>
         </div>
@@ -63,9 +85,14 @@
             <div class="cdn-stat-content">
                 <h3 class="cdn-stat-number">@FormatFileSize(totalStorage)</h3>
                 <p class="cdn-stat-label">Storage Used</p>
-                <div class="cdn-stat-progress">
-                    <div class="cdn-stat-progress-bar" style="width: 75%"></div>
-                </div>
+                @if (cdnConfig != null && cdnConfig.MaxFileSizeMB > 0)
+                {
+                    var maxStorageBytes = (long)cdnConfig.MaxFileSizeMB * 1024 * 1024 * 100; // Assuming 100x max file size as total storage
+                    var percentUsed = (totalStorage / (double)maxStorageBytes * 100);
+                        <div class="cdn-stat-progress">
+                            <div class="cdn-stat-progress-bar" style="width: @Math.Min(percentUsed, 100)%"></div>
+                        </div>
+                }
             </div>
         </div>
 
@@ -78,11 +105,12 @@
                 <h3 class="cdn-stat-number">@uploadsToday</h3>
                 <p class="cdn-stat-label">Uploads Today</p>
                 <div class="cdn-stat-chart">
-                    <div class="cdn-mini-bar" style="height: 40%"></div>
-                    <div class="cdn-mini-bar" style="height: 60%"></div>
-                    <div class="cdn-mini-bar" style="height: 80%"></div>
-                    <div class="cdn-mini-bar" style="height: 45%"></div>
-                    <div class="cdn-mini-bar" style="height: 90%"></div>
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        var dayOffset = 4 - i;
+                        var height = weeklyUploads.ContainsKey(dayOffset) ? (weeklyUploads[dayOffset] * 100 / Math.Max(1, weeklyUploads.Values.Max())) : 0;
+                            <div class="cdn-mini-bar" style="height: @height%"></div>
+                    }
                 </div>
             </div>
         </div>
@@ -97,7 +125,26 @@
                 <p class="cdn-stat-label">Downloads Today</p>
                 <div class="cdn-stat-metric">
                     <i class="fa-light fa-chart-line"></i>
-                    <span>+24% from yesterday</span>
+                    @if (yesterdayDownloads > 0)
+                    {
+                        var downloadChange = ((downloadsToday - yesterdayDownloads) / (double)yesterdayDownloads * 100);
+                        if (downloadChange > 0)
+                        {
+                                    <span>+@downloadChange.ToString("0.#")% from yesterday</span>
+                        }
+                        else if (downloadChange < 0)
+                        {
+                                    <span>@downloadChange.ToString("0.#")% from yesterday</span>
+                        }
+                        else
+                        {
+                                    <span>Same as yesterday</span>
+                        }
+                    }
+                    else
+                    {
+                            <span>No data from yesterday</span>
+                    }
                 </div>
             </div>
         </div>
@@ -137,372 +184,374 @@
     <div class="cdn-content">
         @if (activeTab == "filemanager")
         {
-                    <!-- Enhanced File Manager -->
-                    <div class="cdn-file-manager">
-                        <div class="cdn-file-layout">
-                            <!-- Modern Category Sidebar -->
-                            <div class="cdn-category-sidebar">
-                                <div class="cdn-category-header">
-                                    <h5>Categories</h5>
-                                    <button class="cdn-category-add">
-                                        <i class="fa-light fa-plus"></i>
-                                    </button>
-                                </div>
-                                <div class="cdn-category-list">
+                        <!-- Enhanced File Manager -->
+                        <div class="cdn-file-manager">
+                            <div class="cdn-file-layout">
+                                <!-- Modern Category Sidebar -->
+                                <div class="cdn-category-sidebar">
+                                    <div class="cdn-category-header">
+                                        <h5>Categories</h5>
+                                        <button class="cdn-category-add" @onclick="ShowCreateCategoryModal">
+                                            <i class="fa-light fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <div class="cdn-category-list">
                             @foreach (var category in categories)
                             {
-                                                <div class="cdn-category-item @(selectedCategory?.Id == category.Id ? "active" : "")"
-                                                     @onclick="() => SelectCategory(category)">
-                                                    <div class="cdn-category-icon">
-                                                        <i class="fa-light fa-folder"></i>
-                                                    </div>
-                                                    <span class="cdn-category-name">@category.DisplayName</span>
-                                                    <span class="cdn-category-count">@categoryFileCounts.GetValueOrDefault(category.Id, 0)</span>
-                                                </div>
+                                                        <div class="cdn-category-item @(selectedCategory?.Id == category.Id ? "active" : "")"
+                                                             @onclick="() => SelectCategory(category)">
+                                                            <div class="cdn-category-icon">
+                                                                <i class="fa-light fa-folder"></i>
+                                                            </div>
+                                                            <span class="cdn-category-name">@category.DisplayName</span>
+                                                            <span class="cdn-category-count">@categoryFileCounts.GetValueOrDefault(category.Id, 0)</span>
+                                                        </div>
                             }
-                                </div>
-                            </div>
-
-                            <!-- Main File Browser Area -->
-                            <div class="cdn-file-browser">
-                                <!-- Enhanced Toolbar -->
-                                <div class="cdn-toolbar">
-                                    <div class="cdn-toolbar-actions">
-                                        <RVButton ButtonType="primary"
-                                                  IconLeft="fa-light fa-upload"
-                                                  Text="Upload"
-                                                  OnClick="ShowUploadModal" />
-                                        <RVButton ButtonType="secondary"
-                                                  IconLeft="fa-light fa-folder-plus"
-                                                  Text="New Folder"
-                                                  OnClick="ShowCreateFolderModal"
-                                                  Disabled="@(selectedCategory == null)" />
-                                        <RVButton ButtonType="danger"
-                                                  IconLeft="fa-light fa-trash"
-                                                  Text="Delete"
-                                                  OnClick="DeleteSelected"
-                                                  Disabled="@(!selectedFiles.Any() && selectedFolder == null)" />
-                                    </div>
-                                    <div class="cdn-search-box">
-                                        <i class="fa-light fa-search cdn-search-icon"></i>
-                                        <input type="text"
-                                               class="cdn-search-input"
-                                               placeholder="Search files..."
-                                               @bind="searchTerm"
-                                               @oninput="@(async (e) => await SearchFiles(e.Value?.ToString()))" />
                                     </div>
                                 </div>
 
-                                <!-- Modern Breadcrumb -->
-                                <div class="cdn-breadcrumb">
-                                    <div class="cdn-breadcrumb-item" @onclick='() => NavigateToPath("")'>
-                                        <i class="fa-light fa-home"></i>
-                                        <span>@(selectedCategory?.DisplayName ?? "Select a category")</span>
+                                <!-- Main File Browser Area -->
+                                <div class="cdn-file-browser">
+                                    <!-- Enhanced Toolbar -->
+                                    <div class="cdn-toolbar">
+                                        <div class="cdn-toolbar-actions">
+                                            <RVButton ButtonType="primary"
+                                                      IconLeft="fa-light fa-upload"
+                                                      Text="Upload"
+                                                      OnClick="ShowUploadModal" />
+                                            <RVButton ButtonType="secondary"
+                                                      IconLeft="fa-light fa-folder-plus"
+                                                      Text="New Folder"
+                                                      OnClick="ShowCreateFolderModal"
+                                                      Disabled="@(selectedCategory == null)" />
+                                            <RVButton ButtonType="danger"
+                                                      IconLeft="fa-light fa-trash"
+                                                      Text="Delete"
+                                                      OnClick="DeleteSelected"
+                                                      Disabled="@(!selectedFiles.Any() && selectedFolder == null)" />
+                                        </div>
+                                        <div class="cdn-search-box">
+                                            <i class="fa-light fa-search cdn-search-icon"></i>
+                                            <input type="text"
+                                                   class="cdn-search-input"
+                                                   placeholder="Search files..."
+                                                   @bind="searchTerm"
+                                                   @oninput="@(async (e) => await SearchFiles(e.Value?.ToString()))" />
+                                        </div>
                                     </div>
+
+                                    <!-- Modern Breadcrumb -->
+                                    <div class="cdn-breadcrumb">
+                                        <div class="cdn-breadcrumb-item" @onclick='() => NavigateToPath("")'>
+                                            <i class="fa-light fa-home"></i>
+                                            <span>@(selectedCategory?.DisplayName ?? "Select a category")</span>
+                                        </div>
                             @foreach (var segment in GetPathSegments())
                             {
-                                                <div class="cdn-breadcrumb-separator">
-                                                    <i class="fa-light fa-chevron-right"></i>
-                                                </div>
-                                                <div class="cdn-breadcrumb-item" @onclick="() => NavigateToPath(segment.Path)">
-                                                    <span>@segment.Name</span>
-                                                </div>
+                                                        <div class="cdn-breadcrumb-separator">
+                                                            <i class="fa-light fa-chevron-right"></i>
+                                                        </div>
+                                                        <div class="cdn-breadcrumb-item" @onclick="() => NavigateToPath(segment.Path)">
+                                                            <span>@segment.Name</span>
+                                                        </div>
                             }
-                                </div>
+                                    </div>
 
-                                <!-- Advanced File Grid -->
-                                <div class="cdn-file-grid @(isLoading ? "loading" : "")">
+                                    <!-- Advanced File Grid -->
+                                    <div class="cdn-file-grid @(isLoading ? "loading" : "")">
                             @if (isLoading)
                             {
-                                                <div class="cdn-loading-overlay">
-                                                    <div class="cdn-loading-spinner">
-                                                        <div class="cdn-spinner"></div>
-                                                        <p>Loading files...</p>
-                                                    </div>
-                                                </div>
+                                                        <div class="cdn-loading-overlay">
+                                                            <div class="cdn-loading-spinner">
+                                                                <div class="cdn-spinner"></div>
+                                                                <p>Loading files...</p>
+                                                            </div>
+                                                        </div>
                             }
                             else
                             {
-                                                <!-- Folders -->
+                                                        <!-- Folders -->
                                 @foreach (var folder in folders)
                                 {
-                                                            <div class="cdn-file-item cdn-folder @(selectedFolder?.Id == folder.Id ? "selected" : "")"
-                                                                 @onclick="() => SelectFolder(folder)"
-                                                                 @ondblclick="() => NavigateToFolder(folder)">
-                                                                <div class="cdn-file-icon-wrap">
-                                                                    <i class="fa-light fa-folder"></i>
-                                                                </div>
-                                                                <div class="cdn-file-info">
-                                                                    <h4 class="cdn-file-name">@folder.Name</h4>
-                                                                    <p class="cdn-file-meta">Folder</p>
-                                                                </div>
-                                                                <div class="cdn-file-actions">
-                                                                    <button class="cdn-action-btn"
-                                                                            @onclick:stopPropagation="true"
-                                                                            @onclick="() => RenameFolder(folder)"
-                                                                            title="Rename">
-                                                                        <i class="fa-light fa-pen"></i>
-                                                                    </button>
-                                                                    <button class="cdn-action-btn danger"
-                                                                            @onclick:stopPropagation="true"
-                                                                            @onclick="() => DeleteFolder(folder)"
-                                                                            title="Delete">
-                                                                        <i class="fa-light fa-trash"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                                        <div class="cdn-file-item cdn-folder @(selectedFolder?.Id == folder.Id ? "selected" : "")"
+                                                                             @onclick="() => SelectFolder(folder)"
+                                                                             @ondblclick="() => NavigateToFolder(folder)">
+                                                                            <div class="cdn-file-icon-wrap">
+                                                                                <i class="fa-light fa-folder"></i>
+                                                                            </div>
+                                                                            <div class="cdn-file-info">
+                                                                                <h4 class="cdn-file-name">@folder.Name</h4>
+                                                                                <p class="cdn-file-meta">Folder</p>
+                                                                            </div>
+                                                                            <div class="cdn-file-actions">
+                                                                                <button class="cdn-action-btn"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => RenameFolder(folder)"
+                                                                                        title="Rename">
+                                                                                    <i class="fa-light fa-pen"></i>
+                                                                                </button>
+                                                                                <button class="cdn-action-btn danger"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => DeleteFolder(folder)"
+                                                                                        title="Delete">
+                                                                                    <i class="fa-light fa-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                 }
 
-                                                <!-- Files -->
+                                                        <!-- Files -->
                                 @foreach (var file in files)
                                 {
-                                                            <div class="cdn-file-item @(selectedFiles.Contains(file) ? "selected" : "")"
-                                                                 @onclick="() => ToggleFileSelection(file)">
-                                                                <div class="cdn-file-preview">
+                                                                        <div class="cdn-file-item @(selectedFiles.Contains(file) ? "selected" : "")"
+                                                                             @onclick="() => ToggleFileSelection(file)">
+                                                                            <div class="cdn-file-preview">
                                             @if (IsImageFile(file.FileName))
                                             {
-                                                                                <img src="@file.Url" alt="@file.FileName" loading="lazy" />
-                                                                                <div class="cdn-file-hover-overlay">
-                                                                                    <i class="fa-light fa-eye"></i>
-                                                                                </div>
+                                                                                                <img src="@file.Url" alt="@file.FileName" loading="lazy" />
+                                                                                                <div class="cdn-file-hover-overlay">
+                                                                                                    <i class="fa-light fa-eye"></i>
+                                                                                                </div>
                                             }
                                             else
                                             {
-                                                                                <div class="cdn-file-icon-wrap">
-                                                                                    <i class="fa-light @GetFileIcon(file.FileName)"></i>
-                                                                                </div>
+                                                                                                <div class="cdn-file-icon-wrap">
+                                                                                                    <i class="fa-light @GetFileIcon(file.FileName)"></i>
+                                                                                                </div>
                                             }
-                                                                </div>
-                                                                <div class="cdn-file-info">
-                                                                    <h4 class="cdn-file-name" title="@file.FileName">@file.FileName</h4>
-                                                                    <p class="cdn-file-meta">@FormatFileSize(file.FileSize)</p>
-                                                                </div>
-                                                                <div class="cdn-file-actions">
-                                                                    <button class="cdn-action-btn"
-                                                                            @onclick:stopPropagation="true"
-                                                                            @onclick="() => DownloadFile(file)"
-                                                                            title="Download">
-                                                                        <i class="fa-light fa-download"></i>
-                                                                    </button>
-                                                                    <button class="cdn-action-btn info"
-                                                                            @onclick:stopPropagation="true"
-                                                                            @onclick="() => ViewFileDetails(file)"
-                                                                            title="Details">
-                                                                        <i class="fa-light fa-info-circle"></i>
-                                                                    </button>
+                                                                            </div>
+                                                                            <div class="cdn-file-info">
+                                                                                <h4 class="cdn-file-name" title="@file.FileName">@file.FileName</h4>
+                                                                                <p class="cdn-file-meta">@FormatFileSize(file.FileSize)</p>
+                                                                            </div>
+                                                                            <div class="cdn-file-actions">
+                                                                                <button class="cdn-action-btn"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => DownloadFile(file)"
+                                                                                        title="Download">
+                                                                                    <i class="fa-light fa-download"></i>
+                                                                                </button>
+                                                                                <button class="cdn-action-btn info"
+                                                                                        @onclick:stopPropagation="true"
+                                                                                        @onclick="() => ViewFileDetails(file)"
+                                                                                        title="Details">
+                                                                                    <i class="fa-light fa-info-circle"></i>
+                                                                                </button>
                                             @if (file.HasBase64Backup)
                                             {
-                                                                                <button class="cdn-action-btn warning"
-                                                                                        @onclick:stopPropagation="true"
-                                                                                        @onclick="() => DownloadFromBase64(file)"
-                                                                                        title="Download Backup">
-                                                                                    <i class="fa-light fa-cloud-download"></i>
-                                                                                </button>
+                                                                                                <button class="cdn-action-btn warning"
+                                                                                                        @onclick:stopPropagation="true"
+                                                                                                        @onclick="() => DownloadFromBase64(file)"
+                                                                                                        title="Download Backup">
+                                                                                                    <i class="fa-light fa-cloud-download"></i>
+                                                                                                </button>
                                             }
                                             else
                                             {
-                                                                                <button class="cdn-action-btn secondary"
-                                                                                        @onclick:stopPropagation="true"
-                                                                                        @onclick="() => CreateBase64Backup(file)"
-                                                                                        title="Create Backup">
-                                                                                    <i class="fa-light fa-cloud-arrow-up"></i>
-                                                                                </button>
+                                                                                                <button class="cdn-action-btn secondary"
+                                                                                                        @onclick:stopPropagation="true"
+                                                                                                        @onclick="() => CreateBase64Backup(file)"
+                                                                                                        title="Create Backup">
+                                                                                                    <i class="fa-light fa-cloud-arrow-up"></i>
+                                                                                                </button>
                                             }
-                                                                </div>
-                                                            </div>
+                                                                            </div>
+                                                                        </div>
                                 }
                             }
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
         }
         else if (activeTab == "categories")
         {
-                    <!-- Modern Categories Management -->
-                    <div class="cdn-categories-section">
-                        <div class="cdn-section-header">
-                            <h3>Category Management</h3>
-                            <RVButton ButtonType="primary"
-                                      IconLeft="fa-light fa-plus"
-                                      Text="Add Category"
-                                      OnClick="ShowCreateCategoryModal" />
-                        </div>
+                        <!-- Modern Categories Management -->
+                        <div class="cdn-categories-section">
+                            <div class="cdn-section-header">
+                                <h3>Category Management</h3>
+                                <RVButton ButtonType="primary"
+                                          IconLeft="fa-light fa-plus"
+                                          Text="Add Category"
+                                          OnClick="ShowCreateCategoryModal" />
+                            </div>
 
-                        <div class="cdn-categories-grid">
+                            <div class="cdn-categories-grid">
                     @foreach (var category in categories)
                     {
-                                        <div class="cdn-category-card">
-                                            <div class="cdn-category-card-header">
-                                                <div class="cdn-category-card-icon">
-                                                    <i class="fa-light fa-folder"></i>
-                                                </div>
-                                                <div class="cdn-category-card-actions">
-                                                    <button class="cdn-action-btn sm"
-                                                            @onclick="() => EditCategory(category)"
-                                                            title="Edit">
-                                                        <i class="fa-light fa-edit"></i>
-                                                    </button>
-                                                    <button class="cdn-action-btn sm danger"
-                                                            @onclick="() => DeleteCategory(category)"
-                                                            disabled="@(categoryFileCounts.GetValueOrDefault(category.Id, 0) > 0)"
-                                                            title="Delete">
-                                                        <i class="fa-light fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="cdn-category-card-body">
-                                                <h4>@category.DisplayName</h4>
-                                                <p class="cdn-category-card-desc">@category.Description</p>
-                                                <div class="cdn-category-card-meta">
-                                                    <div class="cdn-meta-item">
-                                                        <i class="fa-light fa-file"></i>
-                                                        <span>@categoryFileCounts.GetValueOrDefault(category.Id, 0) files</span>
+                                                <div class="cdn-category-card">
+                                                    <div class="cdn-category-card-header">
+                                                        <div class="cdn-category-card-icon">
+                                                            <i class="fa-light fa-folder"></i>
+                                                        </div>
+                                                        <div class="cdn-category-card-actions">
+                                                            <button class="cdn-action-btn sm"
+                                                                    @onclick="() => EditCategory(category)"
+                                                                    title="Edit">
+                                                                <i class="fa-light fa-edit"></i>
+                                                            </button>
+                                                            <button class="cdn-action-btn sm danger"
+                                                                    @onclick="() => DeleteCategory(category)"
+                                                                    disabled="@(categoryFileCounts.GetValueOrDefault(category.Id, 0) > 0)"
+                                                                    title="Delete">
+                                                                <i class="fa-light fa-trash"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div class="cdn-meta-item">
-                                                        <i class="fa-light fa-code"></i>
-                                                        <code>@category.AllowedFileTypes</code>
+                                                    <div class="cdn-category-card-body">
+                                                        <h4>@category.DisplayName</h4>
+                                                        <p class="cdn-category-card-desc">@category.Description</p>
+                                                        <div class="cdn-category-card-meta">
+                                                            <div class="cdn-meta-item">
+                                                                <i class="fa-light fa-file"></i>
+                                                                <span>@categoryFileCounts.GetValueOrDefault(category.Id, 0) files</span>
+                                                            </div>
+                                                            <div class="cdn-meta-item">
+                                                                <i class="fa-light fa-code"></i>
+                                                                <code>@category.AllowedFileTypes</code>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
                     }
+                            </div>
                         </div>
-                    </div>
         }
         else if (activeTab == "accesslogs")
         {
-                    <!-- Modern Access Logs -->
-                    <div class="cdn-logs-section">
-                        <div class="cdn-filters-bar">
-                            <div class="cdn-filter-group">
-                                <label>Start Date</label>
-                                <input type="date" class="cdn-filter-input" @bind="logStartDate" />
+                        <!-- Modern Access Logs -->
+                        <div class="cdn-logs-section">
+                            <div class="cdn-filters-bar">
+                                <div class="cdn-filter-group">
+                                    <label>Start Date</label>
+                                    <input type="date" class="cdn-filter-input" @bind="logStartDate" />
+                                </div>
+                                <div class="cdn-filter-group">
+                                    <label>End Date</label>
+                                    <input type="date" class="cdn-filter-input" @bind="logEndDate" />
+                                </div>
+                                <div class="cdn-filter-group">
+                                    <label>Action Type</label>
+                                    <select class="cdn-filter-select" @bind="logActionType">
+                                        <option value="">All Actions</option>
+                                        <option value="Upload">Upload</option>
+                                        <option value="Download">Download</option>
+                                        <option value="DownloadBackup">Download Backup</option>
+                                        <option value="Delete">Delete</option>
+                                        <option value="Rename">Rename</option>
+                                        <option value="CreateFolder">Create Folder</option>
+                                        <option value="CreateBackup">Create Backup</option>
+                                    </select>
+                                </div>
+                                <RVButton ButtonType="primary"
+                                          IconLeft="fa-light fa-search"
+                                          Text="Search Logs"
+                                          OnClick="LoadAccessLogs" />
                             </div>
-                            <div class="cdn-filter-group">
-                                <label>End Date</label>
-                                <input type="date" class="cdn-filter-input" @bind="logEndDate" />
-                            </div>
-                            <div class="cdn-filter-group">
-                                <label>Action Type</label>
-                                <select class="cdn-filter-select" @bind="logActionType">
-                                    <option value="">All Actions</option>
-                                    <option value="Upload">Upload</option>
-                                    <option value="Download">Download</option>
-                                    <option value="Delete">Delete</option>
-                                    <option value="Rename">Rename</option>
-                                    <option value="CreateFolder">Create Folder</option>
-                                </select>
-                            </div>
-                            <RVButton ButtonType="primary"
-                                      IconLeft="fa-light fa-search"
-                                      Text="Search Logs"
-                                      OnClick="LoadAccessLogs" />
-                        </div>
 
-                        <div class="cdn-logs-table-container">
-                            <table class="cdn-logs-table">
-                                <thead>
-                                    <tr>
-                                        <th>Timestamp</th>
-                                        <th>Action</th>
-                                        <th>File/Path</th>
-                                        <th>User</th>
-                                        <th>Status</th>
-                                        <th>Size</th>
-                                        <th>Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <div class="cdn-logs-table-container">
+                                <table class="cdn-logs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Action</th>
+                                            <th>File/Path</th>
+                                            <th>User</th>
+                                            <th>Status</th>
+                                            <th>Size</th>
+                                            <th>Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                             @foreach (var log in accessLogs)
                             {
-                                                <tr class="@(log.IsSuccess ? "" : "error-row")">
-                                                    <td>
-                                                        <span class="cdn-log-time">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="cdn-log-badge @GetActionBadgeClass(log.ActionType)">
+                                                        <tr class="@(log.IsSuccess ? "" : "error-row")">
+                                                            <td>
+                                                                <span class="cdn-log-time">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="cdn-log-badge @GetActionBadgeClass(log.ActionType)">
                                             @log.ActionType
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="cdn-log-path">@log.FilePath</span>
-                                                    </td>
-                                                    <td>@log.Username</td>
-                                                    <td>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="cdn-log-path">@log.FilePath</span>
+                                                            </td>
+                                                            <td>@log.Username</td>
+                                                            <td>
                                         @if (log.IsSuccess)
                                         {
-                                                                    <i class="fa-light fa-check cdn-status-icon success"></i>
+                                                                                <i class="fa-light fa-check cdn-status-icon success"></i>
                                         }
                                         else
                                         {
-                                                                    <i class="fa-light fa-times cdn-status-icon error"></i>
+                                                                                <i class="fa-light fa-times cdn-status-icon error"></i>
                                         }
-                                                    </td>
-                                                    <td>@(log.FileSizeBytes.HasValue ? FormatFileSize(log.FileSizeBytes.Value) : "-")</td>
-                                                    <td>@log.ErrorMessage</td>
-                                                </tr>
+                                                            </td>
+                                                            <td>@(log.FileSizeBytes.HasValue ? FormatFileSize(log.FileSizeBytes.Value) : "-")</td>
+                                                            <td>@log.ErrorMessage</td>
+                                                        </tr>
                             }
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
         }
         else if (activeTab == "config")
         {
-                    <!-- Modern Configuration -->
-                    <div class="cdn-config-section">
-                        <RVCard Title="CDN Configuration" Icon="fa-light fa-cog" Type="border-primary">
+                        <!-- Modern Configuration -->
+                        <div class="cdn-config-section">
+                            <RVCard Title="CDN Configuration" Icon="fa-light fa-cog" Type="border-primary">
                     @if (cdnConfig != null)
                     {
-                                        <EditForm Model="cdnConfig" OnValidSubmit="SaveConfiguration">
-                                            <DataAnnotationsValidator />
-                                            <ValidationSummary />
+                                                <EditForm Model="cdnConfig" OnValidSubmit="SaveConfiguration">
+                                                    <DataAnnotationsValidator />
+                                                    <ValidationSummary />
 
-                                            <div class="cdn-form-grid">
-                                                <div class="cdn-form-group">
-                                                    <label>Base URL</label>
-                                                    <InputText @bind-Value="cdnConfig.BaseUrl" class="cdn-form-input" />
-                                                    <small class="cdn-form-hint">The base URL for CDN access</small>
-                                                </div>
+                                                    <div class="cdn-form-grid">
+                                                        <div class="cdn-form-group">
+                                                            <label>Base URL</label>
+                                                            <InputText @bind-Value="cdnConfig.BaseUrl" class="cdn-form-input" />
+                                                            <small class="cdn-form-hint">The base URL for CDN access</small>
+                                                        </div>
 
-                                                <div class="cdn-form-group">
-                                                    <label>Storage Path</label>
-                                                    <InputText @bind-Value="cdnConfig.StoragePath" class="cdn-form-input" />
-                                                    <small class="cdn-form-hint">Physical storage location</small>
-                                                </div>
+                                                        <div class="cdn-form-group">
+                                                            <label>Storage Path</label>
+                                                            <InputText @bind-Value="cdnConfig.StoragePath" class="cdn-form-input" />
+                                                            <small class="cdn-form-hint">Physical storage location</small>
+                                                        </div>
 
-                                                <div class="cdn-form-group">
-                                                    <label>Max File Size (MB)</label>
-                                                    <InputNumber @bind-Value="cdnConfig.MaxFileSizeMB" class="cdn-form-input" />
-                                                    <small class="cdn-form-hint">Maximum allowed file size</small>
-                                                </div>
+                                                        <div class="cdn-form-group">
+                                                            <label>Max File Size (MB)</label>
+                                                            <InputNumber @bind-Value="cdnConfig.MaxFileSizeMB" class="cdn-form-input" />
+                                                            <small class="cdn-form-hint">Maximum allowed file size</small>
+                                                        </div>
 
-                                                <div class="cdn-form-group full-width">
-                                                    <label>Allowed File Types</label>
-                                                    <InputTextArea @bind-Value="cdnConfig.AllowedFileTypes"
-                                                                   class="cdn-form-textarea"
-                                                                   rows="3" />
-                                                    <small class="cdn-form-hint">Comma-separated list of allowed extensions</small>
-                                                </div>
+                                                        <div class="cdn-form-group full-width">
+                                                            <label>Allowed File Types</label>
+                                                            <InputTextArea @bind-Value="cdnConfig.AllowedFileTypes"
+                                                                           class="cdn-form-textarea"
+                                                                           rows="3" />
+                                                            <small class="cdn-form-hint">Comma-separated list of allowed extensions</small>
+                                                        </div>
 
-                                                <div class="cdn-form-group full-width">
-                                                    <RVCheckbox @bind-Value="cdnConfig.EnableCaching"
-                                                                Label="Enable Caching"
-                                                                HelperText="Enable browser caching for improved performance" />
-                                                </div>
-                                            </div>
+                                                        <div class="cdn-form-group full-width">
+                                                            <RVCheckbox @bind-Value="cdnConfig.EnableCaching"
+                                                                        Label="Enable Caching"
+                                                                        HelperText="Enable browser caching for improved performance" />
+                                                        </div>
+                                                    </div>
 
-                                            <div class="cdn-form-actions">
-                                                <RVButton ButtonType="primary"
-                                                          Type="submit"
-                                                          IconLeft="fa-light fa-save"
-                                                          Text="Save Configuration" />
-                                            </div>
-                                        </EditForm>
+                                                    <div class="cdn-form-actions">
+                                                        <RVButton ButtonType="primary"
+                                                                  Type="submit"
+                                                                  IconLeft="fa-light fa-save"
+                                                                  Text="Save Configuration" />
+                                                    </div>
+                                                </EditForm>
                     }
-                        </RVCard>
-                    </div>
+                            </RVCard>
+                        </div>
         }
     </div>
 </div>
@@ -538,7 +587,7 @@
                     <select class="cdn-form-select" @bind="uploadCategory">
                         @foreach (var category in categories)
                         {
-                                    <option value="@category.Name">@category.DisplayName</option>
+                                        <option value="@category.Name">@category.DisplayName</option>
                         }
                     </select>
                 </div>
@@ -558,27 +607,27 @@
 
             @if (selectedUploadFiles.Any())
             {
-                        <div class="cdn-upload-files">
-                            <h5>Selected Files</h5>
-                            <div class="cdn-upload-file-list">
+                            <div class="cdn-upload-files">
+                                <h5>Selected Files</h5>
+                                <div class="cdn-upload-file-list">
                         @foreach (var file in selectedUploadFiles)
                         {
-                                            <div class="cdn-upload-file-item">
-                                                <i class="fa-light @GetFileIcon(file.Name)"></i>
-                                                <span class="cdn-upload-file-name">@file.Name</span>
-                                                <span class="cdn-upload-file-size">@FormatFileSize(file.Size)</span>
-                                            </div>
+                                                    <div class="cdn-upload-file-item">
+                                                        <i class="fa-light @GetFileIcon(file.Name)"></i>
+                                                        <span class="cdn-upload-file-name">@file.Name</span>
+                                                        <span class="cdn-upload-file-size">@FormatFileSize(file.Size)</span>
+                                                    </div>
                         }
+                                </div>
                             </div>
-                        </div>
             }
 
             @if (uploadProgress > 0)
             {
-                        <div class="cdn-upload-progress">
-                            <div class="cdn-upload-progress-bar" style="width: @uploadProgress%"></div>
-                            <span class="cdn-upload-progress-text">@uploadProgress%</span>
-                        </div>
+                            <div class="cdn-upload-progress">
+                                <div class="cdn-upload-progress-bar" style="width: @uploadProgress%"></div>
+                                <span class="cdn-upload-progress-text">@uploadProgress%</span>
+                            </div>
             }
         </div>
         <div class="cdn-modal-footer">
@@ -638,76 +687,76 @@
         <div class="cdn-modal-body">
             @if (selectedFileDetails != null)
             {
-                        <div class="cdn-details-grid">
-                            <div class="cdn-details-preview">
+                            <div class="cdn-details-grid">
+                                <div class="cdn-details-preview">
                         @if (IsImageFile(selectedFileDetails.FileName))
                         {
-                                            <img src="@selectedFileDetails.Url" alt="@selectedFileDetails.FileName" />
+                                                    <img src="@selectedFileDetails.Url" alt="@selectedFileDetails.FileName" />
                         }
                         else
                         {
-                                            <div class="cdn-details-icon">
-                                                <i class="fa-light @GetFileIcon(selectedFileDetails.FileName)"></i>
-                                            </div>
+                                                    <div class="cdn-details-icon">
+                                                        <i class="fa-light @GetFileIcon(selectedFileDetails.FileName)"></i>
+                                                    </div>
                         }
-                            </div>
-                            <div class="cdn-details-info">
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">File Name</span>
-                                    <span class="cdn-detail-value">@selectedFileDetails.FileName</span>
                                 </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">File Size</span>
-                                    <span class="cdn-detail-value">@FormatFileSize(selectedFileDetails.FileSize)</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Content Type</span>
-                                    <span class="cdn-detail-value">@selectedFileDetails.ContentType</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Upload Date</span>
-                                    <span class="cdn-detail-value">@selectedFileDetails.UploadDate.ToString("yyyy-MM-dd HH:mm:ss")</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Uploaded By</span>
-                                    <span class="cdn-detail-value">@selectedFileDetails.UploadedBy</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Access Count</span>
-                                    <span class="cdn-detail-value">@selectedFileDetails.AccessCount</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Last Access</span>
-                                    <span class="cdn-detail-value">@(selectedFileDetails.LastAccessDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never")</span>
-                                </div>
-                                <div class="cdn-detail-row">
-                                    <span class="cdn-detail-label">Has Backup</span>
-                                    <span class="cdn-detail-value">
+                                <div class="cdn-details-info">
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">File Name</span>
+                                        <span class="cdn-detail-value">@selectedFileDetails.FileName</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">File Size</span>
+                                        <span class="cdn-detail-value">@FormatFileSize(selectedFileDetails.FileSize)</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Content Type</span>
+                                        <span class="cdn-detail-value">@selectedFileDetails.ContentType</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Upload Date</span>
+                                        <span class="cdn-detail-value">@selectedFileDetails.UploadDate.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Uploaded By</span>
+                                        <span class="cdn-detail-value">@selectedFileDetails.UploadedBy</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Access Count</span>
+                                        <span class="cdn-detail-value">@selectedFileDetails.AccessCount</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Last Access</span>
+                                        <span class="cdn-detail-value">@(selectedFileDetails.LastAccessDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never")</span>
+                                    </div>
+                                    <div class="cdn-detail-row">
+                                        <span class="cdn-detail-label">Has Backup</span>
+                                        <span class="cdn-detail-value">
                                 @if (selectedFileDetails.HasBase64Backup)
                                 {
-                                                    <span class="cdn-badge success">Yes</span>
+                                                            <span class="cdn-badge success">Yes</span>
                                 }
                                 else
                                 {
-                                                    <span class="cdn-badge secondary">No</span>
+                                                            <span class="cdn-badge secondary">No</span>
                                 }
-                                    </span>
-                                </div>
-                                <div class="cdn-detail-row full-width">
-                                    <span class="cdn-detail-label">URL</span>
-                                    <div class="cdn-url-input-group">
-                                        <input type="text" class="cdn-form-input" value="@selectedFileDetails.Url" readonly />
-                                        <RVButton ButtonType="secondary"
-                                                  IconLeft="fa-light fa-copy"
-                                                  OnClick="() => CopyToClipboard(selectedFileDetails.Url)" />
+                                        </span>
+                                    </div>
+                                    <div class="cdn-detail-row full-width">
+                                        <span class="cdn-detail-label">URL</span>
+                                        <div class="cdn-url-input-group">
+                                            <input type="text" class="cdn-form-input" value="@selectedFileDetails.Url" readonly />
+                                            <RVButton ButtonType="secondary"
+                                                      IconLeft="fa-light fa-copy"
+                                                      OnClick="() => CopyToClipboard(selectedFileDetails.Url)" />
+                                        </div>
+                                    </div>
+                                    <div class="cdn-detail-row full-width">
+                                        <span class="cdn-detail-label">Checksum</span>
+                                        <code class="cdn-checksum">@selectedFileDetails.Checksum</code>
                                     </div>
                                 </div>
-                                <div class="cdn-detail-row full-width">
-                                    <span class="cdn-detail-label">Checksum</span>
-                                    <code class="cdn-checksum">@selectedFileDetails.Checksum</code>
-                                </div>
                             </div>
-                        </div>
             }
         </div>
         <div class="cdn-modal-footer">
@@ -718,10 +767,10 @@
                       OnClick="() => DownloadFile(selectedFileDetails)" />
             @if (selectedFileDetails?.HasBase64Backup == true)
             {
-                        <RVButton ButtonType="warning"
-                                  Text="Restore from Backup"
-                                  IconLeft="fa-light fa-cloud-download"
-                                  OnClick="() => RestoreFromBase64(selectedFileDetails)" />
+                            <RVButton ButtonType="warning"
+                                      Text="Restore from Backup"
+                                      IconLeft="fa-light fa-cloud-download"
+                                      OnClick="() => RestoreFromBase64(selectedFileDetails)" />
             }
         </div>
     </div>
@@ -786,6 +835,7 @@
 
 
 @code {
+
     // State Management
     private string activeTab = "filemanager";
     private List<CdnCategory> categories = new();
@@ -810,6 +860,11 @@
     private int uploadsToday = 0;
     private int downloadsToday = 0;
     private Dictionary<int, int> categoryFileCounts = new();
+
+    // Historical data for comparisons
+    private int yesterdayFiles = 0;
+    private int yesterdayDownloads = 0;
+    private Dictionary<int, int> weeklyUploads = new();
 
     // Modals
     private bool showUploadModal = false;
@@ -856,7 +911,6 @@
                 var fileCount = await CdnService.GetFileCountAsync(category.Name);
                 categoryFileCounts[category.Id] = fileCount;
             }
-            ToastService.ShowSuccess("Categories loaded successfully");
         }
         catch (Exception ex)
         {
@@ -870,22 +924,54 @@
         try
         {
             var today = DateTime.Today;
-            var stats = await CdnService.GetUsageStatisticsAsync(today);
-            if (stats != null)
-            {
-                uploadsToday = stats.UploadCount;
-                downloadsToday = stats.DownloadCount;
-            }
 
-            // Get total files and storage across all categories
+            // Reset totals
+            totalFiles = 0;
+            totalStorage = 0;
+
+            // Get today's statistics
             foreach (var category in categories)
             {
-                var categoryStats = await CdnService.GetUsageStatisticsAsync(today, category.Id);
-                if (categoryStats != null)
+                var todayStats = await CdnService.GetUsageStatisticsAsync(today, category.Id);
+                if (todayStats != null)
                 {
-                    totalFiles += categoryStats.FileCount;
-                    totalStorage += categoryStats.StorageUsedBytes;
+                    totalFiles += todayStats.FileCount;
+                    totalStorage += todayStats.StorageUsedBytes;
+                    uploadsToday += todayStats.UploadCount;
+                    downloadsToday += todayStats.DownloadCount;
                 }
+            }
+
+            // Get yesterday's statistics for comparison
+            var yesterday = today.AddDays(-1);
+            foreach (var category in categories)
+            {
+                var yesterdayStats = await CdnService.GetUsageStatisticsAsync(yesterday, category.Id);
+                if (yesterdayStats != null)
+                {
+                    yesterdayFiles += yesterdayStats.FileCount;
+                    yesterdayDownloads += yesterdayStats.DownloadCount;
+                }
+            }
+
+            // Get weekly uploads for the mini chart
+            weeklyUploads = new Dictionary<int, int>();
+            for (int i = 0; i < 5; i++)
+            {
+                var dayOffset = i;
+                var date = today.AddDays(-dayOffset);
+                int dayUploads = 0;
+
+                foreach (var category in categories)
+                {
+                    var dayStats = await CdnService.GetUsageStatisticsAsync(date, category.Id);
+                    if (dayStats != null)
+                    {
+                        dayUploads += dayStats.UploadCount;
+                    }
+                }
+
+                weeklyUploads[dayOffset] = dayUploads;
             }
         }
         catch (Exception ex)
@@ -1586,9 +1672,11 @@
         {
             "Upload" => "primary",
             "Download" => "success",
+            "DownloadBackup" => "info",
             "Delete" => "danger",
             "Rename" => "warning",
             "CreateFolder" => "info",
+            "CreateBackup" => "secondary",
             _ => "secondary"
         };
     }
