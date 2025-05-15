@@ -12,20 +12,17 @@ namespace Roovia.Services
 {
     public class UserService : IUser
     {
-        private readonly ApplicationDbContext _context;
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UserService> _logger;
 
         public UserService(
-            ApplicationDbContext context,
             IDbContextFactory<ApplicationDbContext> contextFactory,
             AuthenticationStateProvider authStateProvider,
             UserManager<ApplicationUser> userManager,
             ILogger<UserService> logger)
         {
-            _context = context;
             _contextFactory = contextFactory;
             _authStateProvider = authStateProvider;
             _userManager = userManager;
@@ -40,7 +37,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users
                     .Include(u => u.EmailAddresses.Where(e => e.IsActive))
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Company)
@@ -79,7 +78,9 @@ namespace Roovia.Services
 
             try
             {
-                var users = await _context.Users
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var users = await context.Users
                     .Include(u => u.EmailAddresses.Where(e => e.IsActive))
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Company)
@@ -107,7 +108,9 @@ namespace Roovia.Services
 
             try
             {
-                var users = await _context.Users
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var users = await context.Users
                     .Include(u => u.EmailAddresses.Where(e => e.IsActive))
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Branch)
@@ -135,7 +138,9 @@ namespace Roovia.Services
 
             try
             {
-                var users = await _context.Users
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var users = await context.Users
                     .Include(u => u.EmailAddresses.Where(e => e.IsActive))
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Company)
@@ -163,7 +168,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(id);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(id);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -205,7 +212,7 @@ namespace Roovia.Services
                     user.NormalizedEmail = updatedUser.Email.ToUpper();
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User updated successfully.";
@@ -226,7 +233,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(id);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(id);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -239,7 +248,7 @@ namespace Roovia.Services
                 user.RemovedDate = DateTime.Now;
                 user.IsActive = false;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User deleted successfully.";
@@ -260,7 +269,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -271,7 +282,7 @@ namespace Roovia.Services
                 user.Role = role;
                 user.UpdatedDate = DateTime.Now;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User role updated successfully.";
@@ -292,8 +303,10 @@ namespace Roovia.Services
 
             try
             {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
                 // First ensure the user exists
-                var user = await _context.Users.FindAsync(userId);
+                var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -337,7 +350,7 @@ namespace Roovia.Services
                     _ => role.ToString()
                 };
 
-                var customRole = await _context.Roles
+                var customRole = await context.Roles
                     .FirstOrDefaultAsync(r => r.Name == roleName && r.IsActive);
 
                 if (customRole == null)
@@ -348,7 +361,7 @@ namespace Roovia.Services
                 }
 
                 // Check if the user already has this role assignment
-                var existingAssignment = await _context.UserRoleAssignments
+                var existingAssignment = await context.UserRoleAssignments
                     .FirstOrDefaultAsync(ura => ura.UserId == userId && ura.RoleId == customRole.Id);
 
                 if (existingAssignment != null)
@@ -369,8 +382,8 @@ namespace Roovia.Services
                     IsActive = true
                 };
 
-                await _context.UserRoleAssignments.AddAsync(roleAssignment);
-                await _context.SaveChangesAsync();
+                await context.UserRoleAssignments.AddAsync(roleAssignment);
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Role assigned successfully.";
@@ -391,7 +404,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -402,7 +417,7 @@ namespace Roovia.Services
                 user.CompanyId = companyId;
                 user.UpdatedDate = DateTime.Now;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User's company ID updated successfully.";
@@ -423,7 +438,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -431,7 +448,7 @@ namespace Roovia.Services
                     return response;
                 }
 
-                var branch = await _context.Branches
+                var branch = await context.Branches
                     .Include(b => b.Company)
                     .FirstOrDefaultAsync(b => b.Id == branchId);
 
@@ -446,7 +463,7 @@ namespace Roovia.Services
                 user.CompanyId = branch.CompanyId; // Ensure company is also updated
                 user.UpdatedDate = DateTime.Now;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User branch assignment updated successfully.";
@@ -476,7 +493,9 @@ namespace Roovia.Services
 
                     if (!string.IsNullOrEmpty(userId))
                     {
-                        var applicationUser = await _context.Users
+                        using var context = await _contextFactory.CreateDbContextAsync();
+
+                        var applicationUser = await context.Users
                             .Include(u => u.EmailAddresses.Where(e => e.IsActive))
                             .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                             .Include(u => u.Company)
@@ -525,7 +544,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -555,7 +576,7 @@ namespace Roovia.Services
 
                 // Update the last modified date
                 user.UpdatedDate = DateTime.Now;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
                 // Return the new password
                 response.Response = newPassword;
@@ -578,7 +599,9 @@ namespace Roovia.Services
 
             try
             {
-                var user = await _context.Users
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var user = await context.Users
                     .Include(u => u.EmailAddresses)
                     .Include(u => u.ContactNumbers)
                     .Include(u => u.Company)

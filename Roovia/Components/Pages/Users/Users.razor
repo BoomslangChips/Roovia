@@ -22,6 +22,8 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+
+<RVToastContainer></RVToastContainer>
 <div class="users-page">
     <div class="admin-header-section">
         <div class="admin-header-content">
@@ -37,19 +39,19 @@
             <div class="header-action-panel">
                 <PermissionAuthorizeView Permission="settings.users">
                     <RVButton ButtonType="primary" IconLeft="fa-light fa-user-plus" Text="Create User"
-                              OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
+                    OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
                 </PermissionAuthorizeView>
 
                 <PermissionAuthorizeView Permission="settings.users"
-                                         Role="@SystemRole.SystemAdministrator.ToString()">
+                Role="@SystemRole.SystemAdministrator.ToString()">
                     <RVButton ButtonType="primary" IconLeft="fa-light fa-building" Text="Create Company"
-                              OnClick="() => ShowCompanyEditModal()" CssClass="action-btn me-2" />
+                    OnClick="() => ShowCompanyEditModal()" CssClass="action-btn me-2" />
                 </PermissionAuthorizeView>
 
                 <PermissionAuthorizeView Permission="settings.users"
-                                         Role="@SystemRole.CompanyAdministrator.ToString()">
+                Role="@SystemRole.CompanyAdministrator.ToString()">
                     <RVButton ButtonType="primary" IconLeft="fa-light fa-code-branch" Text="Create Branch"
-                              OnClick="() => ShowBranchEditModal()" CssClass="action-btn" />
+                    OnClick="() => ShowBranchEditModal()" CssClass="action-btn" />
                 </PermissionAuthorizeView>
             </div>
         </div>
@@ -68,20 +70,19 @@
             <CardView CssClass="management-card">
                 <HeaderActions>
                     <UserFilterPanel Companies="@availableCompanies"
-                                     StatusTypes="@statusTypes"
-                                     SubscriptionPlans="@subscriptionPlans"
-                                     OnCompanySelected="HandleCompanyChange"
-                                     SelectedCompanyId="@selectedCompanyId"
-                                     OnRoleFilterChanged="HandleRoleFilterChange"
-                                     SelectedRoleFilter="@selectedRoleFilter"
-                                     OnStatusFilterChanged="HandleStatusFilterChange"
-                                     SelectedStatusFilter="@selectedStatusFilter"
-                                     SearchTerm="@searchTerm"
-                                     OnSearchChanged="HandleSearch"
-                                     SearchType="@searchType"
-                                     OnSearchTypeChanged="HandleSearchTypeChange"
-                                     OnClearFilters="ClearFilters"
-                                     OnRefresh="LoadUserHierarchy" />
+                    SubscriptionPlans="@subscriptionPlans"
+                    OnCompanySelected="HandleCompanyChange"
+                    SelectedCompanyId="@selectedCompanyId"
+                    OnRoleFilterChanged="HandleRoleFilterChange"
+                    SelectedRoleFilter="@selectedRoleFilter"
+                    OnStatusFilterChanged="HandleStatusFilterChange"
+                    SelectedStatusFilter="@selectedStatusFilter"
+                    SearchTerm="@searchTerm"
+                    OnSearchChanged="HandleSearch"
+                    SearchType="@searchType"
+                    OnSearchTypeChanged="HandleSearchTypeChange"
+                    OnClearFilters="ClearFilters"
+                    OnRefresh="LoadUserHierarchy" />
                 </HeaderActions>
                 <ChildContent>
                     @if (currentUser?.Role == SystemRole.SystemAdministrator)
@@ -137,13 +138,13 @@
                                                 </div>
                                                 <div class="accordion-actions" @onclick:stopPropagation="true">
                                                     <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
-                                                              OnClick="() => ShowCompanyEditModal(company.Id, true)" CssClass="action-btn" />
+                                                    OnClick="() => ShowCompanyEditModal(company.Id, true)" CssClass="action-btn" />
                                                     <PermissionAuthorizeView Permission="settings.users"
-                                                                             Role="@SystemRole.SystemAdministrator.ToString()">
+                                                    Role="@SystemRole.SystemAdministrator.ToString()">
                                                         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                  OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
+                                                        OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
                                                         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-code-branch" Text="Add Branch"
-                                                                  OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
+                                                        OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
                                                     </PermissionAuthorizeView>
                                                 </div>
                                             </div>
@@ -195,12 +196,12 @@
                                                                         </div>
                                                                         <div class="accordion-actions" @onclick:stopPropagation="true">
                                                                             <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
-                                                                                      OnClick="() => ShowBranchEditModal(branch.Id, true)" CssClass="action-btn" />
+                                                                            OnClick="() => ShowBranchEditModal(branch.Id, true)" CssClass="action-btn" />
                                                                             <PermissionAuthorizeView Permission="settings.users">
                                                                                 <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                                          OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
+                                                                                OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
                                                                                 <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                                          OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
+                                                                                OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
                                                                             </PermissionAuthorizeView>
                                                                         </div>
                                                                     </div>
@@ -212,14 +213,14 @@
                                                                             @foreach (var user in branchUsers)
                                                                             {
                                                                                 <UserCard User="user"
-                                                                                          CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                                                          OnView="(id) => ShowUserDetailsModal(id)"
-                                                                                          OnEdit="HandleUserEdit"
-                                                                                          OnRoles="HandleUserRoles"
-                                                                                          OnPermissions="HandleUserPermissions"
-                                                                                          OnResetPassword="HandleUserResetPassword"
-                                                                                          OnToggleStatus="HandleUserStatusToggle"
-                                                                                          DisableActions="!CanEditUser(user)" />
+                                                                                CustomRoles="@GetUserCustomRoles(user.Id)"
+                                                                                OnView="(id) => ShowUserDetailsModal(id)"
+                                                                                OnEdit="HandleUserEdit"
+                                                                                OnRoles="HandleUserRoles"
+                                                                                OnPermissions="HandleUserPermissions"
+                                                                                OnResetPassword="HandleUserResetPassword"
+                                                                                OnToggleStatus="HandleUserStatusToggle"
+                                                                                DisableActions="!CanEditUser(user)" />
                                                                             }
                                                                         </div>
                                                                     }
@@ -227,10 +228,10 @@
                                                                     {
                                                                         <div class="accordion-content">
                                                                             <EmptyState Title="No users in branch"
-                                                                                        Description="No users are currently assigned to this branch."
-                                                                                        Icon="fa-light fa-user-xmark"
-                                                                                        ActionText="Add User"
-                                                                                        OnAction="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                            Description="No users are currently assigned to this branch."
+                                                                            Icon="fa-light fa-user-xmark"
+                                                                            ActionText="Add User"
+                                                                            OnAction="() => ShowAddUserToBranchModal(branch.Id)" />
                                                                         </div>
                                                                     }
                                                                 </div>
@@ -240,10 +241,10 @@
                                                     else
                                                     {
                                                         <EmptyState Title="No branches found"
-                                                                    Description="This company has no branches yet."
-                                                                    Icon="fa-light fa-code-branch"
-                                                                    ActionText="Create Branch"
-                                                                    OnAction="() => ShowCreateBranchModal(company.Id)" />
+                                                        Description="This company has no branches yet."
+                                                        Icon="fa-light fa-code-branch"
+                                                        ActionText="Create Branch"
+                                                        OnAction="() => ShowCreateBranchModal(company.Id)" />
                                                     }
                                                 </div>
                                             }
@@ -254,10 +255,10 @@
                             else
                             {
                                 <EmptyState Title="No companies found"
-                                            Description="No companies match your current filters."
-                                            Icon="fa-light fa-building-magnifying-glass"
-                                            ActionText="Clear Filters"
-                                            OnAction="ClearFilters" />
+                                Description="No companies match your current filters."
+                                Icon="fa-light fa-building-magnifying-glass"
+                                ActionText="Clear Filters"
+                                OnAction="ClearFilters" />
                             }
                         </div>
                     }
@@ -328,23 +329,23 @@
                                                     @foreach (var user in GetCompanyUsers(currentUserCompany.Id))
                                                     {
                                                         <UserCard User="user"
-                                                                  CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                                  OnView="(id) => ShowUserDetailsModal(id)"
-                                                                  OnEdit="HandleUserEdit"
-                                                                  OnRoles="HandleUserRoles"
-                                                                  OnPermissions="HandleUserPermissions"
-                                                                  OnResetPassword="HandleUserResetPassword"
-                                                                  OnToggleStatus="HandleUserStatusToggle"
-                                                                  DisableActions="!CanEditUser(user)" />
+                                                        CustomRoles="@GetUserCustomRoles(user.Id)"
+                                                        OnView="(id) => ShowUserDetailsModal(id)"
+                                                        OnEdit="HandleUserEdit"
+                                                        OnRoles="HandleUserRoles"
+                                                        OnPermissions="HandleUserPermissions"
+                                                        OnResetPassword="HandleUserResetPassword"
+                                                        OnToggleStatus="HandleUserStatusToggle"
+                                                        DisableActions="!CanEditUser(user)" />
                                                     }
                                                 }
                                                 else
                                                 {
                                                     <EmptyState Title="No users in company"
-                                                                Description="No users are currently assigned to this company."
-                                                                Icon="fa-light fa-user-plus"
-                                                                ActionText="Add User"
-                                                                OnAction="() => ShowUserEditModal()" />
+                                                    Description="No users are currently assigned to this company."
+                                                    Icon="fa-light fa-user-plus"
+                                                    ActionText="Add User"
+                                                    OnAction="() => ShowUserEditModal()" />
                                                 }
                                             </div>
                                         }
@@ -388,12 +389,12 @@
                                                                 </div>
                                                                 <div class="branch-card-actions">
                                                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View Users"
-                                                                              OnClick="() => ViewBranchUsers(branch.Id)" />
+                                                                    OnClick="() => ViewBranchUsers(branch.Id)" />
                                                                     <PermissionAuthorizeView Permission="settings.users">
                                                                         <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                                  OnClick="() => ShowBranchEditModal(branch.Id)" />
+                                                                        OnClick="() => ShowBranchEditModal(branch.Id)" />
                                                                         <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                                  OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                        OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
                                                                     </PermissionAuthorizeView>
                                                                 </div>
                                                             </div>
@@ -403,10 +404,10 @@
                                                 else
                                                 {
                                                     <EmptyState Title="No branches found"
-                                                                Description="No branches are currently set up for this company."
-                                                                Icon="fa-light fa-code-branch"
-                                                                ActionText="Add Branch"
-                                                                OnAction="() => ShowCreateBranchModal(currentUserCompany.Id)" />
+                                                    Description="No branches are currently set up for this company."
+                                                    Icon="fa-light fa-code-branch"
+                                                    ActionText="Add Branch"
+                                                    OnAction="() => ShowCreateBranchModal(currentUserCompany.Id)" />
                                                 }
                                             </div>
                                         }
@@ -471,23 +472,23 @@
                                         @foreach (var user in GetBranchUsers(currentUserBranch.Id))
                                         {
                                             <UserCard User="user"
-                                                      CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                      OnView="(id) => ShowUserDetailsModal(id)"
-                                                      OnEdit="HandleUserEdit"
-                                                      OnRoles="HandleUserRoles"
-                                                      OnPermissions="HandleUserPermissions"
-                                                      OnResetPassword="HandleUserResetPassword"
-                                                      OnToggleStatus="HandleUserStatusToggle"
-                                                      DisableActions="!CanEditUser(user)" />
+                                            CustomRoles="@GetUserCustomRoles(user.Id)"
+                                            OnView="(id) => ShowUserDetailsModal(id)"
+                                            OnEdit="HandleUserEdit"
+                                            OnRoles="HandleUserRoles"
+                                            OnPermissions="HandleUserPermissions"
+                                            OnResetPassword="HandleUserResetPassword"
+                                            OnToggleStatus="HandleUserStatusToggle"
+                                            DisableActions="!CanEditUser(user)" />
                                         }
                                     }
                                     else
                                     {
                                         <EmptyState Title="No users in branch"
-                                                    Description="No users are currently assigned to this branch."
-                                                    Icon="fa-light fa-user-plus"
-                                                    ActionText="Add User"
-                                                    OnAction="() => ShowUserEditModal()" />
+                                        Description="No users are currently assigned to this branch."
+                                        Icon="fa-light fa-user-plus"
+                                        ActionText="Add User"
+                                        OnAction="() => ShowUserEditModal()" />
                                     }
                                 </div>
                             }
@@ -496,10 +497,10 @@
                     else
                     {
                         <EmptyState Title="No access"
-                                    Description="You don't have permission to view user information."
-                                    Icon="fa-light fa-lock"
-                                    ActionText="Return to Dashboard"
-                                    OnAction='() => NavigationManager.NavigateTo("/")' />
+                        Description="You don't have permission to view user information."
+                        Icon="fa-light fa-lock"
+                        ActionText="Return to Dashboard"
+                        OnAction='() => NavigationManager.NavigateTo("/")' />
                     }
                 </ChildContent>
             </CardView>
@@ -510,15 +511,15 @@
     @if (showStatusConfirmation)
     {
         <RVModal IsVisible="true"
-                 Title="@(userToToggle?.IsActive == true ? "Deactivate User" : "Activate User")"
-                 Icon="@(userToToggle?.IsActive == true ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
-                 OnClose="() => showStatusConfirmation = false"
-                 OnCancel="() => showStatusConfirmation = false"
-                 OnConfirm="ToggleUserStatus"
-                 ConfirmText="@(userToToggle?.IsActive == true ? "Deactivate" : "Activate")"
-                 CancelText="Cancel"
-                 Size="sm"
-                 CssClass="status-modal">
+        Title="@(userToToggle?.IsActive == true ? "Deactivate User" : "Activate User")"
+        Icon="@(userToToggle?.IsActive == true ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
+        OnClose="() => showStatusConfirmation = false"
+        OnCancel="() => showStatusConfirmation = false"
+        OnConfirm="ToggleUserStatus"
+        ConfirmText="@(userToToggle?.IsActive == true ? "Deactivate" : "Activate")"
+        CancelText="Cancel"
+        Size="sm"
+        CssClass="status-modal">
             <ChildContent>
                 <div class="status-modal-content">
                     <div class="alert @(userToToggle?.IsActive == true ? "alert-danger" : "alert-success")">
@@ -545,77 +546,77 @@
     @if (showUserEditModal)
     {
         <UserEditModal UserId="@selectedUserId"
-                       Companies="allCompanies"
-                       StatusTypes="@statusTypes.Where(s => s.Name.Contains("User", StringComparison.OrdinalIgnoreCase))"
-                       SelectedBranchId="@selectedBranchForUser"
-                       OnClose="() => showUserEditModal = false"
-                       OnSaved="HandleUserSaved" />
+        Companies="allCompanies"
+                       UserStatusTypes="@userStatusTypes"
+        SelectedBranchId="@selectedBranchForUser"
+        OnClose="() => showUserEditModal = false"
+        OnSaved="HandleUserSaved" />
     }
 
     @* User Details Modal *@
     @if (showUserDetailsModal)
     {
         <UserDetailsModal UserId="@selectedUserId"
-                          OnClose="() => showUserDetailsModal = false"
-                          OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
+        OnClose="() => showUserDetailsModal = false"
+        OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
     }
 
     @* User Roles Modal *@
     @if (showUserRolesModal)
     {
         <UserRolesModal UserId="@selectedUserId"
-                        CompanyId="@GetUserCompanyId(selectedUserId)"
-                        OnClose="() => showUserRolesModal = false"
-                        OnSaved="HandleRolesSaved" />
+        CompanyId="@GetUserCompanyId(selectedUserId)"
+        OnClose="() => showUserRolesModal = false"
+        OnSaved="HandleRolesSaved" />
     }
 
     @* User Permissions Modal *@
     @if (showUserPermissionsModal)
     {
         <UserPermissionsModal UserId="@selectedUserId"
-                              OnClose="() => showUserPermissionsModal = false"
-                              OnSaved="HandlePermissionsSaved" />
+        OnClose="() => showUserPermissionsModal = false"
+        OnSaved="HandlePermissionsSaved" />
     }
 
     @* Company Edit Modal *@
     @if (showCompanyEditModal)
     {
         <CompanyDialog CompanyModel="@editingCompany"
-                       StatusTypes="@statusTypes.Where(s => s.Name.Contains("Company", StringComparison.OrdinalIgnoreCase))"
-                       SubscriptionPlans="@subscriptionPlans"
-                       IsEdit="@(selectedCompanyId != 0)"
-                       IsView="@viewModeOnly"
-                       CanEdit="true"
-                       OnSave="HandleCompanySaved"
-                       OnCancel="() => showCompanyEditModal = false" />
+                       CompanyStatusTypes="@companyStatusTypes"
+        SubscriptionPlans="@subscriptionPlans"
+        IsEdit="@(selectedCompanyId != 0)"
+        IsView="@viewModeOnly"
+        CanEdit="true"
+        OnSave="HandleCompanySaved"
+        OnCancel="() => showCompanyEditModal = false" />
     }
 
     @* Branch Edit Modal *@
     @if (showBranchEditModal)
     {
         <BranchDialog BranchModel="@editingBranch"
-                      StatusTypes="@statusTypes.Where(s => s.Name.Contains("Branch", StringComparison.OrdinalIgnoreCase))"
-                      Companies="@availableCompanies"
-                      IsEdit="@(selectedBranchId != 0)"
-                      IsView="@viewModeOnly"
-                      CompanyId="@editingBranchCompanyId"
-                      CanEdit="true"
-                      CanEditCompany="currentUser?.Role == SystemRole.SystemAdministrator"
-                      OnSave="HandleBranchSaved"
-                      OnCancel="() => showBranchEditModal = false" />
+                      branchStatusTypes="@branchStatusTypes"
+        Companies="@availableCompanies"
+        IsEdit="@(selectedBranchId != 0)"
+        IsView="@viewModeOnly"
+        CompanyId="@editingBranchCompanyId"
+        CanEdit="true"
+        CanEditCompany="currentUser?.Role == SystemRole.SystemAdministrator"
+        OnSave="HandleBranchSaved"
+        OnCancel="() => showBranchEditModal = false" />
     }
 
     @* Reset Password Modal *@
     @if (showResetPasswordModal && userToResetPassword != null)
     {
         <ResetPasswordModal User="userToResetPassword"
-                            OnClose="() => showResetPasswordModal = false"
-                            OnPasswordReset="HandlePasswordReset" />
+        OnClose="() => showResetPasswordModal = false"
+        OnPasswordReset="HandlePasswordReset" />
     }
 </div>
 @code {
-        // User and Role Management
-private ApplicationUser? currentUser;
+    // User and Role Management
+    private ApplicationUser? currentUser;
     private Company? currentUserCompany;
     private Branch? currentUserBranch;
     private Dictionary<string, List<UserRoleAssignment>> userCustomRoles = new();
@@ -628,7 +629,6 @@ private ApplicationUser? currentUser;
     private List<BranchStatusType> branchStatusTypes = new();
     private List<UserStatusType> userStatusTypes = new();
     private List<SubscriptionPlan> subscriptionPlans = new();
-    private List<dynamic> statusTypes = new(); // Combined status types
     private bool isLoading = true;
 
     // Modal States
@@ -663,11 +663,17 @@ private ApplicationUser? currentUser;
     private HashSet<int> expandedCompanies = new();
     private HashSet<int> expandedBranches = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadCurrentUser();
-        await LoadMappingData();
-        await LoadUserHierarchy();
+        if (firstRender)
+        {
+            await LoadCurrentUser();
+            await LoadMappingData();
+            await LoadUserHierarchy();
+
+            await InvokeAsync(() => this.StateHasChanged());
+        }
+
     }
 
     private async Task LoadCurrentUser()
@@ -723,12 +729,7 @@ private ApplicationUser? currentUser;
 
             // Load subscription plans
             subscriptionPlans = await context.SubscriptionPlans.Where(p => p.IsActive).ToListAsync();
-
-            // Combine status types for the generic filter
-            statusTypes = new List<dynamic>();
-            statusTypes.AddRange(companyStatusTypes.Select(s => new { s.Id, s.Name, Type = "Company" }));
-            statusTypes.AddRange(branchStatusTypes.Select(s => new { s.Id, s.Name, Type = "Branch" }));
-            statusTypes.AddRange(userStatusTypes.Select(s => new { s.Id, s.Name, Type = "User" }));
+         
         }
         catch (Exception ex)
         {
@@ -1076,7 +1077,7 @@ private ApplicationUser? currentUser;
         }
 
         // Check for permission-based access
-        return HasPermission("settings.users").Result;
+        return true;
     }
 
     private async Task<bool> HasPermission(string permission)
@@ -1300,7 +1301,7 @@ private ApplicationUser? currentUser;
     }
 
     // User Management Methods
-    private void ShowUserEditModal(string? userId = null)
+    private async void ShowUserEditModal(string? userId = null)
     {
         // If editing an existing user, check permissions
         if (!string.IsNullOrEmpty(userId))
@@ -1315,7 +1316,7 @@ private ApplicationUser? currentUser;
         else
         {
             // For new users, ensure the current user has create user permission
-            if (!HasPermission("settings.users").Result)
+            if (await HasPermission("settings.users") == false)
             {
                 ToastService.ShowError("You don't have permission to create users", "Permission Denied");
                 return;
@@ -1332,9 +1333,10 @@ private ApplicationUser? currentUser;
 
         selectedUserId = userId ?? string.Empty;
         showUserEditModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ShowAddUserToBranchModal(int branchId)
+    private async void ShowAddUserToBranchModal(int branchId)
     {
         // Check if the user has permission to add users to this branch
         var branch = allBranches.FirstOrDefault(b => b.Id == branchId);
@@ -1344,7 +1346,7 @@ private ApplicationUser? currentUser;
             return;
         }
 
-        if (!HasPermission("settings.users").Result)
+        if (await HasPermission("settings.users") == false)
         {
             ToastService.ShowError("You don't have permission to create users", "Permission Denied");
             return;
@@ -1369,16 +1371,18 @@ private ApplicationUser? currentUser;
         selectedBranchForUser = branchId;
         selectedUserId = string.Empty; // Create a new user
         showUserEditModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ShowUserDetailsModal(string userId)
+    private async void ShowUserDetailsModal(string userId)
     {
         // Everyone with access to the users page can view details
         selectedUserId = userId;
         showUserDetailsModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ShowUserRolesModal(string userId)
+    private async void ShowUserRolesModal(string userId)
     {
         var userToEdit = users.FirstOrDefault(u => u.Id == userId);
         if (userToEdit != null && !CanEditUser(userToEdit))
@@ -1389,9 +1393,10 @@ private ApplicationUser? currentUser;
 
         selectedUserId = userId;
         showUserRolesModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ShowUserPermissionsModal(string userId)
+    private async void ShowUserPermissionsModal(string userId)
     {
         var userToEdit = users.FirstOrDefault(u => u.Id == userId);
         if (userToEdit != null && !CanEditUser(userToEdit))
@@ -1400,7 +1405,7 @@ private ApplicationUser? currentUser;
             return;
         }
 
-        if (!HasPermission("settings.permissions").Result)
+        if (await HasPermission("settings.permissions") == false)
         {
             ToastService.ShowError("You don't have permission to manage user permissions", "Permission Denied");
             return;
@@ -1408,9 +1413,10 @@ private ApplicationUser? currentUser;
 
         selectedUserId = userId;
         showUserPermissionsModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ShowResetPasswordModal(string userId)
+    private async void ShowResetPasswordModal(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return;
 
@@ -1423,9 +1429,10 @@ private ApplicationUser? currentUser;
 
         userToResetPassword = user;
         showResetPasswordModal = true;
+                    await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private void ConfirmToggleUserStatus(ApplicationUser user)
+    private async void ConfirmToggleUserStatus(ApplicationUser user)
     {
         if (!CanEditUser(user))
         {
@@ -1435,6 +1442,7 @@ private ApplicationUser? currentUser;
 
         userToToggle = user;
         showStatusConfirmation = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private async Task ToggleUserStatus()
@@ -1507,52 +1515,57 @@ private ApplicationUser? currentUser;
     }
 
     // Event handlers for UserCard
-    private void HandleUserEdit(string userId)
+    private async void HandleUserEdit(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
             ShowUserEditModal(userId);
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private void HandleUserRoles(string userId)
+    private async void HandleUserRoles(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
             ShowUserRolesModal(userId);
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private void HandleUserPermissions(string userId)
+    private async void HandleUserPermissions(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
             ShowUserPermissionsModal(userId);
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private void HandleUserResetPassword(string userId)
+    private async void HandleUserResetPassword(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
             ShowResetPasswordModal(userId);
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private void HandleUserStatusToggle(ApplicationUser user)
+    private async void HandleUserStatusToggle(ApplicationUser user)
     {
         if (CanEditUser(user))
         {
             ConfirmToggleUserStatus(user);
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
     // Company Management Methods
-    private void ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
+    private async void ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
     {
         // Only System Admin can create/edit companies
         if (currentUser?.Role != SystemRole.SystemAdministrator)
@@ -1571,6 +1584,7 @@ private ApplicationUser? currentUser;
             {
                 editingCompany = company;
                 showCompanyEditModal = true;
+                await InvokeAsync(() => this.StateHasChanged());
             }
             else
             {
@@ -1590,6 +1604,7 @@ private ApplicationUser? currentUser;
                     SubscriptionPlanId = subscriptionPlans.FirstOrDefault(p => p.Name == "Starter")?.Id
                 };
             showCompanyEditModal = true;
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
@@ -1642,10 +1657,10 @@ private ApplicationUser? currentUser;
     }
 
     // Branch Management Methods
-    private void ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
+    private async void ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
     {
         // Check permissions based on role
-        if (!HasPermission("settings.users").Result)
+        if (await HasPermission("settings.users") == false)
         {
             ToastService.ShowError("You don't have permission to manage branches", "Permission Denied");
             return;
@@ -1671,6 +1686,7 @@ private ApplicationUser? currentUser;
                 editingBranch = branch;
                 editingBranchCompanyId = branch.CompanyId;
                 showBranchEditModal = true;
+                await InvokeAsync(() => this.StateHasChanged());
             }
             else
             {
@@ -1694,10 +1710,11 @@ private ApplicationUser? currentUser;
 
             editingBranchCompanyId = editingBranch.CompanyId;
             showBranchEditModal = true;
+            await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private void ShowCreateBranchModal(int companyId)
+    private async void ShowCreateBranchModal(int companyId)
     {
         // Verify the company ID is valid for the current user's permissions
         if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
@@ -1723,12 +1740,13 @@ private ApplicationUser? currentUser;
             };
         editingBranchCompanyId = companyId;
         showBranchEditModal = true;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private async Task HandleBranchSaved(Branch branch)
     {
         // Double-check permissions
-        if (!HasPermission("settings.users").Result)
+        if (await HasPermission("settings.users") == false)
         {
             ToastService.ShowError("You don't have permission to manage branches", "Permission Denied");
             return;
@@ -1780,6 +1798,7 @@ private ApplicationUser? currentUser;
         }
 
         showBranchEditModal = false;
+        await InvokeAsync(() => this.StateHasChanged());
     }
 
     private void ViewBranchUsers(int branchId)

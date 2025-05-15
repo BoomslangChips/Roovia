@@ -19,6 +19,7 @@ namespace Roovia.Security
     {
         private readonly IPermissionService _permissionService;
         private readonly AuthenticationStateProvider _authStateProvider;
+        private static readonly AsyncLocal<bool> _isCheckingPermission = new AsyncLocal<bool>();
 
         public PermissionAuthorizationHandler(
             IPermissionService permissionService,
@@ -32,27 +33,73 @@ namespace Roovia.Security
             AuthorizationHandlerContext context,
             PermissionRequirement requirement)
         {
-            // Get current user
-            var authState = await _authStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-
-            if (!user.Identity.IsAuthenticated)
+            // Prevent recursive permission checks
+            if (_isCheckingPermission.Value)
             {
-                return; // Not authenticated, deny access
+                // If we're already checking permissions, bypass to prevent infinite loop
+                // Don't succeed or fail, just return to let other handlers decide
+                return;
             }
 
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                return; // No user ID, deny access
+                _isCheckingPermission.Value = true;
+
+                // For database-related resources, bypass permission check to prevent circular dependency
+                if (context.Resource != null && IsDatabaseResource(context.Resource))
+                {
+                    // Don't succeed here, just return to avoid interfering with other handlers
+                    return;
+                }
+
+                // Get current user
+                var authState = await _authStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+
+                if (!user.Identity.IsAuthenticated)
+                {
+                    return; // Not authenticated, deny access
+                }
+
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return; // No user ID, deny access
+                }
+
+                // Check if user has the required permission
+                var hasPermission = await _permissionService.UserHasPermission(userId, requirement.Permission);
+                if (hasPermission)
+                {
+                    context.Succeed(requirement);
+                }
+            }
+            catch (Exception)
+            {
+                // Log exception if you have a logger
+                // Don't fail the requirement, just return
+                return;
+            }
+            finally
+            {
+                _isCheckingPermission.Value = false;
+            }
+        }
+
+        private bool IsDatabaseResource(object resource)
+        {
+            // Check if the resource is a database-related resource
+            if (resource is string resourceString)
+            {
+                return resourceString.StartsWith("Database") ||
+                       resourceString.StartsWith("DbContext") ||
+                       resourceString.Contains("ApplicationDbContext");
             }
 
-            // Check if user has the required permission
-            var hasPermission = await _permissionService.UserHasPermission(userId, requirement.Permission);
-            if (hasPermission)
-            {
-                context.Succeed(requirement);
-            }
+            var resourceType = resource.GetType();
+            return resourceType.Name.Contains("DbContext") ||
+                   resourceType.Namespace?.Contains("EntityFramework") == true ||
+                   resourceType.Namespace?.Contains("Identity") == true;
         }
     }
 }

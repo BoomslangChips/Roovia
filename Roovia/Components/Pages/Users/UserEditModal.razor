@@ -16,14 +16,14 @@
 @inject NavigationManager NavigationManager
 
 <RVModal IsVisible="true"
-         Title="@(isNewUser ? "Create User" : "Edit User")"
-         Icon="@(isNewUser ? "fa-light fa-user-plus" : "fa-light fa-user-edit")"
-         OnClose="OnClose"
-         OnCancel="OnClose"
-         OnConfirm="SaveUser"
-         ConfirmText="@(isNewUser ? "Create" : "Save")"
-         CancelText="Cancel"
-         Size="lg">
+Title="@(isNewUser ? "Create User" : "Edit User")"
+Icon="@(isNewUser ? "fa-light fa-user-plus" : "fa-light fa-user-edit")"
+OnClose="OnClose"
+OnCancel="OnClose"
+OnConfirm="SaveUser"
+ConfirmText="@(isNewUser ? "Create" : "Save")"
+CancelText="Cancel"
+Size="lg">
     <ChildContent>
         @if (isLoading)
         {
@@ -68,18 +68,18 @@
                                 <div class="form-group">
                                     <label for="firstName">First Name</label>
                                     <RVTextbox Id="firstName"
-                                               Value="@userModel.FirstName"
-                                               ValueChanged="value => userModel.FirstName = value"
-                                               Placeholder="Enter first name" />
+                                    Value="@userModel.FirstName"
+                                    ValueChanged="value => userModel.FirstName = value"
+                                    Placeholder="Enter first name" />
                                     <ValidationMessage For="@(() => userModel.FirstName)" />
                                 </div>
 
                                 <div class="form-group">
                                     <label for="lastName">Last Name</label>
                                     <RVTextbox Id="lastName"
-                                               Value="@userModel.LastName"
-                                               ValueChanged="value => userModel.LastName = value"
-                                               Placeholder="Enter last name" />
+                                    Value="@userModel.LastName"
+                                    ValueChanged="value => userModel.LastName = value"
+                                    Placeholder="Enter last name" />
                                     <ValidationMessage For="@(() => userModel.LastName)" />
                                 </div>
                             </div>
@@ -87,11 +87,11 @@
                             <div class="form-group">
                                 <label for="userName">Username</label>
                                 <RVTextbox Id="userName"
-                                           Value="@userModel.UserName"
-                                           ValueChanged="value => userModel.UserName = value"
-                                           Placeholder="Enter username"
-                                           Disabled="@(!isNewUser)"
-                                           IconLeft="fa-light fa-user" />
+                                Value="@userModel.UserName"
+                                ValueChanged="value => userModel.UserName = value"
+                                Placeholder="Enter username"
+                                Disabled="@(!isNewUser)"
+                                IconLeft="fa-light fa-user" />
                                 <ValidationMessage For="@(() => userModel.UserName)" />
                             </div>
 
@@ -100,14 +100,14 @@
                                 <div class="form-group">
                                     <label for="userStatus">Status</label>
                                     <RVSelect Id="userStatus"
-                                              Value="@(userModel.StatusId?.ToString() ?? "")"
-                                              ValueChanged="HandleStatusChange"
-                                              Placeholder="Select status"
-                                              IconLeft="fa-light fa-check-circle">
+                                    Value="@(userModel.StatusId?.ToString() ?? "")"
+                                    ValueChanged="HandleStatusChange"
+                                    Placeholder="Select status"
+                                    IconLeft="fa-light fa-check-circle">
                                         <option value="">-- Select Status --</option>
-                                        @if (StatusTypes != null)
+                                        @if (UserStatusTypes != null)
                                         {
-                                            @foreach (var status in StatusTypes)
+                                            @foreach (var status in UserStatusTypes)
                                             {
                                                 <option value="@status.Id">@status.Name</option>
                                             }
@@ -117,9 +117,9 @@
 
                                 <div class="form-group">
                                     <RVSwitch Label="Active"
-                                              Value="userModel.IsActive"
-                                              ValueChanged="value => userModel.IsActive = value"
-                                              HelperText="Inactive users will not be able to log in to the system" />
+                                    Value="userModel.IsActive"
+                                    ValueChanged="value => userModel.IsActive = value"
+                                    HelperText="Inactive users will not be able to log in to the system" />
                                 </div>
                             }
                         </div>
@@ -136,22 +136,22 @@
                                 <div class="form-group">
                                     <label for="email">Primary Email Address</label>
                                     <RVTextbox Id="email"
-                                               Type="email"
-                                               Value="@userModel.Email"
-                                               ValueChanged="value => userModel.Email = value"
-                                               Placeholder="Enter email address"
-                                               IconLeft="fa-light fa-envelope" />
+                                    Type="email"
+                                    Value="@userModel.Email"
+                                    ValueChanged="value => userModel.Email = value"
+                                    Placeholder="Enter email address"
+                                    IconLeft="fa-light fa-envelope" />
                                     <ValidationMessage For="@(() => userModel.Email)" />
                                 </div>
 
                                 <div class="form-group">
                                     <label for="phoneNumber">Primary Phone Number</label>
                                     <RVTextbox Id="phoneNumber"
-                                               Type="tel"
-                                               Value="@userModel.PhoneNumber"
-                                               ValueChanged="value => userModel.PhoneNumber = value"
-                                               Placeholder="Enter phone number"
-                                               IconLeft="fa-light fa-phone" />
+                                    Type="tel"
+                                    Value="@userModel.PhoneNumber"
+                                    ValueChanged="value => userModel.PhoneNumber = value"
+                                    Placeholder="Enter phone number"
+                                    IconLeft="fa-light fa-phone" />
                                     <ValidationMessage For="@(() => userModel.PhoneNumber)" />
                                 </div>
                             </div>
@@ -161,7 +161,7 @@
                                 <div class="section-subtitle">
                                     <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
                                     <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
-                                              OnClick="AddEmail" CssClass="add-btn" />
+                                    OnClick="AddEmail" CssClass="add-btn" />
                                 </div>
 
                                 @if (additionalEmails.Any())
@@ -172,18 +172,18 @@
                                             <div class="email-item">
                                                 <div class="email-content">
                                                     <RVTextbox Value="@email.EmailAddress"
-                                                               ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                               Placeholder="Enter email address"
-                                                               IconLeft="fa-light fa-envelope"
-                                                               Size="sm" />
+                                                    ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                    Placeholder="Enter email address"
+                                                    IconLeft="fa-light fa-envelope"
+                                                    Size="sm" />
                                                     <RVTextbox Value="@email.Description"
-                                                               ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                               Placeholder="Description (e.g. Work, Personal)"
-                                                               IconLeft="fa-light fa-tag"
-                                                               Size="sm" />
+                                                    ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                    Placeholder="Description (e.g. Work, Personal)"
+                                                    IconLeft="fa-light fa-tag"
+                                                    Size="sm" />
                                                 </div>
                                                 <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                          OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
                                             </div>
                                         }
                                     </div>
@@ -202,7 +202,7 @@
                                 <div class="section-subtitle">
                                     <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
                                     <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
-                                              OnClick="AddPhone" CssClass="add-btn" />
+                                    OnClick="AddPhone" CssClass="add-btn" />
                                 </div>
 
                                 @if (additionalPhones.Any())
@@ -213,28 +213,28 @@
                                             <div class="phone-item">
                                                 <div class="phone-content">
                                                     <RVTextbox Value="@phone.Number"
-                                                               ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                               Placeholder="Enter phone number"
-                                                               IconLeft="fa-light fa-phone"
-                                                               Size="sm" />
+                                                    ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                    Placeholder="Enter phone number"
+                                                    IconLeft="fa-light fa-phone"
+                                                    Size="sm" />
                                                     <RVSelect Value="@phone.Type.ToString()"
-                                                              ValueChanged="value => UpdatePhoneType(phone, value)"
-                                                              Placeholder="Select type"
-                                                              IconLeft="fa-light fa-phone-office"
-                                                              Size="sm">
+                                                    ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                    Placeholder="Select type"
+                                                    IconLeft="fa-light fa-phone-office"
+                                                    Size="sm">
                                                         @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
                                                         {
                                                             <option value="@type">@type</option>
                                                         }
                                                     </RVSelect>
                                                     <RVTextbox Value="@phone.Description"
-                                                               ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                               Placeholder="Description"
-                                                               IconLeft="fa-light fa-tag"
-                                                               Size="sm" />
+                                                    ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                    Placeholder="Description"
+                                                    IconLeft="fa-light fa-tag"
+                                                    Size="sm" />
                                                 </div>
                                                 <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                          OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
                                             </div>
                                         }
                                     </div>
@@ -267,10 +267,10 @@
                                         <div class="form-group">
                                             <label for="systemRole">Base System Role</label>
                                             <RVSelect Id="systemRole"
-                                                      Value="@selectedRole"
-                                                      ValueChanged="value => selectedRole = value"
-                                                      Placeholder="Select role"
-                                                      IconLeft="fa-light fa-shield-check">
+                                            Value="@selectedRole"
+                                            ValueChanged="value => selectedRole = value"
+                                            Placeholder="Select role"
+                                            IconLeft="fa-light fa-shield-check">
                                                 @foreach (var role in availableRoles)
                                                 {
                                                     <option value="@role">@GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
@@ -291,11 +291,11 @@
                                         <div class="form-group">
                                             <label for="company">Company</label>
                                             <RVSelect Id="company"
-                                                      Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
-                                                      ValueChanged="HandleCompanyChange"
-                                                      Placeholder="Select company"
-                                                      Disabled="@(!canAssignAnyCompany)"
-                                                      IconLeft="fa-light fa-building">
+                                            Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
+                                            ValueChanged="HandleCompanyChange"
+                                            Placeholder="Select company"
+                                            Disabled="@(!canAssignAnyCompany)"
+                                            IconLeft="fa-light fa-building">
                                                 <option value="">-- None --</option>
                                                 @if (availableCompanies != null)
                                                 {
@@ -314,11 +314,11 @@
                                         <div class="form-group">
                                             <label for="branch">Branch</label>
                                             <RVSelect Id="branch"
-                                                      Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
-                                                      ValueChanged="HandleBranchChange"
-                                                      Placeholder="Select branch"
-                                                      Disabled="@(!canAssignBranch || !userModel.CompanyId.HasValue || availableBranches.Count == 0)"
-                                                      IconLeft="fa-light fa-code-branch">
+                                            Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
+                                            ValueChanged="HandleBranchChange"
+                                            Placeholder="Select branch"
+                                            Disabled="@(!canAssignBranch || !userModel.CompanyId.HasValue || availableBranches.Count == 0)"
+                                            IconLeft="fa-light fa-code-branch">
                                                 <option value="">-- None --</option>
                                                 @foreach (var branch in availableBranches.OrderBy(b => b.Name))
                                                 {
@@ -377,9 +377,9 @@
 
                                             <div class="password-options">
                                                 <RVButton ButtonType="primary"
-                                                          IconLeft="fa-light fa-key"
-                                                          Text="Reset Password"
-                                                          OnClick="ShowResetPasswordConfirmation" />
+                                                IconLeft="fa-light fa-key"
+                                                Text="Reset Password"
+                                                OnClick="ShowResetPasswordConfirmation" />
                                             </div>
                                         </div>
 
@@ -391,16 +391,16 @@
                                             <div class="form-row">
                                                 <div class="form-group">
                                                     <RVSwitch Label="Email Confirmed"
-                                                              Value="userModel.EmailConfirmed"
-                                                              ValueChanged="value => userModel.EmailConfirmed = value"
-                                                              HelperText="Toggle whether the user's email address is confirmed" />
+                                                    Value="userModel.EmailConfirmed"
+                                                    ValueChanged="value => userModel.EmailConfirmed = value"
+                                                    HelperText="Toggle whether the user's email address is confirmed" />
                                                 </div>
 
                                                 <div class="form-group">
                                                     <RVSwitch Label="Two-Factor Authentication Enabled"
-                                                              Value="userModel.TwoFactorEnabled"
-                                                              ValueChanged="value => userModel.TwoFactorEnabled = value"
-                                                              HelperText="Toggle whether two-factor authentication is enabled for this user" />
+                                                    Value="userModel.TwoFactorEnabled"
+                                                    ValueChanged="value => userModel.TwoFactorEnabled = value"
+                                                    HelperText="Toggle whether two-factor authentication is enabled for this user" />
                                                 </div>
                                             </div>
                                         </div>
@@ -417,11 +417,11 @@
                                                 <div class="form-group">
                                                     <label for="password">Password</label>
                                                     <RVTextbox Id="password"
-                                                               Type="password"
-                                                               Value="@password"
-                                                               ValueChanged="value => password = value"
-                                                               Placeholder="Enter password"
-                                                               IconLeft="fa-light fa-lock" />
+                                                    Type="password"
+                                                    Value="@password"
+                                                    ValueChanged="value => password = value"
+                                                    Placeholder="Enter password"
+                                                    IconLeft="fa-light fa-lock" />
                                                     @if (!string.IsNullOrEmpty(passwordError))
                                                     {
                                                         <div class="validation-message">@passwordError</div>
@@ -431,11 +431,11 @@
                                                 <div class="form-group">
                                                     <label for="confirmPassword">Confirm Password</label>
                                                     <RVTextbox Id="confirmPassword"
-                                                               Type="password"
-                                                               Value="@confirmPassword"
-                                                               ValueChanged="value => confirmPassword = value"
-                                                               Placeholder="Confirm password"
-                                                               IconLeft="fa-light fa-lock" />
+                                                    Type="password"
+                                                    Value="@confirmPassword"
+                                                    ValueChanged="value => confirmPassword = value"
+                                                    Placeholder="Confirm password"
+                                                    IconLeft="fa-light fa-lock" />
                                                     @if (!string.IsNullOrEmpty(confirmPasswordError))
                                                     {
                                                         <div class="validation-message">@confirmPasswordError</div>
@@ -457,14 +457,14 @@
 @if (showResetPasswordModal)
 {
     <RVModal IsVisible="true"
-             Title="Reset Password"
-             Icon="fa-light fa-key"
-             OnClose="() => showResetPasswordModal = false"
-             OnCancel="() => showResetPasswordModal = false"
-             OnConfirm="ResetPassword"
-             ConfirmText="Reset Password"
-             CancelText="Cancel"
-             Size="md">
+    Title="Reset Password"
+    Icon="fa-light fa-key"
+    OnClose="() => showResetPasswordModal = false"
+    OnCancel="() => showResetPasswordModal = false"
+    OnConfirm="ResetPassword"
+    ConfirmText="Reset Password"
+    CancelText="Cancel"
+    Size="md">
         <ChildContent>
             <div class="reset-password-form">
                 <div class="alert alert-warning">
@@ -477,9 +477,9 @@
 
                 <div class="form-group">
                     <RVSwitch Label="Force password change on next login"
-                              Value="forcePasswordChange"
-                              ValueChanged="value => forcePasswordChange = value"
-                              HelperText="The user will be required to change their password when they next log in" />
+                    Value="forcePasswordChange"
+                    ValueChanged="value => forcePasswordChange = value"
+                    HelperText="The user will be required to change their password when they next log in" />
                 </div>
             </div>
         </ChildContent>
@@ -489,7 +489,7 @@
 @code {
     [Parameter] public string? UserId { get; set; }
     [Parameter] public List<Company>? Companies { get; set; }
-    [Parameter] public IEnumerable<dynamic>? StatusTypes { get; set; }
+    [Parameter] public IEnumerable<UserStatusType>? UserStatusTypes { get; set; }
     [Parameter] public int SelectedBranchId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
@@ -547,24 +547,29 @@
     // Track whether permissions have been modified
     private bool permissionsModified = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await GetCurrentUserInfo();
-
-        // Check if user has permission to access this page
-        if (!hasManageUsersPermission)
+        if (firstRender)
         {
-            hasAccessPermission = false;
-            isLoading = false;
-            return;
+            await GetCurrentUserInfo();
+
+            // Check if user has permission to access this page
+            if (!hasManageUsersPermission)
+            {
+                hasAccessPermission = false;
+                isLoading = false;
+                return;
+            }
+
+            hasAccessPermission = true;
+
+            await LoadAvailableCompaniesAndBranches();
+            await LoadAvailableRoles();
+            ConfigureTabs();
+            await LoadData();
+            await InvokeAsync(() => this.StateHasChanged());
         }
 
-        hasAccessPermission = true;
-
-        await LoadAvailableCompaniesAndBranches();
-        await LoadAvailableRoles();
-        ConfigureTabs();
-        await LoadData();
     }
 
     private async Task GetCurrentUserInfo()
@@ -924,7 +929,7 @@
                         IsActive = true,
                         CreatedDate = DateTime.Now,
                         CreatedBy = currentUserId,
-                        StatusId = StatusTypes?.FirstOrDefault(s => s.Name == "Active")?.Id
+                        StatusId = UserStatusTypes?.FirstOrDefault(s => s.Name == "Active")?.Id
                     };
 
                 // Set default role based on available roles

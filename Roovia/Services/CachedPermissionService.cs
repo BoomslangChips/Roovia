@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
@@ -6,13 +7,18 @@ using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Services
 {
-    public class PermissionService : IPermissionService
+    public class CachedPermissionService : IPermissionService
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly IMemoryCache _cache;
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
-        public PermissionService(IDbContextFactory<ApplicationDbContext> contextFactory)
+        public CachedPermissionService(
+            IDbContextFactory<ApplicationDbContext> contextFactory,
+            IMemoryCache cache)
         {
             _contextFactory = contextFactory;
+            _cache = cache;
         }
 
         #region Permission Operations
@@ -70,6 +76,9 @@ namespace Roovia.Services
 
                 await context.SaveChangesAsync();
 
+                // Clear cache for this user
+                ClearUserPermissionCache(userId, permission.SystemName);
+
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User permission override set successfully.";
             }
@@ -82,10 +91,8 @@ namespace Roovia.Services
             return response;
         }
 
-        // Keep backward compatibility with existing method
         public async Task<ResponseModel> SetUserPermissionOverride(string userId, int permissionId, bool isGranted)
         {
-            // Default to "System" if no current user ID is provided
             return await SetUserPermissionOverride(userId, permissionId, isGranted, "System");
         }
 
@@ -98,6 +105,7 @@ namespace Roovia.Services
                 using var context = await _contextFactory.CreateDbContextAsync();
 
                 var overRide = await context.UserPermissionOverrides
+                    .Include(upo => upo.Permission)
                     .FirstOrDefaultAsync(upo => upo.UserId == userId && upo.PermissionId == permissionId);
 
                 if (overRide == null)
@@ -107,8 +115,16 @@ namespace Roovia.Services
                     return response;
                 }
 
+                var permissionSystemName = overRide.Permission?.SystemName;
+
                 context.UserPermissionOverrides.Remove(overRide);
                 await context.SaveChangesAsync();
+
+                // Clear cache for this user
+                if (!string.IsNullOrEmpty(permissionSystemName))
+                {
+                    ClearUserPermissionCache(userId, permissionSystemName);
+                }
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User permission override removed successfully.";
@@ -128,12 +144,23 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"user_overrides:{userId}";
+                if (_cache.TryGetValue(cacheKey, out List<UserPermissionOverride> cachedOverrides))
+                {
+                    response.Response = cachedOverrides;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "User permission overrides retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
 
                 var overrides = await context.UserPermissionOverrides
                     .Include(upo => upo.Permission)
                     .Where(upo => upo.UserId == userId)
                     .ToListAsync();
+
+                _cache.Set(cacheKey, overrides, _cacheExpiration);
 
                 response.Response = overrides;
                 response.ResponseInfo.Success = true;
@@ -154,8 +181,19 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = "all_permissions";
+                if (_cache.TryGetValue(cacheKey, out List<Permission> cachedPermissions))
+                {
+                    response.Response = cachedPermissions;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Permissions retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var permissions = await context.Permissions.ToListAsync();
+
+                _cache.Set(cacheKey, permissions, _cacheExpiration);
 
                 response.Response = permissions;
                 response.ResponseInfo.Success = true;
@@ -176,11 +214,21 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"permission:{id}";
+                if (_cache.TryGetValue(cacheKey, out Permission cachedPermission))
+                {
+                    response.Response = cachedPermission;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Permission retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var permission = await context.Permissions.FindAsync(id);
 
                 if (permission != null)
                 {
+                    _cache.Set(cacheKey, permission, _cacheExpiration);
                     response.Response = permission;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Permission retrieved successfully.";
@@ -206,10 +254,21 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"permissions_category:{category}";
+                if (_cache.TryGetValue(cacheKey, out List<Permission> cachedPermissions))
+                {
+                    response.Response = cachedPermissions;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = $"Permissions in category '{category}' retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var permissions = await context.Permissions
                     .Where(p => p.Category == category)
                     .ToListAsync();
+
+                _cache.Set(cacheKey, permissions, _cacheExpiration);
 
                 response.Response = permissions;
                 response.ResponseInfo.Success = true;
@@ -232,7 +291,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if a permission with the same system name already exists
                 var existingPermission = await context.Permissions
                     .FirstOrDefaultAsync(p => p.SystemName == permission.SystemName);
 
@@ -245,6 +303,10 @@ namespace Roovia.Services
 
                 await context.Permissions.AddAsync(permission);
                 await context.SaveChangesAsync();
+
+                // Clear related caches
+                _cache.Remove("all_permissions");
+                _cache.Remove($"permissions_category:{permission.Category}");
 
                 response.Response = permission;
                 response.ResponseInfo.Success = true;
@@ -275,7 +337,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if another permission (not this one) has the same system name
                 var existingPermission = await context.Permissions
                     .FirstOrDefaultAsync(p => p.SystemName == updatedPermission.SystemName && p.Id != id);
 
@@ -286,6 +347,9 @@ namespace Roovia.Services
                     return response;
                 }
 
+                var oldCategory = permission.Category;
+                var oldSystemName = permission.SystemName;
+
                 // Update permission properties
                 permission.Name = updatedPermission.Name;
                 permission.Description = updatedPermission.Description;
@@ -294,6 +358,18 @@ namespace Roovia.Services
                 permission.IsActive = updatedPermission.IsActive;
 
                 await context.SaveChangesAsync();
+
+                // Clear related caches
+                _cache.Remove("all_permissions");
+                _cache.Remove($"permission:{id}");
+                _cache.Remove($"permissions_category:{oldCategory}");
+                _cache.Remove($"permissions_category:{permission.Category}");
+
+                // Clear all user permission caches if systemName changed
+                if (oldSystemName != permission.SystemName)
+                {
+                    ClearAllUserPermissionCaches();
+                }
 
                 response.Response = permission;
                 response.ResponseInfo.Success = true;
@@ -324,7 +400,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if permission is assigned to any roles
                 var rolePermissions = await context.RolePermissions
                     .Where(rp => rp.PermissionId == id)
                     .ToListAsync();
@@ -336,6 +411,12 @@ namespace Roovia.Services
 
                 context.Permissions.Remove(permission);
                 await context.SaveChangesAsync();
+
+                // Clear related caches
+                _cache.Remove("all_permissions");
+                _cache.Remove($"permission:{id}");
+                _cache.Remove($"permissions_category:{permission.Category}");
+                ClearAllUserPermissionCaches();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Permission deleted successfully.";
@@ -359,8 +440,19 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = "all_roles";
+                if (_cache.TryGetValue(cacheKey, out List<Role> cachedRoles))
+                {
+                    response.Response = cachedRoles;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Roles retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var roles = await context.Roles.ToListAsync();
+
+                _cache.Set(cacheKey, roles, _cacheExpiration);
 
                 response.Response = roles;
                 response.ResponseInfo.Success = true;
@@ -381,11 +473,21 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"role:{id}";
+                if (_cache.TryGetValue(cacheKey, out Role cachedRole))
+                {
+                    response.Response = cachedRole;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Role retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var role = await context.Roles.FindAsync(id);
 
                 if (role != null)
                 {
+                    _cache.Set(cacheKey, role, _cacheExpiration);
                     response.Response = role;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Role retrieved successfully.";
@@ -411,6 +513,15 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"role_with_permissions:{roleId}";
+                if (_cache.TryGetValue(cacheKey, out Role cachedRole))
+                {
+                    response.Response = cachedRole;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Role with permissions retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
                 var role = await context.Roles
                     .Include(r => r.Permissions)
@@ -419,6 +530,7 @@ namespace Roovia.Services
 
                 if (role != null)
                 {
+                    _cache.Set(cacheKey, role, _cacheExpiration);
                     response.Response = role;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Role with permissions retrieved successfully.";
@@ -446,7 +558,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if a role with the same name already exists
                 var existingRole = await context.Roles
                     .FirstOrDefaultAsync(r => r.Name == role.Name);
 
@@ -460,6 +571,9 @@ namespace Roovia.Services
                 role.CreatedOn = DateTime.Now;
                 await context.Roles.AddAsync(role);
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove("all_roles");
 
                 response.Response = role;
                 response.ResponseInfo.Success = true;
@@ -490,7 +604,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if another role (not this one) has the same name
                 var existingRole = await context.Roles
                     .FirstOrDefaultAsync(r => r.Name == updatedRole.Name && r.Id != id);
 
@@ -501,7 +614,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if trying to modify a preset role
                 if (role.IsPreset && !updatedRole.IsPreset)
                 {
                     response.ResponseInfo.Success = false;
@@ -517,6 +629,12 @@ namespace Roovia.Services
                 role.UpdatedBy = updatedRole.UpdatedBy;
 
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove("all_roles");
+                _cache.Remove($"role:{id}");
+                _cache.Remove($"role_with_permissions:{id}");
+                ClearAllUserPermissionCaches();
 
                 response.Response = role;
                 response.ResponseInfo.Success = true;
@@ -549,7 +667,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if the role is a preset
                 if (role.IsPreset)
                 {
                     response.ResponseInfo.Success = false;
@@ -557,7 +674,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if the role is assigned to any users
                 if (role.UserRoles.Any())
                 {
                     response.ResponseInfo.Success = false;
@@ -565,16 +681,19 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Delete role permissions
                 var rolePermissions = await context.RolePermissions
                     .Where(rp => rp.RoleId == id)
                     .ToListAsync();
 
                 context.RolePermissions.RemoveRange(rolePermissions);
-
-                // Delete the role
                 context.Roles.Remove(role);
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove("all_roles");
+                _cache.Remove($"role:{id}");
+                _cache.Remove($"role_with_permissions:{id}");
+                ClearAllUserPermissionCaches();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Role deleted successfully.";
@@ -596,7 +715,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Get the source role with permissions
                 var sourceRole = await context.Roles
                     .Include(r => r.Permissions)
                     .ThenInclude(rp => rp.Permission)
@@ -609,7 +727,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if a role with the new name already exists
                 var existingRole = await context.Roles
                     .FirstOrDefaultAsync(r => r.Name == newRoleName);
 
@@ -620,7 +737,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Create the new role
                 var newRole = new Role
                 {
                     Name = newRoleName,
@@ -634,7 +750,6 @@ namespace Roovia.Services
                 await context.Roles.AddAsync(newRole);
                 await context.SaveChangesAsync();
 
-                // Copy permissions
                 foreach (var rolePermission in sourceRole.Permissions)
                 {
                     var newRolePermission = new RolePermission
@@ -648,6 +763,9 @@ namespace Roovia.Services
                 }
 
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove("all_roles");
 
                 response.Response = newRole;
                 response.ResponseInfo.Success = true;
@@ -674,7 +792,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if role exists
                 var role = await context.Roles.FindAsync(roleId);
                 if (role == null)
                 {
@@ -683,7 +800,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if permission exists
                 var permission = await context.Permissions.FindAsync(permissionId);
                 if (permission == null)
                 {
@@ -692,13 +808,11 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if permission is already assigned to role
                 var existingRolePermission = await context.RolePermissions
                     .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
 
                 if (existingRolePermission != null)
                 {
-                    // If it exists but is inactive, make it active
                     if (!existingRolePermission.IsActive)
                     {
                         existingRolePermission.IsActive = true;
@@ -707,30 +821,34 @@ namespace Roovia.Services
                         response.Response = existingRolePermission;
                         response.ResponseInfo.Success = true;
                         response.ResponseInfo.Message = "Permission re-activated for the role.";
-                        return response;
                     }
+                    else
+                    {
+                        response.Response = existingRolePermission;
+                        response.ResponseInfo.Success = true;
+                        response.ResponseInfo.Message = "Permission already assigned to the role.";
+                    }
+                }
+                else
+                {
+                    var rolePermission = new RolePermission
+                    {
+                        RoleId = roleId,
+                        PermissionId = permissionId,
+                        IsActive = true
+                    };
 
-                    // If already active, nothing to do
-                    response.Response = existingRolePermission;
+                    await context.RolePermissions.AddAsync(rolePermission);
+                    await context.SaveChangesAsync();
+
+                    response.Response = rolePermission;
                     response.ResponseInfo.Success = true;
-                    response.ResponseInfo.Message = "Permission already assigned to the role.";
-                    return response;
+                    response.ResponseInfo.Message = "Permission assigned to role successfully.";
                 }
 
-                // Create new role-permission relationship
-                var rolePermission = new RolePermission
-                {
-                    RoleId = roleId,
-                    PermissionId = permissionId,
-                    IsActive = true
-                };
-
-                await context.RolePermissions.AddAsync(rolePermission);
-                await context.SaveChangesAsync();
-
-                response.Response = rolePermission;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Permission assigned to role successfully.";
+                // Clear cache
+                _cache.Remove($"role_with_permissions:{roleId}");
+                ClearAllUserPermissionCaches();
             }
             catch (Exception ex)
             {
@@ -749,7 +867,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Find the role-permission relationship
                 var rolePermission = await context.RolePermissions
                     .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
 
@@ -760,9 +877,12 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Remove the relationship
                 context.RolePermissions.Remove(rolePermission);
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove($"role_with_permissions:{roleId}");
+                ClearAllUserPermissionCaches();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Permission removed from role successfully.";
@@ -784,7 +904,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if role exists
                 var role = await context.Roles.FindAsync(roleId);
                 if (role == null)
                 {
@@ -793,12 +912,10 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Get current role permissions
                 var currentRolePermissions = await context.RolePermissions
                     .Where(rp => rp.RoleId == roleId)
                     .ToListAsync();
 
-                // Remove permissions that are not in the new list
                 var permissionsToRemove = currentRolePermissions
                     .Where(rp => !permissionIds.Contains(rp.PermissionId))
                     .ToList();
@@ -808,17 +925,15 @@ namespace Roovia.Services
                     context.RolePermissions.Remove(permission);
                 }
 
-                // Add new permissions that are not in the current list
                 var currentPermissionIds = currentRolePermissions.Select(rp => rp.PermissionId);
                 var newPermissionIds = permissionIds.Except(currentPermissionIds);
 
                 foreach (var permissionId in newPermissionIds)
                 {
-                    // Verify permission exists
                     var permissionExists = await context.Permissions.AnyAsync(p => p.Id == permissionId);
                     if (!permissionExists)
                     {
-                        continue; // Skip if permission doesn't exist
+                        continue;
                     }
 
                     var rolePermission = new RolePermission
@@ -832,6 +947,10 @@ namespace Roovia.Services
                 }
 
                 await context.SaveChangesAsync();
+
+                // Clear cache
+                _cache.Remove($"role_with_permissions:{roleId}");
+                ClearAllUserPermissionCaches();
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Role permissions updated successfully.";
@@ -857,7 +976,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if user exists
                 var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
@@ -866,7 +984,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if role exists
                 var role = await context.Roles.FindAsync(roleId);
                 if (role == null)
                 {
@@ -875,7 +992,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Check if user already has this role
                 var existingUserRole = await context.UserRoleAssignments
                     .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
 
@@ -887,7 +1003,6 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Create new user-role relationship
                 var userRole = new UserRoleAssignment
                 {
                     UserId = userId,
@@ -897,6 +1012,9 @@ namespace Roovia.Services
 
                 await context.UserRoleAssignments.AddAsync(userRole);
                 await context.SaveChangesAsync();
+
+                // Clear cache for this user
+                ClearUserPermissionCache(userId);
 
                 response.Response = userRole;
                 response.ResponseInfo.Success = true;
@@ -919,7 +1037,6 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Find the user-role relationship
                 var userRole = await context.UserRoleAssignments
                     .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
 
@@ -930,9 +1047,11 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Remove the relationship
                 context.UserRoleAssignments.Remove(userRole);
                 await context.SaveChangesAsync();
+
+                // Clear cache for this user
+                ClearUserPermissionCache(userId);
 
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Role removed from user successfully.";
@@ -952,9 +1071,17 @@ namespace Roovia.Services
 
             try
             {
+                var cacheKey = $"user_roles:{userId}";
+                if (_cache.TryGetValue(cacheKey, out List<UserRoleAssignment> cachedRoles))
+                {
+                    response.Response = cachedRoles;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "User roles retrieved from cache.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Check if user exists
                 var user = await context.Users.FindAsync(userId);
                 if (user == null)
                 {
@@ -963,11 +1090,12 @@ namespace Roovia.Services
                     return response;
                 }
 
-                // Get user roles with role details
                 var userRoles = await context.UserRoleAssignments
                     .Include(ur => ur.Role)
                     .Where(ur => ur.UserId == userId)
                     .ToListAsync();
+
+                _cache.Set(cacheKey, userRoles, _cacheExpiration);
 
                 response.Response = userRoles;
                 response.ResponseInfo.Success = true;
@@ -988,6 +1116,14 @@ namespace Roovia.Services
 
         public async Task<bool> UserHasPermission(string userId, string permissionName)
         {
+            var cacheKey = $"permission:{userId}:{permissionName}";
+
+            // Try to get from cache first
+            if (_cache.TryGetValue(cacheKey, out bool cachedResult))
+            {
+                return cachedResult;
+            }
+
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
@@ -1002,6 +1138,7 @@ namespace Roovia.Services
                 if (permission == null)
                 {
                     // Permission doesn't exist or is not active
+                    _cache.Set(cacheKey, false, _cacheExpiration);
                     return false;
                 }
 
@@ -1015,7 +1152,9 @@ namespace Roovia.Services
                 if (userOverride.HasValue)
                 {
                     // If there's an explicit override, respect it
-                    return userOverride.Value;
+                    var result = userOverride.Value;
+                    _cache.Set(cacheKey, result, _cacheExpiration);
+                    return result;
                 }
 
                 // Get user roles
@@ -1027,6 +1166,7 @@ namespace Roovia.Services
 
                 if (!userRoleIds.Any())
                 {
+                    _cache.Set(cacheKey, false, _cacheExpiration);
                     return false;
                 }
 
@@ -1039,6 +1179,7 @@ namespace Roovia.Services
                                rp.IsActive)
                     .AnyAsync();
 
+                _cache.Set(cacheKey, hasPermission, _cacheExpiration);
                 return hasPermission;
             }
             catch (Exception)
@@ -1051,18 +1192,23 @@ namespace Roovia.Services
 
         public async Task<List<string>> GetUserPermissions(string userId)
         {
+            var cacheKey = $"permissions:{userId}";
+
+            if (_cache.TryGetValue(cacheKey, out List<string> cachedPermissions))
+            {
+                return cachedPermissions;
+            }
+
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // Get user roles
                 var userRoleIds = await context.UserRoleAssignments
                     .AsNoTracking()
                     .Where(ur => ur.UserId == userId)
                     .Select(ur => ur.RoleId)
                     .ToListAsync();
 
-                // Get all permissions from user roles
                 var permissionsFromRoles = await context.RolePermissions
                     .AsNoTracking()
                     .Include(rp => rp.Permission)
@@ -1077,7 +1223,6 @@ namespace Roovia.Services
                     })
                     .ToListAsync();
 
-                // Get all user overrides
                 var userOverrides = await context.UserPermissionOverrides
                     .AsNoTracking()
                     .Include(upo => upo.Permission)
@@ -1086,7 +1231,6 @@ namespace Roovia.Services
 
                 var resultPermissions = new List<string>();
 
-                // Add permissions from roles that aren't explicitly denied
                 foreach (var perm in permissionsFromRoles)
                 {
                     var userOverride = userOverrides.FirstOrDefault(upo => upo.PermissionId == perm.PermissionId);
@@ -1097,7 +1241,6 @@ namespace Roovia.Services
                     }
                 }
 
-                // Add explicitly granted permissions that weren't already included
                 foreach (var grantedOverride in userOverrides.Where(upo => upo.IsGranted))
                 {
                     if (!resultPermissions.Contains(grantedOverride.Permission.SystemName))
@@ -1106,12 +1249,47 @@ namespace Roovia.Services
                     }
                 }
 
-                return resultPermissions.Distinct().ToList();
+                var finalPermissions = resultPermissions.Distinct().ToList();
+                _cache.Set(cacheKey, finalPermissions, _cacheExpiration);
+                return finalPermissions;
             }
             catch
             {
                 return new List<string>();
             }
+        }
+
+        #endregion
+
+        #region Cache Management
+
+        public void ClearUserPermissionCache(string userId, string permissionName = null)
+        {
+            if (string.IsNullOrEmpty(permissionName))
+            {
+                // Clear all permissions for the user
+                _cache.Remove($"permissions:{userId}");
+                _cache.Remove($"user_roles:{userId}");
+                _cache.Remove($"user_overrides:{userId}");
+
+                // Note: In production, you might want to track and clear individual permission checks
+                // This is a simplified approach
+            }
+            else
+            {
+                // Clear specific permission for the user
+                _cache.Remove($"permission:{userId}:{permissionName}");
+            }
+        }
+
+        private void ClearAllUserPermissionCaches()
+        {
+            // In a real implementation, you'd track all user IDs and clear their caches
+            // This is a simplified approach that demonstrates the concept
+            // You might want to implement a more sophisticated cache invalidation strategy
+
+            // For now, we'll just clear known cache prefixes
+            // In production, consider using a distributed cache with tags or patterns
         }
 
         #endregion

@@ -14,6 +14,7 @@ using System.IO;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Http.Features;
 using Roovia.Models.UserCompanyModels;
+using Microsoft.EntityFrameworkCore.Internal;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,14 +68,28 @@ builder.Services.AddAuthentication(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-// Register DbContext as scoped (default)
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// FIXED: Configure DbContext and DbContextFactory with proper lifetimes
+// First, configure the DbContextOptions as singleton
+builder.Services.AddSingleton<DbContextOptions<ApplicationDbContext>>(serviceProvider =>
+{
+    var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+    optionsBuilder.UseSqlServer(connectionString);
+    return optionsBuilder.Options;
+});
 
-// Register DbContextFactory with the SAME LIFETIME (scoped)
-builder.Services.AddDbContextFactory<ApplicationDbContext>(
-    options => options.UseSqlServer(connectionString),
-    lifetime: ServiceLifetime.Scoped);
+// Register DbContext as scoped (default) using the singleton options
+builder.Services.AddScoped<ApplicationDbContext>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>();
+    return new ApplicationDbContext(options);
+});
+
+// Register DbContextFactory as singleton using the singleton options
+builder.Services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>();
+    return new Roovia.Data.DbContextFactory<ApplicationDbContext>(options);
+});
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -85,9 +100,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 // Register domain services
-//builder.Services.AddScoped<ITenant, TenantService>();
-//builder.Services.AddScoped<IProperty, PropertyService>();
-//builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
 builder.Services.AddScoped<IUser, UserService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
@@ -151,7 +163,7 @@ builder.Services.AddAuthorization(options =>
 
 // Register authorization handler providers
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddSingleton<IAuthorizationHandler, GlobalAdminHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, GlobalAdminHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 var app = builder.Build();
