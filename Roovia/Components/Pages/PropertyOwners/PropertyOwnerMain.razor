@@ -1,14 +1,15 @@
-﻿@page "/beneficiaries"
+﻿
 
-@using Roovia.Models.PropertyOwner
+@page "/beneficiaries"
+
+
 @using Roovia.Interfaces
-@using Roovia.Models.Users
 @using Roovia.Services
 
 @inject IPropertyOwner PropertyOwnerService
 
 @rendermode InteractiveServer
-
+@* 
 
 <CardView CssClass="management-card">
     <HeaderActions>
@@ -49,8 +50,8 @@
                                 <td>@owner.EmailAddress</td>
                                 <td>@owner.CreatedOn.ToShortDateString()</td>
                                 <td>
-@*                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View" OnClick="() => ViewPropertyOwner(owner)" />
- *@                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => EditPropertyOwner(owner)" CssClass="ms-2" />
+                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View" OnClick="() => ViewPropertyOwner(owner)" />
+                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => EditPropertyOwner(owner)" CssClass="ms-2" />
                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" Text="Delete" OnClick="() => DeletePropertyOwner(owner)" CssClass="ms-2" />
                                 </td>
                             </tr>
@@ -61,15 +62,15 @@
         }
         else
         {
-            <EmptyState Title="No property owners available" 
+            <Roovia.Components.Pages.Users.EmptyState Title="No property owners available" 
                         Description="There are no property owners to display at this time." 
                         Icon="fa-light fa-user-slash" 
                         ActionText="Refresh" 
                         OnAction="LoadPropertyOwnersAsync" />
         }
     </ChildContent>
-</CardView>
-
+</CardView> *@
+@* 
 @if (showPropertyOwnerModal)
 {
     <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
@@ -84,15 +85,15 @@
             <PropertyOwnerEditModal OnModalClosed="EditModalClosed"></PropertyOwnerEditModal>
         </CascadingValue>
     </CascadingValue>
-}
+} *@
 
-
+@* 
 @code {
     private string searchTerm = string.Empty;
     bool showPropertyOwnerModal = false;
     bool showEditModal = false;
     PropertyOwner selectedOwner = new();
-    private List<Roovia.Models.PropertyOwner.PropertyOwner> propertyOwners = new List<PropertyOwner>();
+    private List<PropertyOwner> propertyOwners = new List<PropertyOwner>();
 
     [Inject]
     public ToastService ToastService { get; set; }
@@ -195,3 +196,4 @@
         await LoadPropertyOwnersAsync();
     }
 }
+ *@

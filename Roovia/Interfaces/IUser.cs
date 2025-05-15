@@ -1,5 +1,5 @@
-﻿using Roovia.Models.Helper;
-using Roovia.Models.Users;
+﻿using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Interfaces
 {

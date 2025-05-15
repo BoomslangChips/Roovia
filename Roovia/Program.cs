@@ -8,13 +8,12 @@ using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
 using Roovia.Interfaces;
-using Roovia.Models.Users;
 using Roovia.Security;
 using Roovia.Services;
 using System.IO;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Http.Features;
-using Roovia.Models.CDN;
+using Roovia.Models.UserCompanyModels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -86,15 +85,14 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 // Register domain services
-builder.Services.AddScoped<ITenant, TenantService>();
-builder.Services.AddScoped<IProperty, PropertyService>();
-builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
-builder.Services.AddScoped<IUser, UserService>();
+//builder.Services.AddScoped<ITenant, TenantService>();
+//builder.Services.AddScoped<IProperty, PropertyService>();
+//builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
+//builder.Services.AddScoped<IUser, UserService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 // Register utility services
 builder.Services.AddScoped<ToastService>();
-builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 // Register CDN service as singleton for better performance
 builder.Services.AddSingleton<ICdnService, CdnService>();

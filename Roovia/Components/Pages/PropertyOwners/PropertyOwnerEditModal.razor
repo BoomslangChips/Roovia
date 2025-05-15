@@ -1,8 +1,5 @@
-﻿@using Roovia.Interfaces
-@using Roovia.Models.Helper
-@using Roovia.Models.Properties
-@using Roovia.Models.PropertyOwner
-@using Roovia.Models.Users
+﻿@* @using Roovia.Interfaces
+
 @using Roovia.Services
 
 @rendermode InteractiveServer
@@ -128,8 +125,8 @@
                                                 <th>Rental Amount</th>
                                                 <th>Lease Status</th>
                                                 <th>Lease End Date</th>
-@*                                                 <th>Actions</th>
- *@                                            </tr>
+                                                 <th>Actions</th>
+                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var prop in selectedOwner.Properties)
@@ -151,7 +148,7 @@
                                                         }
                                                     </td>
                                                     <td>@prop.LeaseEndDate.Value.ToShortDateString()</td>
-                                            @*         <td>
+                                                    <td>
                                                         <div class="d-flex gap-2">
                                                             <RVButton ButtonType="primary" Size="sm" OnClick="() => ViewProperty(prop)" Title="View property">
                                                                 <i class="fas fa-eye me-1"></i> View
@@ -160,7 +157,7 @@
                                                                 <i class="fas fa-pencil-alt me-1"></i> Edit
                                                             </RVButton>
                                                         </div>
-                                                    </td> *@
+                                                    </td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -380,4 +377,4 @@
             max-width: 60em !important;
         }
     }
-</style>
+</style> *@

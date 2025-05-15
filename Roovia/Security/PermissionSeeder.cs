@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Roovia.Data;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Security
 {

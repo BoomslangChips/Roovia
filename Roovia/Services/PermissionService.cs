@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Roovia.Components.Pages.Users;
 using Roovia.Data;
 using Roovia.Interfaces;
-using Roovia.Models.Helper;
-using Roovia.Models.Users;
+using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.UserCompanyModels;
 using System.Security;
 
 namespace Roovia.Services

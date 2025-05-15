@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
+
 
 namespace Roovia.Components.Account
 {

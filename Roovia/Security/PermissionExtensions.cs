@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Roovia.Interfaces;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 using System.Security.Claims;
 
 namespace Roovia.Security

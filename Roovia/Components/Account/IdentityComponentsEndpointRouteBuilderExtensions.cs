@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Roovia.Components.Account.Pages;
 using Roovia.Components.Account.Pages.Manage;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
+
 
 namespace Microsoft.AspNetCore.Routing
 {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Roovia.Interfaces;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 using System.Security.Claims;
 
 public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser>

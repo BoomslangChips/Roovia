@@ -1,8 +1,8 @@
-﻿@page "/branches"
+﻿@* @page "/branches"
 @page "/branches/{CompanyId:int}"
 @using Roovia.Interfaces
-@using Roovia.Models.Users
-@using Roovia.Models.Helper
+
+
 @using Roovia.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = "AdminAccess")]
@@ -737,4 +737,4 @@
     {
         showBranchDialog = false;
     }
-}
+} *@

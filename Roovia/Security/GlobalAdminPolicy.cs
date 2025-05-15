@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 using Roovia.Security;
 
 namespace Roovia.Authentication

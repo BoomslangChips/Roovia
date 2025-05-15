@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 using System.Linq;
 using System.Security.Claims;
 

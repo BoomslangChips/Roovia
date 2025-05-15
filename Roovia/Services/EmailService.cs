@@ -5,7 +5,7 @@ using Roovia.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Net.Mime;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Services
 {
@@ -125,11 +125,11 @@ namespace Roovia.Services
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Email:</strong></td>
-                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.GetPrimaryEmail() + @"</td>
+                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.EmailAddresses.First() + @"</td>
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Phone:</strong></td>
-                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.GetPrimaryContactNumber() + @"</td>
+                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.ContactNumbers.First() + @"</td>
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Website:</strong></td>

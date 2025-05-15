@@ -1,7 +1,10 @@
-﻿using Roovia.Models.Helper;
-using Roovia.Models.Properties;
-using Roovia.Models.PropertyOwner;
-using Roovia.Models.Users;
+﻿using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.BusinessModels;
+
+
+
+using Roovia.Models.UserCompanyModels;
+
 
 namespace Roovia.Interfaces
 {

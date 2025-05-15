@@ -1,7 +1,8 @@
 ﻿using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using Roovia.Models.Users;
+using Roovia.Models.UserCompanyModels;
+
 using Roovia.Services;
 
 namespace Roovia.Services

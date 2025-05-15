@@ -15,6 +15,7 @@ using Roovia.Data;
 using Roovia.Interfaces;
 using System.Collections.Generic;
 using Roovia.Models;
+using Roovia.Models.ProjectCdnConfigModels;
 
 
 namespace Roovia.Interfaces
