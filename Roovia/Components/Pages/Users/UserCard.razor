@@ -1,27 +1,65 @@
-﻿inject NavigationManager NavigationManager
-
+﻿@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.UserCompanyMappingModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Interfaces
+@inject NavigationManager NavigationManager
+@inject ICdnService CdnService
 <div class="user-card">
     <div class="user-card-avatar">
-        @if (string.IsNullOrEmpty(User.FirstName) && string.IsNullOrEmpty(User.LastName))
+        @if (User.ProfilePictureId.HasValue && User.ProfilePicture != null)
         {
-            <div class="avatar-initials">@(User.UserName?.Substring(0, 1).ToUpper() ?? "?")</div>
+            <img src="@User.ProfilePicture.Url" alt="@User.FullName" class="avatar-photo" />
         }
         else
         {
-            <div class="avatar-initials">@(User.FirstName?.Substring(0, 1).ToUpper() ?? "")@(User.LastName?.Substring(0, 1).ToUpper() ?? "")</div>
+            <div class="avatar-initials">
+                @if (string.IsNullOrEmpty(User.FirstName) && string.IsNullOrEmpty(User.LastName))
+                {
+                    @(User.UserName?.Substring(0, 1).ToUpper() ?? "?")
+                }
+                else
+                {
+                    @(User.FirstName?.Substring(0, 1).ToUpper() ?? "")
+
+                    @(User.LastName?.Substring(0, 1).ToUpper() ?? "")
+                }
+            </div>
         }
     </div>
-
     <div class="user-card-info">
         <div class="user-card-header">
             <h4>@(string.IsNullOrEmpty(User.FullName) ? User.UserName : User.FullName)</h4>
             <div class="user-badges">
-                <span class="role-badge @GetRoleBadgeClass(User.Role)">
-                    @GetRoleDisplayName(User.Role)
-                </span>
-                <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
-                    @(User.IsActive ? "Active" : "Inactive")
-                </span>
+                @if (User.Role.HasValue)
+                {
+                    <span class="role-badge @GetRoleBadgeClass(User.Role.Value)">
+                        @GetRoleDisplayName(User.Role.Value)
+                    </span>
+                }
+                @if (CustomRoles != null && CustomRoles.Any())
+                {
+                    @foreach (var customRole in CustomRoles)
+                    {
+                        @if (customRole.Role != null)
+                        {
+                            <span class="role-badge role-custom">
+                                @customRole.Role.Name
+                            </span>
+                        }
+                    }
+                }
+                @if (User.Status != null)
+                {
+                    <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
+                        @User.Status.Name
+                    </span>
+                }
+                else
+                {
+                    <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
+                        @(User.IsActive ? "Active" : "Inactive")
+                    </span>
+                }
             </div>
         </div>
 
@@ -35,6 +73,20 @@
                 <div class="detail-item">
                     <i class="fa-light fa-phone"></i>
                     <span>@User.PhoneNumber</span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(User.EmployeeNumber))
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-id-badge"></i>
+                    <span>@User.EmployeeNumber</span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(User.JobTitle))
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-briefcase"></i>
+                    <span>@User.JobTitle</span>
                 </div>
             }
             @if (User.Company != null)
@@ -51,6 +103,13 @@
                     <span>@User.Branch.Name</span>
                 </div>
             }
+            @if (User.LastLoginDate.HasValue)
+            {
+                <div class="detail-item">
+                    <i class="fa-light fa-clock"></i>
+                    <span>Last login: @User.LastLoginDate.Value.ToString("MMM dd, yyyy")</span>
+                </div>
+            }
         </div>
     </div>
 
@@ -64,33 +123,38 @@
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to edit this user" : "Edit User")" />
 
-        @*         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
                   OnClick="HandleRoles" CssClass="action-btn"
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to manage this user's roles" : "Manage Roles")" />
- *@
+
+        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-lock"
+                  OnClick="HandlePermissions" CssClass="action-btn"
+                  Disabled="@DisableActions"
+                  Title="@(DisableActions ? "You don't have permission to manage this user's permissions" : "Manage Permissions")" />
+
         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-key"
                   OnClick="HandleResetPassword" CssClass="action-btn"
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to reset this user's password" : "Reset Password")" />
 
-        @*         <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
+        <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
                   Size="xs" IconLeft="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
                   OnClick="HandleToggleStatus" CssClass="action-btn"
                   Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to change this user's status" : User.IsActive ? "Deactivate User" : "Activate User")" /> *@
+                  Title="@(DisableActions ? "You don't have permission to change this user's status" : User.IsActive ? "Deactivate User" : "Activate User")" />
     </div>
 </div>
-
 @code {
     [Parameter] public ApplicationUser User { get; set; } = null!;
+    [Parameter] public List<UserRoleAssignment>? CustomRoles { get; set; }
     [Parameter] public EventCallback<string> OnView { get; set; }
     [Parameter] public EventCallback<string> OnEdit { get; set; }
     [Parameter] public EventCallback<string> OnRoles { get; set; }
+    [Parameter] public EventCallback<string> OnPermissions { get; set; }
     [Parameter] public EventCallback<string> OnResetPassword { get; set; }
     [Parameter] public EventCallback<ApplicationUser> OnToggleStatus { get; set; }
     [Parameter] public bool DisableActions { get; set; } = false;
-
     private void HandleView()
     {
         OnView.InvokeAsync(User.Id);
@@ -112,6 +176,14 @@
         }
     }
 
+    private void HandlePermissions()
+    {
+        if (!DisableActions)
+        {
+            OnPermissions.InvokeAsync(User.Id);
+        }
+    }
+
     private void HandleResetPassword()
     {
         if (!DisableActions)
@@ -128,31 +200,31 @@
         }
     }
 
-    private string GetRoleBadgeClass(SystemRole? role)
+    private string GetRoleBadgeClass(SystemRole role)
     {
         return role switch
         {
-            SystemRole.CEOExecutive => "role-executive",
+            SystemRole.CEOExecutive => "role-admin",
             SystemRole.SystemAdministrator => "role-admin",
             SystemRole.CompanyAdministrator => "role-company-admin",
-            SystemRole.CompanyFinancialDirector => "role-financial-director",
+            SystemRole.CompanyFinancialDirector => "role-financial",
             SystemRole.RegionalManager => "role-regional-manager",
             SystemRole.BranchManager => "role-branch-manager",
-            SystemRole.SeniorPropertyManager => "role-senior-property-manager",
+            SystemRole.SeniorPropertyManager => "role-property-manager",
             SystemRole.PropertyManager => "role-property-manager",
-            SystemRole.AssistantPropertyManager => "role-assistant-property-manager",
-            SystemRole.FinancialManager => "role-financial-manager",
-            SystemRole.SeniorAccountant => "role-senior-accountant",
-            SystemRole.Accountant => "role-accountant",
-            SystemRole.AccountsClerk => "role-accounts-clerk",
-            SystemRole.TenantRelationsManager => "role-tenant-relations",
+            SystemRole.AssistantPropertyManager => "role-property-manager",
+            SystemRole.FinancialManager => "role-financial",
+            SystemRole.SeniorAccountant => "role-financial",
+            SystemRole.Accountant => "role-financial",
+            SystemRole.AccountsClerk => "role-financial",
+            SystemRole.TenantRelationsManager => "role-tenant",
             SystemRole.TenantOfficer => "role-tenant",
-            SystemRole.LeasingAgent => "role-leasing",
+            SystemRole.LeasingAgent => "role-tenant",
             SystemRole.MaintenanceManager => "role-maintenance-manager",
             SystemRole.MaintenanceCoordinator => "role-maintenance",
-            SystemRole.SeniorInspector => "role-senior-inspector",
+            SystemRole.SeniorInspector => "role-inspector",
             SystemRole.PropertyInspector => "role-inspector",
-            SystemRole.CustomerSupportManager => "role-support-manager",
+            SystemRole.CustomerSupportManager => "role-support",
             SystemRole.CustomerSupportAgent => "role-support",
             SystemRole.ComplianceOfficer => "role-compliance",
             SystemRole.LegalOfficer => "role-legal",
@@ -160,13 +232,13 @@
             SystemRole.ReportsViewer => "role-reports",
             SystemRole.Auditor => "role-auditor",
             SystemRole.PropertyOwnerPortal => "role-owner",
-            SystemRole.TenantPortal => "role-tenant-portal",
+            SystemRole.TenantPortal => "role-tenant",
             SystemRole.VendorPortal => "role-vendor",
             _ => "role-default"
         };
     }
 
-    private string GetRoleDisplayName(SystemRole? role)
+    private string GetRoleDisplayName(SystemRole role)
     {
         return role switch
         {

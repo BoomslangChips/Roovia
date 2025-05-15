@@ -1,4 +1,7 @@
-﻿<div class="user-filters-panel">
+﻿@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.UserCompanyMappingModels
+@using Roovia.Interfaces
+<div class="user-filters-panel">
     <div class="filter-section">
         <div class="search-section">
             <div class="search-input-wrapper">
@@ -12,7 +15,6 @@
                     </button>
                 }
             </div>
-
             <RVChips Chips="@SearchTypeChips"
                      IsInputChip="false"
                      OnChipSelected="HandleSearchTypeSelection"
@@ -97,24 +99,45 @@
                             <i class="fa-light fa-check"></i>
                         }
                     </button>
-                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
-                            @onclick='async () => await SelectStatus("active")'>
-                        <i class="fa-light fa-user-check"></i>
-                        <span>Active</span>
-                        @if (SelectedStatusFilter == "active")
+                    <div class="dropdown-divider"></div>
+                    @if (StatusTypes != null && StatusTypes.Any())
+                    {
+                        @foreach (var status in StatusTypes.OrderBy(s => s.DisplayOrder))
                         {
-                            <i class="fa-light fa-check"></i>
+                            var statusValue = status.Id.ToString();
+                            <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == statusValue ? "active" : "")"
+                                    @onclick="async () => await SelectStatus(statusValue)">
+                                <i class="@GetStatusIcon(status.Name)"></i>
+                                <span>@status.Name</span>
+                                @if (SelectedStatusFilter == statusValue)
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
                         }
-                    </button>
-                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
-                            @onclick='async () => await SelectStatus("inactive")'>
-                        <i class="fa-light fa-user-slash"></i>
-                        <span>Inactive</span>
-                        @if (SelectedStatusFilter == "inactive")
-                        {
-                            <i class="fa-light fa-check"></i>
-                        }
-                    </button>
+                    }
+                    else
+                    {
+                        @* Fallback to simple active/inactive *@
+                        <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
+                                @onclick='async () => await SelectStatus("active")'>
+                            <i class="fa-light fa-user-check"></i>
+                            <span>Active</span>
+                            @if (SelectedStatusFilter == "active")
+                            {
+                                <i class="fa-light fa-check"></i>
+                            }
+                        </button>
+                        <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
+                                @onclick='async () => await SelectStatus("inactive")'>
+                            <i class="fa-light fa-user-slash"></i>
+                            <span>Inactive</span>
+                            @if (SelectedStatusFilter == "inactive")
+                            {
+                                <i class="fa-light fa-check"></i>
+                            }
+                        </button>
+                    }
                 </RVDropdown>
             </div>
 
@@ -135,9 +158,10 @@
         }
     </div>
 </div>
-
 @code {
     [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public IEnumerable<dynamic>? StatusTypes { get; set; }
+    [Parameter] public List<SubscriptionPlan>? SubscriptionPlans { get; set; }
     [Parameter] public int? SelectedCompanyId { get; set; }
     [Parameter] public EventCallback<int?> OnCompanySelected { get; set; }
 
@@ -185,32 +209,32 @@
     private void InitializeSearchTypeChips()
     {
         SearchTypeChips = new List<RVChips.ChipItem>
-        {
-            new RVChips.ChipItem
-            {
-                Label = "Users",
-                Icon = "fa-light fa-users",
-                Type = "primary",
-                IsActive = SearchType == "users",
-                IsDeletable = false
-            },
-            new RVChips.ChipItem
-            {
-                Label = "Companies",
-                Icon = "fa-light fa-building",
-                Type = "primary",
-                IsActive = SearchType == "companies",
-                IsDeletable = false
-            },
-            new RVChips.ChipItem
-            {
-                Label = "Branches",
-                Icon = "fa-light fa-code-branch",
-                Type = "primary",
-                IsActive = SearchType == "branches",
-                IsDeletable = false
-            }
-        };
+    {
+    new RVChips.ChipItem
+    {
+    Label = "Users",
+    Icon = "fa-light fa-users",
+    Type = "primary",
+    IsActive = SearchType == "users",
+    IsDeletable = false
+    },
+    new RVChips.ChipItem
+    {
+    Label = "Companies",
+    Icon = "fa-light fa-building",
+    Type = "primary",
+    IsActive = SearchType == "companies",
+    IsDeletable = false
+    },
+    new RVChips.ChipItem
+    {
+    Label = "Branches",
+    Icon = "fa-light fa-code-branch",
+    Type = "primary",
+    IsActive = SearchType == "branches",
+    IsDeletable = false
+    }
+    };
     }
 
     private void UpdateSearchTypeChips()
@@ -255,10 +279,10 @@
     }
 
     private bool HasActiveFilters =>
-        !string.IsNullOrEmpty(SearchTerm) ||
-        SelectedCompanyId.HasValue ||
-        SelectedRoleFilter != "all" ||
-        SelectedStatusFilter != "all";
+    !string.IsNullOrEmpty(SearchTerm) ||
+    SelectedCompanyId.HasValue ||
+    SelectedRoleFilter != "all" ||
+    SelectedStatusFilter != "all";
 
     private async Task HandleKeyPress(KeyboardEventArgs e)
     {
@@ -352,11 +376,47 @@
 
     private string GetStatusFilterText()
     {
+        if (SelectedStatusFilter == "all")
+        {
+            return "Status: All";
+        }
+
+        // Check if we have status types
+        if (StatusTypes != null && StatusTypes.Any())
+        {
+            if (int.TryParse(SelectedStatusFilter, out var statusId))
+            {
+                var status = StatusTypes.FirstOrDefault(s => s.Id == statusId);
+                if (status != null)
+                {
+                    return $"Status: {status.Name}";
+                }
+            }
+        }
+
+        // Fallback to simple active/inactive
         return SelectedStatusFilter switch
         {
             "active" => "Status: Active",
             "inactive" => "Status: Inactive",
             _ => "Status: All"
+        };
+    }
+
+    private string GetStatusIcon(string statusName)
+    {
+        if (string.IsNullOrEmpty(statusName))
+            return "fa-light fa-circle";
+
+        return statusName.ToLower() switch
+        {
+            "active" => "fa-light fa-user-check",
+            "inactive" => "fa-light fa-user-slash",
+            "suspended" => "fa-light fa-user-lock",
+            "locked" => "fa-light fa-user-lock",
+            "trial" => "fa-light fa-user-clock",
+            "temporary closed" => "fa-light fa-door-closed",
+            _ => "fa-light fa-circle"
         };
     }
 
@@ -418,12 +478,12 @@
             SystemRole.TenantRelationsManager => "fa-light fa-user-friends",
             SystemRole.TenantOfficer => "fa-light fa-user-headset",
             SystemRole.LeasingAgent => "fa-light fa-user-tag",
-            SystemRole.MaintenanceManager => "fa-light fa-user-hard-hat",
+            SystemRole.MaintenanceManager => "fa-light fa-user-wrench",
             SystemRole.MaintenanceCoordinator => "fa-light fa-user-cog",
-            SystemRole.SeniorInspector => "fa-light fa-user-check",
-            SystemRole.PropertyInspector => "fa-light fa-user-check",
+            SystemRole.SeniorInspector => "fa-light fa-user-search",
+            SystemRole.PropertyInspector => "fa-light fa-user-search",
             SystemRole.CustomerSupportManager => "fa-light fa-user-headset",
-            SystemRole.CustomerSupportAgent => "fa-light fa-user-headset",
+            SystemRole.CustomerSupportAgent => "fa-light fa-user-question",
             SystemRole.ComplianceOfficer => "fa-light fa-user-shield",
             SystemRole.LegalOfficer => "fa-light fa-user-balance-scale",
             SystemRole.DataAnalyst => "fa-light fa-user-chart",
@@ -435,4 +495,4 @@
             _ => "fa-light fa-user"
         };
     }
-}
+    }

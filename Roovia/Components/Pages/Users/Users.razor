@@ -1,21 +1,27 @@
-﻿@* @page "/users"
+﻿@page "/users"
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Security
 @using Roovia.Services
 @using Roovia.Components
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyMappingModels
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
-@attribute [Authorize(Policy = "AdminAccess")]
+@using System.Security.Claims
 @rendermode InteractiveServer
 @inject IUser UserService
 @inject IPermissionService PermissionService
+@inject ICdnService CdnService
 @inject NavigationManager NavigationManager
 @inject ToastService ToastService
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
-
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 <div class="users-page">
     <div class="admin-header-section">
         <div class="admin-header-content">
@@ -24,27 +30,27 @@
                     <i class="fa-light fa-users"></i>
                 </div>
                 <div class="header-title-group">
-                    <h1 class="header-title">Administration</h1>
-                    <p class="header-subtitle">Manage users, companies, and branches</p>
+                    <h1 class="header-title">User Management</h1>
+                    <p class="header-subtitle">Manage users, companies, branches, roles and permissions</p>
                 </div>
             </div>
-
             <div class="header-action-panel">
-                <RVButton ButtonType="primary" IconLeft="fa-light fa-user-plus" Text="Create User"
-                          OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
+                <PermissionAuthorizeView Permission="settings.users">
+                    <RVButton ButtonType="primary" IconLeft="fa-light fa-user-plus" Text="Create User"
+                              OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
+                </PermissionAuthorizeView>
 
-                @if (currentUser?.Role == SystemRole.GlobalAdmin)
-                {
+                <PermissionAuthorizeView Permission="settings.users"
+                                         Role="@SystemRole.SystemAdministrator.ToString()">
                     <RVButton ButtonType="primary" IconLeft="fa-light fa-building" Text="Create Company"
                               OnClick="() => ShowCompanyEditModal()" CssClass="action-btn me-2" />
-                }
+                </PermissionAuthorizeView>
 
-                @if (currentUser?.Role == SystemRole.GlobalAdmin ||
-                (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue))
-                {
+                <PermissionAuthorizeView Permission="settings.users"
+                                         Role="@SystemRole.CompanyAdministrator.ToString()">
                     <RVButton ButtonType="primary" IconLeft="fa-light fa-code-branch" Text="Create Branch"
                               OnClick="() => ShowBranchEditModal()" CssClass="action-btn" />
-                }
+                </PermissionAuthorizeView>
             </div>
         </div>
     </div>
@@ -62,6 +68,8 @@
             <CardView CssClass="management-card">
                 <HeaderActions>
                     <UserFilterPanel Companies="@availableCompanies"
+                                     StatusTypes="@statusTypes"
+                                     SubscriptionPlans="@subscriptionPlans"
                                      OnCompanySelected="HandleCompanyChange"
                                      SelectedCompanyId="@selectedCompanyId"
                                      OnRoleFilterChanged="HandleRoleFilterChange"
@@ -76,7 +84,7 @@
                                      OnRefresh="LoadUserHierarchy" />
                 </HeaderActions>
                 <ChildContent>
-                    @if (currentUser?.Role == SystemRole.GlobalAdmin)
+                    @if (currentUser?.Role == SystemRole.SystemAdministrator)
                     {
                         <div class="hierarchy-view">
                             @if (filteredCompanies.Any())
@@ -95,16 +103,34 @@
                                                     </div>
                                                     <div class="company-info">
                                                         <div class="company-logo">
-                                                            <i class="fa-light fa-building"></i>
+                                                            @if (company.MainLogoId.HasValue && company.MainLogo != null)
+                                                            {
+                                                                <img src="@company.MainLogo.Url" alt="@company.Name" />
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="fa-light fa-building"></i>
+                                                            }
                                                         </div>
                                                         <div class="company-details">
                                                             <h3>@company.Name</h3>
                                                             <div class="company-meta">
                                                                 <span><i class="fa-light fa-code-branch"></i> @companyBranches.Count() branches</span>
                                                                 <span><i class="fa-light fa-users"></i> @companyUsers.Count() users</span>
-                                                                <span class="status-badge @(company.IsActive ? "active" : "inactive")">
-                                                                    @(company.IsActive ? "Active" : "Inactive")
-                                                                </span>
+                                                                @if (company.Status != null)
+                                                                {
+                                                                    <span class="status-badge @(company.IsActive ? "active" : "inactive")">
+                                                                        @company.Status.Name
+                                                                    </span>
+                                                                }
+                                                                @if (company.SubscriptionPlanId.HasValue && subscriptionPlans.Any())
+                                                                {
+                                                                    var plan = subscriptionPlans.FirstOrDefault(p => p.Id == company.SubscriptionPlanId);
+                                                                    if (plan != null)
+                                                                    {
+                                                                        <span class="subscription-badge">@plan.Name</span>
+                                                                    }
+                                                                }
                                                             </div>
                                                         </div>
                                                     </div>
@@ -112,17 +138,19 @@
                                                 <div class="accordion-actions" @onclick:stopPropagation="true">
                                                     <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
                                                               OnClick="() => ShowCompanyEditModal(company.Id, true)" CssClass="action-btn" />
-                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                              OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
-                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-code-branch-add" Text="Add Branch"
-                                                              OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
+                                                    <PermissionAuthorizeView Permission="settings.users"
+                                                                             Role="@SystemRole.SystemAdministrator.ToString()">
+                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
+                                                                  OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
+                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-code-branch" Text="Add Branch"
+                                                                  OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
+                                                    </PermissionAuthorizeView>
                                                 </div>
                                             </div>
 
                                             @if (expandedCompanies.Contains(company.Id))
                                             {
                                                 <div class="accordion-content">
-
                                                     @if (companyBranches.Any())
                                                     {
                                                         <div class="branch-accordion">
@@ -138,15 +166,29 @@
                                                                             </div>
                                                                             <div class="branch-info">
                                                                                 <div class="branch-logo">
-                                                                                    <i class="fa-light fa-code-branch"></i>
+                                                                                    @if (branch.MainLogoId.HasValue && branch.MainLogo != null)
+                                                                                    {
+                                                                                        <img src="@branch.MainLogo.Url" alt="@branch.Name" />
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <i class="fa-light fa-code-branch"></i>
+                                                                                    }
                                                                                 </div>
                                                                                 <div class="branch-details">
                                                                                     <h4>@branch.Name</h4>
                                                                                     <div class="branch-meta">
                                                                                         <span><i class="fa-light fa-users"></i> @branchUsers.Count() users</span>
-                                                                                        <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
-                                                                                            @(branch.IsActive ? "Active" : "Inactive")
-                                                                                        </span>
+                                                                                        @if (branch.Status != null)
+                                                                                        {
+                                                                                            <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
+                                                                                                @branch.Status.Name
+                                                                                            </span>
+                                                                                        }
+                                                                                        @if (branch.IsHeadOffice)
+                                                                                        {
+                                                                                            <span class="badge bg-primary">Head Office</span>
+                                                                                        }
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -154,10 +196,12 @@
                                                                         <div class="accordion-actions" @onclick:stopPropagation="true">
                                                                             <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
                                                                                       OnClick="() => ShowBranchEditModal(branch.Id, true)" CssClass="action-btn" />
-                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                                      OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
-                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                                      OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
+                                                                            <PermissionAuthorizeView Permission="settings.users">
+                                                                                <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
+                                                                                          OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
+                                                                                <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-user-plus" Text="Add User"
+                                                                                          OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
+                                                                            </PermissionAuthorizeView>
                                                                         </div>
                                                                     </div>
 
@@ -168,9 +212,11 @@
                                                                             @foreach (var user in branchUsers)
                                                                             {
                                                                                 <UserCard User="user"
+                                                                                          CustomRoles="@GetUserCustomRoles(user.Id)"
                                                                                           OnView="(id) => ShowUserDetailsModal(id)"
                                                                                           OnEdit="HandleUserEdit"
                                                                                           OnRoles="HandleUserRoles"
+                                                                                          OnPermissions="HandleUserPermissions"
                                                                                           OnResetPassword="HandleUserResetPassword"
                                                                                           OnToggleStatus="HandleUserStatusToggle"
                                                                                           DisableActions="!CanEditUser(user)" />
@@ -182,7 +228,7 @@
                                                                         <div class="accordion-content">
                                                                             <EmptyState Title="No users in branch"
                                                                                         Description="No users are currently assigned to this branch."
-                                                                                        Icon="fa-light fa-user-plus"
+                                                                                        Icon="fa-light fa-user-xmark"
                                                                                         ActionText="Add User"
                                                                                         OnAction="() => ShowAddUserToBranchModal(branch.Id)" />
                                                                         </div>
@@ -195,7 +241,7 @@
                                                     {
                                                         <EmptyState Title="No branches found"
                                                                     Description="This company has no branches yet."
-                                                                    Icon="fa-light fa-code-branch-slash"
+                                                                    Icon="fa-light fa-code-branch"
                                                                     ActionText="Create Branch"
                                                                     OnAction="() => ShowCreateBranchModal(company.Id)" />
                                                     }
@@ -215,7 +261,9 @@
                             }
                         </div>
                     }
-                    else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser?.CompanyId.HasValue == true)
+                    else if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+                    currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+                    currentUser?.CompanyId.HasValue == true)
                     {
                         <div class="company-view">
                             @if (currentUserCompany != null)
@@ -223,7 +271,14 @@
                                 <div class="company-overview">
                                     <div class="company-header">
                                         <div class="company-logo-large">
-                                            <i class="fa-light fa-building"></i>
+                                            @if (currentUserCompany.MainLogoId.HasValue && currentUserCompany.MainLogo != null)
+                                            {
+                                                <img src="@currentUserCompany.MainLogo.Url" alt="@currentUserCompany.Name" />
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-light fa-building"></i>
+                                            }
                                         </div>
                                         <div class="company-header-info">
                                             <h2>@currentUserCompany.Name</h2>
@@ -236,6 +291,14 @@
                                                     <span class="stat-value">@GetCompanyUsers(currentUserCompany.Id).Count()</span>
                                                     <span class="stat-label">Total Users</span>
                                                 </div>
+                                                @if (currentUserCompany.Status != null)
+                                                {
+                                                    <div class="stat-item">
+                                                        <span class="status-badge @(currentUserCompany.IsActive ? "active" : "inactive")">
+                                                            @currentUserCompany.Status.Name
+                                                        </span>
+                                                    </div>
+                                                }
                                             </div>
                                         </div>
                                     </div>
@@ -249,6 +312,11 @@
                                         <button class="tab-button @(activeSubTab == "branches" ? "active" : "")" @onclick='() => activeSubTab = "branches"'>
                                             <i class="fa-light fa-code-branch"></i> Branches
                                         </button>
+                                        <PermissionAuthorizeView Permission="settings.permissions">
+                                            <button class="tab-button @(activeSubTab == "roles" ? "active" : "")" @onclick='() => activeSubTab = "roles"'>
+                                                <i class="fa-light fa-user-shield"></i> Roles & Permissions
+                                            </button>
+                                        </PermissionAuthorizeView>
                                     </div>
 
                                     <div class="tabs-content">
@@ -260,9 +328,11 @@
                                                     @foreach (var user in GetCompanyUsers(currentUserCompany.Id))
                                                     {
                                                         <UserCard User="user"
+                                                                  CustomRoles="@GetUserCustomRoles(user.Id)"
                                                                   OnView="(id) => ShowUserDetailsModal(id)"
                                                                   OnEdit="HandleUserEdit"
                                                                   OnRoles="HandleUserRoles"
+                                                                  OnPermissions="HandleUserPermissions"
                                                                   OnResetPassword="HandleUserResetPassword"
                                                                   OnToggleStatus="HandleUserStatusToggle"
                                                                   DisableActions="!CanEditUser(user)" />
@@ -278,7 +348,7 @@
                                                 }
                                             </div>
                                         }
-                                        else
+                                        else if (activeSubTab == "branches")
                                         {
                                             <div class="tab-panel">
                                                 @if (GetCompanyBranches(currentUserCompany.Id).Any())
@@ -290,25 +360,41 @@
                                                             <div class="branch-card">
                                                                 <div class="branch-card-header">
                                                                     <div class="branch-card-icon">
-                                                                        <i class="fa-light fa-code-branch"></i>
+                                                                        @if (branch.MainLogoId.HasValue && branch.MainLogo != null)
+                                                                        {
+                                                                            <img src="@branch.MainLogo.Url" alt="@branch.Name" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <i class="fa-light fa-code-branch"></i>
+                                                                        }
                                                                     </div>
                                                                     <div>
                                                                         <h3>@branch.Name</h3>
                                                                         <div class="branch-card-meta">
                                                                             <span><i class="fa-light fa-users"></i> @branchUsers.Count() users</span>
-                                                                            <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
-                                                                                @(branch.IsActive ? "Active" : "Inactive")
-                                                                            </span>
+                                                                            @if (branch.Status != null)
+                                                                            {
+                                                                                <span class="status-badge @(branch.IsActive ? "active" : "inactive")">
+                                                                                    @branch.Status.Name
+                                                                                </span>
+                                                                            }
+                                                                            @if (branch.IsHeadOffice)
+                                                                            {
+                                                                                <span class="badge bg-primary">Head Office</span>
+                                                                            }
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="branch-card-actions">
                                                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View Users"
                                                                               OnClick="() => ViewBranchUsers(branch.Id)" />
-                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                              OnClick="() => ShowBranchEditModal(branch.Id)" />
-                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                              OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                    <PermissionAuthorizeView Permission="settings.users">
+                                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
+                                                                                  OnClick="() => ShowBranchEditModal(branch.Id)" />
+                                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-user-plus" Text="Add User"
+                                                                                  OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                    </PermissionAuthorizeView>
                                                                 </div>
                                                             </div>
                                                         }
@@ -318,10 +404,16 @@
                                                 {
                                                     <EmptyState Title="No branches found"
                                                                 Description="No branches are currently set up for this company."
-                                                                Icon="fa-light fa-code-branch-slash"
+                                                                Icon="fa-light fa-code-branch"
                                                                 ActionText="Add Branch"
                                                                 OnAction="() => ShowCreateBranchModal(currentUserCompany.Id)" />
                                                 }
+                                            </div>
+                                        }
+                                        else if (activeSubTab == "roles")
+                                        {
+                                            <div class="tab-panel">
+                                                <RolesPermissionsPanel CompanyId="@currentUserCompany.Id" />
                                             </div>
                                         }
                                     </div>
@@ -329,7 +421,9 @@
                             }
                         </div>
                     }
-                    else if (currentUser?.Role == SystemRole.BranchManager && currentUser?.BranchId.HasValue == true)
+                    else if ((currentUser?.Role == SystemRole.BranchManager ||
+                    currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+                    currentUser?.BranchId.HasValue == true)
                     {
                         <div class="branch-view">
                             @if (currentUserBranch != null)
@@ -337,7 +431,14 @@
                                 <div class="branch-overview">
                                     <div class="branch-header">
                                         <div class="branch-logo-large">
-                                            <i class="fa-light fa-code-branch"></i>
+                                            @if (currentUserBranch.MainLogoId.HasValue && currentUserBranch.MainLogo != null)
+                                            {
+                                                <img src="@currentUserBranch.MainLogo.Url" alt="@currentUserBranch.Name" />
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-light fa-code-branch"></i>
+                                            }
                                         </div>
                                         <div class="branch-header-info">
                                             <h2>@currentUserBranch.Name</h2>
@@ -352,6 +453,12 @@
                                                     </span>
                                                     <span class="stat-label">Active</span>
                                                 </div>
+                                                @if (currentUserBranch.IsHeadOffice)
+                                                {
+                                                    <div class="stat-item">
+                                                        <span class="badge bg-primary">Head Office</span>
+                                                    </div>
+                                                }
                                             </div>
                                         </div>
                                     </div>
@@ -364,9 +471,11 @@
                                         @foreach (var user in GetBranchUsers(currentUserBranch.Id))
                                         {
                                             <UserCard User="user"
+                                                      CustomRoles="@GetUserCustomRoles(user.Id)"
                                                       OnView="(id) => ShowUserDetailsModal(id)"
                                                       OnEdit="HandleUserEdit"
                                                       OnRoles="HandleUserRoles"
+                                                      OnPermissions="HandleUserPermissions"
                                                       OnResetPassword="HandleUserResetPassword"
                                                       OnToggleStatus="HandleUserStatusToggle"
                                                       DisableActions="!CanEditUser(user)" />
@@ -397,6 +506,7 @@
         }
     </div>
 
+    @* User Status Confirmation Modal *@
     @if (showStatusConfirmation)
     {
         <RVModal IsVisible="true"
@@ -431,15 +541,18 @@
         </RVModal>
     }
 
+    @* User Edit Modal *@
     @if (showUserEditModal)
     {
         <UserEditModal UserId="@selectedUserId"
                        Companies="allCompanies"
+                       StatusTypes="@statusTypes.Where(s => s.Name.Contains("User", StringComparison.OrdinalIgnoreCase))"
                        SelectedBranchId="@selectedBranchForUser"
                        OnClose="() => showUserEditModal = false"
                        OnSaved="HandleUserSaved" />
     }
 
+    @* User Details Modal *@
     @if (showUserDetailsModal)
     {
         <UserDetailsModal UserId="@selectedUserId"
@@ -447,16 +560,29 @@
                           OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
     }
 
+    @* User Roles Modal *@
     @if (showUserRolesModal)
     {
         <UserRolesModal UserId="@selectedUserId"
+                        CompanyId="@GetUserCompanyId(selectedUserId)"
                         OnClose="() => showUserRolesModal = false"
                         OnSaved="HandleRolesSaved" />
     }
 
+    @* User Permissions Modal *@
+    @if (showUserPermissionsModal)
+    {
+        <UserPermissionsModal UserId="@selectedUserId"
+                              OnClose="() => showUserPermissionsModal = false"
+                              OnSaved="HandlePermissionsSaved" />
+    }
+
+    @* Company Edit Modal *@
     @if (showCompanyEditModal)
     {
         <CompanyDialog CompanyModel="@editingCompany"
+                       StatusTypes="@statusTypes.Where(s => s.Name.Contains("Company", StringComparison.OrdinalIgnoreCase))"
+                       SubscriptionPlans="@subscriptionPlans"
                        IsEdit="@(selectedCompanyId != 0)"
                        IsView="@viewModeOnly"
                        CanEdit="true"
@@ -464,18 +590,22 @@
                        OnCancel="() => showCompanyEditModal = false" />
     }
 
+    @* Branch Edit Modal *@
     @if (showBranchEditModal)
     {
         <BranchDialog BranchModel="@editingBranch"
+                      StatusTypes="@statusTypes.Where(s => s.Name.Contains("Branch", StringComparison.OrdinalIgnoreCase))"
+                      Companies="@availableCompanies"
                       IsEdit="@(selectedBranchId != 0)"
                       IsView="@viewModeOnly"
                       CompanyId="@editingBranchCompanyId"
                       CanEdit="true"
-                      CanEditCompany="currentUser?.Role == SystemRole.GlobalAdmin"
+                      CanEditCompany="currentUser?.Role == SystemRole.SystemAdministrator"
                       OnSave="HandleBranchSaved"
                       OnCancel="() => showBranchEditModal = false" />
     }
 
+    @* Reset Password Modal *@
     @if (showResetPasswordModal && userToResetPassword != null)
     {
         <ResetPasswordModal User="userToResetPassword"
@@ -483,25 +613,29 @@
                             OnPasswordReset="HandlePasswordReset" />
     }
 </div>
-
 @code {
-    // User and Role Management
-    private ApplicationUser? currentUser;
+        // User and Role Management
+private ApplicationUser? currentUser;
     private Company? currentUserCompany;
     private Branch? currentUserBranch;
-
+    private Dictionary<string, List<UserRoleAssignment>> userCustomRoles = new();
     // Data Collections
-    private List<ApplicationUser> users = new List<ApplicationUser>();
-    private List<Company> allCompanies = new List<Company>();
-    private List<Company> availableCompanies = new List<Company>();
-    private List<Branch> allBranches = new List<Branch>();
-    private List<Branch> filteredBranches = new List<Branch>();
+    private List<ApplicationUser> users = new();
+    private List<Company> allCompanies = new();
+    private List<Company> availableCompanies = new();
+    private List<Branch> allBranches = new();
+    private List<CompanyStatusType> companyStatusTypes = new();
+    private List<BranchStatusType> branchStatusTypes = new();
+    private List<UserStatusType> userStatusTypes = new();
+    private List<SubscriptionPlan> subscriptionPlans = new();
+    private List<dynamic> statusTypes = new(); // Combined status types
     private bool isLoading = true;
 
     // Modal States
     private bool showUserEditModal = false;
     private bool showUserDetailsModal = false;
     private bool showUserRolesModal = false;
+    private bool showUserPermissionsModal = false;
     private bool showStatusConfirmation = false;
     private bool showCompanyEditModal = false;
     private bool showBranchEditModal = false;
@@ -510,29 +644,29 @@
     private string selectedUserId = string.Empty;
     private int selectedCompanyId = 0;
     private int selectedBranchId = 0;
-    private int selectedBranchForUser = 0; // Used when adding a user to a specific branch
+    private int selectedBranchForUser = 0;
     private int editingBranchCompanyId = 0;
     private ApplicationUser? userToToggle;
     private ApplicationUser? userToResetPassword;
-    private Company editingCompany = new Company();
-    private Branch editingBranch = new Branch();
+    private Company editingCompany = new();
+    private Branch editingBranch = new();
     private string activeSubTab = "users";
 
     // Filtering
     private string searchTerm = string.Empty;
     private int? selectedCompanyIdFilter = null;
-    private int? selectedBranchIdFilter = null;
     private string selectedRoleFilter = "all";
     private string selectedStatusFilter = "all";
     private string searchType = "users";
 
     // UI State
-    private HashSet<int> expandedCompanies = new HashSet<int>();
-    private HashSet<int> expandedBranches = new HashSet<int>();
+    private HashSet<int> expandedCompanies = new();
+    private HashSet<int> expandedBranches = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUser();
+        await LoadMappingData();
         await LoadUserHierarchy();
     }
 
@@ -541,7 +675,7 @@
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (!string.IsNullOrEmpty(userId))
             {
@@ -576,6 +710,32 @@
         }
     }
 
+    private async Task LoadMappingData()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Load status types
+            companyStatusTypes = await context.CompanyStatusTypes.Where(s => s.IsActive).ToListAsync();
+            branchStatusTypes = await context.BranchStatusTypes.Where(s => s.IsActive).ToListAsync();
+            userStatusTypes = await context.UserStatusTypes.Where(s => s.IsActive).ToListAsync();
+
+            // Load subscription plans
+            subscriptionPlans = await context.SubscriptionPlans.Where(p => p.IsActive).ToListAsync();
+
+            // Combine status types for the generic filter
+            statusTypes = new List<dynamic>();
+            statusTypes.AddRange(companyStatusTypes.Select(s => new { s.Id, s.Name, Type = "Company" }));
+            statusTypes.AddRange(branchStatusTypes.Select(s => new { s.Id, s.Name, Type = "Branch" }));
+            statusTypes.AddRange(userStatusTypes.Select(s => new { s.Id, s.Name, Type = "User" }));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load mapping data: {ex.Message}", "Error");
+        }
+    }
+
     private async Task LoadUserHierarchy()
     {
         isLoading = true;
@@ -591,7 +751,8 @@
             // Load branches based on permissions
             await LoadBranches();
 
-            filteredBranches = allBranches;
+            // Load custom roles for all visible users
+            await LoadUserCustomRoles();
         }
         catch (Exception ex)
         {
@@ -612,6 +773,28 @@
             {
                 allCompanies = (List<Company>)response.Response;
 
+                // Load related data for companies
+                using var context = await DbContextFactory.CreateDbContextAsync();
+                var companyIds = allCompanies.Select(c => c.Id).ToList();
+
+                // Load logos and status
+                var companiesWithRelations = await context.Companies
+                    .Include(c => c.MainLogo)
+                    .Include(c => c.Status)
+                    .Where(c => companyIds.Contains(c.Id))
+                    .ToListAsync();
+
+                // Update the companies with related data
+                foreach (var company in allCompanies)
+                {
+                    var relatedData = companiesWithRelations.FirstOrDefault(c => c.Id == company.Id);
+                    if (relatedData != null)
+                    {
+                        company.MainLogo = relatedData.MainLogo;
+                        company.Status = relatedData.Status;
+                    }
+                }
+
                 // Filter available companies based on user role
                 FilterAvailableCompanies();
             }
@@ -627,19 +810,23 @@
         if (currentUser == null)
             return;
 
-        if (currentUser.Role == SystemRole.GlobalAdmin)
+        if (currentUser.Role == SystemRole.SystemAdministrator)
         {
-            // Global admin can see all companies
+            // System admin can see all companies
             availableCompanies = allCompanies;
         }
-        else if (currentUser.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue)
+        else if ((currentUser.Role == SystemRole.CompanyAdministrator ||
+                  currentUser.Role == SystemRole.CompanyFinancialDirector) &&
+                  currentUser.CompanyId.HasValue)
         {
             // Company admin can only see their company
             availableCompanies = allCompanies
                 .Where(c => c.Id == currentUser.CompanyId.Value)
                 .ToList();
         }
-        else if (currentUser.Role == SystemRole.BranchManager && currentUser.CompanyId.HasValue)
+        else if ((currentUser.Role == SystemRole.BranchManager ||
+                  currentUser.Role == SystemRole.SeniorPropertyManager) &&
+                  currentUser.CompanyId.HasValue)
         {
             // Branch manager can only see their company
             availableCompanies = allCompanies
@@ -659,9 +846,9 @@
 
         try
         {
-            if (currentUser?.Role == SystemRole.GlobalAdmin)
+            if (currentUser?.Role == SystemRole.SystemAdministrator)
             {
-                // Global admin can see all branches from all companies
+                // System admin can see all branches from all companies
                 foreach (var company in allCompanies)
                 {
                     var branchesResponse = await UserService.GetBranchesByCompany(company.Id);
@@ -676,7 +863,9 @@
                     }
                 }
             }
-            else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue)
+            else if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+                     currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+                     currentUser.CompanyId.HasValue)
             {
                 // Company admin can only see branches from their company
                 var branchesResponse = await UserService.GetBranchesByCompany(currentUser.CompanyId.Value);
@@ -691,7 +880,9 @@
                     allBranches.AddRange(companyBranches);
                 }
             }
-            else if (currentUser?.Role == SystemRole.BranchManager && currentUser.BranchId.HasValue)
+            else if ((currentUser?.Role == SystemRole.BranchManager ||
+                     currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+                     currentUser.BranchId.HasValue)
             {
                 // Branch manager can only see their branch
                 var branch = await UserService.GetBranchById(currentUser.BranchId.Value);
@@ -701,6 +892,31 @@
                     var company = allCompanies.FirstOrDefault(c => c.Id == currentUser?.CompanyId);
                     branchItem.Company = company;
                     allBranches.Add(branchItem);
+                }
+            }
+
+            // Load related data for branches
+            if (allBranches.Any())
+            {
+                using var context = await DbContextFactory.CreateDbContextAsync();
+                var branchIds = allBranches.Select(b => b.Id).ToList();
+
+                // Load logos and status
+                var branchesWithRelations = await context.Branches
+                    .Include(b => b.MainLogo)
+                    .Include(b => b.Status)
+                    .Where(b => branchIds.Contains(b.Id))
+                    .ToListAsync();
+
+                // Update the branches with related data
+                foreach (var branch in allBranches)
+                {
+                    var relatedData = branchesWithRelations.FirstOrDefault(b => b.Id == branch.Id);
+                    if (relatedData != null)
+                    {
+                        branch.MainLogo = relatedData.MainLogo;
+                        branch.Status = relatedData.Status;
+                    }
                 }
             }
         }
@@ -723,19 +939,23 @@
                 var allUsers = (List<ApplicationUser>)response.Response;
 
                 // Filter users based on current user's permissions
-                if (currentUser?.Role == SystemRole.GlobalAdmin)
+                if (currentUser?.Role == SystemRole.SystemAdministrator)
                 {
-                    // Global admin can see all users
+                    // System admin can see all users
                     users = allUsers;
                 }
-                else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue)
+                else if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+                         currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+                         currentUser.CompanyId.HasValue)
                 {
                     // Company admin can only see users in their company
                     users = allUsers
                         .Where(u => u.CompanyId.HasValue && u.CompanyId.Value == currentUser.CompanyId.Value)
                         .ToList();
                 }
-                else if (currentUser?.Role == SystemRole.BranchManager && currentUser.BranchId.HasValue)
+                else if ((currentUser?.Role == SystemRole.BranchManager ||
+                         currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+                         currentUser.BranchId.HasValue)
                 {
                     // Branch manager can only see users in their branch
                     users = allUsers
@@ -745,6 +965,30 @@
                 else
                 {
                     users = new List<ApplicationUser>();
+                }
+
+                // Load profile pictures for all users
+                if (users.Any())
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    var userIds = users.Select(u => u.Id).ToList();
+
+                    var usersWithPictures = await context.Users
+                        .Include(u => u.ProfilePicture)
+                        .Include(u => u.Status)
+                        .Where(u => userIds.Contains(u.Id))
+                        .ToListAsync();
+
+                    // Update users with profile pictures
+                    foreach (var user in users)
+                    {
+                        var withPicture = usersWithPictures.FirstOrDefault(u => u.Id == user.Id);
+                        if (withPicture != null)
+                        {
+                            user.ProfilePicture = withPicture.ProfilePicture;
+                            user.Status = withPicture.Status;
+                        }
+                    }
                 }
             }
             else
@@ -762,25 +1006,59 @@
         }
     }
 
+    private async Task LoadUserCustomRoles()
+    {
+        if (!users.Any()) return;
+
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+            var userIds = users.Select(u => u.Id).ToList();
+
+            var userRoles = await context.UserRoleAssignments
+                .Include(ur => ur.Role)
+                .Where(ur => userIds.Contains(ur.UserId) && ur.IsActive)
+                .ToListAsync();
+
+            userCustomRoles = userRoles.GroupBy(ur => ur.UserId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user roles: {ex.Message}", "Error");
+        }
+    }
+
+    private List<UserRoleAssignment> GetUserCustomRoles(string userId)
+    {
+        return userCustomRoles.GetValueOrDefault(userId, new List<UserRoleAssignment>());
+    }
+
+    private int? GetUserCompanyId(string userId)
+    {
+        var user = users.FirstOrDefault(u => u.Id == userId);
+        return user?.CompanyId;
+    }
+
     private bool CanEditUser(ApplicationUser user)
     {
         if (currentUser == null || user == null)
             return false;
 
-        // Can't edit your own role
+        // Can't edit your own account
         if (user.Id == currentUser.Id)
             return false;
 
-        // Check role hierarchy
-        if (currentUser.Role == SystemRole.GlobalAdmin)
+        // Check role hierarchy and permissions
+        if (currentUser.Role == SystemRole.SystemAdministrator)
         {
             // System Admin can edit anyone
             return true;
         }
-        else if (currentUser.Role == SystemRole.CompanyAdmin)
+        else if (currentUser.Role == SystemRole.CompanyAdministrator)
         {
             // Company Admin can't edit System Admins
-            if (user.Role == SystemRole.GlobalAdmin)
+            if (user.Role == SystemRole.SystemAdministrator)
                 return false;
 
             // Company Admin can only edit users in their company
@@ -789,22 +1067,28 @@
         else if (currentUser.Role == SystemRole.BranchManager)
         {
             // Branch Manager can't edit System Admins or Company Admins
-            if (user.Role == SystemRole.GlobalAdmin || user.Role == SystemRole.CompanyAdmin)
+            if (user.Role == SystemRole.SystemAdministrator ||
+                user.Role == SystemRole.CompanyAdministrator)
                 return false;
 
             // Branch Manager can only edit users in their branch
             return user.BranchId.HasValue && user.BranchId.Value == currentUser.BranchId;
         }
 
-        // Other roles can't edit users
-        return false;
+        // Check for permission-based access
+        return HasPermission("settings.users").Result;
+    }
+
+    private async Task<bool> HasPermission(string permission)
+    {
+        return await PermissionService.UserHasPermission(currentUser.Id, permission);
     }
 
     private IEnumerable<Company> filteredCompanies
     {
         get
         {
-            if (currentUser?.Role != SystemRole.GlobalAdmin) return new List<Company>();
+            if (currentUser?.Role != SystemRole.SystemAdministrator) return new List<Company>();
 
             var companies = availableCompanies.AsEnumerable();
 
@@ -821,13 +1105,15 @@
                 {
                     // Search directly in companies
                     companies = companies.Where(c =>
-                        c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+                        c.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                        c.RegistrationNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
                 }
                 else if (searchType == "branches")
                 {
                     // Search in branches, then get their parent companies
                     var matchingBranchCompanyIds = allBranches
-                        .Where(b => b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true)
+                        .Where(b => b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                                   b.Code?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true)
                         .Select(b => b.CompanyId)
                         .Distinct()
                         .ToList();
@@ -842,7 +1128,8 @@
                             (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                             (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                             (u.UserName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                            (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                            (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (u.EmployeeNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
                         .Select(u => u.CompanyId)
                         .Where(id => id.HasValue)
                         .Select(id => id!.Value)
@@ -891,19 +1178,22 @@
         // Filter branches based on user permissions
         IEnumerable<Branch> branches;
 
-        if (currentUser?.Role == SystemRole.GlobalAdmin)
+        if (currentUser?.Role == SystemRole.SystemAdministrator)
         {
-            // Global admin can see all branches
+            // System admin can see all branches
             branches = allBranches.Where(b => b.CompanyId == companyId);
         }
-        else if (currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId == companyId)
+        else if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+                  currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+                  currentUser.CompanyId == companyId)
         {
             // Company admin can see all branches in their company
             branches = allBranches.Where(b => b.CompanyId == companyId);
         }
-        else if (currentUser?.Role == SystemRole.BranchManager &&
-                 currentUser.CompanyId == companyId &&
-                 currentUser.BranchId.HasValue)
+        else if ((currentUser?.Role == SystemRole.BranchManager ||
+                  currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+                  currentUser.CompanyId == companyId &&
+                  currentUser.BranchId.HasValue)
         {
             // Branch manager can only see their branch
             branches = allBranches.Where(b => b.Id == currentUser.BranchId.Value);
@@ -918,7 +1208,8 @@
         if (!string.IsNullOrWhiteSpace(searchTerm) && searchType == "branches")
         {
             branches = branches.Where(b =>
-                b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+                b.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                b.Code?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
         }
 
         return branches;
@@ -933,7 +1224,9 @@
                 (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (u.UserName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+                (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.EmployeeNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.JobTitle?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         // Role filter
@@ -974,7 +1267,6 @@
     private void HandleCompanyChange(int? companyId)
     {
         selectedCompanyIdFilter = companyId;
-        selectedBranchIdFilter = null; // Reset branch filter when company changes
     }
 
     private void HandleRoleFilterChange(string roleFilter)
@@ -1002,11 +1294,9 @@
     {
         searchTerm = string.Empty;
         selectedCompanyIdFilter = null;
-        selectedBranchIdFilter = null;
         selectedRoleFilter = "all";
         selectedStatusFilter = "all";
         searchType = "users";
-        filteredBranches = allBranches;
     }
 
     // User Management Methods
@@ -1025,22 +1315,18 @@
         else
         {
             // For new users, ensure the current user has create user permission
-            if (currentUser?.Role == SystemRole.BranchManager)
-            {
-                // Branch managers can only create users in their branch
-                if (!currentUser.BranchId.HasValue)
-                {
-                    ToastService.ShowError("You must be assigned to a branch to create users", "Permission Denied");
-                    return;
-                }
-
-                // Auto-select the branch manager's branch
-                selectedBranchForUser = currentUser.BranchId.Value;
-            }
-            else if (currentUser?.Role != SystemRole.GlobalAdmin && currentUser?.Role != SystemRole.CompanyAdmin)
+            if (!HasPermission("settings.users").Result)
             {
                 ToastService.ShowError("You don't have permission to create users", "Permission Denied");
                 return;
+            }
+
+            // Auto-select branch for branch managers
+            if ((currentUser?.Role == SystemRole.BranchManager ||
+                 currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+                 currentUser.BranchId.HasValue)
+            {
+                selectedBranchForUser = currentUser.BranchId.Value;
             }
         }
 
@@ -1058,15 +1344,23 @@
             return;
         }
 
-        if (currentUser?.Role == SystemRole.CompanyAdmin &&
-            currentUser.CompanyId != branch.CompanyId)
+        if (!HasPermission("settings.users").Result)
+        {
+            ToastService.ShowError("You don't have permission to create users", "Permission Denied");
+            return;
+        }
+
+        if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+             currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+             currentUser.CompanyId != branch.CompanyId)
         {
             ToastService.ShowError("You can only add users to branches in your company", "Permission Denied");
             return;
         }
 
-        if (currentUser?.Role == SystemRole.BranchManager &&
-            currentUser.BranchId != branchId)
+        if ((currentUser?.Role == SystemRole.BranchManager ||
+             currentUser?.Role == SystemRole.SeniorPropertyManager) &&
+             currentUser.BranchId != branchId)
         {
             ToastService.ShowError("You can only add users to your branch", "Permission Denied");
             return;
@@ -1095,6 +1389,25 @@
 
         selectedUserId = userId;
         showUserRolesModal = true;
+    }
+
+    private void ShowUserPermissionsModal(string userId)
+    {
+        var userToEdit = users.FirstOrDefault(u => u.Id == userId);
+        if (userToEdit != null && !CanEditUser(userToEdit))
+        {
+            ToastService.ShowError("You don't have permission to edit permissions for this user", "Permission Denied");
+            return;
+        }
+
+        if (!HasPermission("settings.permissions").Result)
+        {
+            ToastService.ShowError("You don't have permission to manage user permissions", "Permission Denied");
+            return;
+        }
+
+        selectedUserId = userId;
+        showUserPermissionsModal = true;
     }
 
     private void ShowResetPasswordModal(string userId)
@@ -1181,6 +1494,12 @@
         await LoadUserHierarchy();
     }
 
+    private async Task HandlePermissionsSaved()
+    {
+        showUserPermissionsModal = false;
+        await LoadUserHierarchy();
+    }
+
     private void HandlePasswordReset()
     {
         showResetPasswordModal = false;
@@ -1206,6 +1525,15 @@
         }
     }
 
+    private void HandleUserPermissions(string userId)
+    {
+        var user = users.FirstOrDefault(u => u.Id == userId);
+        if (user != null && CanEditUser(user))
+        {
+            ShowUserPermissionsModal(userId);
+        }
+    }
+
     private void HandleUserResetPassword(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
@@ -1226,8 +1554,8 @@
     // Company Management Methods
     private void ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
     {
-        // Only Global Admin can create/edit companies
-        if (currentUser?.Role != SystemRole.GlobalAdmin)
+        // Only System Admin can create/edit companies
+        if (currentUser?.Role != SystemRole.SystemAdministrator)
         {
             ToastService.ShowError("Only System Administrators can manage companies", "Permission Denied");
             return;
@@ -1257,7 +1585,9 @@
                     Address = new Address { Country = "South Africa" },
                     EmailAddresses = new List<Email>(),
                     ContactNumbers = new List<ContactNumber>(),
-                    CreatedOn = DateTime.Now
+                    CreatedOn = DateTime.Now,
+                    StatusId = companyStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id,
+                    SubscriptionPlanId = subscriptionPlans.FirstOrDefault(p => p.Name == "Starter")?.Id
                 };
             showCompanyEditModal = true;
         }
@@ -1266,7 +1596,7 @@
     private async Task HandleCompanySaved(Company company)
     {
         // Double-check permissions
-        if (currentUser?.Role != SystemRole.GlobalAdmin)
+        if (currentUser?.Role != SystemRole.SystemAdministrator)
         {
             ToastService.ShowError("Only System Administrators can manage companies", "Permission Denied");
             return;
@@ -1315,8 +1645,7 @@
     private void ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
     {
         // Check permissions based on role
-        if (currentUser?.Role != SystemRole.GlobalAdmin &&
-            (currentUser?.Role != SystemRole.CompanyAdmin || !currentUser.CompanyId.HasValue))
+        if (!HasPermission("settings.users").Result)
         {
             ToastService.ShowError("You don't have permission to manage branches", "Permission Denied");
             return;
@@ -1331,8 +1660,9 @@
             if (branch != null)
             {
                 // Check if this branch belongs to the company admin's company
-                if (currentUser?.Role == SystemRole.CompanyAdmin &&
-                    branch.CompanyId != currentUser.CompanyId)
+                if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+                     currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+                     branch.CompanyId != currentUser.CompanyId)
                 {
                     ToastService.ShowError("You can only edit branches in your company", "Permission Denied");
                     return;
@@ -1351,15 +1681,15 @@
         {
             editingBranch = new Branch
                 {
-                    CompanyId = currentUser?.Role == SystemRole.CompanyAdmin && currentUser.CompanyId.HasValue
-                        ? currentUser.CompanyId.Value
-                        : 0,
+                    CompanyId = currentUser?.Role == SystemRole.CompanyAdministrator && currentUser.CompanyId.HasValue
+                            ? currentUser.CompanyId.Value
+                            : 0,
                     IsActive = true,
                     Address = new Address { Country = "South Africa" },
                     EmailAddresses = new List<Email>(),
                     ContactNumbers = new List<ContactNumber>(),
-                    Logos = new List<BranchLogo>(),
-                    CreatedOn = DateTime.Now
+                    CreatedOn = DateTime.Now,
+                    StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
                 };
 
             editingBranchCompanyId = editingBranch.CompanyId;
@@ -1370,9 +1700,10 @@
     private void ShowCreateBranchModal(int companyId)
     {
         // Verify the company ID is valid for the current user's permissions
-        if (currentUser?.Role == SystemRole.CompanyAdmin &&
-            currentUser.CompanyId.HasValue &&
-            currentUser.CompanyId.Value != companyId)
+        if ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+             currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+             currentUser.CompanyId.HasValue &&
+             currentUser.CompanyId.Value != companyId)
         {
             ToastService.ShowError("You can only create branches in your company", "Permission Denied");
             return;
@@ -1387,8 +1718,8 @@
                 Address = new Address { Country = "South Africa" },
                 EmailAddresses = new List<Email>(),
                 ContactNumbers = new List<ContactNumber>(),
-                Logos = new List<BranchLogo>(),
-                CreatedOn = DateTime.Now
+                CreatedOn = DateTime.Now,
+                StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
             };
         editingBranchCompanyId = companyId;
         showBranchEditModal = true;
@@ -1397,8 +1728,16 @@
     private async Task HandleBranchSaved(Branch branch)
     {
         // Double-check permissions
-        if (currentUser?.Role != SystemRole.GlobalAdmin &&
-            (currentUser?.Role != SystemRole.CompanyAdmin || currentUser.CompanyId != branch.CompanyId))
+        if (!HasPermission("settings.users").Result)
+        {
+            ToastService.ShowError("You don't have permission to manage branches", "Permission Denied");
+            return;
+        }
+
+        if (currentUser?.Role != SystemRole.SystemAdministrator &&
+            ((currentUser?.Role == SystemRole.CompanyAdministrator ||
+              currentUser?.Role == SystemRole.CompanyFinancialDirector) &&
+              currentUser.CompanyId != branch.CompanyId))
         {
             ToastService.ShowError("You don't have permission to manage this branch", "Permission Denied");
             return;
@@ -1445,9 +1784,11 @@
 
     private void ViewBranchUsers(int branchId)
     {
-        selectedBranchIdFilter = branchId;
         activeSubTab = "users";
-        ToggleBranch(branchId);
+        if (!expandedBranches.Contains(branchId))
+        {
+            expandedBranches.Add(branchId);
+        }
     }
 
     private string GetUserDisplayName(ApplicationUser user)
@@ -1459,4 +1800,4 @@
 
         return user.UserName ?? "Unknown User";
     }
-} *@
+    }
