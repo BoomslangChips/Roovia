@@ -457,7 +457,7 @@ namespace Roovia.Services
 
                 await context.SaveChangesAsync();
 
-                response.Response = new { VendorId = vendorId, NewRating = vendor.Rating, TotalJobs = vendor.TotalJobs };
+                response.Response = new { VendorId = vendorId, NewRating = vendor.Rating, vendor.TotalJobs };
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Vendor rating updated successfully.";
 
@@ -641,8 +641,8 @@ namespace Roovia.Services
                 .GroupBy(t => new { t.CreatedOn.Year, t.CreatedOn.Month })
                 .Select(g => new
                 {
-                    Year = g.Key.Year,
-                    Month = g.Key.Month,
+                    g.Key.Year,
+                    g.Key.Month,
                     TotalJobs = g.Count(),
                     CompletedJobs = g.Count(t => t.StatusId == 4),
                     TotalRevenue = g.SelectMany(t => t.Expenses)

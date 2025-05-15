@@ -710,7 +710,7 @@ namespace Roovia.Services
                         BeneficiaryName = beneficiary.Name,
                         BeneficiaryType = beneficiary.BenType?.Name,
                         CommissionType = beneficiary.CommissionType?.Name,
-                        CommissionValue = beneficiary.CommissionValue,
+                        beneficiary.CommissionValue,
                         CalculatedAmount = Math.Round(amount, 2),
                         BankAccount = beneficiary.BankAccount != null ?
                             $"{beneficiary.BankAccount.BankName} - {beneficiary.BankAccount.AccountNumber}" : "Not specified"
@@ -800,14 +800,14 @@ namespace Roovia.Services
                     .OrderByDescending(p => p.CreatedOn)
                     .Select(p => new
                     {
-                        PaymentReference = p.PaymentReference,
-                        Amount = p.Amount,
+                        p.PaymentReference,
+                        p.Amount,
                         Status = p.Status?.Name,
-                        PaymentDate = p.PaymentDate,
-                        TransactionReference = p.TransactionReference,
+                        p.PaymentDate,
+                        p.TransactionReference,
                         PropertyPayment = p.PaymentAllocation?.Payment?.PaymentReference,
                         PropertyPaymentDate = p.PaymentAllocation?.Payment?.PaymentDate,
-                        Notes = p.Notes
+                        p.Notes
                     })
                     .ToList();
 
@@ -827,12 +827,12 @@ namespace Roovia.Services
                 {
                     Beneficiary = new
                     {
-                        Id = beneficiary.Id,
-                        Name = beneficiary.Name,
+                        beneficiary.Id,
+                        beneficiary.Name,
                         Type = beneficiary.BenType?.Name,
                         Status = beneficiary.BenStatus?.Name,
                         CommissionType = beneficiary.CommissionType?.Name,
-                        CommissionValue = beneficiary.CommissionValue
+                        beneficiary.CommissionValue
                     },
                     Statistics = statistics,
                     PaymentHistory = paymentHistory

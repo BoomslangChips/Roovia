@@ -1,433 +1,693 @@
-﻿@* @page "/properties"
-
-
-@using Roovia.Services
+﻿@page "/properties"
+@attribute [Authorize(Policy = "PropertiesAccess")]
+@using Microsoft.AspNetCore.Authorization
 @using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Services
+@using Roovia.Services.General
 @inject IProperty PropertyService
+@inject IPropertyOwner PropertyOwnerService
 @inject IUser UserService
+@inject IPermissionService PermissionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject ToastService ToastService
 
 @rendermode InteractiveServer
 
-<div style="padding:1em" class="roovia-section">
-    <div class="roovia-section-header">
-        <h2 class="roovia-section-title">Properties</h2>
-        <div class="d-flex gap-3">
-            <button class="auth-button" @onclick="AddNewProperty">
-                <i class="bi bi-plus-circle"></i> Add Property
+<div class="properties-container">
+    <div class="properties-header">
+        <h2 class="properties-title">Properties Management</h2>
+        @if (_canCreateProperties)
+        {
+            <button class="property-btn property-btn-primary" @onclick="() => ShowCreateModal()">
+                <i class="fas fa-plus me-2"></i> Add Property
             </button>
+        }
+    </div>
+
+    <div class="properties-filters">
+        <div class="property-search-container">
+            <input type="text" class="property-search-input"
+                   placeholder="Search properties..."
+                   @bind-value="searchTerm"
+                   @bind-value:event="oninput"
+                   @onkeyup="@(() => FilterProperties())">
+            <i class="fas fa-search property-search-icon"></i>
+        </div>
+
+        <div class="property-filter-row">
+            <select class="property-filter-select" @bind="statusFilter" @bind:event="onchange">
+                <option value="">All Statuses</option>
+                @foreach (var status in propertyStatuses)
+                {
+                    <option value="@status.Id">@status.Name</option>
+                }
+            </select>
+
+            <select class="property-filter-select" @bind="tenantFilter" @bind:event="onchange">
+                <option value="">All Properties</option>
+                <option value="with-tenant">With Tenant</option>
+                <option value="vacant">Vacant</option>
+            </select>
         </div>
     </div>
 
-    <div class="roovia-panel mb-4">
-        <div class="roovia-panel-body" style="overflow-y: auto !important;    max-height: 86vh; min-height:86vh;">
-            <div class="d-flex flex-column justify-content-between align-items-center flex-wrap gap-3 mb-4">
-                <div class="position-relative">
-                    <input type="text"
-                    class="form-control ps-4"
-                    placeholder="Search properties..."
-                    @bind-value="searchTerm"
-                    @bind-value:event="oninput"
-                    style="min-width: 280px; border-radius: var(--border-radius-md);">
-                    <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                </div>
-                @if (isLoading)
-                {
-                    <div class="d-flex justify-content-center py-5">
-                        <div class="loading-spinner"></div>
-                    </div>
-                }
-                else if (filteredProperties.Count == 0)
-                {
-                    <div class="empty-state">
-                        <div class="empty-illustration">
-                            <i class="bi bi-house-x"></i>
-                        </div>
-                        <h3>No Properties Found</h3>
-                        <p>We couldn't find any properties matching your search criteria.</p>
-                        <div class="empty-actions">
-                            <button class="btn btn-primary" @onclick="ClearFilters">Clear Filters</button>
-                            <button class="btn btn-outline-primary" @onclick="AddNewProperty">Add Property</button>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="roovia-card-deck flex-wrap d-flex justify-content-around flex-row gap-4">
-                        @foreach (var property in filteredProperties)
+    @if (isLoading)
+    {
+        <div class="property-loading">
+            <div class="property-spinner"></div>
+            <p>Loading properties...</p>
+        </div>
+    }
+    else if (!filteredProperties.Any())
+    {
+        <div class="property-empty-state">
+            <i class="fas fa-home property-empty-icon"></i>
+            <h3>No Properties Found</h3>
+            <p>No properties match your search criteria.</p>
+        </div>
+    }
+    else
+    {
+        <div class="properties-grid">
+            @foreach (var property in filteredProperties)
+            {
+                <div class="property-card">
+                    <div class="property-card-header">
+                        @if (property.MainImage != null)
                         {
-                            <div class="card hover-lift">
-                                <div class="card-body p-0">
-                                    <div class="property-image-container">
-                                        <div class="property-placeholder bg-subtle-bg d-flex align-items-center justify-content-center" style="height: 180px;">
-                                            <i class="fas fa-house-user text-light" style="font-size: 4rem;"></i>
-                                        </div>
-                                        @if (property.HasTenant)
-                                        {
-                                            <div class="status-badge status-online position-absolute" style="top: 12px; right: 12px;">
-                                                <i class="bi bi-person-check me-1"></i> Tenant
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="status-badge status-offline position-absolute" style="top: 12px; right: 12px;">
-                                                <i class="bi bi-person-dash me-1"></i> Vacant
-                                            </div>
-                                        }
-                                    </div>
-                                    <div class="p-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h5 class="card-title mb-0">
-                                                @(property.Address?.ComplexName ?? "Property")
-                                                @if (!string.IsNullOrEmpty(property.Address?.UnitNumber))
-                                                {
-                                                    <span>Unit @property.Address.UnitNumber</span>
-                                                }
-                                            </h5>
-                                            <span class="badge badge-primary">
-                                                @($"R{property.RentalAmount:N0}/mo")
-                                            </span>
-                                        </div>
-                                        <p class="text-secondary mb-3">
-                                            @GetFormattedAddress(property)
-                                        </p>
-
-                                        @if (property.HasTenant && property.CurrentLeaseStartDate != DateTime.MinValue)
-                                        {
-                                            <div class="lease-info mb-3">
-                                                <div class="d-flex align-items-center mb-1">
-                                                    <i class="bi bi-calendar-check text-primary me-2"></i>
-                                                    <small class="text-muted">Lease Started: <strong>@(property.CurrentLeaseStartDate.Value.ToString("MMM d, yyyy"))</strong></small>
-                                                </div>
-                                                @if (property.LeaseEndDate != DateTime.MinValue)
-                                                {
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="bi bi-calendar-event text-primary me-2"></i>
-                                                        <small class="text-muted">Lease Ends: <strong>@property.LeaseEndDate.Value.ToString("MMM d, yyyy")</strong></small>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-
-                                        <div class="d-flex justify-content-between mt-3">
-                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => ViewProperty(property)" Title="View property">
-                                                <i class="fas fa-eye me-1"></i> View
-                                            </RVButton>
-                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => EditProperty(property)" Title="Edit property">
-                                                <i class="fas fa-pen me-1"></i> Edit
-                                            </RVButton>
-                                        </div>
-                                    </div>
-                                </div>
+                            <img src="@property.MainImage.Url" alt="@property.PropertyName" class="property-image" />
+                        }
+                        else
+                        {
+                            <div class="property-placeholder-image">
+                                <i class="fas fa-building"></i>
+                            </div>
+                        }
+                        <div class="property-status-badge @GetStatusClass(property.StatusId)">
+                            @property.Status?.Name
+                        </div>
+                        @if (property.HasTenant)
+                        {
+                            <div class="property-tenant-badge">
+                                <i class="fas fa-user me-1"></i> Occupied
                             </div>
                         }
                     </div>
-                }
-            </div>
+
+                    <div class="property-card-body">
+                        <h4 class="property-name">@property.PropertyName</h4>
+                        <p class="property-code">Code: @property.PropertyCode</p>
+
+                        <div class="property-address">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            @GetPropertyAddress(property)
+                        </div>
+
+                        <div class="property-info-row">
+                            <div class="property-info-item">
+                                <span class="property-info-label">Rental Amount</span>
+                                <span class="property-info-value">R @property.RentalAmount.ToString("N2")</span>
+                            </div>
+                            @if (property.Owner != null)
+                            {
+                                <div class="property-info-item">
+                                    <span class="property-info-label">Owner</span>
+                                    <span class="property-info-value">@property.Owner.FullName</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="property-card-footer">
+                        @if (_canViewAllProperties)
+                        {
+                            <button class="property-btn property-btn-sm property-btn-outline" @onclick="() => ViewProperty(property)">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                        }
+                        @if (_canCreateProperties)
+                        {
+                            <button class="property-btn property-btn-sm property-btn-primary" @onclick="() => EditProperty(property)">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        }
+                        @if (_canArchiveProperties)
+                        {
+                            <button class="property-btn property-btn-sm property-btn-danger" @onclick="() => ArchiveProperty(property)">
+                                <i class="fas fa-archive"></i> Archive
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
         </div>
-    </div>
+    }
 </div>
 
-@if (showAddPropertyModal)
+@if (showCreateModal)
 {
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <Roovia.Components.Pages.Properties.CreatePropertyModal OnModalClosed="AddPropertyModalClosed"></Roovia.Components.Pages.Properties.CreatePropertyModal>
-    </CascadingValue>
+    <CreatePropertyModal Property="@newProperty"
+                         OnSave="@SaveNewProperty"
+                         OnCancel="@(() => showCreateModal = false)"
+                         PropertyStatuses="@propertyStatuses"
+                         PropertyOwners="@propertyOwners"
+                         CommissionTypes="@commissionTypes" />
 }
 
-@if (viewPropertyModal)
+@if (showEditModal && selectedProperty != null)
 {
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="Property" Value="selectedProperty">
-            <Roovia.Components.Pages.Properties.ViewPropertyModal OnModalClosed="ViewPropertyClosed"></Roovia.Components.Pages.Properties.ViewPropertyModal>
-        </CascadingValue>
-    </CascadingValue>
+    <EditPropertyModal Property="@selectedProperty"
+                       OnSave="@UpdateProperty"
+                       OnCancel="@(() => showEditModal = false)"
+                       PropertyStatuses="@propertyStatuses"
+                       PropertyOwners="@propertyOwners"
+                       CommissionTypes="@commissionTypes" />
 }
 
-@if (editPropertyModal)
+@if (showViewModal && selectedProperty != null)
 {
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="Property" Value="selectedProperty">
-            <Roovia.Components.Pages.Properties.EditPropertyModal OnModalClosed="EditPropertyClosed"></Roovia.Components.Pages.Properties.EditPropertyModal>
-        </CascadingValue>
-    </CascadingValue>
+    <ViewPropertyModal Property="@selectedProperty"
+                       OnClose="@(() => showViewModal = false)" />
 }
 
 @code {
-    [CascadingParameter]
-    private ApplicationUser? CurrentUser { get; set; }
+    private ApplicationUser? currentUser;
+    private List<Property> properties = new();
+    private List<Property> filteredProperties = new();
+    private Property? selectedProperty;
+    private Property newProperty = new();
 
-    private List<Property> properties = new List<Property>();
-    private List<Property> filteredProperties = new List<Property>();
+    private List<PropertyStatusType> propertyStatuses = new();
+    private List<PropertyOwner> propertyOwners = new();
+    private List<CommissionType> commissionTypes = new();
+
     private string searchTerm = "";
+    private string statusFilter = "";
+    private string tenantFilter = "";
+
     private bool isLoading = true;
-    private string filterOption = "All";
-    private string sortOption = "AddressAsc";
-    bool showAddPropertyModal = false;
-    bool viewPropertyModal = false;
-    public Property selectedProperty = new();
-    bool editPropertyModal = false;
+    private bool showCreateModal = false;
+    private bool showEditModal = false;
+    private bool showViewModal = false;
+
+    // Permissions
+    private bool _canCreateProperties = false;
+    private bool _canArchiveProperties = false;
+    private bool _canViewAllProperties = false;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser == null)
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.Identity?.Name;
+
+        if (!string.IsNullOrEmpty(userId))
         {
-            await GetLoggedInUser();
+            var userResult = await UserService.GetUserById(userId);
+            if (userResult.ResponseInfo.Success)
+            {
+                currentUser = userResult.Response as ApplicationUser;
+                await CheckUserPermissions();
+                await LoadInitialData();
+            }
         }
-        await LoadProperties();
     }
 
-    public async Task GetLoggedInUser()
+    private async Task CheckUserPermissions()
     {
-        var userResponse = await UserService.GetAuthenticatedUserInfo();
-        if (userResponse.ResponseInfo.Success)
-        {
-            CurrentUser = userResponse.Response as ApplicationUser;
-        }
-        else
-        {
-            Console.WriteLine($"Error loading user: {userResponse.ResponseInfo.Message}");
-        }
+        if (currentUser == null) return;
+
+        _canCreateProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.create");
+        _canArchiveProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.archive");
+        _canViewAllProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.view.all");
     }
 
-
-    private async Task DeleteProperty(Property property)
-    {
-        if (CurrentUser == null || CurrentUser.CompanyId == null)
-            return;
-
-        var response = await PropertyService.DeleteProperty(property.Id, CurrentUser.CompanyId.Value, CurrentUser);
-        if (response.ResponseInfo.Success)
-        {
-            // Remove from local list and update UI
-            properties.RemoveAll(p => p.Id == property.Id);
-            ApplyFiltersAndSort();
-        }
-        else
-        {
-            // Optionally show an error message (implement as needed)
-            Console.WriteLine($"Error deleting property: {response.ResponseInfo.Message}");
-        }
-    }
-    private async Task LoadProperties()
+    private async Task LoadInitialData()
     {
         isLoading = true;
-        if (CurrentUser != null && CurrentUser.CompanyId != null)
-        {
-            var response = await PropertyService.GetAllProperties(CurrentUser.CompanyId.Value);
 
-            if (response.ResponseInfo.Success && response.Response != null)
+        try
+        {
+            // Load properties
+            if (currentUser?.CompanyId != null)
             {
-                properties = (List<Property>)response.Response;
-                ApplyFiltersAndSort();
+                var result = await PropertyService.GetAllProperties(currentUser.CompanyId.Value);
+                if (result.ResponseInfo.Success)
+                {
+                    properties = result.Response as List<Property> ?? new();
+                    FilterProperties();
+                }
+            }
+
+            // Load lookup data
+            await LoadLookupData();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading properties: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadLookupData()
+    {
+        // In a real implementation, these would come from lookup services
+        // For now, creating mock data
+        propertyStatuses = new List<PropertyStatusType>
+        {
+            new() { Id = 1, Name = "Active" },
+            new() { Id = 2, Name = "Inactive" },
+            new() { Id = 3, Name = "Under Maintenance" }
+        };
+
+        if (currentUser?.CompanyId != null)
+        {
+            var ownerResult = await PropertyOwnerService.GetAllPropertyOwners(currentUser.CompanyId.Value);
+            if (ownerResult.ResponseInfo.Success)
+            {
+                propertyOwners = ownerResult.Response as List<PropertyOwner> ?? new();
             }
         }
 
-
-        isLoading = false;
+        commissionTypes = new List<CommissionType>
+        {
+            new() { Id = 1, Name = "Percentage" },
+            new() { Id = 2, Name = "Fixed Amount" }
+        };
     }
 
-    private void ApplyFiltersAndSort()
+    private void FilterProperties()
     {
-        // First apply search term filter
-        var result = properties.Where(p =>
-        string.IsNullOrWhiteSpace(searchTerm) ||
-        (
-        (!string.IsNullOrEmpty(p.Address?.Street) && p.Address.Street.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-        (!string.IsNullOrEmpty(p.Address?.ComplexName) && p.Address.ComplexName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-        (!string.IsNullOrEmpty(p.Address?.City) && p.Address.City.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-        (!string.IsNullOrEmpty(p.Address?.Suburb) && p.Address.Suburb.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-        )
+        filteredProperties = properties.Where(p =>
+            (string.IsNullOrEmpty(searchTerm) ||
+             p.PropertyName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+             p.PropertyCode?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+             p.Address?.Street?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) &&
+            (string.IsNullOrEmpty(statusFilter) || p.StatusId.ToString() == statusFilter) &&
+            (string.IsNullOrEmpty(tenantFilter) ||
+             (tenantFilter == "with-tenant" && p.HasTenant) ||
+             (tenantFilter == "vacant" && !p.HasTenant))
         ).ToList();
 
-        // Then apply tenant filter
-        switch (filterOption)
+        StateHasChanged();
+    }
+
+    private void ShowCreateModal()
+    {
+        newProperty = new Property
+            {
+                Address = new Address(),
+                CompanyId = currentUser?.CompanyId ?? 0,
+                BranchId = currentUser?.BranchId,
+                CreatedBy = currentUser?.Id ?? "",
+                CreatedOn = DateTime.Now,
+                StatusId = 1,
+                CommissionTypeId = 1,
+                PaymentsEnabled = true,
+                PaymentsVerify = true
+            };
+        showCreateModal = true;
+    }
+
+    private async Task SaveNewProperty(Property property)
+    {
+        if (currentUser == null || currentUser.CompanyId == null) return;
+
+        property.CompanyId = currentUser.CompanyId.Value;
+        property.CreatedBy = currentUser.Id;
+        property.CreatedOn = DateTime.Now;
+
+        var result = await PropertyService.CreateProperty(property);
+
+        if (result.ResponseInfo.Success)
         {
-            case "HasTenant":
-                result = result.Where(p => p.HasTenant).ToList();
-                break;
-            case "NoTenant":
-                result = result.Where(p => !p.HasTenant).ToList();
-                break;
-            default:
-                // "All" option - no filtering needed
-                break;
+            ToastService.ShowSuccess("Property created successfully");
+            await LoadInitialData();
+            showCreateModal = false;
         }
-
-        // Finally apply sorting
-        switch (sortOption)
+        else
         {
-            case "AddressAsc":
-                result = result.OrderBy(p => GetFormattedAddress(p)).ToList();
-                break;
-            case "AddressDesc":
-                result = result.OrderByDescending(p => GetFormattedAddress(p)).ToList();
-                break;
-            case "RentalAsc":
-                result = result.OrderBy(p => p.RentalAmount).ToList();
-                break;
-            case "RentalDesc":
-                result = result.OrderByDescending(p => p.RentalAmount).ToList();
-                break;
+            ToastService.ShowError($"Error creating property: {result.ResponseInfo.Message}");
         }
-
-        filteredProperties = result;
     }
 
-    // Event handlers for the search, filter, and sort controls
-    private void OnSearchInput(ChangeEventArgs e)
-    {
-        searchTerm = e.Value?.ToString() ?? "";
-        ApplyFiltersAndSort();
-    }
-
-    private void FilterBy(string option)
-    {
-        filterOption = option;
-        ApplyFiltersAndSort();
-    }
-
-    private void SortBy(string option)
-    {
-        sortOption = option;
-        ApplyFiltersAndSort();
-    }
-
-    private void ClearFilters()
-    {
-        searchTerm = "";
-        filterOption = "All";
-        sortOption = "AddressAsc";
-        ApplyFiltersAndSort();
-    }
-
-    // Navigation methods
-    private async Task ViewProperty(Property property)
+    private void EditProperty(Property property)
     {
         selectedProperty = property;
-        viewPropertyModal = true;
-        await InvokeAsync(() => this.StateHasChanged());
+        showEditModal = true;
     }
 
-    private async Task ViewPropertyClosed()
+    private async Task UpdateProperty(Property property)
     {
-        viewPropertyModal = false;
-        await InvokeAsync(() => this.StateHasChanged());
+        if (currentUser?.CompanyId == null) return;
+
+        property.UpdatedBy = currentUser.Id;
+        property.UpdatedDate = DateTime.Now;
+
+        var result = await PropertyService.UpdateProperty(property.Id, property, currentUser.CompanyId.Value);
+
+        if (result.ResponseInfo.Success)
+        {
+            ToastService.ShowSuccess("Property updated successfully");
+            await LoadInitialData();
+            showEditModal = false;
+        }
+        else
+        {
+            ToastService.ShowError($"Error updating property: {result.ResponseInfo.Message}");
+        }
     }
 
-    private async Task EditProperty(Property property)
+    private void ViewProperty(Property property)
     {
         selectedProperty = property;
-        editPropertyModal = true;
-        await InvokeAsync(() => this.StateHasChanged());
+        showViewModal = true;
     }
 
-    private async Task EditPropertyClosed()
+    private async Task ArchiveProperty(Property property)
     {
-        editPropertyModal = true;
-        await LoadProperties();
-        await InvokeAsync(() => this.StateHasChanged());
+        if (currentUser?.CompanyId == null) return;
+
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to archive {property.PropertyName}?"))
+        {
+            var result = await PropertyService.DeleteProperty(property.Id, currentUser.CompanyId.Value, currentUser);
+
+            if (result.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess("Property archived successfully");
+                await LoadInitialData();
+            }
+            else
+            {
+                ToastService.ShowError($"Error archiving property: {result.ResponseInfo.Message}");
+            }
+        }
     }
 
-    private void AddNewProperty()
+    private string GetPropertyAddress(Property property)
     {
-        showAddPropertyModal = true;
-    }
-
-    // Helper method to format the address
-    private string GetFormattedAddress(Property property)
-    {
-        if (property.Address == null)
-            return "Address not available";
+        if (property.Address == null) return "No address";
 
         var parts = new List<string>();
-
-        if (!string.IsNullOrEmpty(property.Address.Street))
-            parts.Add(property.Address.Street);
-
-        if (!string.IsNullOrEmpty(property.Address.Suburb))
-            parts.Add(property.Address.Suburb);
-
-        if (!string.IsNullOrEmpty(property.Address.City))
-            parts.Add(property.Address.City);
-
-        if (!string.IsNullOrEmpty(property.Address.Province))
-            parts.Add(property.Address.Province);
-
-        if (!string.IsNullOrEmpty(property.Address.PostalCode))
-            parts.Add(property.Address.PostalCode);
+        if (!string.IsNullOrEmpty(property.Address.Street)) parts.Add(property.Address.Street);
+        if (!string.IsNullOrEmpty(property.Address.City)) parts.Add(property.Address.City);
+        if (!string.IsNullOrEmpty(property.Address.Province)) parts.Add(property.Address.Province);
 
         return string.Join(", ", parts);
     }
 
-    public async Task AddPropertyModalClosed()
+    private string GetStatusClass(int statusId)
     {
-        showAddPropertyModal = false;
-        await LoadProperties();
+        return statusId switch
+        {
+            1 => "property-status-active",
+            2 => "property-status-inactive",
+            3 => "property-status-maintenance",
+            _ => "property-status-default"
+        };
     }
 }
 
 <style>
-    /* Property Card Styles */
-    .property-image-container {
-        position: relative;
-        overflow: hidden;
+    .properties-container {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
     }
 
-    .property-placeholder {
-        transition: all 0.3s ease;
+    .properties-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
     }
 
-    .card:hover .property-placeholder {
-        transform: scale(1.05);
-    }
-
-    /* Set max width on cards so they are all the same size */
-    .card {
-        max-width: 320px;
-    }
-
-    /* Date Fix for the Current Lease Start Date */
-    .custom-datetime-input {
-        background-color: var(--input-bg);
-        border: 1.5px solid var(--border-divider);
-        border-radius: var(--border-radius-md);
+    .properties-title {
+        font-size: 2rem;
+        font-weight: 600;
         color: var(--text-primary);
-        font-size: var(--font-size-base);
-        padding: var(--spacing-3);
+    }
+
+    .property-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .property-btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+        .property-btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+    .property-btn-outline {
+        background-color: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+        .property-btn-outline:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+    .property-btn-danger {
+        background-color: var(--danger);
+        color: white;
+    }
+
+        .property-btn-danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+    .property-btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .properties-filters {
+        margin-bottom: 2rem;
+    }
+
+    .property-search-container {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+
+    .property-search-input {
         width: 100%;
-        transition: all 0.2s ease;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        background-color: var(--content-bg);
+        color: var(--text-primary);
     }
 
-        .custom-datetime-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
-            outline: none;
+    .property-search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+    }
+
+    .property-filter-row {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .property-filter-select {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--content-bg);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .property-loading {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .property-spinner {
+        width: 3rem;
+        height: 3rem;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    .property-empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .property-empty-icon {
+        font-size: 4rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+
+    .properties-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .property-card {
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .property-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-    /* Status Badge Animations */
-    .status-badge {
-        transition: transform 0.3s ease;
-    }
-
-    .card:hover .status-badge {
-        transform: translateY(-2px);
-    }
-
-    /* Responsive adjustments */
-    @@media (max-width: 768px) {
-        .roovia-card-deck {
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        }
-    }
-
-    @@media (max-width: 576px) {
-        .roovia-card-deck {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .roovia-content {
+    .property-card-header {
+        position: relative;
+        height: 200px;
         overflow: hidden;
     }
 
-</style> *@
+    .property-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .property-placeholder-image {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--subtle-bg);
+        color: var(--text-muted);
+        font-size: 3rem;
+    }
+
+    .property-status-badge {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .property-status-active {
+        background-color: var(--success);
+        color: white;
+    }
+
+    .property-status-inactive {
+        background-color: var(--gray);
+        color: white;
+    }
+
+    .property-status-maintenance {
+        background-color: var(--warning);
+        color: white;
+    }
+
+    .property-tenant-badge {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: var(--info);
+        color: white;
+    }
+
+    .property-card-body {
+        padding: 1.5rem;
+    }
+
+    .property-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+
+    .property-code {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+
+    .property-address {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .property-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .property-info-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .property-info-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .property-info-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .property-card-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-light);
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>

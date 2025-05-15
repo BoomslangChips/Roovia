@@ -1,432 +1,366 @@
-﻿@* @using Roovia.Interfaces
-@using Roovia.Models
-@using Roovia.Services
-@using System.Globalization
-@using static Roovia.Components.Elements.RVDropdown
+﻿@using Microsoft.AspNetCore.Components
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.BusinessMappingModels
 
-@rendermode InteractiveServer
-@page "/editproperty"
+<div class="property-modal-overlay" @onclick="HandleOverlayClick">
+    <div class="property-modal" @onclick:stopPropagation="true">
+        <div class="property-modal-header">
+            <h3 class="property-modal-title">Edit Property - @Property.PropertyCode</h3>
+            <button class="property-modal-close" @onclick="Cancel">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
 
-<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-edit" IsVisible="@IsVisible" Size="ModalSize.Large">
-    <ChildContent>
-        <div class="rv-modal-custom">
-            <div class="container-fluid">
-                <!-- Property Details Section -->
-                <div class="roovia-panel mb-4">
-                    <div class="roovia-panel-header">
-                        <h5 class="roovia-panel-title"><i class="fas fa-building me-2"></i>Edit Property Details</h5>
-                    </div>
-                    <div class="roovia-panel-body">
-                        <!-- Owner Information (read-only) -->
-                        <div class="roovia-col-md-12 p-5">
-                            <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Owner Information</h6>
-                            <RVTextbox Label="Owner"
-                                       Value="@OwnerName"
-                                       Disabled="true"
-                                       IconLeft="fas fa-user">
-                            </RVTextbox>
-                        </div>
-
-                        <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-4">
-                            <!-- Location Information -->
-                            <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Location Information</h6>
-                                <div class="mb-3">
-                                    <RVTextbox Label="Street"
-                                               Value="@Property.Address.Street"
-                                               @onchange="(e => Property.Address.Street = e.Value.ToString())"
-                                               Placeholder="Street address"
-                                               IconLeft="fas fa-road">
-                                    </RVTextbox>
-                                </div>
-                                <div class="roovia-grid-cols-2 roovia-grid gap-3">
-                                    <div>
-                                        <RVTextbox Label="Unit Number"
-                                                   Value="@Property.Address.UnitNumber"
-                                                   @onchange="(e => Property.Address.UnitNumber = e.Value.ToString())"
-                                                   Placeholder="Unit #"
-                                                   IconLeft="fas fa-building">
-                                        </RVTextbox>
-                                    </div>
-                                    <div>
-                                        <RVTextbox Label="Floor"
-                                                   Value="@Property.Address.Floor"
-                                                   @onchange="(e => Property.Address.Floor = e.Value.ToString())"
-                                                   Placeholder="Floor level"
-                                                   IconLeft="fas fa-layer-group">
-                                        </RVTextbox>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <RVTextbox Label="Complex Name"
-                                               Value="@Property.Address.ComplexName"
-                                               @onchange="(e => Property.Address.ComplexName = e.Value.ToString())"
-                                               Placeholder="Complex name"
-                                               IconLeft="fas fa-hotel">
-                                    </RVTextbox>
-                                </div>
-                                <div class="mb-3">
-                                    <RVTextbox Label="Building Name"
-                                               Value="@Property.Address.BuildingName"
-                                               @onchange="(e => Property.Address.BuildingName = e.Value.ToString())"
-                                               Placeholder="Building name"
-                                               IconLeft="fas fa-building">
-                                    </RVTextbox>
-                                </div>
-                            </div>
-
-                            <!-- City/Region Information -->
-                            <div class="roovia-col-md-6">
-                                <h6 class="text-primary mb-3"><i class="fas fa-city me-2"></i>City/Region Information</h6>
-                                <div class="roovia-grid-cols-2 roovia-grid gap-3">
-                                    <div>
-                                        <RVTextbox Label="City"
-                                                   Value="@Property.Address.City"
-                                                   @onchange="(e => Property.Address.City = e.Value.ToString())"
-                                                   Placeholder="City"
-                                                   IconLeft="fas fa-city">
-                                        </RVTextbox>
-                                    </div>
-                                    <div>
-                                        <RVTextbox Label="Suburb"
-                                                   Value="@Property.Address.Suburb"
-                                                   @onchange="(e => Property.Address.Suburb = e.Value.ToString())"
-                                                   Placeholder="Suburb"
-                                                   IconLeft="fas fa-map-pin">
-                                        </RVTextbox>
-                                    </div>
-                                </div>
-                                <div class="roovia-grid-cols-2 roovia-grid gap-3 mt-3">
-                                    <div>
-                                        <RVTextbox Label="Province"
-                                                   Value="@Property.Address.Province"
-                                                   @onchange="(e => Property.Address.Province = e.Value.ToString())"
-                                                   Placeholder="Province/State"
-                                                   IconLeft="fas fa-map">
-                                        </RVTextbox>
-                                    </div>
-                                    <div>
-                                        <RVTextbox Label="Postal Code"
-                                                   Value="@Property.Address.PostalCode"
-                                                   @onchange="(e => Property.Address.PostalCode = e.Value.ToString())"
-                                                   Placeholder="Postal/ZIP Code"
-                                                   IconLeft="fas fa-mail-bulk">
-                                        </RVTextbox>
-                                    </div>
-                                </div>
-                                <div class="mb-3 mt-3">
-                                    <RVTextbox Label="Country"
-                                               Value="@Property.Address.Country"
-                                               @onchange="(e => Property.Address.Country = e.Value.ToString())"
-                                               Placeholder="Country"
-                                               IconLeft="fas fa-globe">
-                                    </RVTextbox>
-                                </div>
-                                <div class="mb-3">
-                                    <RVCheckbox Label="Is Residential"
-                                                Value="@Property.Address.IsResidential"
-                                                @onchange="(e => Property.Address.IsResidential = e.Value is bool value && value)">
-                                    </RVCheckbox>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Access Information Section -->
-                        <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3"><i class="fas fa-unlock-alt me-2"></i>Access Information</h6>
-                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3">
-                                <div>
-                                    <RVTextbox Label="Gate Code"
-                                               Value="@Property.Address.GateCode"
-                                               @onchange="(e => Property.Address.GateCode = e.Value.ToString())"
-                                               Placeholder="Gate code"
-                                               IconLeft="fas fa-key">
-                                    </RVTextbox>
-                                </div>
-                                <div>
-                                    <RVTextbox Label="Delivery Instructions"
-                                               Value="@Property.Address.DeliveryInstructions"
-                                               @onchange="(e => Property.Address.DeliveryInstructions = e.Value.ToString())"
-                                               Placeholder="Delivery instructions"
-                                               IconLeft="fas fa-info-circle">
-                                    </RVTextbox>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lease Information Section -->
-                        <div class="roovia-panel-subsection mt-4">
-                            <h6 class="text-primary mb-3"><i class="fas fa-file-contract me-2"></i>Lease Information</h6>
-                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-3 roovia-grid gap-3">
-                                <div>
-                                    <RVTextbox Label="Rental Amount"
-                                               Type="decimal"
-                                               Value="@Property.RentalAmount.ToString()"
-                                               @onchange="(e => Property.RentalAmount = decimal.TryParse(e.Value?.ToString(), out var val) ? val : Property.RentalAmount)"
-                                               Placeholder="Monthly rent"
-                                               IconLeft="fas fa-money-bill-wave">
-                                    </RVTextbox>
-                                </div>
-                                <div>
-                                    <div class="form-floating mb-3">
-                                        <div class="rv-form-group">
-                                            <label class="form-label"><i class="fas fa-calendar-alt me-2"></i>Lease Original Start Date</label>
-                                            <input type="datetime-local"
-                                                   class="custom-datetime-input"
-                                                   value="@(Property.LeaseOriginalStartDate.HasValue && Property.LeaseOriginalStartDate.Value != DateTime.MinValue ? Property.LeaseOriginalStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                                   @onchange="(e => Property.LeaseOriginalStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseOriginalStartDate)" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="roovia-grid-cols-1 roovia-grid-cols-md-2 roovia-grid gap-3 mt-3">
-                                <div>
-                                    <div class="form-floating mb-3">
-                                        <div class="rv-form-group">
-                                            <label class="roovia-textbox-label"><i class="fas fa-calendar-check me-2"></i>Current Lease Start Date</label>
-                                            <input type="datetime-local"
-                                                   class="custom-datetime-input"
-                                                   value="@(Property.CurrentLeaseStartDate.HasValue && Property.CurrentLeaseStartDate.Value != DateTime.MinValue ? Property.CurrentLeaseStartDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                                   @onchange="(e => Property.CurrentLeaseStartDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.CurrentLeaseStartDate)" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="form-floating mb-3">
-                                        <div class="rv-form-group">
-                                            <label class="roovia-textbox-label"><i class="fas fa-calendar-times me-2"></i>Lease End Date</label>
-                                            <input type="datetime-local"
-                                                   class="custom-datetime-input"
-                                                   value="@(Property.LeaseEndDate.HasValue && Property.LeaseEndDate.Value != DateTime.MinValue ? Property.LeaseEndDate.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty)"
-                                                   @onchange="(e => Property.LeaseEndDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : Property.LeaseEndDate)" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div class="property-modal-body">
+            <form @onsubmit:preventDefault="true">
+                <div class="property-form-tabs">
+                    <button type="button" class="property-form-tab @(activeTab == "basic" ? "active" : "")" @onclick='() => activeTab = "basic"'>
+                        Basic Information
+                    </button>
+                    <button type="button" class="property-form-tab @(activeTab == "address" ? "active" : "")" @onclick='() => activeTab = "address"'>
+                        Address
+                    </button>
+                    <button type="button" class="property-form-tab @(activeTab == "lease" ? "active" : "")" @onclick='() => activeTab = "lease"'>
+                        Lease Information
+                    </button>
+                    <button type="button" class="property-form-tab @(activeTab == "commission" ? "active" : "")" @onclick='() => activeTab = "commission"'>
+                        Commission
+                    </button>
                 </div>
-                @if (Tenant != null && Tenant.Id > 0)
+
+                @if (activeTab == "basic")
                 {
-                    <div class="roovia-panel mb-4">
-                        <div class="roovia-panel-header">
-                            <h5 class="roovia-panel-title"><i class="fas fa-user me-2"></i>Tenant Summary</h5>
+                    <div class="property-form-section">
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Property Name*</label>
+                                <input type="text" class="property-form-input" @bind="Property.PropertyName" required />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Property Code*</label>
+                                <input type="text" class="property-form-input" @bind="Property.PropertyCode" required />
+                            </div>
                         </div>
-                        <div class="roovia-panel-body">
-                            <p><i class="fas fa-user me-2"></i><strong>Name:</strong> @Tenant.FirstName @Tenant.LastName</p>
-                            <p><i class="fas fa-envelope me-2"></i><strong>Email:</strong> @Tenant.EmailAddress</p>
-                            <p><i class="fas fa-mobile-alt me-2"></i><strong>Mobile:</strong> @Tenant.MobileNumber</p>
-                            <p><i class="fas fa-id-card me-2"></i><strong>ID Number:</strong> @Tenant.IdNumber</p>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Owner*</label>
+                                <select class="property-form-select" @bind="Property.OwnerId" required>
+                                    @foreach (var owner in PropertyOwners)
+                                    {
+                                        <option value="@owner.Id">@owner.FullName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Status*</label>
+                                <select class="property-form-select" @bind="Property.StatusId" required>
+                                    @foreach (var status in PropertyStatuses)
+                                    {
+                                        <option value="@status.Id">@status.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Rental Amount (R)</label>
+                                <input type="number" class="property-form-input" @bind="Property.RentalAmount" step="0.01" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Service Level</label>
+                                <input type="text" class="property-form-input" @bind="Property.ServiceLevel" />
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Customer Reference</label>
+                                <input type="text" class="property-form-input" @bind="Property.CustomerRef" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Account Balance (R)</label>
+                                <input type="number" class="property-form-input" @bind="Property.PropertyAccountBalance" step="0.01" />
+                            </div>
                         </div>
                     </div>
                 }
-            </div>
-        </div>
-    </ChildContent>
-    <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div>
-                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="LinkExistingTenant">
-                    <i class="fas fa-link"></i>
-                </RVButton>
-                <RVButton CssClass="roovia-btn me-2" Disabled="@(Tenant?.Id > 0)" OnClick="CreateNewTenant">
-                    <i class="fas fa-user-plus"></i>
-                </RVButton>
-                <RVButton CssClass="btn roovia-btn me-2" OnClick="SaveProperty">
-                    <i class="fas fa-save"></i>
-                </RVButton>
-                <RVButton CssClass="btn roovia-btn" OnClick="CloseModal">
-                    <i class="fas fa-times"></i>
-                </RVButton>
-            </div>
-        </div>
-    </FooterContent>
-</RVModal>
 
-@if (createTenantVisible)
-{
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="Property" Value="Property">
-            <Roovia.Components.Pages.Tenants.CreateTenantComponent OnModalClosed="LinkTenantClosed"></Roovia.Components.Pages.Tenants.CreateTenantComponent>
-        </CascadingValue>
-    </CascadingValue>
-}
+                @if (activeTab == "address")
+                {
+                    <div class="property-form-section">
+                        <div class="property-form-row">
+                            <div class="property-form-group property-form-group-full">
+                                <label class="property-form-label">Street Address</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.Street" />
+                            </div>
+                        </div>
 
-@if (linkTenantClicked)
-{
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="Property" Value="Property">
-            <Roovia.Components.Pages.Tenants.LinkTenantDialog OnDialogClosed="LinkTenantClosed"></Roovia.Components.Pages.Tenants.LinkTenantDialog>
-        </CascadingValue>
-    </CascadingValue>
-}
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Unit Number</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.UnitNumber" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Floor</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.Floor" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Complex Name</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.ComplexName" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Building Name</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.BuildingName" />
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">City</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.City" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Suburb</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.Suburb" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Province</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.Province" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Postal Code</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.PostalCode" />
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Country</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.Country" />
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Gate Code</label>
+                                <input type="text" class="property-form-input" @bind="Property.Address.GateCode" />
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group property-form-group-full">
+                                <label class="property-form-label">Delivery Instructions</label>
+                                <textarea class="property-form-textarea" @bind="Property.Address.DeliveryInstructions" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-checkbox">
+                                    <input type="checkbox" @bind="Property.Address.IsResidential" />
+                                    <span>Is Residential Property</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "lease")
+                {
+                    <div class="property-form-section">
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-checkbox">
+                                    <input type="checkbox" @bind="Property.HasTenant" />
+                                    <span>Property Has Tenant</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        @if (Property.HasTenant)
+                        {
+                            <div class="property-form-row">
+                                <div class="property-form-group">
+                                    <label class="property-form-label">Lease Original Start Date</label>
+                                    <input type="date" class="property-form-input" @bind="Property.LeaseOriginalStartDate" />
+                                </div>
+
+                                <div class="property-form-group">
+                                    <label class="property-form-label">Current Lease Start Date</label>
+                                    <input type="date" class="property-form-input" @bind="Property.CurrentLeaseStartDate" />
+                                </div>
+                            </div>
+
+                            <div class="property-form-row">
+                                <div class="property-form-group">
+                                    <label class="property-form-label">Lease End Date</label>
+                                    <input type="date" class="property-form-input" @bind="Property.LeaseEndDate" />
+                                </div>
+
+                                <div class="property-form-group">
+                                    <label class="property-form-label">Current Tenant ID</label>
+                                    <input type="number" class="property-form-input" @bind="Property.CurrentTenantId" readonly />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (activeTab == "commission")
+                {
+                    <div class="property-form-section">
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-label">Commission Type</label>
+                                <select class="property-form-select" @bind="Property.CommissionTypeId">
+                                    @foreach (var type in CommissionTypes)
+                                    {
+                                        <option value="@type.Id">@type.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-label">Commission Value</label>
+                                <input type="number" class="property-form-input" @bind="Property.CommissionValue" step="0.01" />
+                            </div>
+                        </div>
+
+                        <div class="property-form-row">
+                            <div class="property-form-group">
+                                <label class="property-form-checkbox">
+                                    <input type="checkbox" @bind="Property.PaymentsEnabled" />
+                                    <span>Enable Payments</span>
+                                </label>
+                            </div>
+
+                            <div class="property-form-group">
+                                <label class="property-form-checkbox">
+                                    <input type="checkbox" @bind="Property.PaymentsVerify" />
+                                    <span>Verify Payments</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </form>
+        </div>
+
+        <div class="property-modal-footer">
+            <button class="property-btn property-btn-outline" @onclick="Cancel">Cancel</button>
+            <button class="property-btn property-btn-primary" @onclick="Save">Update Property</button>
+        </div>
+    </div>
+</div>
 
 @code {
-    [CascadingParameter]
-    public ApplicationUser CurrentUser { get; set; } = new ApplicationUser();
+    [Parameter] public Property Property { get; set; } = new();
+    [Parameter] public EventCallback<Property> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public List<PropertyStatusType> PropertyStatuses { get; set; } = new();
+    [Parameter] public List<PropertyOwner> PropertyOwners { get; set; } = new();
+    [Parameter] public List<CommissionType> CommissionTypes { get; set; } = new();
 
-    [CascadingParameter]
-    public Property Property { get; set; } = new Property();
+    private string activeTab = "basic";
 
-    [Parameter]
-    public EventCallback<bool> OnModalClosed { get; set; }
-
-    [Inject]
-    public IProperty PropertyService { get; set; }
-
-    [Inject]
-    public IPropertyOwner PropertyOwnerService { get; set; }
-
-    [Inject]
-    public ToastService ToastService { get; set; }
-
-    [Inject]
-    public ITenant TenantService { get; set; }
-
-    bool IsVisible = true;
-    string OwnerName = "";
-
-    PropertyTenant Tenant = new();
-
-    bool createTenantVisible = false;
-    bool linkTenantClicked = false;
-
-    protected override async Task OnInitializedAsync()
+    private async Task Save()
     {
-        // Assuming Property.OwnerId is set, load owner details to display name.
-        if (Property.OwnerId != 0)
+        if (ValidateProperty())
         {
-            var ownerResponse = await PropertyOwnerService.GetPropertyOwnerById(CurrentUser.CompanyId.Value, Property.OwnerId);
-            if (ownerResponse.ResponseInfo.Success)
-            {
-                var owner = ownerResponse.Response as PropertyOwner;
-                OwnerName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "Unknown Owner";
-            }
-        }
-        await GetTenant();
-    }
-
-    private async Task GetTenant()
-    {
-        var tenantResponse = await TenantService.GetTenantWithPropertyId(Property.Id, CurrentUser.CompanyId.Value);
-        if (tenantResponse.ResponseInfo.Success)
-        {
-            Tenant = tenantResponse.Response as PropertyTenant;
-            if (Tenant != null)
-            {
-                Property.HasTenant = true;
-            }
-        }
-        else
-        {
-            ToastService.ShowError($"{tenantResponse.ResponseInfo.Message}", "Error!");
+            await OnSave.InvokeAsync(Property);
         }
     }
 
-    private async Task SaveProperty()
+    private async Task Cancel()
     {
-        try
-        {
-            Property.UpdatedBy = Guid.Parse(CurrentUser.Id);
-            Property.UpdatedDate = DateTime.UtcNow;
-            var response = await PropertyService.UpdateProperty(Property.Id, Property, CurrentUser.CompanyId.Value);
-
-            if (!response.ResponseInfo.Success)
-            {
-                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
-            }
-            else
-            {
-                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
-                await CloseModal();
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
-        }
+        await OnCancel.InvokeAsync();
     }
 
-    private async Task LinkExistingTenant()
+    private void HandleOverlayClick()
     {
-        IsVisible = false;
-        linkTenantClicked = true;
+        Cancel();
     }
 
-    private async Task LinkTenantClosed()
+    private bool ValidateProperty()
     {
-        linkTenantClicked = false;
-        await OnModalClosed.InvokeAsync();
-    }
+        if (string.IsNullOrWhiteSpace(Property.PropertyName))
+            return false;
 
-    private async Task CreateNewTenant()
-    {
-        createTenantVisible = true;
-        await InvokeAsync(() => StateHasChanged());
-    }
+        if (string.IsNullOrWhiteSpace(Property.PropertyCode))
+            return false;
 
-    private async Task CloseModal()
-    {
-        IsVisible = false;
-        await OnModalClosed.InvokeAsync(true);
+        if (Property.OwnerId == 0)
+            return false;
+
+        return true;
     }
 }
 
 <style>
-    .rv-modal-custom {
-        max-width: 100%;
-        margin: 0 auto;
+    /* Using the same modal styles from CreatePropertyModal */
+
+    .property-form-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--border-light);
     }
 
-    .roovia-panel {
-        background-color: var(--content-bg);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--border-divider);
-        overflow: hidden;
-        transition: var(--card-transition);
-    }
-
-    .roovia-panel-header {
-        padding: 1rem;
-        border-bottom: 1px solid var(--border-divider);
-        background-color: var(--subtle-bg);
-    }
-
-    .roovia-panel-body {
-        padding: 1.5rem;
-    }
-
-    .roovia-panel-subsection {
-        padding-top: 1rem;
-        border-top: 1px solid var(--border-light);
-    }
-
-    .rv-form-group {
-        margin-bottom: 1rem;
-    }
-
-    .rv-form-label {
-        display: block;
-        margin-bottom: 0.5rem;
+    .property-form-tab {
+        background: none;
+        border: none;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
         font-weight: 500;
-        color: var(--text-primary);
+        color: var(--text-muted);
+        cursor: pointer;
+        position: relative;
+        transition: color 0.2s;
     }
 
-    .custom-datetime-input {
-        padding: 0.5rem;
+        .property-form-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .property-form-tab.active {
+            color: var(--primary);
+        }
+
+            .property-form-tab.active::after {
+                content: '';
+                position: absolute;
+                bottom: -2px;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background-color: var(--primary);
+            }
+
+    .property-form-textarea {
+        padding: 0.75rem;
         border: 1px solid var(--border-color);
-        border-radius: 0.25rem;
+        border-radius: 6px;
         font-size: 1rem;
+        font-family: inherit;
         background-color: var(--content-bg);
         color: var(--text-primary);
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        resize: vertical;
+        transition: border-color 0.2s;
     }
 
-        .custom-datetime-input:focus {
+        .property-form-textarea:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 5px var(--primary);
         }
 </style>
- *@

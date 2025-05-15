@@ -821,19 +821,19 @@ namespace Roovia.Services
                 // Create Excel export (this would use a library like EPPlus or ClosedXML)
                 var exportData = owners.Select(o => new
                 {
-                    FirstName = o.FirstName,
-                    LastName = o.LastName,
-                    IdNumber = o.IdNumber,
-                    VatNumber = o.VatNumber,
+                    o.FirstName,
+                    o.LastName,
+                    o.IdNumber,
+                    o.VatNumber,
                     Email = o.PrimaryEmail,
                     Phone = o.PrimaryContactNumber,
                     Address = o.Address != null ? $"{o.Address.Street}, {o.Address.City}, {o.Address.Province}" : "",
                     PropertyCount = o.Properties.Count(p => !p.IsRemoved),
                     MonthlyRevenue = o.Properties.Where(p => !p.IsRemoved && p.HasTenant).Sum(p => p.RentalAmount),
                     BankName = o.BankAccount?.BankName?.ToString(),
-                    AccountNumber = o.BankAccount?.AccountNumber,
+                    o.BankAccount?.AccountNumber,
                     CustomerReference = o.CustomerRef,
-                    Tags = o.Tags
+                    o.Tags
                 }).ToList();
 
                 // TODO: Implement actual Excel export logic

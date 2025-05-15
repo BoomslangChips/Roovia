@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Roovia.Models.UserCompanyModels;
 using Microsoft.EntityFrameworkCore.Internal;
 using Roovia.Services.General;
+using Roovia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -100,14 +101,25 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 // Register domain services
+// Register domain services
 builder.Services.AddScoped<IUser, UserService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
+// Register business services
+builder.Services.AddScoped<IProperty, PropertyService>();
+builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
+builder.Services.AddScoped<ITenant, TenantService>();
+builder.Services.AddScoped<IBeneficiary, BeneficiaryService>();
+builder.Services.AddScoped<IVendor, VendorService>();
+builder.Services.AddScoped<IInspection, InspectionService>();
+builder.Services.AddScoped<IMaintenance, MaintenanceService>();
+builder.Services.AddScoped<IPayment, PaymentService>();
+builder.Services.AddScoped<ICdnService, CdnService>();
 // Register utility services
 builder.Services.AddScoped<ToastService>();
 
 // Register CDN service as singleton for better performance
-builder.Services.AddSingleton<ICdnService, CdnService>();
+
 
 // Register the seed data service
 builder.Services.AddScoped<ISeedDataService, SeedDataService>();

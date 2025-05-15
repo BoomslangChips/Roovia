@@ -993,8 +993,8 @@ namespace Roovia.Services
                 .GroupBy(p => new { p.CreatedOn.Year, p.CreatedOn.Month })
                 .Select(g => new
                 {
-                    Year = g.Key.Year,
-                    Month = g.Key.Month,
+                    g.Key.Year,
+                    g.Key.Month,
                     TotalPayments = g.Count(),
                     CompletedPayments = g.Count(p => p.StatusId == 2),
                     TotalAmount = g.Sum(p => p.Amount),
