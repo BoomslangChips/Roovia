@@ -286,6 +286,105 @@ namespace Roovia.Services
             return response;
         }
 
+        public async Task<ResponseModel> AssignUserRole(string userId, SystemRole role)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                // First ensure the user exists
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "User not found.";
+                    return response;
+                }
+
+                // Map SystemRole enum to the actual role names in the database
+                string roleName = role switch
+                {
+                    SystemRole.CEOExecutive => "CEO/Executive",
+                    SystemRole.SystemAdministrator => "System Administrator",
+                    SystemRole.CompanyAdministrator => "Company Administrator",
+                    SystemRole.CompanyFinancialDirector => "Company Financial Director",
+                    SystemRole.RegionalManager => "Regional Manager",
+                    SystemRole.BranchManager => "Branch Manager",
+                    SystemRole.SeniorPropertyManager => "Senior Property Manager",
+                    SystemRole.PropertyManager => "Property Manager",
+                    SystemRole.AssistantPropertyManager => "Assistant Property Manager",
+                    SystemRole.FinancialManager => "Financial Manager",
+                    SystemRole.SeniorAccountant => "Senior Accountant",
+                    SystemRole.Accountant => "Accountant",
+                    SystemRole.AccountsClerk => "Accounts Clerk",
+                    SystemRole.TenantRelationsManager => "Tenant Relations Manager",
+                    SystemRole.TenantOfficer => "Tenant Officer",
+                    SystemRole.LeasingAgent => "Leasing Agent",
+                    SystemRole.MaintenanceManager => "Maintenance Manager",
+                    SystemRole.MaintenanceCoordinator => "Maintenance Coordinator",
+                    SystemRole.SeniorInspector => "Senior Inspector",
+                    SystemRole.PropertyInspector => "Property Inspector",
+                    SystemRole.CustomerSupportManager => "Customer Support Manager",
+                    SystemRole.CustomerSupportAgent => "Customer Support Agent",
+                    SystemRole.ComplianceOfficer => "Compliance Officer",
+                    SystemRole.LegalOfficer => "Legal Officer",
+                    SystemRole.DataAnalyst => "Data Analyst",
+                    SystemRole.ReportsViewer => "Reports Viewer",
+                    SystemRole.Auditor => "Auditor",
+                    SystemRole.PropertyOwnerPortal => "Property Owner Portal",
+                    SystemRole.TenantPortal => "Tenant Portal",
+                    SystemRole.VendorPortal => "Vendor Portal",
+                    _ => role.ToString()
+                };
+
+                var customRole = await _context.Roles
+                    .FirstOrDefaultAsync(r => r.Name == roleName && r.IsActive);
+
+                if (customRole == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Role {roleName} not found in Roles table.";
+                    return response;
+                }
+
+                // Check if the user already has this role assignment
+                var existingAssignment = await _context.UserRoleAssignments
+                    .FirstOrDefaultAsync(ura => ura.UserId == userId && ura.RoleId == customRole.Id);
+
+                if (existingAssignment != null)
+                {
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "User already has this role assigned.";
+                    return response;
+                }
+
+                // Create the new role assignment
+                var roleAssignment = new UserRoleAssignment
+                {
+                    UserId = userId,
+                    RoleId = customRole.Id,
+                    AssignedDate = DateTime.Now,
+                    AssignedBy = userId, // In registration, user assigns their own role
+                    ExpiryDate = null, // No expiry for company admin during registration
+                    IsActive = true
+                };
+
+                await _context.UserRoleAssignments.AddAsync(roleAssignment);
+                await _context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Role assigned successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning role to user {UserId}", userId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while assigning the role: " + ex.Message;
+            }
+
+            return response;
+        }
+
         public async Task<ResponseModel> UpdateUserCompanyId(string userId, int companyId)
         {
             ResponseModel response = new();

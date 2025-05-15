@@ -51,8 +51,8 @@ namespace Roovia.Security
                 return;
             }
 
-            // Global Admins always have access
-            if (user.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()))
+            // System Administrators always have access
+            if (user.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()))
             {
                 isAuthorized = true;
                 return;

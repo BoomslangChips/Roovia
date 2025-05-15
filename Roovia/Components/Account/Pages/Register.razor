@@ -1051,7 +1051,7 @@
             // Set user properties
             user.FirstName = Input.FirstName;
             user.LastName = Input.LastName;
-            user.Role = SystemRole.CompanyAdmin; // Set as Company Admin
+            user.Role = SystemRole.CompanyAdministrator; // Set as Company Administrator
             user.IsActive = false; // Set to pending status until email confirmation
             user.CreatedDate = DateTime.Now;
             user.CreatedBy = "Self-Registration";
@@ -1077,25 +1077,25 @@
 
             // 2. Create the company
             var company = new Company
-            {
-                Name = Input.CompanyName,
-                RegistrationNumber = Input.RegistrationNumber,
-                VatNumber = Input.VatNumber,
-                Website = Input.Website,
-                IsActive = false, // Set to pending until approved
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId,
-                Address = new Address
                 {
-                    Street = Input.Street,
-                    City = Input.City,
-                    Suburb = Input.Suburb,
-                    Province = Input.Province,
-                    PostalCode = Input.PostalCode,
-                    Country = Input.Country,
-                    IsResidential = false // Business address
-                }
-            };
+                    Name = Input.CompanyName,
+                    RegistrationNumber = Input.RegistrationNumber,
+                    VatNumber = Input.VatNumber,
+                    Website = Input.Website,
+                    IsActive = false, // Set to pending until approved
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId,
+                    Address = new Address
+                    {
+                        Street = Input.Street,
+                        City = Input.City,
+                        Suburb = Input.Suburb,
+                        Province = Input.Province,
+                        PostalCode = Input.PostalCode,
+                        Country = Input.Country,
+                        IsResidential = false // Business address
+                    }
+                };
 
             // Create the company
             var companyResult = await UserService.CreateCompany(company);
@@ -1119,50 +1119,50 @@
 
             // 4. Add email and contact number to the company
             var companyEmail = new Email
-            {
-                EmailAddress = Input.CompanyEmail,
-                Description = "Primary",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Company",
-                RelatedEntityId = createdCompany.Id,
-                CompanyId = createdCompany.Id,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    EmailAddress = Input.CompanyEmail,
+                    Description = "Primary",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = createdCompany.Id,
+                    CompanyId = createdCompany.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddEmailAddress(companyEmail);
             Logger.LogInformation("Added company email");
 
             var companyPhone = new ContactNumber
-            {
-                Number = Input.CompanyPhone,
-                Type = ContactNumberType.Landline,
-                Description = "Main Office",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Company",
-                RelatedEntityId = createdCompany.Id,
-                CompanyId = createdCompany.Id,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    Number = Input.CompanyPhone,
+                    Type = ContactNumberType.Landline,
+                    Description = "Main Office",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    RelatedEntityId = createdCompany.Id,
+                    CompanyId = createdCompany.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddContactNumber(companyPhone);
             Logger.LogInformation("Added company phone");
 
             // 5. Create a default branch
             var branch = new Branch
-            {
-                Name = "Main Office",
-                Code = "HQ",
-                CompanyId = createdCompany.Id,
-                Address = company.Address, // Use the same address
-                IsActive = false, // Set to pending
-                IsHeadOffice = true,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    Name = "Main Office",
+                    Code = "HQ",
+                    CompanyId = createdCompany.Id,
+                    Address = company.Address, // Use the same address
+                    IsActive = false, // Set to pending
+                    IsHeadOffice = true,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             var branchResult = await UserService.CreateBranch(branch);
 
@@ -1182,73 +1182,85 @@
 
             // 6. Add email and contact number to the branch
             var branchEmail = new Email
-            {
-                EmailAddress = Input.CompanyEmail,
-                Description = "Primary",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Branch",
-                RelatedEntityId = createdBranch.Id,
-                BranchId = createdBranch.Id,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    EmailAddress = Input.CompanyEmail,
+                    Description = "Primary",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = createdBranch.Id,
+                    BranchId = createdBranch.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddEmailAddress(branchEmail);
             Logger.LogInformation("Added branch email");
 
             var branchPhone = new ContactNumber
-            {
-                Number = Input.CompanyPhone,
-                Type = ContactNumberType.Landline,
-                Description = "Reception",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Branch",
-                RelatedEntityId = createdBranch.Id,
-                BranchId = createdBranch.Id,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    Number = Input.CompanyPhone,
+                    Type = ContactNumberType.Landline,
+                    Description = "Reception",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Branch",
+                    RelatedEntityId = createdBranch.Id,
+                    BranchId = createdBranch.Id,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddContactNumber(branchPhone);
             Logger.LogInformation("Added branch phone");
 
             // 7. Add user's personal email and phone number
             var userEmail = new Email
-            {
-                EmailAddress = Input.Email,
-                Description = "Primary",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "User",
-                RelatedEntityStringId = userId,
-                ApplicationUserId = userId,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    EmailAddress = Input.Email,
+                    Description = "Primary",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    RelatedEntityStringId = userId,
+                    ApplicationUserId = userId,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddEmailAddress(userEmail);
             Logger.LogInformation("Added user email");
 
             var userPhone = new ContactNumber
-            {
-                Number = Input.PhoneNumber,
-                Type = ContactNumberType.Mobile,
-                Description = "Mobile",
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "User",
-                RelatedEntityStringId = userId,
-                ApplicationUserId = userId,
-                CreatedOn = DateTime.Now,
-                CreatedBy = userId
-            };
+                {
+                    Number = Input.PhoneNumber,
+                    Type = ContactNumberType.Mobile,
+                    Description = "Mobile",
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "User",
+                    RelatedEntityStringId = userId,
+                    ApplicationUserId = userId,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
 
             await UserService.AddContactNumber(userPhone);
             Logger.LogInformation("Added user phone");
 
-            // 8. Send email confirmation
+            // 8. Create role assignment in AspNetUserRoleAssignments
+            var roleResult = await UserService.AssignUserRole(userId, SystemRole.CompanyAdministrator);
+            if (!roleResult.ResponseInfo.Success)
+            {
+                Logger.LogError("Failed to assign role to user {UserId}: {Message}", userId, roleResult.ResponseInfo.Message);
+                // Consider whether to treat this as a critical error or continue
+            }
+            else
+            {
+                Logger.LogInformation("Assigned CompanyAdministrator role to user {UserId}", userId);
+            }
+
+            // 9. Send email confirmation
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
             var callbackUrl = NavigationManager.GetUriWithQueryParameters(
@@ -1258,7 +1270,7 @@
             await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
             Logger.LogInformation("Sent confirmation email to {Email}", Input.Email);
 
-            // 9. Navigate to registration confirmation
+            // 10. Navigate to registration confirmation
             RedirectManager.RedirectTo(
                 "Account/RegistrationPending",
                 new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });

@@ -13,6 +13,8 @@ namespace Roovia.Interfaces
         Task<ResponseModel> UpdateUser(string id, ApplicationUser updatedUser);
         Task<ResponseModel> DeleteUser(string id);
         Task<ResponseModel> UpdateUserRole(string userId, SystemRole role);
+
+        Task<ResponseModel> AssignUserRole(string userId, SystemRole role);
         Task<ResponseModel> UpdateUserCompanyId(string userId, int companyId);
         Task<ResponseModel> UpdateUserBranchId(string userId, int branchId);
         Task<ResponseModel> GetAuthenticatedUserInfo();

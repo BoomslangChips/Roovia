@@ -19,7 +19,7 @@ namespace Roovia.Authentication
         {
             var userRole = context.User.FindFirst("Role")?.Value;
 
-            if (userRole == SystemRole.GlobalAdmin.ToString())
+            if (userRole == SystemRole.SystemAdministrator.ToString())
             {
                 context.Succeed(requirement);
             }

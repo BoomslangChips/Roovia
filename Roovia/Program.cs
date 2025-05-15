@@ -106,46 +106,46 @@ builder.Services.AddAuthorization(options =>
     // Register pre-defined policies
     options.AddPolicy(AuthorizationPolicies.GlobalAdminPolicy, policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString())));
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString())));
 
     // Add AdminAccess policy
     options.AddPolicy("AdminAccess", policy =>
         policy.RequireAssertion(context =>
             context.User.HasClaim(c => c.Type == "Role" &&
-                (c.Value == SystemRole.GlobalAdmin.ToString() ||
-                 c.Value == SystemRole.CompanyAdmin.ToString() ||
+                (c.Value == SystemRole.SystemAdministrator.ToString() ||
+                 c.Value == SystemRole.CompanyAdministrator.ToString() ||
                  c.Value == SystemRole.BranchManager.ToString())) ||
             context.User.HasClaim(c => c.Type == "Permission" && c.Value == "settings.users")));
 
     // Add functional area policies
     options.AddPolicy("PropertiesAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("properties"))));
 
     options.AddPolicy("TenantsAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("tenants"))));
 
     options.AddPolicy("BeneficiariesAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("beneficiaries"))));
 
     options.AddPolicy("ReportsAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("reports"))));
 
     options.AddPolicy("PaymentsAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("payments"))));
 
     options.AddPolicy("SystemSettingsAccess", policy =>
         policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.GlobalAdmin.ToString()) ||
+            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString()) ||
             context.User.FindAll("Permission").Any(c => c.Value.StartsWith("settings"))));
 });
 
@@ -222,7 +222,7 @@ else
         }
 
         // Create standard category directories
-        var standardCategories = new[] { "documents", "images", "logos", "profiles"};
+        var standardCategories = new[] { "documents", "images", "logos", "profiles" };
         foreach (var category in standardCategories)
         {
             var categoryPath = Path.Combine(cdnStoragePath, category);

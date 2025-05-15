@@ -12,7 +12,7 @@ using Roovia.Data;
 namespace Roovia.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250515094012_InitialMigration")]
+    [Migration("20250515104054_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />

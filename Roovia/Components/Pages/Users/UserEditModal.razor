@@ -604,14 +604,14 @@
         try
         {
             // Filter companies based on current user's role and company
-            if (currentUserRole == SystemRole.GlobalAdmin)
+            if (currentUserRole == SystemRole.SystemAdministrator)
             {
-                // Global admin can see all companies
+                // System admin can see all companies
                 availableCompanies = Companies.ToList();
                 canAssignAnyCompany = true;
                 canAssignBranch = true;
             }
-            else if (currentUserRole == SystemRole.CompanyAdmin && currentUserCompanyId.HasValue)
+            else if (currentUserRole == SystemRole.CompanyAdministrator && currentUserCompanyId.HasValue)
             {
                 // Company admin can only see their own company
                 availableCompanies = Companies
@@ -695,18 +695,19 @@
         {
             switch (currentUserRole.Value)
             {
-                case SystemRole.GlobalAdmin:
-                    // Global admin can assign all roles
+                case SystemRole.SystemAdministrator:
+                    // System admin can assign all roles
                     availableRoles = Enum.GetNames(typeof(SystemRole)).ToList();
                     break;
 
-                case SystemRole.CompanyAdmin:
+                case SystemRole.CompanyAdministrator:
                     // Company admin can assign roles below their level
                     availableRoles = new List<string>
                     {
                         SystemRole.BranchManager.ToString(),
                         SystemRole.PropertyManager.ToString(),
-                        SystemRole.FinancialOfficer.ToString(),
+                        SystemRole.AssistantPropertyManager.ToString(),
+                        SystemRole.FinancialManager.ToString(),
                         SystemRole.TenantOfficer.ToString(),
                         SystemRole.ReportsViewer.ToString()
                     };
@@ -717,7 +718,7 @@
                     availableRoles = new List<string>
                     {
                         SystemRole.PropertyManager.ToString(),
-                        SystemRole.FinancialOfficer.ToString(),
+                        SystemRole.AssistantPropertyManager.ToString(),
                         SystemRole.TenantOfficer.ToString(),
                         SystemRole.ReportsViewer.ToString()
                     };
@@ -906,7 +907,7 @@
 
                 // For new users, set the company to current user's company if the current user
                 // is not a system admin
-                if (currentUserRole != SystemRole.GlobalAdmin && currentUserCompanyId.HasValue)
+                if (currentUserRole != SystemRole.SystemAdministrator && currentUserCompanyId.HasValue)
                 {
                     userModel.CompanyId = currentUserCompanyId;
 
@@ -933,9 +934,9 @@
                     // Load available branches
                     await LoadBranchesForUser(userModel.CompanyId.Value, userModel.BranchId);
                 }
-                else if (currentUserRole == SystemRole.GlobalAdmin && SelectedBranchId > 0)
+                else if (currentUserRole == SystemRole.SystemAdministrator && SelectedBranchId > 0)
                 {
-                    // For global admin, if a branch was specified, load its company and set both
+                    // For system admin, if a branch was specified, load its company and set both
                     var branchResponse = await UserService.GetBranchById(SelectedBranchId);
                     if (branchResponse.ResponseInfo.Success)
                     {
@@ -966,25 +967,25 @@
         if (!hasManageUsersPermission)
             return false;
 
-        if (currentUserRole == SystemRole.GlobalAdmin)
+        if (currentUserRole == SystemRole.SystemAdministrator)
             return true;
 
         // Can't edit users with higher or equal roles
         if (user.Role.HasValue)
         {
             // Company admins can't edit system admins
-            if (currentUserRole == SystemRole.CompanyAdmin &&
-                user.Role.Value == SystemRole.GlobalAdmin)
+            if (currentUserRole == SystemRole.CompanyAdministrator &&
+                user.Role.Value == SystemRole.SystemAdministrator)
                 return false;
 
             // Branch managers can't edit system admins or company admins
             if (currentUserRole == SystemRole.BranchManager &&
-                (user.Role.Value == SystemRole.GlobalAdmin || user.Role.Value == SystemRole.CompanyAdmin))
+                (user.Role.Value == SystemRole.SystemAdministrator || user.Role.Value == SystemRole.CompanyAdministrator))
                 return false;
         }
 
         // Check company/branch restrictions
-        if (currentUserRole == SystemRole.CompanyAdmin)
+        if (currentUserRole == SystemRole.CompanyAdministrator)
         {
             // Company admin can only edit users in their company
             return user.CompanyId.HasValue && user.CompanyId.Value == currentUserCompanyId;
@@ -1009,18 +1010,18 @@
             // Determine if current user can assign this role based on hierarchy
             switch (currentUserRole.Value)
             {
-                case SystemRole.GlobalAdmin:
-                    // Global admin can assign any role
+                case SystemRole.SystemAdministrator:
+                    // System admin can assign any role
                     return true;
 
-                case SystemRole.CompanyAdmin:
-                    // Company admin can't assign global admin roles
-                    return targetRole != SystemRole.GlobalAdmin;
+                case SystemRole.CompanyAdministrator:
+                    // Company admin can't assign system admin roles
+                    return targetRole != SystemRole.SystemAdministrator;
 
                 case SystemRole.BranchManager:
-                    // Branch manager can't assign global or company admin roles
-                    return targetRole != SystemRole.GlobalAdmin &&
-                           targetRole != SystemRole.CompanyAdmin;
+                    // Branch manager can't assign system admin or company admin roles
+                    return targetRole != SystemRole.SystemAdministrator &&
+                           targetRole != SystemRole.CompanyAdministrator;
 
                 default:
                     // Other roles can only assign property manager and reports viewer
@@ -1042,9 +1043,9 @@
             {
                 var allBranches = (List<Branch>)response.Response;
 
-                if (currentUserRole == SystemRole.GlobalAdmin || currentUserRole == SystemRole.CompanyAdmin)
+                if (currentUserRole == SystemRole.SystemAdministrator || currentUserRole == SystemRole.CompanyAdministrator)
                 {
-                    // Global admin and company admin can see all branches in the company
+                    // System admin and company admin can see all branches in the company
                     availableBranches = allBranches;
                 }
                 else if (currentUserRole == SystemRole.BranchManager && currentUserBranchId.HasValue)
@@ -1271,16 +1272,40 @@
 
     private string GetRoleNameForSystemRole(SystemRole systemRole)
     {
+        // This maps system roles to role names that exist in the database
         return systemRole switch
         {
-            SystemRole.GlobalAdmin => "System Administrator",
-            SystemRole.CompanyAdmin => "Company Administrator",
+            SystemRole.CEOExecutive => "CEO/Executive",
+            SystemRole.SystemAdministrator => "System Administrator",
+            SystemRole.CompanyAdministrator => "Company Administrator",
+            SystemRole.CompanyFinancialDirector => "Company Financial Director",
+            SystemRole.RegionalManager => "Regional Manager",
             SystemRole.BranchManager => "Branch Manager",
+            SystemRole.SeniorPropertyManager => "Senior Property Manager",
             SystemRole.PropertyManager => "Property Manager",
-            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.AssistantPropertyManager => "Assistant Property Manager",
+            SystemRole.FinancialManager => "Financial Manager",
+            SystemRole.SeniorAccountant => "Senior Accountant",
+            SystemRole.Accountant => "Accountant",
+            SystemRole.AccountsClerk => "Accounts Clerk",
+            SystemRole.TenantRelationsManager => "Tenant Relations Manager",
             SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.LeasingAgent => "Leasing Agent",
+            SystemRole.MaintenanceManager => "Maintenance Manager",
+            SystemRole.MaintenanceCoordinator => "Maintenance Coordinator",
+            SystemRole.SeniorInspector => "Senior Inspector",
+            SystemRole.PropertyInspector => "Property Inspector",
+            SystemRole.CustomerSupportManager => "Customer Support Manager",
+            SystemRole.CustomerSupportAgent => "Customer Support Agent",
+            SystemRole.ComplianceOfficer => "Compliance Officer",
+            SystemRole.LegalOfficer => "Legal Officer",
+            SystemRole.DataAnalyst => "Data Analyst",
             SystemRole.ReportsViewer => "Reports Viewer",
-            _ => "Property Manager" // Default
+            SystemRole.Auditor => "Auditor",
+            SystemRole.PropertyOwnerPortal => "Property Owner Portal",
+            SystemRole.TenantPortal => "Tenant Portal",
+            SystemRole.VendorPortal => "Vendor Portal",
+            _ => systemRole.ToString() // Fallback to the enum name
         };
     }
 
@@ -1538,13 +1563,36 @@
     {
         return role switch
         {
-            SystemRole.GlobalAdmin => "System Admin",
-            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.CEOExecutive => "CEO/Executive",
+            SystemRole.SystemAdministrator => "System Admin",
+            SystemRole.CompanyAdministrator => "Company Admin",
+            SystemRole.CompanyFinancialDirector => "Financial Director",
+            SystemRole.RegionalManager => "Regional Manager",
             SystemRole.BranchManager => "Branch Manager",
+            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
             SystemRole.PropertyManager => "Property Manager",
-            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
+            SystemRole.FinancialManager => "Financial Manager",
+            SystemRole.SeniorAccountant => "Sr. Accountant",
+            SystemRole.Accountant => "Accountant",
+            SystemRole.AccountsClerk => "Accounts Clerk",
+            SystemRole.TenantRelationsManager => "Tenant Relations",
             SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.LeasingAgent => "Leasing Agent",
+            SystemRole.MaintenanceManager => "Maintenance Manager",
+            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
+            SystemRole.SeniorInspector => "Sr. Inspector",
+            SystemRole.PropertyInspector => "Inspector",
+            SystemRole.CustomerSupportManager => "Support Manager",
+            SystemRole.CustomerSupportAgent => "Support Agent",
+            SystemRole.ComplianceOfficer => "Compliance",
+            SystemRole.LegalOfficer => "Legal Officer",
+            SystemRole.DataAnalyst => "Data Analyst",
             SystemRole.ReportsViewer => "Reports Viewer",
+            SystemRole.Auditor => "Auditor",
+            SystemRole.PropertyOwnerPortal => "Property Owner",
+            SystemRole.TenantPortal => "Tenant Portal",
+            SystemRole.VendorPortal => "Vendor Portal",
             _ => "Unknown"
         };
     }

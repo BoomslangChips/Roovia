@@ -1,4 +1,4 @@
-﻿@inject NavigationManager NavigationManager
+﻿inject NavigationManager NavigationManager
 
 <div class="user-card">
     <div class="user-card-avatar">
@@ -64,7 +64,7 @@
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to edit this user" : "Edit User")" />
 
-@*         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
+        @*         <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
                   OnClick="HandleRoles" CssClass="action-btn"
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to manage this user's roles" : "Manage Roles")" />
@@ -74,7 +74,7 @@
                   Disabled="@DisableActions"
                   Title="@(DisableActions ? "You don't have permission to reset this user's password" : "Reset Password")" />
 
-@*         <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
+        @*         <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
                   Size="xs" IconLeft="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
                   OnClick="HandleToggleStatus" CssClass="action-btn"
                   Disabled="@DisableActions"
@@ -132,13 +132,36 @@
     {
         return role switch
         {
-            SystemRole.GlobalAdmin => "role-admin",
-            SystemRole.CompanyAdmin => "role-company-admin",
+            SystemRole.CEOExecutive => "role-executive",
+            SystemRole.SystemAdministrator => "role-admin",
+            SystemRole.CompanyAdministrator => "role-company-admin",
+            SystemRole.CompanyFinancialDirector => "role-financial-director",
+            SystemRole.RegionalManager => "role-regional-manager",
             SystemRole.BranchManager => "role-branch-manager",
+            SystemRole.SeniorPropertyManager => "role-senior-property-manager",
             SystemRole.PropertyManager => "role-property-manager",
-            SystemRole.FinancialOfficer => "role-financial",
+            SystemRole.AssistantPropertyManager => "role-assistant-property-manager",
+            SystemRole.FinancialManager => "role-financial-manager",
+            SystemRole.SeniorAccountant => "role-senior-accountant",
+            SystemRole.Accountant => "role-accountant",
+            SystemRole.AccountsClerk => "role-accounts-clerk",
+            SystemRole.TenantRelationsManager => "role-tenant-relations",
             SystemRole.TenantOfficer => "role-tenant",
+            SystemRole.LeasingAgent => "role-leasing",
+            SystemRole.MaintenanceManager => "role-maintenance-manager",
+            SystemRole.MaintenanceCoordinator => "role-maintenance",
+            SystemRole.SeniorInspector => "role-senior-inspector",
+            SystemRole.PropertyInspector => "role-inspector",
+            SystemRole.CustomerSupportManager => "role-support-manager",
+            SystemRole.CustomerSupportAgent => "role-support",
+            SystemRole.ComplianceOfficer => "role-compliance",
+            SystemRole.LegalOfficer => "role-legal",
+            SystemRole.DataAnalyst => "role-analyst",
             SystemRole.ReportsViewer => "role-reports",
+            SystemRole.Auditor => "role-auditor",
+            SystemRole.PropertyOwnerPortal => "role-owner",
+            SystemRole.TenantPortal => "role-tenant-portal",
+            SystemRole.VendorPortal => "role-vendor",
             _ => "role-default"
         };
     }
@@ -147,13 +170,36 @@
     {
         return role switch
         {
-            SystemRole.GlobalAdmin => "System Admin",
-            SystemRole.CompanyAdmin => "Company Admin",
+            SystemRole.CEOExecutive => "CEO/Executive",
+            SystemRole.SystemAdministrator => "System Admin",
+            SystemRole.CompanyAdministrator => "Company Admin",
+            SystemRole.CompanyFinancialDirector => "Financial Director",
+            SystemRole.RegionalManager => "Regional Manager",
             SystemRole.BranchManager => "Branch Manager",
+            SystemRole.SeniorPropertyManager => "Sr. Property Manager",
             SystemRole.PropertyManager => "Property Manager",
-            SystemRole.FinancialOfficer => "Financial Officer",
+            SystemRole.AssistantPropertyManager => "Asst. Property Manager",
+            SystemRole.FinancialManager => "Financial Manager",
+            SystemRole.SeniorAccountant => "Sr. Accountant",
+            SystemRole.Accountant => "Accountant",
+            SystemRole.AccountsClerk => "Accounts Clerk",
+            SystemRole.TenantRelationsManager => "Tenant Relations",
             SystemRole.TenantOfficer => "Tenant Officer",
+            SystemRole.LeasingAgent => "Leasing Agent",
+            SystemRole.MaintenanceManager => "Maintenance Manager",
+            SystemRole.MaintenanceCoordinator => "Maintenance Coord.",
+            SystemRole.SeniorInspector => "Sr. Inspector",
+            SystemRole.PropertyInspector => "Inspector",
+            SystemRole.CustomerSupportManager => "Support Manager",
+            SystemRole.CustomerSupportAgent => "Support Agent",
+            SystemRole.ComplianceOfficer => "Compliance",
+            SystemRole.LegalOfficer => "Legal Officer",
+            SystemRole.DataAnalyst => "Data Analyst",
             SystemRole.ReportsViewer => "Reports Viewer",
+            SystemRole.Auditor => "Auditor",
+            SystemRole.PropertyOwnerPortal => "Property Owner",
+            SystemRole.TenantPortal => "Tenant Portal",
+            SystemRole.VendorPortal => "Vendor Portal",
             _ => "Unknown"
         };
     }
