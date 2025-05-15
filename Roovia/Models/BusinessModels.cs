@@ -880,7 +880,7 @@ namespace Roovia.Models.BusinessModels
         public decimal Amount { get; set; }
 
         [StringLength(3)]
-        public string Currency { get; set; } = "USD";
+        public string Currency { get; set; } = "ZAR";
 
         public int StatusId { get; set; } // FK to PaymentStatusType
 

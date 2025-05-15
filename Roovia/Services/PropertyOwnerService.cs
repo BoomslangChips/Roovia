@@ -5,6 +5,7 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using Roovia.Services.General;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,6 +26,286 @@ namespace Roovia.Services
             _logger = logger;
         }
 
+
+
+        public async Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                // Generate unique customer reference if not provided
+                if (string.IsNullOrEmpty(propertyOwner.CustomerRef))
+                {
+                    propertyOwner.CustomerRef = await GenerateCustomerRef(context, propertyOwner.CompanyId);
+                }
+
+                // Set audit fields
+                propertyOwner.CreatedOn = DateTime.Now;
+
+                // Add the property owner
+                await context.PropertyOwners.AddAsync(propertyOwner);
+                await context.SaveChangesAsync();
+
+                // Create CDN folder structure for owner
+                var cdnPath = $"company-{propertyOwner.CompanyId}/owners/{propertyOwner.Id}";
+                await _cdnService.CreateFolderAsync("owners", cdnPath, "profile");
+                await _cdnService.CreateFolderAsync("owners", cdnPath, "documents");
+                await _cdnService.CreateFolderAsync("owners", cdnPath, "properties");
+
+                // Reload with related data
+                var createdOwner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses)
+                    .Include(o => o.ContactNumbers)
+                    .Include(o => o.Properties)
+                    .FirstOrDefaultAsync(o => o.Id == propertyOwner.Id);
+
+                response.Response = createdOwner;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owner created successfully.";
+
+                _logger.LogInformation("Property owner created with ID: {OwnerId}", propertyOwner.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating property owner");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while creating the property owner: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadOwnerProfilePicture(int ownerId, IFormFile file)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var owner = await context.PropertyOwners
+                    .FirstOrDefaultAsync(o => o.Id == ownerId && !o.IsRemoved);
+
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
+
+                // Delete existing profile picture if any
+                if (!string.IsNullOrEmpty(owner.ProfilePictureUrl))
+                {
+                    await _cdnService.DeleteFileAsync(owner.ProfilePictureUrl);
+                }
+
+                // Upload new profile picture with base64 backup
+                var cdnPath = $"company-{owner.CompanyId}/owners/{owner.Id}/profile";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "owners",
+                        cdnPath
+                    );
+                }
+
+                // Update owner profile picture URL
+                owner.ProfilePictureUrl = cdnUrl;
+                owner.UpdatedDate = DateTime.Now;
+
+                await context.SaveChangesAsync();
+
+                response.Response = new { ProfilePictureUrl = cdnUrl };
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Profile picture uploaded successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading owner profile picture");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the profile picture: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadOwnerDocument(int ownerId, IFormFile file, int documentTypeId, string description = null)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var owner = await context.PropertyOwners
+                    .FirstOrDefaultAsync(o => o.Id == ownerId && !o.IsRemoved);
+
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
+
+                // Upload document with base64 backup
+                var cdnPath = $"company-{owner.CompanyId}/owners/{owner.Id}/documents";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "owners",
+                        cdnPath
+                    );
+                }
+
+                // Create owner document record
+                var ownerDocument = new OwnerDocument
+                {
+                    OwnerId = ownerId,
+                    CompanyId = owner.CompanyId,
+                    FileName = file.FileName,
+                    Description = description,
+                    DocumentTypeId = documentTypeId,
+                    CdnUrl = cdnUrl,
+                    FileSize = file.Length,
+                    ContentType = file.ContentType,
+                    HasBase64Backup = true,
+                    UploadedOn = DateTime.Now,
+                    UploadedBy = owner.UpdatedBy ?? "System",
+                    IsActive = true
+                };
+
+                context.OwnerDocuments.Add(ownerDocument);
+                await context.SaveChangesAsync();
+
+                response.Response = ownerDocument;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Document uploaded successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading owner document");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the document: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetOwnerDocuments(int ownerId, int? documentTypeId = null)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var query = context.OwnerDocuments
+                    .Include(d => d.DocumentType)
+                    .Where(d => d.OwnerId == ownerId && d.IsActive);
+
+                if (documentTypeId.HasValue)
+                {
+                    query = query.Where(d => d.DocumentTypeId == documentTypeId.Value);
+                }
+
+                var documents = await query
+                    .OrderByDescending(d => d.UploadedOn)
+                    .ToListAsync();
+
+                response.Response = documents;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Documents retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving owner documents");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving documents: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        // Helper method to generate unique customer reference
+        private async Task<string> GenerateCustomerRef(ApplicationDbContext context, int companyId)
+        {
+            var company = await context.Companies.FindAsync(companyId);
+            var prefix = company?.Name.Substring(0, 3).ToUpper() ?? "OWN";
+
+            var lastRef = await context.PropertyOwners
+                .Where(o => o.CompanyId == companyId)
+                .OrderByDescending(o => o.Id)
+                .Select(o => o.CustomerRef)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(lastRef) && lastRef.StartsWith(prefix))
+            {
+                var lastNumber = lastRef.Substring(lastRef.Length - 4);
+                if (int.TryParse(lastNumber, out int number))
+                {
+                    nextNumber = number + 1;
+                }
+            }
+
+            return $"{prefix}-{nextNumber:D4}";
+        }
+
+        // Existing methods would remain but could be enhanced with additional lookups...
+        public async Task<ResponseModel> GetPropertyOwnerById(int companyId, int id)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var owner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses.Where(e => e.IsActive))
+                    .Include(o => o.ContactNumbers.Where(c => c.IsActive))
+                    .Include(o => o.Properties)
+                        .ThenInclude(p => p.Status)
+                    .Include(o => o.Properties)
+                        .ThenInclude(p => p.MainImage)
+                    .Include(o => o.Documents)
+                        .ThenInclude(d => d.DocumentType)
+                    .Where(o => o.Id == id && o.CompanyId == companyId && !o.IsRemoved)
+                    .FirstOrDefaultAsync();
+
+                if (owner != null)
+                {
+                    response.Response = owner;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property owner retrieved successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving property owner {OwnerId} for company {CompanyId}", id, companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving the property owner: " + ex.Message;
+            }
+
+            return response;
+        }
         public async Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner)
         {
             ResponseModel response = new();

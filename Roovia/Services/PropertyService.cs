@@ -5,10 +5,12 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Roovia.Services.General;
 
 namespace Roovia.Services
 {
@@ -16,13 +18,16 @@ namespace Roovia.Services
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<PropertyService> _logger;
+        private readonly ICdnService _cdnService;
 
         public PropertyService(
             IDbContextFactory<ApplicationDbContext> contextFactory,
-            ILogger<PropertyService> logger)
+            ILogger<PropertyService> logger,
+            ICdnService cdnService)
         {
             _contextFactory = contextFactory;
             _logger = logger;
+            _cdnService = cdnService;
         }
 
         public async Task<ResponseModel> CreateProperty(Property property)
@@ -43,6 +48,12 @@ namespace Roovia.Services
                 // Add the property
                 await context.Properties.AddAsync(property);
                 await context.SaveChangesAsync();
+
+                // Create CDN folder structure for property
+                var cdnFolderPath = $"company-{property.CompanyId}/properties/{property.Id}";
+                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "images");
+                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "documents");
+                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "inspections");
 
                 // Reload with related data
                 var createdProperty = await context.Properties
@@ -70,6 +81,81 @@ namespace Roovia.Services
             return response;
         }
 
+        public async Task<ResponseModel> UploadPropertyMainImage(int propertyId, IFormFile file, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var property = await context.Properties
+                    .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved);
+
+                if (property == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property not found.";
+                    return response;
+                }
+
+                // Delete old main image if exists
+                if (property.MainImageId.HasValue)
+                {
+                    var oldImage = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == property.MainImageId.Value);
+
+                    if (oldImage != null)
+                    {
+                        await _cdnService.DeleteFileAsync(oldImage.Url);
+                    }
+                }
+
+                // Upload new image with base64 backup
+                var cdnPath = $"company-{property.CompanyId}/properties/{property.Id}/images";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "properties",
+                        cdnPath
+                    );
+                }
+
+                // Get the file metadata
+                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                if (fileMetadata != null)
+                {
+                    property.MainImageId = fileMetadata.Id;
+                    property.UpdatedDate = DateTime.Now;
+                    property.UpdatedBy = userId;
+
+                    await context.SaveChangesAsync();
+
+                    response.Response = new { ImageUrl = cdnUrl, FileId = fileMetadata.Id };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Main image uploaded successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Failed to save image metadata.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading property main image");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the image: " + ex.Message;
+            }
+
+            return response;
+        }
+
         public async Task<ResponseModel> GetPropertyById(int id, int companyId)
         {
             ResponseModel response = new();
@@ -91,9 +177,13 @@ namespace Roovia.Services
                         .ThenInclude(b => b.BenStatus)
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.Status)
+                    .Include(p => p.Tenants)
+                        .ThenInclude(t => t.LeaseDocument)
                     .Include(p => p.Inspections)
+                        .ThenInclude(i => i.ReportDocument)
                     .Include(p => p.MaintenanceTickets)
                     .Include(p => p.Payments)
+                        .ThenInclude(p => p.ReceiptDocument)
                     .Where(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved)
                     .FirstOrDefaultAsync();
 
@@ -158,7 +248,6 @@ namespace Roovia.Services
                 property.CommissionValue = updatedProperty.CommissionValue;
                 property.PaymentsEnabled = updatedProperty.PaymentsEnabled;
                 property.PaymentsVerify = updatedProperty.PaymentsVerify;
-                property.MainImageId = updatedProperty.MainImageId;
                 property.Address = updatedProperty.Address;
                 property.Tags = updatedProperty.Tags;
                 property.UpdatedDate = DateTime.Now;
@@ -353,12 +442,15 @@ namespace Roovia.Services
                 var properties = await context.Properties
                     .Include(p => p.Owner)
                     .Include(p => p.Status)
+                    .Include(p => p.MainImage)
                     .Include(p => p.Tenants.Where(t => !t.IsRemoved))
                         .ThenInclude(t => t.Status)
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.EmailAddresses.Where(e => e.IsActive))
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(p => p.Tenants)
+                        .ThenInclude(t => t.LeaseDocument)
                     .Where(p => p.CompanyId == companyId && !p.IsRemoved && p.HasTenant)
                     .OrderBy(p => p.PropertyCode)
                     .ToListAsync();
@@ -482,6 +574,52 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error retrieving property statistics for company {CompanyId}", companyId);
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while retrieving statistics: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetPropertyDocumentFolders(int propertyId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var cdnPath = $"company-{companyId}/properties/{propertyId}/documents";
+                var folders = await _cdnService.GetFoldersAsync("properties", cdnPath);
+
+                response.Response = folders;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Document folders retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving document folders for property {PropertyId}", propertyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving document folders: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetPropertyCdnFiles(int propertyId, int companyId, string category = "images")
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var cdnPath = $"company-{companyId}/properties/{propertyId}/{category}";
+                var files = await _cdnService.GetFilesAsync("properties", cdnPath);
+
+                response.Response = files;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = $"Property {category} retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving CDN files for property {PropertyId}", propertyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving files: " + ex.Message;
             }
 
             return response;

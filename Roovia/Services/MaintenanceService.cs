@@ -5,10 +5,12 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Roovia.Services.General;
 
 namespace Roovia.Services
 {
@@ -63,6 +65,12 @@ namespace Roovia.Services
                 await context.MaintenanceTickets.AddAsync(ticket);
                 await context.SaveChangesAsync();
 
+                // Create CDN folder structure for ticket
+                var cdnFolderPath = $"company-{companyId}/maintenance/{ticket.Id}";
+                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "images");
+                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "documents");
+                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "invoices");
+
                 // Reload with related data
                 var createdTicket = await GetTicketWithDetails(context, ticket.Id);
 
@@ -76,7 +84,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Maintenance ticket created successfully.";
 
-                _logger.LogInformation("Maintenance ticket created with ID: {TicketId} for property {PropertyId}", 
+                _logger.LogInformation("Maintenance ticket created with ID: {TicketId} for property {PropertyId}",
                     ticket.Id, ticket.PropertyId);
             }
             catch (Exception ex)
@@ -84,6 +92,81 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error creating maintenance ticket");
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while creating the maintenance ticket: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadMaintenanceExpenseReceipt(int expenseId, IFormFile file, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var expense = await context.MaintenanceExpenses
+                    .Include(e => e.MaintenanceTicket)
+                    .FirstOrDefaultAsync(e => e.Id == expenseId);
+
+                if (expense == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Expense not found.";
+                    return response;
+                }
+
+                // Delete old receipt if exists
+                if (expense.ReceiptDocumentId.HasValue)
+                {
+                    var oldReceipt = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == expense.ReceiptDocumentId.Value);
+
+                    if (oldReceipt != null)
+                    {
+                        await _cdnService.DeleteFileAsync(oldReceipt.Url);
+                    }
+                }
+
+                // Upload new receipt with base64 backup
+                var cdnPath = $"company-{expense.MaintenanceTicket.CompanyId}/maintenance/{expense.MaintenanceTicketId}/invoices";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "maintenance",
+                        cdnPath
+                    );
+                }
+
+                // Get the file metadata
+                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                if (fileMetadata != null)
+                {
+                    expense.ReceiptDocumentId = fileMetadata.Id;
+                    expense.IsApproved = true; // Auto-approve if receipt is uploaded
+
+                    await context.SaveChangesAsync();
+
+                    response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Receipt uploaded successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading maintenance expense receipt");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the receipt: " + ex.Message;
             }
 
             return response;
@@ -176,7 +259,12 @@ namespace Roovia.Services
                 ticket.ActualCost = updatedTicket.ActualCost;
                 ticket.TenantResponsible = updatedTicket.TenantResponsible;
                 ticket.RequiresApproval = updatedTicket.RequiresApproval;
+                ticket.IsApproved = updatedTicket.IsApproved;
+                ticket.ApprovedBy = updatedTicket.ApprovedBy;
+                ticket.ApprovalDate = updatedTicket.ApprovalDate;
                 ticket.RequiresTenantAccess = updatedTicket.RequiresTenantAccess;
+                ticket.TenantNotified = updatedTicket.TenantNotified;
+                ticket.TenantNotificationDate = updatedTicket.TenantNotificationDate;
                 ticket.AccessInstructions = updatedTicket.AccessInstructions;
                 ticket.CompletionNotes = updatedTicket.CompletionNotes;
                 ticket.IssueResolved = updatedTicket.IssueResolved;
@@ -221,6 +309,7 @@ namespace Roovia.Services
                 var ticket = await context.MaintenanceTickets
                     .Include(t => t.Comments)
                     .Include(t => t.Expenses)
+                        .ThenInclude(e => e.ReceiptDocument)
                     .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId);
 
                 if (ticket == null)
@@ -228,6 +317,12 @@ namespace Roovia.Services
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "Maintenance ticket not found.";
                     return response;
+                }
+
+                // Delete associated documents from CDN
+                foreach (var expense in ticket.Expenses.Where(e => e.ReceiptDocument != null))
+                {
+                    await _cdnService.DeleteFileAsync(expense.ReceiptDocument.Url);
                 }
 
                 // Delete related data
@@ -273,7 +368,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Maintenance tickets retrieved successfully.";
 
-                _logger.LogInformation("Retrieved {Count} maintenance tickets for property {PropertyId}", 
+                _logger.LogInformation("Retrieved {Count} maintenance tickets for property {PropertyId}",
                     tickets.Count, propertyId);
             }
             catch (Exception ex)
@@ -371,7 +466,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Expense added successfully.";
 
-                _logger.LogInformation("Expense added to maintenance ticket {TicketId}: Amount {Amount}", 
+                _logger.LogInformation("Expense added to maintenance ticket {TicketId}: Amount {Amount}",
                     ticketId, expense.Amount);
             }
             catch (Exception ex)
@@ -426,12 +521,12 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Ticket assigned to vendor successfully.";
 
-                _logger.LogInformation("Maintenance ticket {TicketId} assigned to vendor {VendorId} by {UserId}", 
+                _logger.LogInformation("Maintenance ticket {TicketId} assigned to vendor {VendorId} by {UserId}",
                     ticketId, vendorId, userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning maintenance ticket {TicketId} to vendor {VendorId}", 
+                _logger.LogError(ex, "Error assigning maintenance ticket {TicketId} to vendor {VendorId}",
                     ticketId, vendorId);
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while assigning the ticket: " + ex.Message;
@@ -475,7 +570,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Maintenance ticket completed successfully.";
 
-                _logger.LogInformation("Maintenance ticket {TicketId} completed by {UserId}. Issue resolved: {IssueResolved}", 
+                _logger.LogInformation("Maintenance ticket {TicketId} completed by {UserId}. Issue resolved: {IssueResolved}",
                     ticketId, userId, issueResolved);
             }
             catch (Exception ex)
@@ -502,7 +597,7 @@ namespace Roovia.Services
                     .Include(t => t.Priority)
                     .Include(t => t.Status)
                     .Include(t => t.Vendor)
-                    .Where(t => t.CompanyId == companyId && 
+                    .Where(t => t.CompanyId == companyId &&
                                (t.StatusId == 1 || t.StatusId == 2)) // Open or In Progress
                     .OrderBy(t => t.PriorityId)
                     .ThenBy(t => t.CreatedOn)
@@ -512,7 +607,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Open maintenance tickets retrieved successfully.";
 
-                _logger.LogInformation("Retrieved {Count} open maintenance tickets for company {CompanyId}", 
+                _logger.LogInformation("Retrieved {Count} open maintenance tickets for company {CompanyId}",
                     tickets.Count, companyId);
             }
             catch (Exception ex)
@@ -564,6 +659,124 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error retrieving maintenance statistics for company {CompanyId}", companyId);
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while retrieving statistics: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetMaintenanceDocuments(int ticketId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var cdnPath = $"company-{companyId}/maintenance/{ticketId}/documents";
+                var files = await _cdnService.GetFilesAsync("maintenance", cdnPath);
+
+                response.Response = files;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Maintenance documents retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving documents for maintenance ticket {TicketId}", ticketId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving documents: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadMaintenanceImage(int ticketId, IFormFile file, string category, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var ticket = await context.MaintenanceTickets
+                    .FirstOrDefaultAsync(t => t.Id == ticketId);
+
+                if (ticket == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Maintenance ticket not found.";
+                    return response;
+                }
+
+                // Upload image with base64 backup
+                var cdnPath = $"company-{ticket.CompanyId}/maintenance/{ticket.Id}/{category}";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "maintenance",
+                        cdnPath
+                    );
+                }
+
+                response.Response = new { ImageUrl = cdnUrl };
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Image uploaded successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading image for maintenance ticket {TicketId}", ticketId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the image: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> ApproveMaintenanceTicket(int ticketId, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var ticket = await context.MaintenanceTickets
+                    .FirstOrDefaultAsync(t => t.Id == ticketId);
+
+                if (ticket == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Maintenance ticket not found.";
+                    return response;
+                }
+
+                if (!ticket.RequiresApproval)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "This ticket does not require approval.";
+                    return response;
+                }
+
+                ticket.IsApproved = true;
+                ticket.ApprovedBy = userId;
+                ticket.ApprovalDate = DateTime.Now;
+                ticket.UpdatedDate = DateTime.Now;
+                ticket.UpdatedBy = userId;
+
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Maintenance ticket approved successfully.";
+
+                _logger.LogInformation("Maintenance ticket {TicketId} approved by {UserId}", ticketId, userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving maintenance ticket {TicketId}", ticketId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while approving the ticket: " + ex.Message;
             }
 
             return response;

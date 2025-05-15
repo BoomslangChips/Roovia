@@ -5,10 +5,12 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Roovia.Services.General;
 
 namespace Roovia.Services
 {
@@ -77,6 +79,10 @@ namespace Roovia.Services
                 await context.PropertyPayments.AddAsync(payment);
                 await context.SaveChangesAsync();
 
+                // Create CDN folder for payment documents
+                var cdnFolderPath = $"company-{companyId}/payments/{payment.Id}";
+                await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "receipts");
+
                 // Reload with related data
                 var createdPayment = await GetPaymentWithDetails(context, payment.Id);
 
@@ -87,7 +93,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Property payment created successfully.";
 
-                _logger.LogInformation("Property payment created with ID: {PaymentId} for property {PropertyId}", 
+                _logger.LogInformation("Property payment created with ID: {PaymentId} for property {PropertyId}",
                     payment.Id, payment.PropertyId);
             }
             catch (Exception ex)
@@ -95,6 +101,82 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error creating property payment");
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while creating the payment: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadPaymentReceipt(int paymentId, IFormFile file, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var payment = await context.PropertyPayments
+                    .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+                if (payment == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Payment not found.";
+                    return response;
+                }
+
+                // Delete old receipt if exists
+                if (payment.ReceiptDocumentId.HasValue)
+                {
+                    var oldReceipt = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == payment.ReceiptDocumentId.Value);
+
+                    if (oldReceipt != null)
+                    {
+                        await _cdnService.DeleteFileAsync(oldReceipt.Url);
+                    }
+                }
+
+                // Upload new receipt with base64 backup
+                var cdnPath = $"company-{payment.CompanyId}/payments/{payment.Id}/receipts";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "payments",
+                        cdnPath
+                    );
+                }
+
+                // Get the file metadata
+                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                if (fileMetadata != null)
+                {
+                    payment.ReceiptDocumentId = fileMetadata.Id;
+                    payment.ReceiptNumber = $"RCP-{payment.PaymentReference}";
+                    payment.UpdatedDate = DateTime.Now;
+                    payment.UpdatedBy = userId;
+
+                    await context.SaveChangesAsync();
+
+                    response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Receipt uploaded successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading payment receipt");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the receipt: " + ex.Message;
             }
 
             return response;
@@ -185,7 +267,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Payment status updated successfully.";
 
-                _logger.LogInformation("Payment status updated: {PaymentId} to status {StatusId} by {UserId}", 
+                _logger.LogInformation("Payment status updated: {PaymentId} to status {StatusId} by {UserId}",
                     paymentId, statusId, userId);
             }
             catch (Exception ex)
@@ -230,7 +312,7 @@ namespace Roovia.Services
 
                 // Get allocation rules
                 var rules = await GetPaymentRules(context, payment.CompanyId);
-                
+
                 // Calculate allocations based on beneficiaries
                 var allocations = new List<PaymentAllocation>();
                 var remainingAmount = payment.Amount;
@@ -298,7 +380,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Payment allocated successfully.";
 
-                _logger.LogInformation("Payment allocated: {PaymentId} with {Count} allocations", 
+                _logger.LogInformation("Payment allocated: {PaymentId} with {Count} allocations",
                     paymentId, allocations.Count);
             }
             catch (Exception ex)
@@ -338,6 +420,10 @@ namespace Roovia.Services
                 await context.BeneficiaryPayments.AddAsync(payment);
                 await context.SaveChangesAsync();
 
+                // Create CDN folder for beneficiary payment documents
+                var cdnFolderPath = $"company-{beneficiary.CompanyId}/beneficiary-payments/{payment.Id}";
+                await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "documents");
+
                 // Reload with related data
                 var createdPayment = await context.BeneficiaryPayments
                     .Include(bp => bp.Beneficiary)
@@ -349,7 +435,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Beneficiary payment created successfully.";
 
-                _logger.LogInformation("Beneficiary payment created with ID: {PaymentId} for beneficiary {BeneficiaryId}", 
+                _logger.LogInformation("Beneficiary payment created with ID: {PaymentId} for beneficiary {BeneficiaryId}",
                     payment.Id, payment.BeneficiaryId);
             }
             catch (Exception ex)
@@ -453,7 +539,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Payment schedule created successfully.";
 
-                _logger.LogInformation("Payment schedule created with ID: {ScheduleId} for property {PropertyId}", 
+                _logger.LogInformation("Payment schedule created with ID: {ScheduleId} for property {PropertyId}",
                     schedule.Id, schedule.PropertyId);
             }
             catch (Exception ex)
@@ -507,7 +593,7 @@ namespace Roovia.Services
                         PaymentReference = await GenerateUniquePaymentReference(context),
                         PaymentTypeId = 1, // Rent payment
                         Amount = schedule.Amount,
-                        Currency = "USD",
+                        Currency = "ZAR",
                         StatusId = 1, // Pending
                         DueDate = schedule.NextDueDate.Value,
                         CreatedOn = DateTime.Now,
@@ -518,7 +604,7 @@ namespace Roovia.Services
 
                     // Update schedule
                     schedule.LastGeneratedDate = DateTime.Now;
-                    schedule.NextDueDate = CalculateNextDueDate(schedule.NextDueDate.Value, 
+                    schedule.NextDueDate = CalculateNextDueDate(schedule.NextDueDate.Value,
                         schedule.FrequencyId, schedule.DayOfMonth);
 
                     paymentsGenerated++;
@@ -530,7 +616,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = $"{paymentsGenerated} scheduled payments generated successfully.";
 
-                _logger.LogInformation("Generated {Count} scheduled payments for company {CompanyId}", 
+                _logger.LogInformation("Generated {Count} scheduled payments for company {CompanyId}",
                     paymentsGenerated, companyId);
             }
             catch (Exception ex)
@@ -566,7 +652,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Payment rule created successfully.";
 
-                _logger.LogInformation("Payment rule created with ID: {RuleId} for company {CompanyId}", 
+                _logger.LogInformation("Payment rule created with ID: {RuleId} for company {CompanyId}",
                     rule.Id, companyId);
             }
             catch (Exception ex)
@@ -626,6 +712,85 @@ namespace Roovia.Services
             return response;
         }
 
+        public async Task<ResponseModel> GetPaymentDocuments(int paymentId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var cdnPath = $"company-{companyId}/payments/{paymentId}/receipts";
+                var files = await _cdnService.GetFilesAsync("payments", cdnPath);
+
+                response.Response = files;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Payment documents retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving documents for payment {PaymentId}", paymentId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving documents: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadBeneficiaryPaymentProof(int beneficiaryPaymentId, IFormFile file, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var payment = await context.BeneficiaryPayments
+                    .Include(bp => bp.Beneficiary)
+                    .FirstOrDefaultAsync(bp => bp.Id == beneficiaryPaymentId);
+
+                if (payment == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Beneficiary payment not found.";
+                    return response;
+                }
+
+                // Upload proof of payment
+                var cdnPath = $"company-{payment.Beneficiary.CompanyId}/beneficiary-payments/{payment.Id}/documents";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "payments",
+                        cdnPath
+                    );
+                }
+
+                // Update payment status if proof is uploaded
+                if (payment.StatusId == 1) // Pending
+                {
+                    payment.StatusId = 3; // Awaiting Confirmation
+                }
+
+                await context.SaveChangesAsync();
+
+                response.Response = new { ProofUrl = cdnUrl };
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Payment proof uploaded successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading beneficiary payment proof");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the proof: " + ex.Message;
+            }
+
+            return response;
+        }
+
         // Helper methods
         private async Task<PropertyPayment> GetPaymentWithDetails(ApplicationDbContext context, int paymentId)
         {
@@ -671,8 +836,8 @@ namespace Roovia.Services
         private async Task<decimal> CalculateLateFee(ApplicationDbContext context, int companyId, decimal amount, int daysLate)
         {
             var rule = await context.PaymentRules
-                .FirstOrDefaultAsync(r => r.CompanyId == companyId && 
-                                         r.IsActive && 
+                .FirstOrDefaultAsync(r => r.CompanyId == companyId &&
+                                         r.IsActive &&
                                          r.RuleTypeId == 1); // Late fee rule
 
             if (rule == null)

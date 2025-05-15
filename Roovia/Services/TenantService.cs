@@ -5,10 +5,12 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Roovia.Services.General;
 
 namespace Roovia.Services
 {
@@ -16,13 +18,16 @@ namespace Roovia.Services
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<TenantService> _logger;
+        private readonly ICdnService _cdnService;
 
         public TenantService(
             IDbContextFactory<ApplicationDbContext> contextFactory,
-            ILogger<TenantService> logger)
+            ILogger<TenantService> logger,
+            ICdnService cdnService)
         {
             _contextFactory = contextFactory;
             _logger = logger;
+            _cdnService = cdnService;
         }
 
         public async Task<ResponseModel> CreateTenant(PropertyTenant tenant, int companyId)
@@ -58,6 +63,11 @@ namespace Roovia.Services
 
                 await context.SaveChangesAsync();
 
+                // Create CDN folder structure for tenant
+                var cdnFolderPath = $"company-{companyId}/tenants/{tenant.Id}";
+                await _cdnService.CreateFolderAsync("tenants", cdnFolderPath, "documents");
+                await _cdnService.CreateFolderAsync("tenants", cdnFolderPath, "receipts");
+
                 // Reload with related data
                 var createdTenant = await context.PropertyTenants
                     .Include(t => t.EmailAddresses)
@@ -78,6 +88,81 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error creating tenant");
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while creating the tenant: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadLeaseDocument(int tenantId, IFormFile file, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // Delete old lease document if exists
+                if (tenant.LeaseDocumentId.HasValue)
+                {
+                    var oldDocument = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == tenant.LeaseDocumentId.Value);
+
+                    if (oldDocument != null)
+                    {
+                        await _cdnService.DeleteFileAsync(oldDocument.Url);
+                    }
+                }
+
+                // Upload new lease document with base64 backup
+                var cdnPath = $"company-{tenant.CompanyId}/tenants/{tenant.Id}/documents";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "tenants",
+                        cdnPath
+                    );
+                }
+
+                // Get the file metadata
+                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                if (fileMetadata != null)
+                {
+                    tenant.LeaseDocumentId = fileMetadata.Id;
+                    tenant.UpdatedDate = DateTime.Now;
+                    tenant.UpdatedBy = userId;
+
+                    await context.SaveChangesAsync();
+
+                    response.Response = new { DocumentUrl = cdnUrl, FileId = fileMetadata.Id };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Lease document uploaded successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Failed to save document metadata.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading lease document");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the document: " + ex.Message;
             }
 
             return response;
@@ -170,7 +255,10 @@ namespace Roovia.Services
                 tenant.ResponsibleAgent = updatedTenant.ResponsibleAgent;
                 tenant.ResponsibleUser = updatedTenant.ResponsibleUser;
                 tenant.Tags = updatedTenant.Tags;
-                tenant.LeaseDocumentId = updatedTenant.LeaseDocumentId;
+                tenant.MoveInDate = updatedTenant.MoveInDate;
+                tenant.MoveOutDate = updatedTenant.MoveOutDate;
+                tenant.MoveInInspectionCompleted = updatedTenant.MoveInInspectionCompleted;
+                tenant.MoveInInspectionId = updatedTenant.MoveInInspectionId;
                 tenant.UpdatedDate = DateTime.Now;
                 tenant.UpdatedBy = updatedTenant.UpdatedBy;
 
@@ -264,6 +352,7 @@ namespace Roovia.Services
                     .Include(t => t.ContactNumbers.Where(c => c.IsActive))
                     .Include(t => t.Property)
                     .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
                     .Where(t => t.CompanyId == companyId && !t.IsRemoved)
                     .OrderBy(t => t.LastName)
                     .ThenBy(t => t.FirstName)
@@ -297,6 +386,7 @@ namespace Roovia.Services
                     .Include(t => t.EmailAddresses.Where(e => e.IsActive))
                     .Include(t => t.ContactNumbers.Where(c => c.IsActive))
                     .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
                     .Where(t => t.PropertyId == propertyId && t.CompanyId == companyId && !t.IsRemoved)
                     .OrderBy(t => t.LeaseStartDate)
                     .ToListAsync();
@@ -530,6 +620,7 @@ namespace Roovia.Services
                     .Include(t => t.ContactNumbers.Where(c => c.IsActive))
                     .Include(t => t.Property)
                     .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
                     .Where(t => t.CompanyId == companyId &&
                                 !t.IsRemoved &&
                                 t.Balance < 0 &&
@@ -573,6 +664,7 @@ namespace Roovia.Services
                     TenantsInArrears = tenants.Count(t => t.Balance < 0),
                     TotalArrears = Math.Abs(tenants.Where(t => t.Balance < 0).Sum(t => t.Balance)),
                     TotalMonthlyRent = tenants.Where(t => t.StatusId == 1).Sum(t => t.RentAmount),
+                    TotalDepositsHeld = tenants.Where(t => t.StatusId == 1).Sum(t => t.DepositBalance ?? 0),
                     TenantsByStatus = tenants.GroupBy(t => t.StatusId)
                         .Select(g => new { StatusId = g.Key, Count = g.Count() })
                         .ToList()
@@ -587,6 +679,125 @@ namespace Roovia.Services
                 _logger.LogError(ex, "Error retrieving tenant statistics for company {CompanyId}", companyId);
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while retrieving statistics: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetTenantDocuments(int tenantId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                var cdnPath = $"company-{companyId}/tenants/{tenantId}/documents";
+                var files = await _cdnService.GetFilesAsync("tenants", cdnPath);
+
+                response.Response = files;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenant documents retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving documents for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving documents: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UploadTenantDocument(int tenantId, IFormFile file, string category, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // Upload document with base64 backup
+                var cdnPath = $"company-{tenant.CompanyId}/tenants/{tenant.Id}/{category}";
+                string cdnUrl;
+
+                using (var stream = file.OpenReadStream())
+                {
+                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        "tenants",
+                        cdnPath
+                    );
+                }
+
+                response.Response = new { DocumentUrl = cdnUrl };
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Document uploaded successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading document for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while uploading the document: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> LinkMoveInInspection(int tenantId, int inspectionId, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // Verify inspection exists
+                var inspection = await context.PropertyInspections
+                    .FirstOrDefaultAsync(i => i.Id == inspectionId && i.PropertyId == tenant.PropertyId);
+
+                if (inspection == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Inspection not found or not for this property.";
+                    return response;
+                }
+
+                tenant.MoveInInspectionId = inspectionId;
+                tenant.MoveInInspectionCompleted = true;
+                tenant.UpdatedDate = DateTime.Now;
+                tenant.UpdatedBy = userId;
+
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Move-in inspection linked successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error linking move-in inspection for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while linking the inspection: " + ex.Message;
             }
 
             return response;
