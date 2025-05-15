@@ -1,12 +1,13 @@
-﻿@using Roovia.Components.Elements.Forms
-@using Roovia.Interfaces
-@using Roovia.Security
-@using Roovia.Services
+﻿@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using Roovia.Components.Elements.Forms
 @using Roovia.Data
-@using System.Security.Claims
+@using Roovia.Interfaces
+@using Roovia.Security
+@using Roovia.Services
+@using Roovia.Services.General
 @inject IUser UserService
 @inject UserManager<ApplicationUser> UserManager
 @inject ToastService ToastService

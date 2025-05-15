@@ -12,13 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Roovia.Data;
-using Roovia.Interfaces;
 using System.Collections.Generic;
 using Roovia.Models;
 using Roovia.Models.ProjectCdnConfigModels;
 
 
-namespace Roovia.Interfaces
+namespace Roovia.Services.General
 {
     public interface ICdnService
     {

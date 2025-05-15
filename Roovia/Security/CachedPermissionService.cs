@@ -5,7 +5,7 @@ using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.UserCompanyModels;
 
-namespace Roovia.Services
+namespace Roovia.Security
 {
     public class CachedPermissionService : IPermissionService
     {
@@ -1218,8 +1218,8 @@ namespace Roovia.Services
                         rp.Permission.IsActive)
                     .Select(rp => new
                     {
-                        PermissionId = rp.PermissionId,
-                        SystemName = rp.Permission.SystemName
+                        rp.PermissionId,
+                        rp.Permission.SystemName
                     })
                     .ToListAsync();
 

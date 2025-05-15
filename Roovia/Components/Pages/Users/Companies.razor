@@ -1,9 +1,8 @@
 ﻿@page "/companies"
-@using Roovia.Interfaces
-
-
-@using Roovia.Services
 @using Microsoft.AspNetCore.Authorization
+@using Roovia.Interfaces
+@using Roovia.Services
+@using Roovia.Services.General
 @attribute [Authorize(Policy = "AdminAccess")]
 @rendermode InteractiveServer
 @inject IUser UserService

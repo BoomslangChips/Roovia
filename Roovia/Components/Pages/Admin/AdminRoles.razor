@@ -1,9 +1,10 @@
 ﻿@page "/admin/roles"
+@using Microsoft.AspNetCore.Authorization
 @using Roovia.Interfaces
 @using Roovia.Models.UserCompanyModels
 @using Roovia.Security
 @using Roovia.Services
-@using Microsoft.AspNetCore.Authorization
+@using Roovia.Services.General
 @attribute [Authorize(Policy = "GlobalAdminOnly")]
 @rendermode InteractiveServer
 @inject IPermissionService PermissionService

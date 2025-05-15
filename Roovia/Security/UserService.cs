@@ -8,7 +8,7 @@ using Roovia.Models.UserCompanyModels;
 using System.Security.Claims;
 using System.Text;
 
-namespace Roovia.Services
+namespace Roovia.Security
 {
     public class UserService : IUser
     {
@@ -795,8 +795,8 @@ namespace Roovia.Services
                 }
 
                 // Check if there are users or branches associated
-                if ((company.Users != null && company.Users.Any()) ||
-                    (company.Branches != null && company.Branches.Any()))
+                if (company.Users != null && company.Users.Any() ||
+                    company.Branches != null && company.Branches.Any())
                 {
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "Cannot delete company with associated users or branches.";

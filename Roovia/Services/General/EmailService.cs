@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using System.Net.Mime;
 using Roovia.Models.UserCompanyModels;
 
-namespace Roovia.Services
+namespace Roovia.Services.General
 {
     public interface IEmailService
     {

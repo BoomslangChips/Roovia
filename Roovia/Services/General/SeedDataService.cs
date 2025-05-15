@@ -8,7 +8,7 @@ using Roovia.Models.ProjectCdnConfigModels;
 using System;
 using System.Threading.Tasks;
 
-namespace Roovia.Services
+namespace Roovia.Services.General
 {
     public interface ISeedDataService
     {

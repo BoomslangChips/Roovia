@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Timers;
 using Timer = System.Timers.Timer;
 
-namespace Roovia.Services
+namespace Roovia.Services.General
 {
     public enum ToastType
     {
@@ -62,7 +62,7 @@ namespace Roovia.Services
         public event Action<Guid> OnHide;
         public event Action OnClearAll;
         
-        private Dictionary<Guid, System.Timers.Timer> _timers = new Dictionary<Guid, Timer>();
+        private Dictionary<Guid, Timer> _timers = new Dictionary<Guid, Timer>();
         
         // Show a toast with auto-generated title based on type
         public void Show(string message, ToastType type = ToastType.Info, int durationSeconds = 5, bool autoHide = true)

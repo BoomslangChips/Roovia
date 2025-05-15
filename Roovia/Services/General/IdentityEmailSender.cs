@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Roovia.Models.UserCompanyModels;
 
-using Roovia.Services;
-
-namespace Roovia.Services
+namespace Roovia.Services.General
 {
     public class IdentityEmailSender : IEmailSender<ApplicationUser>
     {
