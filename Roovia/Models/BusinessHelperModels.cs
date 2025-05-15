@@ -148,7 +148,7 @@ namespace Roovia.Models.BusinessHelperModels
 
         [Required]
         [StringLength(20)]
-        public string Number { get; set; }
+        public string? Number { get; set; }
 
         public ContactNumberType Type { get; set; } = ContactNumberType.Mobile;
 
@@ -161,7 +161,7 @@ namespace Roovia.Models.BusinessHelperModels
         // Entity relationship fields
         [Required]
         [StringLength(20)]
-        public string RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
+        public string? RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
 
         public int? RelatedEntityId { get; set; } // For entities with int IDs
 
@@ -275,7 +275,7 @@ namespace Roovia.Models.BusinessHelperModels
         [Required]
         [EmailAddress]
         [StringLength(256)]
-        public string EmailAddress { get; set; }
+        public string? EmailAddress { get; set; }
 
         [StringLength(50)]
         public string? Description { get; set; } // e.g., "Work", "Personal", etc.
@@ -286,7 +286,7 @@ namespace Roovia.Models.BusinessHelperModels
         // Entity relationship fields
         [Required]
         [StringLength(20)]
-        public string RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
+        public string? RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
 
         public int? RelatedEntityId { get; set; } // For entities with int IDs
 

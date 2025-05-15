@@ -20,11 +20,11 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [Required]
         [StringLength(50)]
-        public string RegistrationNumber { get; set; }
+        public string? RegistrationNumber { get; set; }
 
         [StringLength(200)]
         public string? Website { get; set; }
@@ -70,7 +70,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -117,7 +117,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(100)]
         public string? Code { get; set; } // Unique branch code
@@ -155,7 +155,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -171,7 +171,7 @@ namespace Roovia.Models.UserCompanyModels
 
         // Navigation properties
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
 
         [ForeignKey("StatusId")]
         public virtual BranchStatusType? Status { get; set; }
@@ -198,8 +198,8 @@ namespace Roovia.Models.UserCompanyModels
     public class ApplicationUser : IdentityUser
     {
         // Override the base Email property to handle it through our custom Email entity
-        public override string Email { get => GetPrimaryEmail(); set => SetPrimaryEmail(value); }
-        public override string PhoneNumber { get => GetPrimaryPhoneNumber(); set => SetPrimaryPhoneNumber(value); }
+        public override string? Email { get => GetPrimaryEmail(); set => SetPrimaryEmail(value); }
+        public override string? PhoneNumber { get => GetPrimaryPhoneNumber(); set => SetPrimaryPhoneNumber(value); }
 
         [StringLength(50)]
         public string? FirstName { get; set; }
@@ -318,10 +318,10 @@ namespace Roovia.Models.UserCompanyModels
         private string GetPrimaryEmail()
         {
             var primaryEmail = EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-            return primaryEmail?.EmailAddress ?? base.Email;
+            return primaryEmail?.EmailAddress ?? base.Email ?? string.Empty;
         }
 
-        private void SetPrimaryEmail(string value)
+        private void SetPrimaryEmail(string? value)
         {
             base.Email = value; // Keep the base property updated for Identity
 
@@ -351,11 +351,11 @@ namespace Roovia.Models.UserCompanyModels
         {
             var primaryPhone = ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
             if (primaryPhone != null)
-                return primaryPhone?.Number ?? base.PhoneNumber;
+                return primaryPhone?.Number ?? base.PhoneNumber ?? string.Empty;
             else return string.Empty;
         }
 
-        private void SetPrimaryPhoneNumber(string value)
+        private void SetPrimaryPhoneNumber(string? value)
         {
             base.PhoneNumber = value; // Keep the base property updated for Identity
 
@@ -403,16 +403,16 @@ namespace Roovia.Models.UserCompanyModels
         public int Id { get; set; }
 
         [Required, MaxLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [Required, MaxLength(250)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [Required, MaxLength(50)]
-        public string Category { get; set; }
+        public string? Category { get; set; }
 
         [Required, MaxLength(100)]
-        public string SystemName { get; set; }
+        public string? SystemName { get; set; }
 
         public int DisplayOrder { get; set; }
 
@@ -423,7 +423,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -441,10 +441,10 @@ namespace Roovia.Models.UserCompanyModels
         public int Id { get; set; }
 
         [Required, MaxLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [Required, MaxLength(250)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public int? CompanyId { get; set; } // Null for system roles, populated for company-specific roles
 
@@ -463,7 +463,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [MaxLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -497,14 +497,14 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("RoleId")]
-        public virtual Role Role { get; set; }
+        public virtual Role? Role { get; set; }
 
         [ForeignKey("PermissionId")]
-        public virtual Permission Permission { get; set; }
+        public virtual Permission? Permission { get; set; }
     }
 
     public class UserRoleAssignment
@@ -513,7 +513,7 @@ namespace Roovia.Models.UserCompanyModels
         public int Id { get; set; }
 
         [Required]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         public int RoleId { get; set; }
 
@@ -521,7 +521,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [MaxLength(100)]
-        public string AssignedBy { get; set; }
+        public string? AssignedBy { get; set; }
 
         public DateTime? ExpiryDate { get; set; }
 
@@ -529,10 +529,10 @@ namespace Roovia.Models.UserCompanyModels
 
         // Navigation properties
         [ForeignKey("UserId")]
-        public virtual ApplicationUser User { get; set; }
+        public virtual ApplicationUser? User { get; set; }
 
         [ForeignKey("RoleId")]
-        public virtual Role Role { get; set; }
+        public virtual Role? Role { get; set; }
     }
 
     public class UserPermissionOverride
@@ -541,7 +541,7 @@ namespace Roovia.Models.UserCompanyModels
         public int Id { get; set; }
 
         [Required]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         [Required]
         public int PermissionId { get; set; }
@@ -558,7 +558,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [Required]
         [MaxLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -567,10 +567,10 @@ namespace Roovia.Models.UserCompanyModels
 
         // Navigation properties
         [ForeignKey("UserId")]
-        public virtual ApplicationUser User { get; set; }
+        public virtual ApplicationUser? User { get; set; }
 
         [ForeignKey("PermissionId")]
-        public virtual Permission Permission { get; set; }
+        public virtual Permission? Permission { get; set; }
     }
 
     #endregion

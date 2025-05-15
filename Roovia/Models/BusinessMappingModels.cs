@@ -14,7 +14,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -32,7 +32,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -50,7 +50,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -68,7 +68,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -86,7 +86,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -104,7 +104,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -126,7 +126,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -144,7 +144,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -166,7 +166,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -188,7 +188,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -206,7 +206,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -224,7 +224,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -242,7 +242,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -266,7 +266,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -284,7 +284,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -304,7 +304,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -322,7 +322,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -340,7 +340,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -362,7 +362,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -380,7 +380,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -398,7 +398,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -420,7 +420,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -438,7 +438,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -456,7 +456,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -476,7 +476,7 @@ namespace Roovia.Models.BusinessMappingModels
 
         [Required]
         [StringLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(200)]
         public string? Description { get; set; }

@@ -12,10 +12,10 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public int Id { get; set; }
 
         [Required, MaxLength(255)]
-        public string BaseUrl { get; set; }
+        public string? BaseUrl { get; set; }
 
         [Required, MaxLength(255)]
-        public string StoragePath { get; set; }
+        public string? StoragePath { get; set; }
 
         public int MaxFileSizeMB { get; set; } = 200;
 
@@ -41,7 +41,7 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public int Id { get; set; }
 
         [Required, MaxLength(50)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [MaxLength(100)]
         public string? DisplayName { get; set; }
@@ -71,10 +71,10 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public int Id { get; set; }
 
         [Required, MaxLength(255)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [Required, MaxLength(500)]
-        public string Path { get; set; }
+        public string? Path { get; set; }
 
         public int? ParentId { get; set; }
 
@@ -105,10 +105,10 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public int Id { get; set; }
 
         [Required, MaxLength(500)]
-        public string FilePath { get; set; }
+        public string? FilePath { get; set; }
 
         [Required, MaxLength(255)]
-        public string FileName { get; set; }
+        public string? FileName { get; set; }
 
         [MaxLength(100)]
         public string? ContentType { get; set; }
@@ -139,7 +139,7 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public DateTime? DeletedDate { get; set; }
 
         [Required, MaxLength(255)]
-        public string Url { get; set; }
+        public string? Url { get; set; }
 
         [MaxLength(100)]
         public string? Checksum { get; set; }
@@ -162,10 +162,10 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public CdnFileMetadata? FileMetadata { get; set; }
 
         [Required]
-        public string Base64Data { get; set; }
+        public string? Base64Data { get; set; }
 
         [Required, MaxLength(100)]
-        public string MimeType { get; set; }
+        public string? MimeType { get; set; }
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
     }
@@ -206,7 +206,7 @@ namespace Roovia.Models.ProjectCdnConfigModels
         public DateTime Timestamp { get; set; } = DateTime.Now;
 
         [Required, MaxLength(20)]
-        public string ActionType { get; set; } // Upload, Download, Delete, View, Create, Rename
+        public string? ActionType { get; set; } // Upload, Download, Delete, View, Create, Rename
 
         [MaxLength(500)]
         public string? FilePath { get; set; }

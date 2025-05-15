@@ -1,0 +1,3323 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Roovia.Migrations
+{
+    /// <inheritdoc />
+    public partial class InitialMigration : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "AspNetPermissions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
+                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    SystemName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetPermissions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetRoles",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetRoles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_AccessLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ActionType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    FilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Username = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    IsSuccess = table.Column<bool>(type: "bit", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    FileSizeBytes = table.Column<long>(type: "bigint", nullable: true),
+                    ResponseTimeMs = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_AccessLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_Categories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DisplayName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    AllowedFileTypes = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_Categories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_Configurations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BaseUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    StoragePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    MaxFileSizeMB = table.Column<int>(type: "int", nullable: false),
+                    AllowedFileTypes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    EnableCaching = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_Configurations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_Media",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    FilePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    ContentType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    FileSize = table.Column<long>(type: "bigint", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    UploadedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UploadedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Media", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_AllocationTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_AllocationTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_BeneficiaryPaymentStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_BeneficiaryPaymentStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_BeneficiaryStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_BeneficiaryStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_BeneficiaryTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_BeneficiaryTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_BranchStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_BranchStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_CommissionTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_CommissionTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_CompanyStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_CompanyStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ConditionLevels",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    ScoreValue = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ConditionLevels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_DocumentAccessLevels",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_DocumentAccessLevels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_DocumentCategories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_DocumentCategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_DocumentTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_DocumentTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ExpenseCategories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ExpenseCategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_InspectionAreas",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_InspectionAreas", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_InspectionStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_InspectionStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_InspectionTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_InspectionTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_MaintenanceCategories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_MaintenanceCategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_MaintenanceImageTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_MaintenanceImageTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_MaintenancePriorities",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    ResponseTimeHours = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_MaintenancePriorities", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_MaintenanceStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_MaintenanceStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_NotificationChannels",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_NotificationChannels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_NotificationTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Icon = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_NotificationTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PaymentFrequencies",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DaysInterval = table.Column<int>(type: "int", nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PaymentFrequencies", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PaymentMethods",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    ProcessingFeePercentage = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: true),
+                    ProcessingFeeFixed = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PaymentMethods", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PaymentRuleTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PaymentRuleTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PaymentStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PaymentStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PaymentTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PaymentTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PermissionCategories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Icon = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PermissionCategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PropertyImageTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PropertyImageTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PropertyStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PropertyStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_RoleTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_RoleTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_SubscriptionPlans",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    BillingCycleDays = table.Column<int>(type: "int", nullable: false),
+                    MaxUsers = table.Column<int>(type: "int", nullable: false),
+                    MaxProperties = table.Column<int>(type: "int", nullable: false),
+                    MaxBranches = table.Column<int>(type: "int", nullable: false),
+                    HasTrialPeriod = table.Column<bool>(type: "bit", nullable: false),
+                    TrialPeriodDays = table.Column<int>(type: "int", nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_SubscriptionPlans", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_TenantStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_TenantStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ThemeTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    CssVariables = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    IsDarkTheme = table.Column<bool>(type: "bit", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ThemeTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_TwoFactorMethods",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_TwoFactorMethods", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_UserStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_UserStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetRoleClaims",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetRoleClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_Folders",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Path = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ParentId = table.Column<int>(type: "int", nullable: true),
+                    CategoryId = table.Column<int>(type: "int", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_Folders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CDN_Folders_CDN_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "CDN_Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CDN_Folders_CDN_Folders_ParentId",
+                        column: x => x.ParentId,
+                        principalTable: "CDN_Folders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_UsageStatistics",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CategoryId = table.Column<int>(type: "int", nullable: true),
+                    FileCount = table.Column<int>(type: "int", nullable: false),
+                    StorageUsedBytes = table.Column<long>(type: "bigint", nullable: false),
+                    UploadCount = table.Column<int>(type: "int", nullable: false),
+                    DownloadCount = table.Column<int>(type: "int", nullable: false),
+                    DeleteCount = table.Column<int>(type: "int", nullable: false),
+                    RecordedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_UsageStatistics", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CDN_UsageStatistics_CDN_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "CDN_Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_FileMetadata",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    FileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    ContentType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    FileSize = table.Column<long>(type: "bigint", nullable: false),
+                    CategoryId = table.Column<int>(type: "int", nullable: false),
+                    FolderId = table.Column<int>(type: "int", nullable: true),
+                    UploadDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UploadedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    LastAccessDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AccessCount = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Url = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Checksum = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    HasBase64Backup = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_FileMetadata", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CDN_FileMetadata_CDN_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "CDN_Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CDN_FileMetadata_CDN_Folders_FolderId",
+                        column: x => x.FolderId,
+                        principalTable: "CDN_Folders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetCompanies",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    RegistrationNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Website = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    VatNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    MainLogoId = table.Column<int>(type: "int", nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    StatusId = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    SubscriptionPlanId = table.Column<int>(type: "int", nullable: true),
+                    SubscriptionStartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SubscriptionEndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsTrialPeriod = table.Column<bool>(type: "bit", nullable: false),
+                    MaxUsers = table.Column<int>(type: "int", nullable: true),
+                    MaxProperties = table.Column<int>(type: "int", nullable: true),
+                    MaxBranches = table.Column<int>(type: "int", nullable: true),
+                    Settings = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetCompanies", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetCompanies_CDN_FileMetadata_MainLogoId",
+                        column: x => x.MainLogoId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_AspNetCompanies_Lookup_CompanyStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_CompanyStatusTypes",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CDN_Base64Storage",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FileMetadataId = table.Column<int>(type: "int", nullable: false),
+                    Base64Data = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MimeType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CDN_Base64Storage", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CDN_Base64Storage_CDN_FileMetadata_FileMetadataId",
+                        column: x => x.FileMetadataId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetBranches",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    MainLogoId = table.Column<int>(type: "int", nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    StatusId = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsHeadOffice = table.Column<bool>(type: "bit", nullable: false),
+                    Settings = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    MaxUsers = table.Column<int>(type: "int", nullable: true),
+                    MaxProperties = table.Column<int>(type: "int", nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetBranches", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetBranches_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AspNetBranches_CDN_FileMetadata_MainLogoId",
+                        column: x => x.MainLogoId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_AspNetBranches_Lookup_BranchStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_BranchStatusTypes",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Data_PropertyOwners",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IdNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    VatNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    CustomerRef = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Data_PropertyOwners", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyOwners_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Finance_PaymentRules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    RuleName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    RuleTypeId = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    GracePeriodDays = table.Column<int>(type: "int", nullable: true),
+                    LateFeeAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    LateFeePercentage = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: true),
+                    CompoundLateFees = table.Column<bool>(type: "bit", nullable: false),
+                    SendReminders = table.Column<bool>(type: "bit", nullable: false),
+                    FirstReminderDays = table.Column<int>(type: "int", nullable: true),
+                    SecondReminderDays = table.Column<int>(type: "int", nullable: true),
+                    FinalReminderDays = table.Column<int>(type: "int", nullable: true),
+                    AutoAllocate = table.Column<bool>(type: "bit", nullable: false),
+                    AllocationOrder = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Finance_PaymentRules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentRules_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentRules_Lookup_PaymentRuleTypes_RuleTypeId",
+                        column: x => x.RuleTypeId,
+                        principalTable: "Lookup_PaymentRuleTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Maint_Vendors",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ContactPerson = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Specializations = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    IsPreferred = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    Rating = table.Column<decimal>(type: "decimal(3,2)", precision: 3, scale: 2, nullable: true),
+                    TotalJobs = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    HasInsurance = table.Column<bool>(type: "bit", nullable: false),
+                    InsurancePolicyNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    InsuranceExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Maint_Vendors", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Maint_Vendors_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetCustomRoles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    IsSystemRole = table.Column<bool>(type: "bit", nullable: false),
+                    IsPreset = table.Column<bool>(type: "bit", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetCustomRoles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetCustomRoles_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_AspNetCustomRoles_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUsers",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IdNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    ProfilePictureId = table.Column<int>(type: "int", nullable: true),
+                    EmployeeNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    JobTitle = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Department = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    HireDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Role = table.Column<int>(type: "int", nullable: true),
+                    StatusId = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    RequireChangePasswordOnLogin = table.Column<bool>(type: "bit", nullable: false),
+                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    IsPushNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    UserPreferences = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    IsTwoFactorRequired = table.Column<bool>(type: "bit", nullable: false),
+                    PreferredTwoFactorMethod = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastLoginDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LoginFailureCount = table.Column<int>(type: "int", nullable: false),
+                    LastLoginFailureDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastLoginIpAddress = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "bit", nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "bit", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_CDN_FileMetadata_ProfilePictureId",
+                        column: x => x.ProfilePictureId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_Lookup_UserStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_UserStatusTypes",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Data_Properties",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    OwnerId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    PropertyName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PropertyCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CustomerRef = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    RentalAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PropertyAccountBalance = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    ServiceLevel = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    HasTenant = table.Column<bool>(type: "bit", nullable: false),
+                    LeaseOriginalStartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CurrentLeaseStartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LeaseEndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CurrentTenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CommissionTypeId = table.Column<int>(type: "int", nullable: false),
+                    CommissionValue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PaymentsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    PaymentsVerify = table.Column<bool>(type: "bit", nullable: false),
+                    MainImageId = table.Column<int>(type: "int", nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Data_Properties", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_CDN_FileMetadata_MainImageId",
+                        column: x => x.MainImageId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_Data_PropertyOwners_OwnerId",
+                        column: x => x.OwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_Lookup_CommissionTypes_CommissionTypeId",
+                        column: x => x.CommissionTypeId,
+                        principalTable: "Lookup_CommissionTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_Lookup_PropertyStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_PropertyStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetRolePermissions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RoleId = table.Column<int>(type: "int", nullable: false),
+                    PermissionId = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetRolePermissions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetRolePermissions_AspNetCustomRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetCustomRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AspNetRolePermissions_AspNetPermissions_PermissionId",
+                        column: x => x.PermissionId,
+                        principalTable: "AspNetPermissions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserClaims",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserClaims_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserLogins",
+                columns: table => new
+                {
+                    LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ProviderKey = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ProviderDisplayName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserLogins", x => new { x.LoginProvider, x.ProviderKey });
+                    table.ForeignKey(
+                        name: "FK_AspNetUserLogins_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserPermissionOverrides",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    PermissionId = table.Column<int>(type: "int", nullable: false),
+                    IsGranted = table.Column<bool>(type: "bit", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserPermissionOverrides", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserPermissionOverrides_AspNetPermissions_PermissionId",
+                        column: x => x.PermissionId,
+                        principalTable: "AspNetPermissions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserPermissionOverrides_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserRoleAssignments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    RoleId = table.Column<int>(type: "int", nullable: false),
+                    AssignedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AssignedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserRoleAssignments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserRoleAssignments_AspNetCustomRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetCustomRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserRoleAssignments_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserRoles",
+                columns: table => new
+                {
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserRoles", x => new { x.UserId, x.RoleId });
+                    table.ForeignKey(
+                        name: "FK_AspNetUserRoles_AspNetRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserRoles_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUserTokens",
+                columns: table => new
+                {
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUserTokens", x => new { x.UserId, x.LoginProvider, x.Name });
+                    table.ForeignKey(
+                        name: "FK_AspNetUserTokens_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Data_PropertyBeneficiaries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    BenTypeId = table.Column<int>(type: "int", nullable: false),
+                    CommissionTypeId = table.Column<int>(type: "int", nullable: false),
+                    CommissionValue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PropertyAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    BenStatusId = table.Column<int>(type: "int", nullable: false),
+                    NotifyEmail = table.Column<bool>(type: "bit", nullable: false),
+                    NotifySMS = table.Column<bool>(type: "bit", nullable: false),
+                    CustomerRefBeneficiary = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CustomerRefProperty = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Agent = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Data_PropertyBeneficiaries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_Lookup_BeneficiaryStatusTypes_BenStatusId",
+                        column: x => x.BenStatusId,
+                        principalTable: "Lookup_BeneficiaryStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_Lookup_BeneficiaryTypes_BenTypeId",
+                        column: x => x.BenTypeId,
+                        principalTable: "Lookup_BeneficiaryTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_Lookup_CommissionTypes_CommissionTypeId",
+                        column: x => x.CommissionTypeId,
+                        principalTable: "Lookup_CommissionTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Inspect_PropertyInspections",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    InspectionCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    InspectionTypeId = table.Column<int>(type: "int", nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ActualDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    InspectorName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    InspectorUserId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    GeneralNotes = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    OverallRating = table.Column<int>(type: "int", nullable: true),
+                    OverallConditionId = table.Column<int>(type: "int", nullable: true),
+                    TenantName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    TenantPresent = table.Column<bool>(type: "bit", nullable: true),
+                    ReportDocumentId = table.Column<int>(type: "int", nullable: true),
+                    NextInspectionDue = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Inspect_PropertyInspections", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_CDN_FileMetadata_ReportDocumentId",
+                        column: x => x.ReportDocumentId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_Lookup_ConditionLevels_OverallConditionId",
+                        column: x => x.OverallConditionId,
+                        principalTable: "Lookup_ConditionLevels",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_Lookup_InspectionStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_InspectionStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Inspect_PropertyInspections_Lookup_InspectionTypes_InspectionTypeId",
+                        column: x => x.InspectionTypeId,
+                        principalTable: "Lookup_InspectionTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Data_PropertyTenants",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    IdNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    LeaseStartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LeaseEndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RentAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DepositAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    DebitDayOfMonth = table.Column<int>(type: "int", nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    Balance = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    DepositBalance = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    LastPaymentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastInvoiceDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastReminderDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_BuildingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Floor = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Suburb = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Address_Province = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_GateCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Address_IsResidential = table.Column<bool>(type: "bit", nullable: false),
+                    Address_Latitude = table.Column<double>(type: "float", nullable: true),
+                    Address_Longitude = table.Column<double>(type: "float", nullable: true),
+                    Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    EmergencyContactName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    EmergencyContactPhone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    EmergencyContactRelationship = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CustomerRefTenant = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CustomerRefProperty = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    ResponsibleAgent = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ResponsibleUser = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    LeaseDocumentId = table.Column<int>(type: "int", nullable: true),
+                    MoveInDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    MoveOutDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    MoveInInspectionCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    MoveInInspectionId = table.Column<int>(type: "int", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "bit", nullable: false),
+                    RemovedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RemovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Data_PropertyTenants", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_CDN_FileMetadata_LeaseDocumentId",
+                        column: x => x.LeaseDocumentId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_Inspect_PropertyInspections_MoveInInspectionId",
+                        column: x => x.MoveInInspectionId,
+                        principalTable: "Inspect_PropertyInspections",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_Lookup_TenantStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_TenantStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Inspect_InspectionItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    InspectionId = table.Column<int>(type: "int", nullable: false),
+                    ItemName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    AreaId = table.Column<int>(type: "int", nullable: false),
+                    ConditionId = table.Column<int>(type: "int", nullable: false),
+                    Rating = table.Column<int>(type: "int", nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    RequiresMaintenance = table.Column<bool>(type: "bit", nullable: false),
+                    MaintenancePriorityId = table.Column<int>(type: "int", nullable: true),
+                    MaintenanceNotes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Inspect_InspectionItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Inspect_InspectionItems_Inspect_PropertyInspections_InspectionId",
+                        column: x => x.InspectionId,
+                        principalTable: "Inspect_PropertyInspections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Inspect_InspectionItems_Lookup_ConditionLevels_ConditionId",
+                        column: x => x.ConditionId,
+                        principalTable: "Lookup_ConditionLevels",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Inspect_InspectionItems_Lookup_InspectionAreas_AreaId",
+                        column: x => x.AreaId,
+                        principalTable: "Lookup_InspectionAreas",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Inspect_InspectionItems_Lookup_MaintenancePriorities_MaintenancePriorityId",
+                        column: x => x.MaintenancePriorityId,
+                        principalTable: "Lookup_MaintenancePriorities",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_ContactNumbers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Number = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsPrimary = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_ContactNumbers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_Emails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmailAddress = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsPrimary = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Emails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Emails_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Finance_PaymentSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    TenantId = table.Column<int>(type: "int", nullable: false),
+                    ScheduleName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    FrequencyId = table.Column<int>(type: "int", nullable: false),
+                    DayOfMonth = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    AutoGenerate = table.Column<bool>(type: "bit", nullable: false),
+                    DaysBeforeDue = table.Column<int>(type: "int", nullable: false),
+                    LastGeneratedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    NextDueDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Finance_PaymentSchedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentSchedules_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentSchedules_Data_PropertyTenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentSchedules_Lookup_PaymentFrequencies_FrequencyId",
+                        column: x => x.FrequencyId,
+                        principalTable: "Lookup_PaymentFrequencies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Finance_PropertyPayments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    TenantId = table.Column<int>(type: "int", nullable: true),
+                    PaymentReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PaymentTypeId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    PaymentMethodId = table.Column<int>(type: "int", nullable: true),
+                    DueDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PaymentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TransactionId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    BankReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IsLate = table.Column<bool>(type: "bit", nullable: false),
+                    DaysLate = table.Column<int>(type: "int", nullable: true),
+                    LateFee = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    ProcessingFee = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    NetAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    IsAllocated = table.Column<bool>(type: "bit", nullable: false),
+                    AllocationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AllocatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ReceiptDocumentId = table.Column<int>(type: "int", nullable: true),
+                    ReceiptNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Finance_PropertyPayments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_CDN_FileMetadata_ReceiptDocumentId",
+                        column: x => x.ReceiptDocumentId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_Data_PropertyTenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_Lookup_PaymentMethods_PaymentMethodId",
+                        column: x => x.PaymentMethodId,
+                        principalTable: "Lookup_PaymentMethods",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_Lookup_PaymentStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_PaymentStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Finance_PropertyPayments_Lookup_PaymentTypes_PaymentTypeId",
+                        column: x => x.PaymentTypeId,
+                        principalTable: "Lookup_PaymentTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Maint_MaintenanceTickets",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    TenantId = table.Column<int>(type: "int", nullable: true),
+                    InspectionId = table.Column<int>(type: "int", nullable: true),
+                    TicketNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    CategoryId = table.Column<int>(type: "int", nullable: false),
+                    PriorityId = table.Column<int>(type: "int", nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    AssignedToUserId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    AssignedToName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true),
+                    ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CompletedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    EstimatedDuration = table.Column<TimeSpan>(type: "time", nullable: true),
+                    ActualDuration = table.Column<TimeSpan>(type: "time", nullable: true),
+                    EstimatedCost = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    ActualCost = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    TenantResponsible = table.Column<bool>(type: "bit", nullable: true),
+                    RequiresApproval = table.Column<bool>(type: "bit", nullable: false),
+                    IsApproved = table.Column<bool>(type: "bit", nullable: true),
+                    ApprovedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApprovalDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RequiresTenantAccess = table.Column<bool>(type: "bit", nullable: false),
+                    TenantNotified = table.Column<bool>(type: "bit", nullable: true),
+                    TenantNotificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AccessInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CompletionNotes = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    IssueResolved = table.Column<bool>(type: "bit", nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Maint_MaintenanceTickets", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Data_PropertyTenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Inspect_PropertyInspections_InspectionId",
+                        column: x => x.InspectionId,
+                        principalTable: "Inspect_PropertyInspections",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Lookup_MaintenanceCategories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Lookup_MaintenanceCategories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Lookup_MaintenancePriorities_PriorityId",
+                        column: x => x.PriorityId,
+                        principalTable: "Lookup_MaintenancePriorities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Lookup_MaintenanceStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_MaintenanceStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceTickets_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Finance_PaymentAllocations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PaymentId = table.Column<int>(type: "int", nullable: false),
+                    BeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    AllocationTypeId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Percentage = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    AllocationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AllocatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Finance_PaymentAllocations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentAllocations_Data_PropertyBeneficiaries_BeneficiaryId",
+                        column: x => x.BeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentAllocations_Finance_PropertyPayments_PaymentId",
+                        column: x => x.PaymentId,
+                        principalTable: "Finance_PropertyPayments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Finance_PaymentAllocations_Lookup_AllocationTypes_AllocationTypeId",
+                        column: x => x.AllocationTypeId,
+                        principalTable: "Lookup_AllocationTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Maint_MaintenanceComments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MaintenanceTicketId = table.Column<int>(type: "int", nullable: false),
+                    Comment = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    IsInternal = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Maint_MaintenanceComments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceComments_Maint_MaintenanceTickets_MaintenanceTicketId",
+                        column: x => x.MaintenanceTicketId,
+                        principalTable: "Maint_MaintenanceTickets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Maint_MaintenanceExpenses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MaintenanceTicketId = table.Column<int>(type: "int", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CategoryId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    VendorId = table.Column<int>(type: "int", nullable: true),
+                    InvoiceNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    InvoiceDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ReceiptDocumentId = table.Column<int>(type: "int", nullable: true),
+                    IsApproved = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Maint_MaintenanceExpenses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceExpenses_CDN_FileMetadata_ReceiptDocumentId",
+                        column: x => x.ReceiptDocumentId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceExpenses_Lookup_ExpenseCategories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Lookup_ExpenseCategories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceExpenses_Maint_MaintenanceTickets_MaintenanceTicketId",
+                        column: x => x.MaintenanceTicketId,
+                        principalTable: "Maint_MaintenanceTickets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Maint_MaintenanceExpenses_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Finance_BeneficiaryPayments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BeneficiaryId = table.Column<int>(type: "int", nullable: false),
+                    PaymentAllocationId = table.Column<int>(type: "int", nullable: true),
+                    PaymentReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    PaymentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TransactionReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Finance_BeneficiaryPayments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Finance_BeneficiaryPayments_Data_PropertyBeneficiaries_BeneficiaryId",
+                        column: x => x.BeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Finance_BeneficiaryPayments_Finance_PaymentAllocations_PaymentAllocationId",
+                        column: x => x.PaymentAllocationId,
+                        principalTable: "Finance_PaymentAllocations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Finance_BeneficiaryPayments_Lookup_BeneficiaryPaymentStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_BeneficiaryPaymentStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetBranches_CompanyId",
+                table: "AspNetBranches",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetBranches_MainLogoId",
+                table: "AspNetBranches",
+                column: "MainLogoId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetBranches_StatusId",
+                table: "AspNetBranches",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetCompanies_MainLogoId",
+                table: "AspNetCompanies",
+                column: "MainLogoId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetCompanies_StatusId",
+                table: "AspNetCompanies",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetCustomRoles_BranchId",
+                table: "AspNetCustomRoles",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetCustomRoles_CompanyId",
+                table: "AspNetCustomRoles",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetRoleClaims_RoleId",
+                table: "AspNetRoleClaims",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetRolePermissions_PermissionId",
+                table: "AspNetRolePermissions",
+                column: "PermissionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetRolePermissions_RoleId",
+                table: "AspNetRolePermissions",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "RoleNameIndex",
+                table: "AspNetRoles",
+                column: "NormalizedName",
+                unique: true,
+                filter: "[NormalizedName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserClaims_UserId",
+                table: "AspNetUserClaims",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserLogins_UserId",
+                table: "AspNetUserLogins",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserPermissionOverrides_PermissionId",
+                table: "AspNetUserPermissionOverrides",
+                column: "PermissionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserPermissionOverrides_UserId",
+                table: "AspNetUserPermissionOverrides",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserRoleAssignments_RoleId",
+                table: "AspNetUserRoleAssignments",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserRoleAssignments_UserId",
+                table: "AspNetUserRoleAssignments",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserRoles_RoleId",
+                table: "AspNetUserRoles",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "EmailIndex",
+                table: "AspNetUsers",
+                column: "NormalizedEmail");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_BranchId",
+                table: "AspNetUsers",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_CompanyId",
+                table: "AspNetUsers",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_ProfilePictureId",
+                table: "AspNetUsers",
+                column: "ProfilePictureId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_StatusId",
+                table: "AspNetUsers",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "UserNameIndex",
+                table: "AspNetUsers",
+                column: "NormalizedUserName",
+                unique: true,
+                filter: "[NormalizedUserName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_AccessLogs_ActionType",
+                table: "CDN_AccessLogs",
+                column: "ActionType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_AccessLogs_Timestamp",
+                table: "CDN_AccessLogs",
+                column: "Timestamp");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_Base64Storage_FileMetadataId",
+                table: "CDN_Base64Storage",
+                column: "FileMetadataId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_Categories_Name",
+                table: "CDN_Categories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_FileMetadata_CategoryId_FolderId",
+                table: "CDN_FileMetadata",
+                columns: new[] { "CategoryId", "FolderId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_FileMetadata_FolderId",
+                table: "CDN_FileMetadata",
+                column: "FolderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_FileMetadata_IsDeleted",
+                table: "CDN_FileMetadata",
+                column: "IsDeleted");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_FileMetadata_Url",
+                table: "CDN_FileMetadata",
+                column: "Url");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_Folders_CategoryId_Path",
+                table: "CDN_Folders",
+                columns: new[] { "CategoryId", "Path" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_Folders_ParentId",
+                table: "CDN_Folders",
+                column: "ParentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_UsageStatistics_CategoryId",
+                table: "CDN_UsageStatistics",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CDN_UsageStatistics_Date_CategoryId",
+                table: "CDN_UsageStatistics",
+                columns: new[] { "Date", "CategoryId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_ApplicationUserId",
+                table: "Contact_ContactNumbers",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_BranchId",
+                table: "Contact_ContactNumbers",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_CompanyId",
+                table: "Contact_ContactNumbers",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_PropertyBeneficiaryId",
+                table: "Contact_ContactNumbers",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_PropertyOwnerId",
+                table: "Contact_ContactNumbers",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_PropertyTenantId",
+                table: "Contact_ContactNumbers",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_RelatedEntityType_RelatedEntityId_IsPrimary",
+                table: "Contact_ContactNumbers",
+                columns: new[] { "RelatedEntityType", "RelatedEntityId", "IsPrimary" },
+                unique: true,
+                filter: "[IsPrimary] = 1 AND [RelatedEntityId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_RelatedEntityType_RelatedEntityStringId_IsPrimary",
+                table: "Contact_ContactNumbers",
+                columns: new[] { "RelatedEntityType", "RelatedEntityStringId", "IsPrimary" },
+                unique: true,
+                filter: "[IsPrimary] = 1 AND [RelatedEntityStringId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_VendorId",
+                table: "Contact_ContactNumbers",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_ApplicationUserId",
+                table: "Contact_Emails",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_BranchId",
+                table: "Contact_Emails",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_CompanyId",
+                table: "Contact_Emails",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_PropertyBeneficiaryId",
+                table: "Contact_Emails",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_PropertyOwnerId",
+                table: "Contact_Emails",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_PropertyTenantId",
+                table: "Contact_Emails",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_RelatedEntityType_RelatedEntityId_IsPrimary",
+                table: "Contact_Emails",
+                columns: new[] { "RelatedEntityType", "RelatedEntityId", "IsPrimary" },
+                unique: true,
+                filter: "[IsPrimary] = 1 AND [RelatedEntityId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_RelatedEntityType_RelatedEntityStringId_IsPrimary",
+                table: "Contact_Emails",
+                columns: new[] { "RelatedEntityType", "RelatedEntityStringId", "IsPrimary" },
+                unique: true,
+                filter: "[IsPrimary] = 1 AND [RelatedEntityStringId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Emails_VendorId",
+                table: "Contact_Emails",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_BranchId",
+                table: "Data_Properties",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_CommissionTypeId",
+                table: "Data_Properties",
+                column: "CommissionTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_CompanyId",
+                table: "Data_Properties",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_MainImageId",
+                table: "Data_Properties",
+                column: "MainImageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_OwnerId",
+                table: "Data_Properties",
+                column: "OwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_StatusId",
+                table: "Data_Properties",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_BenStatusId",
+                table: "Data_PropertyBeneficiaries",
+                column: "BenStatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_BenTypeId",
+                table: "Data_PropertyBeneficiaries",
+                column: "BenTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_CommissionTypeId",
+                table: "Data_PropertyBeneficiaries",
+                column: "CommissionTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_CompanyId",
+                table: "Data_PropertyBeneficiaries",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_PropertyId",
+                table: "Data_PropertyBeneficiaries",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyOwners_CompanyId",
+                table: "Data_PropertyOwners",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_CompanyId",
+                table: "Data_PropertyTenants",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_LeaseDocumentId",
+                table: "Data_PropertyTenants",
+                column: "LeaseDocumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_MoveInInspectionId",
+                table: "Data_PropertyTenants",
+                column: "MoveInInspectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_PropertyId",
+                table: "Data_PropertyTenants",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_StatusId",
+                table: "Data_PropertyTenants",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_BeneficiaryPayments_BeneficiaryId",
+                table: "Finance_BeneficiaryPayments",
+                column: "BeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_BeneficiaryPayments_PaymentAllocationId",
+                table: "Finance_BeneficiaryPayments",
+                column: "PaymentAllocationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_BeneficiaryPayments_StatusId",
+                table: "Finance_BeneficiaryPayments",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentAllocations_AllocationTypeId",
+                table: "Finance_PaymentAllocations",
+                column: "AllocationTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentAllocations_BeneficiaryId",
+                table: "Finance_PaymentAllocations",
+                column: "BeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentAllocations_PaymentId",
+                table: "Finance_PaymentAllocations",
+                column: "PaymentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentRules_CompanyId",
+                table: "Finance_PaymentRules",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentRules_RuleTypeId",
+                table: "Finance_PaymentRules",
+                column: "RuleTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentSchedules_FrequencyId",
+                table: "Finance_PaymentSchedules",
+                column: "FrequencyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentSchedules_PropertyId",
+                table: "Finance_PaymentSchedules",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PaymentSchedules_TenantId",
+                table: "Finance_PaymentSchedules",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_CompanyId",
+                table: "Finance_PropertyPayments",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_PaymentMethodId",
+                table: "Finance_PropertyPayments",
+                column: "PaymentMethodId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_PaymentTypeId",
+                table: "Finance_PropertyPayments",
+                column: "PaymentTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_PropertyId",
+                table: "Finance_PropertyPayments",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_ReceiptDocumentId",
+                table: "Finance_PropertyPayments",
+                column: "ReceiptDocumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_StatusId",
+                table: "Finance_PropertyPayments",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Finance_PropertyPayments_TenantId",
+                table: "Finance_PropertyPayments",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_InspectionItems_AreaId",
+                table: "Inspect_InspectionItems",
+                column: "AreaId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_InspectionItems_ConditionId",
+                table: "Inspect_InspectionItems",
+                column: "ConditionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_InspectionItems_InspectionId",
+                table: "Inspect_InspectionItems",
+                column: "InspectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_InspectionItems_MaintenancePriorityId",
+                table: "Inspect_InspectionItems",
+                column: "MaintenancePriorityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_CompanyId",
+                table: "Inspect_PropertyInspections",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_InspectionTypeId",
+                table: "Inspect_PropertyInspections",
+                column: "InspectionTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_OverallConditionId",
+                table: "Inspect_PropertyInspections",
+                column: "OverallConditionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_PropertyId",
+                table: "Inspect_PropertyInspections",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_ReportDocumentId",
+                table: "Inspect_PropertyInspections",
+                column: "ReportDocumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Inspect_PropertyInspections_StatusId",
+                table: "Inspect_PropertyInspections",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_AllocationTypes_Name",
+                table: "Lookup_AllocationTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_BeneficiaryPaymentStatusTypes_Name",
+                table: "Lookup_BeneficiaryPaymentStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_BeneficiaryStatusTypes_Name",
+                table: "Lookup_BeneficiaryStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_BeneficiaryTypes_Name",
+                table: "Lookup_BeneficiaryTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_BranchStatusTypes_Name",
+                table: "Lookup_BranchStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_CommissionTypes_Name",
+                table: "Lookup_CommissionTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_CompanyStatusTypes_Name",
+                table: "Lookup_CompanyStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ConditionLevels_Name",
+                table: "Lookup_ConditionLevels",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_DocumentAccessLevels_Name",
+                table: "Lookup_DocumentAccessLevels",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_DocumentCategories_Name",
+                table: "Lookup_DocumentCategories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_DocumentTypes_Name",
+                table: "Lookup_DocumentTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ExpenseCategories_Name",
+                table: "Lookup_ExpenseCategories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_InspectionAreas_Name",
+                table: "Lookup_InspectionAreas",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_InspectionStatusTypes_Name",
+                table: "Lookup_InspectionStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_InspectionTypes_Name",
+                table: "Lookup_InspectionTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_MaintenanceCategories_Name",
+                table: "Lookup_MaintenanceCategories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_MaintenanceImageTypes_Name",
+                table: "Lookup_MaintenanceImageTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_MaintenancePriorities_Name",
+                table: "Lookup_MaintenancePriorities",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_MaintenanceStatusTypes_Name",
+                table: "Lookup_MaintenanceStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NotificationChannels_Name",
+                table: "Lookup_NotificationChannels",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NotificationTypes_Name",
+                table: "Lookup_NotificationTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PaymentFrequencies_Name",
+                table: "Lookup_PaymentFrequencies",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PaymentMethods_Name",
+                table: "Lookup_PaymentMethods",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PaymentRuleTypes_Name",
+                table: "Lookup_PaymentRuleTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PaymentStatusTypes_Name",
+                table: "Lookup_PaymentStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PaymentTypes_Name",
+                table: "Lookup_PaymentTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PermissionCategories_Name",
+                table: "Lookup_PermissionCategories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PropertyImageTypes_Name",
+                table: "Lookup_PropertyImageTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PropertyStatusTypes_Name",
+                table: "Lookup_PropertyStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_RoleTypes_Name",
+                table: "Lookup_RoleTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_SubscriptionPlans_Name",
+                table: "Lookup_SubscriptionPlans",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_TenantStatusTypes_Name",
+                table: "Lookup_TenantStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ThemeTypes_Name",
+                table: "Lookup_ThemeTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_TwoFactorMethods_Name",
+                table: "Lookup_TwoFactorMethods",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_UserStatusTypes_Name",
+                table: "Lookup_UserStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceComments_MaintenanceTicketId",
+                table: "Maint_MaintenanceComments",
+                column: "MaintenanceTicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceExpenses_CategoryId",
+                table: "Maint_MaintenanceExpenses",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceExpenses_MaintenanceTicketId",
+                table: "Maint_MaintenanceExpenses",
+                column: "MaintenanceTicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceExpenses_ReceiptDocumentId",
+                table: "Maint_MaintenanceExpenses",
+                column: "ReceiptDocumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceExpenses_VendorId",
+                table: "Maint_MaintenanceExpenses",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_CategoryId",
+                table: "Maint_MaintenanceTickets",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_CompanyId",
+                table: "Maint_MaintenanceTickets",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_InspectionId",
+                table: "Maint_MaintenanceTickets",
+                column: "InspectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_PriorityId",
+                table: "Maint_MaintenanceTickets",
+                column: "PriorityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_PropertyId",
+                table: "Maint_MaintenanceTickets",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_StatusId",
+                table: "Maint_MaintenanceTickets",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_TenantId",
+                table: "Maint_MaintenanceTickets",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_MaintenanceTickets_VendorId",
+                table: "Maint_MaintenanceTickets",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maint_Vendors_CompanyId",
+                table: "Maint_Vendors",
+                column: "CompanyId");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "AspNetRoleClaims");
+
+            migrationBuilder.DropTable(
+                name: "AspNetRolePermissions");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserClaims");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserLogins");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserPermissionOverrides");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserRoleAssignments");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserRoles");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "CDN_AccessLogs");
+
+            migrationBuilder.DropTable(
+                name: "CDN_Base64Storage");
+
+            migrationBuilder.DropTable(
+                name: "CDN_Configurations");
+
+            migrationBuilder.DropTable(
+                name: "CDN_UsageStatistics");
+
+            migrationBuilder.DropTable(
+                name: "Contact_ContactNumbers");
+
+            migrationBuilder.DropTable(
+                name: "Contact_Emails");
+
+            migrationBuilder.DropTable(
+                name: "Contact_Media");
+
+            migrationBuilder.DropTable(
+                name: "Finance_BeneficiaryPayments");
+
+            migrationBuilder.DropTable(
+                name: "Finance_PaymentRules");
+
+            migrationBuilder.DropTable(
+                name: "Finance_PaymentSchedules");
+
+            migrationBuilder.DropTable(
+                name: "Inspect_InspectionItems");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_DocumentAccessLevels");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_DocumentCategories");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_DocumentTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_MaintenanceImageTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_NotificationChannels");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_NotificationTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PermissionCategories");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PropertyImageTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_RoleTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_SubscriptionPlans");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ThemeTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_TwoFactorMethods");
+
+            migrationBuilder.DropTable(
+                name: "Maint_MaintenanceComments");
+
+            migrationBuilder.DropTable(
+                name: "Maint_MaintenanceExpenses");
+
+            migrationBuilder.DropTable(
+                name: "AspNetPermissions");
+
+            migrationBuilder.DropTable(
+                name: "AspNetCustomRoles");
+
+            migrationBuilder.DropTable(
+                name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "Finance_PaymentAllocations");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_BeneficiaryPaymentStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PaymentRuleTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PaymentFrequencies");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_InspectionAreas");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ExpenseCategories");
+
+            migrationBuilder.DropTable(
+                name: "Maint_MaintenanceTickets");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_UserStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Data_PropertyBeneficiaries");
+
+            migrationBuilder.DropTable(
+                name: "Finance_PropertyPayments");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_AllocationTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_MaintenanceCategories");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_MaintenancePriorities");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_MaintenanceStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Maint_Vendors");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_BeneficiaryStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_BeneficiaryTypes");
+
+            migrationBuilder.DropTable(
+                name: "Data_PropertyTenants");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PaymentMethods");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PaymentStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PaymentTypes");
+
+            migrationBuilder.DropTable(
+                name: "Inspect_PropertyInspections");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_TenantStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Data_Properties");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ConditionLevels");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_InspectionStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_InspectionTypes");
+
+            migrationBuilder.DropTable(
+                name: "AspNetBranches");
+
+            migrationBuilder.DropTable(
+                name: "Data_PropertyOwners");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_CommissionTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PropertyStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_BranchStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "AspNetCompanies");
+
+            migrationBuilder.DropTable(
+                name: "CDN_FileMetadata");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_CompanyStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "CDN_Folders");
+
+            migrationBuilder.DropTable(
+                name: "CDN_Categories");
+        }
+    }
+}

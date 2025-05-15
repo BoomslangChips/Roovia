@@ -24,11 +24,11 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string PropertyName { get; set; }
+        public string? PropertyName { get; set; }
         
         [Required]
         [StringLength(50)]
-        public string PropertyCode { get; set; } // Unique identifier for property
+        public string? PropertyCode { get; set; } // Unique identifier for property
         
         [StringLength(50)]
         public string? CustomerRef { get; set; } // Customer reference from CSV
@@ -77,7 +77,7 @@ namespace Roovia.Models.BusinessModels
         
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
         
         public DateTime? UpdatedDate { get; set; }
         
@@ -93,19 +93,19 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("OwnerId")]
-        public virtual PropertyOwner Owner { get; set; }
+        public virtual PropertyOwner? Owner { get; set; }
         
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
         
         [ForeignKey("BranchId")]
         public virtual Branch? Branch { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual PropertyStatusType Status { get; set; }
+        public virtual PropertyStatusType? Status { get; set; }
         
         [ForeignKey("CommissionTypeId")]
-        public virtual CommissionType CommissionType { get; set; }
+        public virtual CommissionType? CommissionType { get; set; }
         
         [ForeignKey("MainImageId")]
         public virtual CdnFileMetadata? MainImage { get; set; }
@@ -144,7 +144,7 @@ namespace Roovia.Models.BusinessModels
         // Beneficiary details
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
@@ -194,7 +194,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -205,19 +205,19 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
         
         [ForeignKey("BenTypeId")]
-        public virtual BeneficiaryType BenType { get; set; }
+        public virtual BeneficiaryType? BenType { get; set; }
         
         [ForeignKey("CommissionTypeId")]
-        public virtual CommissionType CommissionType { get; set; }
+        public virtual CommissionType? CommissionType { get; set; }
         
         [ForeignKey("BenStatusId")]
-        public virtual BeneficiaryStatusType BenStatus { get; set; }
+        public virtual BeneficiaryStatusType? BenStatus { get; set; }
 
         public virtual ICollection<BeneficiaryPayment> Payments { get; set; } = new List<BeneficiaryPayment>();
 
@@ -243,11 +243,11 @@ namespace Roovia.Models.BusinessModels
         
         [Required]
         [StringLength(100)]
-        public string FirstName { get; set; }
+        public string? FirstName { get; set; }
         
         [Required]
         [StringLength(100)]
-        public string LastName { get; set; }
+        public string? LastName { get; set; }
         
         [StringLength(20)]
         public string? IdNumber { get; set; }
@@ -281,7 +281,7 @@ namespace Roovia.Models.BusinessModels
         
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
         
         public DateTime? UpdatedDate { get; set; }
         
@@ -297,7 +297,7 @@ namespace Roovia.Models.BusinessModels
         
         // Navigation properties
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
         
         public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
         
@@ -327,11 +327,11 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(50)]
-        public string FirstName { get; set; }
+        public string? FirstName { get; set; }
 
         [Required]
         [StringLength(50)]
-        public string LastName { get; set; }
+        public string? LastName { get; set; }
 
         [StringLength(20)]
         public string? IdNumber { get; set; }
@@ -417,7 +417,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -433,16 +433,16 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
 
         [ForeignKey("MoveInInspectionId")]
         public virtual PropertyInspection? MoveInInspection { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual TenantStatusType Status { get; set; }
+        public virtual TenantStatusType? Status { get; set; }
         
         [ForeignKey("LeaseDocumentId")]
         public virtual CdnFileMetadata? LeaseDocument { get; set; }
@@ -484,7 +484,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string InspectionCode { get; set; } // Unique inspection identifier
+        public string? InspectionCode { get; set; } // Unique inspection identifier
 
         public int InspectionTypeId { get; set; } // FK to InspectionType
 
@@ -525,7 +525,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -534,16 +534,16 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
         
         [ForeignKey("InspectionTypeId")]
-        public virtual InspectionType InspectionType { get; set; }
+        public virtual InspectionType? InspectionType { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual InspectionStatusType Status { get; set; }
+        public virtual InspectionStatusType? Status { get; set; }
         
         [ForeignKey("OverallConditionId")]
         public virtual ConditionLevel? OverallCondition { get; set; }
@@ -565,7 +565,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string ItemName { get; set; } // e.g., "Kitchen", "Bathroom", "Windows"
+        public string? ItemName { get; set; } // e.g., "Kitchen", "Bathroom", "Windows"
 
         public int AreaId { get; set; } // FK to InspectionArea
 
@@ -585,13 +585,13 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation property
         [ForeignKey("InspectionId")]
-        public virtual PropertyInspection Inspection { get; set; }
+        public virtual PropertyInspection? Inspection { get; set; }
         
         [ForeignKey("AreaId")]
-        public virtual InspectionArea Area { get; set; }
+        public virtual InspectionArea? Area { get; set; }
         
         [ForeignKey("ConditionId")]
-        public virtual ConditionLevel Condition { get; set; }
+        public virtual ConditionLevel? Condition { get; set; }
         
         [ForeignKey("MaintenancePriorityId")]
         public virtual MaintenancePriority? MaintenancePriority { get; set; }
@@ -616,11 +616,11 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string TicketNumber { get; set; } // Unique ticket identifier
+        public string? TicketNumber { get; set; } // Unique ticket identifier
 
         [Required]
         [StringLength(200)]
-        public string Title { get; set; }
+        public string? Title { get; set; }
 
         [StringLength(2000)]
         public string? Description { get; set; }
@@ -687,7 +687,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -696,10 +696,10 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
 
         [ForeignKey("TenantId")]
         public virtual PropertyTenant? Tenant { get; set; }
@@ -711,13 +711,13 @@ namespace Roovia.Models.BusinessModels
         public virtual Vendor? Vendor { get; set; }
         
         [ForeignKey("CategoryId")]
-        public virtual MaintenanceCategory Category { get; set; }
+        public virtual MaintenanceCategory? Category { get; set; }
         
         [ForeignKey("PriorityId")]
-        public virtual MaintenancePriority Priority { get; set; }
+        public virtual MaintenancePriority? Priority { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual MaintenanceStatusType Status { get; set; }
+        public virtual MaintenanceStatusType? Status { get; set; }
 
         public virtual ICollection<MaintenanceComment> Comments { get; set; } = new List<MaintenanceComment>();
 
@@ -733,7 +733,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(2000)]
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         public bool IsInternal { get; set; } = false; // Internal notes vs. tenant-visible
 
@@ -741,11 +741,11 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation property
         [ForeignKey("MaintenanceTicketId")]
-        public virtual MaintenanceTicket MaintenanceTicket { get; set; }
+        public virtual MaintenanceTicket? MaintenanceTicket { get; set; }
     }
 
     public class MaintenanceExpense
@@ -757,7 +757,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(200)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public int CategoryId { get; set; } // FK to ExpenseCategory
 
@@ -779,13 +779,13 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("MaintenanceTicketId")]
-        public virtual MaintenanceTicket MaintenanceTicket { get; set; }
+        public virtual MaintenanceTicket? MaintenanceTicket { get; set; }
 
         [ForeignKey("VendorId")]
         public virtual Vendor? Vendor { get; set; }
         
         [ForeignKey("CategoryId")]
-        public virtual ExpenseCategory Category { get; set; }
+        public virtual ExpenseCategory? Category { get; set; }
         
         [ForeignKey("ReceiptDocumentId")]
         public virtual CdnFileMetadata? ReceiptDocument { get; set; }
@@ -800,7 +800,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [StringLength(100)]
         public string? ContactPerson { get; set; }
@@ -840,11 +840,11 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
 
         public virtual ICollection<MaintenanceTicket> MaintenanceTickets { get; set; } = new List<MaintenanceTicket>();
         
@@ -873,7 +873,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string PaymentReference { get; set; } // Unique payment reference
+        public string? PaymentReference { get; set; } // Unique payment reference
 
         public int PaymentTypeId { get; set; } // FK to PaymentType
 
@@ -932,7 +932,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
@@ -941,19 +941,19 @@ namespace Roovia.Models.BusinessModels
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
 
         [ForeignKey("TenantId")]
         public virtual PropertyTenant? Tenant { get; set; }
         
         [ForeignKey("PaymentTypeId")]
-        public virtual PaymentType PaymentType { get; set; }
+        public virtual PaymentType? PaymentType { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual PaymentStatusType Status { get; set; }
+        public virtual PaymentStatusType? Status { get; set; }
         
         [ForeignKey("PaymentMethodId")]
         public virtual PaymentMethod? PaymentMethod { get; set; }
@@ -986,17 +986,17 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string AllocatedBy { get; set; }
+        public string? AllocatedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("PaymentId")]
-        public virtual PropertyPayment Payment { get; set; }
+        public virtual PropertyPayment? Payment { get; set; }
 
         [ForeignKey("BeneficiaryId")]
         public virtual PropertyBeneficiary? Beneficiary { get; set; }
         
         [ForeignKey("AllocationTypeId")]
-        public virtual AllocationType AllocationType { get; set; }
+        public virtual AllocationType? AllocationType { get; set; }
     }
 
     public class BeneficiaryPayment
@@ -1010,7 +1010,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string PaymentReference { get; set; }
+        public string? PaymentReference { get; set; }
 
         public decimal Amount { get; set; }
 
@@ -1029,17 +1029,17 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("BeneficiaryId")]
-        public virtual PropertyBeneficiary Beneficiary { get; set; }
+        public virtual PropertyBeneficiary? Beneficiary { get; set; }
 
         [ForeignKey("PaymentAllocationId")]
         public virtual PaymentAllocation? PaymentAllocation { get; set; }
         
         [ForeignKey("StatusId")]
-        public virtual BeneficiaryPaymentStatusType Status { get; set; }
+        public virtual BeneficiaryPaymentStatusType? Status { get; set; }
     }
 
     public class PaymentSchedule
@@ -1053,7 +1053,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string ScheduleName { get; set; }
+        public string? ScheduleName { get; set; }
 
         public int FrequencyId { get; set; } // FK to PaymentFrequency
 
@@ -1082,17 +1082,17 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("PropertyId")]
-        public virtual Property Property { get; set; }
+        public virtual Property? Property { get; set; }
 
         [ForeignKey("TenantId")]
-        public virtual PropertyTenant Tenant { get; set; }
+        public virtual PropertyTenant? Tenant { get; set; }
         
         [ForeignKey("FrequencyId")]
-        public virtual PaymentFrequency Frequency { get; set; }
+        public virtual PaymentFrequency? Frequency { get; set; }
     }
 
     public class PaymentRule
@@ -1104,7 +1104,7 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string RuleName { get; set; }
+        public string? RuleName { get; set; }
 
         [StringLength(500)]
         public string? Description { get; set; }
@@ -1142,14 +1142,14 @@ namespace Roovia.Models.BusinessModels
 
         [Required]
         [StringLength(100)]
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
 
         // Navigation property
         [ForeignKey("CompanyId")]
-        public virtual Company Company { get; set; }
+        public virtual Company? Company { get; set; }
         
         [ForeignKey("RuleTypeId")]
-        public virtual PaymentRuleType RuleType { get; set; }
+        public virtual PaymentRuleType? RuleType { get; set; }
     }
 
     #endregion
