@@ -735,7 +735,7 @@ namespace Roovia.Interfaces
                 if (metadata == null)
                 {
                     _logger.LogWarning("Metadata not found for migration: {Url}", cdnUrl);
-                    return;
+                    throw new InvalidOperationException($"File metadata not found for {cdnUrl}");
                 }
 
                 // Check if base64 backup already exists
@@ -746,22 +746,21 @@ namespace Roovia.Interfaces
                 }
 
                 string physicalPath = GetPhysicalPath(cdnUrl);
-                if (!string.IsNullOrEmpty(physicalPath) && File.Exists(physicalPath))
+                if (string.IsNullOrEmpty(physicalPath) || !File.Exists(physicalPath))
                 {
-                    // Read file and convert to base64
-                    var bytes = await File.ReadAllBytesAsync(physicalPath);
-                    string base64Data = Convert.ToBase64String(bytes);
-
-                    // Save base64 backup
-                    await SaveBase64BackupAsync(cdnUrl, base64Data, metadata.ContentType);
-
-                    _logger.LogInformation("Successfully migrated file to base64: {Url}, Size: {Size} bytes",
-                        cdnUrl, bytes.Length);
+                    _logger.LogError("Physical file not found for migration: {Url}, Path: {Path}", cdnUrl, physicalPath);
+                    throw new FileNotFoundException($"Physical file not found for {cdnUrl}");
                 }
-                else
-                {
-                    _logger.LogWarning("Physical file not found for migration: {Url}", cdnUrl);
-                }
+
+                // Read file and convert to base64
+                byte[] bytes = await File.ReadAllBytesAsync(physicalPath);
+                string base64Data = Convert.ToBase64String(bytes);
+
+                // Save base64 backup
+                await SaveBase64BackupAsync(cdnUrl, base64Data, metadata.ContentType);
+
+                _logger.LogInformation("Successfully migrated file to base64: {Url}, Original size: {Size} bytes, Base64 length: {Base64Length}",
+                    cdnUrl, bytes.Length, base64Data.Length);
             }
             catch (Exception ex)
             {
@@ -1015,42 +1014,46 @@ namespace Roovia.Interfaces
                 var metadata = await dbContext.Set<CdnFileMetadata>()
                     .FirstOrDefaultAsync(f => f.Url == fileUrl);
 
-                if (metadata != null)
+                if (metadata == null)
                 {
-                    // Check if base64 storage already exists
-                    var existingBase64 = await dbContext.Set<CdnBase64Storage>()
-                        .FirstOrDefaultAsync(b => b.FileMetadataId == metadata.Id);
+                    _logger.LogError("Metadata not found for URL: {Url}", fileUrl);
+                    throw new InvalidOperationException($"File metadata not found for {fileUrl}");
+                }
 
-                    if (existingBase64 != null)
-                    {
-                        // Update existing base64 data
-                        existingBase64.Base64Data = base64Data;
-                        existingBase64.MimeType = contentType;
-                        existingBase64.CreatedDate = DateTime.Now;
-                    }
-                    else
-                    {
-                        // Create new base64 storage
-                        var base64Storage = new CdnBase64Storage
-                        {
-                            FileMetadataId = metadata.Id,
-                            Base64Data = base64Data,
-                            MimeType = contentType,
-                            CreatedDate = DateTime.Now
-                        };
+                // Check if base64 storage already exists
+                var existingBase64 = await dbContext.Set<CdnBase64Storage>()
+                    .FirstOrDefaultAsync(b => b.FileMetadataId == metadata.Id);
 
-                        dbContext.Add(base64Storage);
-                    }
-
-                    metadata.HasBase64Backup = true;
-                    await dbContext.SaveChangesAsync();
-
-                    _logger.LogInformation("Base64 backup saved for file: {Url}, Data length: {Length}", fileUrl, base64Data.Length);
+                if (existingBase64 != null)
+                {
+                    // Update existing base64 data
+                    existingBase64.Base64Data = base64Data;
+                    existingBase64.MimeType = contentType;
+                    existingBase64.CreatedDate = DateTime.Now;
+                    dbContext.Update(existingBase64);
                 }
                 else
                 {
-                    _logger.LogWarning("Metadata not found for URL: {Url}", fileUrl);
+                    // Create new base64 storage
+                    var base64Storage = new CdnBase64Storage
+                    {
+                        FileMetadataId = metadata.Id,
+                        Base64Data = base64Data,
+                        MimeType = contentType,
+                        CreatedDate = DateTime.Now
+                    };
+
+                    dbContext.Add(base64Storage);
                 }
+
+                // Update metadata to indicate it has a backup
+                metadata.HasBase64Backup = true;
+                dbContext.Update(metadata);
+
+                await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Base64 backup saved for file: {Url}, Data length: {Length} characters",
+                    fileUrl, base64Data.Length);
             }
             catch (Exception ex)
             {

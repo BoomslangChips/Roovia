@@ -3,6 +3,7 @@
 @using Roovia.Interfaces
 @using Roovia.Models.CDN
 @using System.ComponentModel.DataAnnotations
+@using Roovia.Models.Helper
 @using Roovia.Services
 @inject ICdnService CdnService
 @inject ToastService ToastService
@@ -1132,6 +1133,12 @@
 
                 await JSRuntime.InvokeVoidAsync("downloadFile", file.FileName, Convert.ToBase64String(bytes));
 
+                // Update CDN service to track downloads
+                await CdnService.UpdateUsageStatisticsAsync(file.CategoryId, 0, 0, 0, 1, 0);
+
+                // Log the download access
+                await CdnService.LogAccessAsync("Download", file.Url, "System", true, null, file.FileSize);
+
                 if (isFromBase64)
                 {
                     ToastService.ShowInfo($"Downloaded {file.FileName} from backup storage (physical file not found)");
@@ -1143,12 +1150,14 @@
             }
             else
             {
+                await CdnService.LogAccessAsync("Download", file.Url, "System", false, "File not found");
                 ToastService.ShowError($"Failed to download {file.FileName} - File not found in storage or backup");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading file");
+            await CdnService.LogAccessAsync("Download", file.Url, "System", false, ex.Message);
             ToastService.ShowError($"Failed to download {file.FileName}");
         }
     }
@@ -1164,17 +1173,29 @@
                 await stream.CopyToAsync(memoryStream);
                 var bytes = memoryStream.ToArray();
 
-                await JSRuntime.InvokeVoidAsync("downloadFile", file.FileName + "_backup", Convert.ToBase64String(bytes));
+                // Fix the filename to insert "_backup" before the extension
+                var backupFileName = file.FileName.InsertBeforeExtension("_backup");
+
+                await JSRuntime.InvokeVoidAsync("downloadFile", backupFileName, Convert.ToBase64String(bytes));
+
+                // Update statistics for download
+                await CdnService.UpdateUsageStatisticsAsync(file.CategoryId, 0, 0, 0, 1, 0);
+
+                // Log the download access
+                await CdnService.LogAccessAsync("DownloadBackup", file.Url, "System", true, null, file.FileSize);
+
                 ToastService.ShowSuccess($"Downloaded backup copy of {file.FileName}");
             }
             else
             {
+                await CdnService.LogAccessAsync("DownloadBackup", file.Url, "System", false, "No backup found");
                 ToastService.ShowError($"Failed to download backup - No base64 backup found for {file.FileName}");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading from base64");
+            await CdnService.LogAccessAsync("DownloadBackup", file.Url, "System", false, ex.Message);
             ToastService.ShowError($"Failed to download backup of {file.FileName}");
         }
     }
@@ -1183,21 +1204,21 @@
     {
         try
         {
-            // Check if physical file exists
-            var physicalPath = CdnService.GetPhysicalPath(file.Url);
-            if (string.IsNullOrEmpty(physicalPath) || !File.Exists(physicalPath))
-            {
-                ToastService.ShowWarning($"Cannot create backup - physical file not found for {file.FileName}");
-                return;
-            }
+            // Log the backup creation attempt
+            await CdnService.LogAccessAsync("CreateBackup", file.Url, "System", true);
 
+            // Create the base64 backup
             await CdnService.MigrateFileToBase64Async(file.Url);
+
+            // Reload content to show updated status
             await LoadContent();
+
             ToastService.ShowSuccess($"Created backup for {file.FileName}");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error creating base64 backup");
+            await CdnService.LogAccessAsync("CreateBackup", file.Url, "System", false, ex.Message);
             ToastService.ShowError($"Failed to create backup for {file.FileName}");
         }
     }
