@@ -13,8 +13,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Roovia.Data;
 using Roovia.Interfaces;
-using Roovia.Models.CDN;
 using System.Collections.Generic;
+using Roovia.Models;
 
 
 namespace Roovia.Interfaces
