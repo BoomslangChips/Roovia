@@ -50,7 +50,7 @@ namespace Roovia.Models.BusinessModels
 
         public DateTime? LeaseEndDate { get; set; }
 
-        public Guid? CurrentTenantId { get; set; }
+        public int? CurrentTenantId { get; set; }
 
         // Commission settings
         public int CommissionTypeId { get; set; } // FK to CommissionType

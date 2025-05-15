@@ -1,465 +1,595 @@
-﻿//using Dapper;
-//using Microsoft.Data.SqlClient;
-//using Roovia.Interfaces;
-//using Roovia.Models.BusinessHelperModels;
-//using Roovia.Models.BusinessModels;
-//
-//using Roovia.Models.Tenant;
-//
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Roovia.Data;
+using Roovia.Interfaces;
+using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.BusinessModels;
+using Roovia.Models.UserCompanyModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-//namespace Roovia.Services
-//{
-//    public class TenantService : ITenant
-//    {
-//        private readonly IConfiguration _configuration;
-//        private string _connectionString = string.Empty;
+namespace Roovia.Services
+{
+    public class TenantService : ITenant
+    {
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly ILogger<TenantService> _logger;
 
-//        public TenantService(IConfiguration configuration)
-//        {
-//            _configuration = configuration;
-//            _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
-//        }
+        public TenantService(
+            IDbContextFactory<ApplicationDbContext> contextFactory,
+            ILogger<TenantService> logger)
+        {
+            _contextFactory = contextFactory;
+            _logger = logger;
+        }
 
-//        public async Task<ResponseModel> CreateTenant(PropertyTenant tenant, int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"  
-//                INSERT INTO [PropertyTenants]   
-//                (  
-//                    PropertyId,  
-//                    CompanyId,
-//                    FirstName,   
-//                    LastName,   
-//                    IdNumber,  
-//                    EmailAddress,   
-//                    IsEmailNotificationsEnabled,  
-//                    MobileNumber,   
-//                    IsSmsNotificationsEnabled,  
-//                    BankAccount_AccountType,   
-//                    BankAccount_AccountNumber,   
-//                    BankAccount_BankName,   
-//                    BankAccount_BranchCode,  
-//                    Address_Street,  
-//                    Address_UnitNumber,  
-//                    Address_ComplexName,  
-//                    Address_BuildingName,  
-//                    Address_Floor,  
-//                    Address_City,  
-//                    Address_Suburb,  
-//                    Address_Province,  
-//                    Address_PostalCode,  
-//                    Address_Country,  
-//                    Address_GateCode,  
-//                    Address_IsResidential,  
-//                    Address_Latitude,  
-//                    Address_Longitude,  
-//                    Address_DeliveryInstructions,  
-//                    DebitDayOfMonth,  
-//                    CreatedOn,   
-//                    CreatedBy  
-//                )   
-//                VALUES   
-//                (  
-//                    @PropertyId,  
-//                    @CompanyId,
-//                    @FirstName,   
-//                    @LastName,   
-//                    @IdNumber,  
-//                    @EmailAddress,   
-//                    @IsEmailNotificationsEnabled,  
-//                    @MobileNumber,   
-//                    @IsSmsNotificationsEnabled,  
-//                    @AccountType,   
-//                    @AccountNumber,   
-//                    @BankName,   
-//                    @BranchCode,  
-//                    @Street,  
-//                    @UnitNumber,  
-//                    @ComplexName,  
-//                    @BuildingName,  
-//                    @Floor,  
-//                    @City,  
-//                    @Suburb,  
-//                    @Province,  
-//                    @PostalCode,  
-//                    @Country,  
-//                    @GateCode,  
-//                    @IsResidential,  
-//                    @Latitude,  
-//                    @Longitude,  
-//                    @DeliveryInstructions,  
-//                    @DebitDayOfMonth,  
-//                    @CreatedOn,   
-//                    @CreatedBy  
-//                );";
+        public async Task<ResponseModel> CreateTenant(PropertyTenant tenant, int companyId)
+        {
+            ResponseModel response = new();
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.ExecuteAsync(sql, new
-//                    {
-//                        tenant.PropertyId,
-//                        CompanyId = companyId,
-//                        tenant.FirstName,
-//                        tenant.LastName,
-//                        tenant.IdNumber,
-//                        tenant.EmailAddress,
-//                        tenant.IsEmailNotificationsEnabled,
-//                        tenant.MobileNumber,
-//                        tenant.IsSmsNotificationsEnabled,
-//                        AccountType = tenant.BankAccount.AccountType,
-//                        AccountNumber = tenant.BankAccount.AccountNumber,
-//                        BankName = tenant.BankAccount.BankName,
-//                        BranchCode = tenant.BankAccount.BranchCode,
-//                        Street = tenant.Address.Street,
-//                        UnitNumber = tenant.Address.UnitNumber,
-//                        ComplexName = tenant.Address.ComplexName,
-//                        BuildingName = tenant.Address.BuildingName,
-//                        Floor = tenant.Address.Floor,
-//                        City = tenant.Address.City,
-//                        Suburb = tenant.Address.Suburb,
-//                        Province = tenant.Address.Province,
-//                        PostalCode = tenant.Address.PostalCode,
-//                        Country = tenant.Address.Country,
-//                        GateCode = tenant.Address.GateCode,
-//                        IsResidential = tenant.Address.IsResidential,
-//                        Latitude = tenant.Address.Latitude,
-//                        Longitude = tenant.Address.Longitude,
-//                        DeliveryInstructions = tenant.Address.DeliveryInstructions,
-//                        tenant.DebitDayOfMonth,
-//                        tenant.CreatedOn,
-//                        tenant.CreatedBy
-//                    });
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Tenant created successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while creating the tenant: " + ex.Message;
-//            }
+                // Verify the property exists and belongs to the company
+                var property = await context.Properties
+                    .FirstOrDefaultAsync(p => p.Id == tenant.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
 
-//            return response;
-//        }
+                if (property == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property not found or does not belong to the company.";
+                    return response;
+                }
 
-//        public async Task<ResponseModel> GetTenantById(int id, int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"SELECT * FROM [PropertyTenants] WHERE Id = @Id AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
+                // Set audit fields
+                tenant.CompanyId = companyId;
+                tenant.CreatedOn = DateTime.Now;
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.QueryFirstOrDefaultAsync<PropertyTenant>(sql, new { Id = id, CompanyId = companyId });
-//                    if (result != null)
-//                    {
-//                        response.Response = result;
-//                        response.ResponseInfo.Success = true;
-//                        response.ResponseInfo.Message = "Tenant retrieved successfully.";
-//                    }
-//                    else
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Tenant not found.";
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while retrieving the tenant: " + ex.Message;
-//            }
+                // Add the tenant
+                await context.PropertyTenants.AddAsync(tenant);
 
-//            return response;
-//        }
+                // Update property to indicate it has a tenant
+                property.HasTenant = true;
+                property.CurrentTenantId = tenant.Id;
+                property.UpdatedDate = DateTime.Now;
 
-//        public async Task<ResponseModel> UpdateTenant(int id, PropertyTenant updatedTenant, int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"  
-//                UPDATE [PropertyTenants]   
-//                SET   
-//                    PropertyId = @PropertyId,  
-//                    FirstName = @FirstName,   
-//                    LastName = @LastName,   
-//                    IdNumber = @IdNumber,  
-//                    EmailAddress = @EmailAddress,   
-//                    IsEmailNotificationsEnabled = @IsEmailNotificationsEnabled,  
-//                    MobileNumber = @MobileNumber,   
-//                    IsSmsNotificationsEnabled = @IsSmsNotificationsEnabled,  
-//                    BankAccount_AccountType = @AccountType,   
-//                    BankAccount_AccountNumber = @AccountNumber,   
-//                    BankAccount_BankName = @BankName,   
-//                    BankAccount_BranchCode = @BranchCode,  
-//                    Address_Street = @Street,  
-//                    Address_UnitNumber = @UnitNumber,  
-//                    Address_ComplexName = @ComplexName,  
-//                    Address_BuildingName = @BuildingName,  
-//                    Address_Floor = @Floor,  
-//                    Address_City = @City,  
-//                    Address_Suburb = @Suburb,  
-//                    Address_Province = @Province,  
-//                    Address_PostalCode = @PostalCode,  
-//                    Address_Country = @Country,  
-//                    Address_GateCode = @GateCode,  
-//                    Address_IsResidential = @IsResidential,  
-//                    Address_Latitude = @Latitude,  
-//                    Address_Longitude = @Longitude,  
-//                    Address_DeliveryInstructions = @DeliveryInstructions,  
-//                    DebitDayOfMonth = @DebitDayOfMonth,  
-//                    UpdatedDate = @UpdatedDate,   
-//                    UpdatedBy = @UpdatedBy  
-//                WHERE Id = @Id AND CompanyId = @CompanyId";
+                await context.SaveChangesAsync();
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.ExecuteAsync(sql, new
-//                    {
-//                        Id = id,
-//                        CompanyId = companyId,
-//                        updatedTenant.PropertyId,
-//                        updatedTenant.FirstName,
-//                        updatedTenant.LastName,
-//                        updatedTenant.IdNumber,
-//                        updatedTenant.EmailAddress,
-//                        updatedTenant.IsEmailNotificationsEnabled,
-//                        updatedTenant.MobileNumber,
-//                        updatedTenant.IsSmsNotificationsEnabled,
-//                        AccountType = updatedTenant.BankAccount.AccountType,
-//                        AccountNumber = updatedTenant.BankAccount.AccountNumber,
-//                        BankName = updatedTenant.BankAccount.BankName,
-//                        BranchCode = updatedTenant.BankAccount.BranchCode,
-//                        Street = updatedTenant.Address.Street,
-//                        UnitNumber = updatedTenant.Address.UnitNumber,
-//                        ComplexName = updatedTenant.Address.ComplexName,
-//                        BuildingName = updatedTenant.Address.BuildingName,
-//                        Floor = updatedTenant.Address.Floor,
-//                        City = updatedTenant.Address.City,
-//                        Suburb = updatedTenant.Address.Suburb,
-//                        Province = updatedTenant.Address.Province,
-//                        PostalCode = updatedTenant.Address.PostalCode,
-//                        Country = updatedTenant.Address.Country,
-//                        GateCode = updatedTenant.Address.GateCode,
-//                        IsResidential = updatedTenant.Address.IsResidential,
-//                        Latitude = updatedTenant.Address.Latitude,
-//                        Longitude = updatedTenant.Address.Longitude,
-//                        DeliveryInstructions = updatedTenant.Address.DeliveryInstructions,
-//                        updatedTenant.DebitDayOfMonth,
-//                        UpdatedDate = DateTime.UtcNow,
-//                        updatedTenant.UpdatedBy
-//                    });
+                // Reload with related data
+                var createdTenant = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses)
+                    .Include(t => t.ContactNumbers)
+                    .Include(t => t.Property)
+                    .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
+                    .FirstOrDefaultAsync(t => t.Id == tenant.Id);
 
-//                    if (result > 0)
-//                    {
-//                        response.ResponseInfo.Success = true;
-//                        response.ResponseInfo.Message = "Tenant updated successfully.";
-//                    }
-//                    else
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Tenant not found or no changes made.";
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while updating the tenant: " + ex.Message;
-//            }
+                response.Response = createdTenant;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenant created successfully.";
 
-//            return response;
-//        }
+                _logger.LogInformation("Tenant created with ID: {TenantId} for property {PropertyId}", tenant.Id, tenant.PropertyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating tenant");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while creating the tenant: " + ex.Message;
+            }
 
-//        public async Task<ResponseModel> DeleteTenant(int id, int companyId, ApplicationUser user)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"
-//                UPDATE [PropertyTenants]
-//                SET 
-//                    IsRemoved = 1,
-//                    RemovedDate = @RemovedDate,
-//                    RemovedBy = @RemovedBy
-//                WHERE Id = @Id AND CompanyId = @CompanyId";
+            return response;
+        }
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.ExecuteAsync(sql, new
-//                    {
-//                        Id = id,
-//                        CompanyId = companyId,
-//                        RemovedDate = DateTime.UtcNow,
-//                        RemovedBy = user?.Id
-//                    });
+        public async Task<ResponseModel> GetTenantById(int id, int companyId)
+        {
+            ResponseModel response = new();
 
-//                    if (result > 0)
-//                    {
-//                        response.ResponseInfo.Success = true;
-//                        response.ResponseInfo.Message = "Tenant deleted successfully.";
-//                    }
-//                    else
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Tenant not found.";
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while deleting the tenant: " + ex.Message;
-//            }
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//            return response;
-//        }
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Property)
+                        .ThenInclude(p => p.Owner)
+                    .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
+                    .Include(t => t.Payments)
+                    .Include(t => t.MaintenanceRequests)
+                    .Include(t => t.PaymentSchedules)
+                    .Where(t => t.Id == id && t.CompanyId == companyId && !t.IsRemoved)
+                    .FirstOrDefaultAsync();
 
-//        public async Task<ResponseModel> GetAllTenants(int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"
-//                SELECT 
-//                    Id,
-//                    PropertyId,
-//                    CompanyId,
-//                    FirstName,
-//                    LastName,
-//                    IdNumber,
-//                    EmailAddress,
-//                    IsEmailNotificationsEnabled,
-//                    MobileNumber,
-//                    IsSmsNotificationsEnabled,
-//                    BankAccount_AccountType AS AccountType,
-//                    BankAccount_AccountNumber AS AccountNumber,
-//                    BankAccount_BankName AS BankName,
-//                    BankAccount_BranchCode AS BranchCode,
-//                    Address_Street AS Street,
-//                    Address_UnitNumber AS UnitNumber,
-//                    Address_ComplexName AS ComplexName,
-//                    Address_BuildingName AS BuildingName,
-//                    Address_Floor AS Floor,
-//                    Address_City AS City,
-//                    Address_Suburb AS Suburb,
-//                    Address_Province AS Province,
-//                    Address_PostalCode AS PostalCode,
-//                    Address_Country AS Country,
-//                    Address_GateCode AS GateCode,
-//                    Address_IsResidential AS IsResidential,
-//                    Address_Latitude AS Latitude,
-//                    Address_Longitude AS Longitude,
-//                    Address_DeliveryInstructions AS DeliveryInstructions,
-//                    DebitDayOfMonth,
-//                    CreatedOn,
-//                    CreatedBy,
-//                    UpdatedDate,
-//                    UpdatedBy
-//                FROM [PropertyTenants]
-//                WHERE CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
+                if (tenant != null)
+                {
+                    response.Response = tenant;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Tenant retrieved successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tenant {TenantId} for company {CompanyId}", id, companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving the tenant: " + ex.Message;
+            }
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.QueryAsync<PropertyTenant>(
-//                        sql,
-//                        new { CompanyId = companyId }
-//                    );
+            return response;
+        }
 
-//                    var tenants = result.ToList();
+        public async Task<ResponseModel> UpdateTenant(int id, PropertyTenant updatedTenant, int companyId)
+        {
+            ResponseModel response = new();
 
-//                    // Process each tenant manually
-//                    foreach (var tenant in tenants)
-//                    {
-//                        // Ensure BankAccount object exists
-//                        tenant.BankAccount = new BankAccount
-//                        {
-//                            AccountType = tenant.GetType().GetProperty("AccountType")?.GetValue(tenant)?.ToString(),
-//                            AccountNumber = tenant.GetType().GetProperty("AccountNumber")?.GetValue(tenant)?.ToString(),
-//                            BankName = Enum.TryParse<BankName>(tenant.GetType().GetProperty("BankName")?.GetValue(tenant)?.ToString(), out var bankNameEnum) ? bankNameEnum : default,
-//                            BranchCode = tenant.GetType().GetProperty("BranchCode")?.GetValue(tenant)?.ToString()
-//                        };
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                        // Ensure Address object exists
-//                        tenant.Address = new Address
-//                        {
-//                            Street = tenant.GetType().GetProperty("Street")?.GetValue(tenant)?.ToString(),
-//                            UnitNumber = tenant.GetType().GetProperty("UnitNumber")?.GetValue(tenant)?.ToString(),
-//                            ComplexName = tenant.GetType().GetProperty("ComplexName")?.GetValue(tenant)?.ToString(),
-//                            BuildingName = tenant.GetType().GetProperty("BuildingName")?.GetValue(tenant)?.ToString(),
-//                            Floor = tenant.GetType().GetProperty("Floor")?.GetValue(tenant)?.ToString(),
-//                            City = tenant.GetType().GetProperty("City")?.GetValue(tenant)?.ToString(),
-//                            Suburb = tenant.GetType().GetProperty("Suburb")?.GetValue(tenant)?.ToString(),
-//                            Province = tenant.GetType().GetProperty("Province")?.GetValue(tenant)?.ToString(),
-//                            PostalCode = tenant.GetType().GetProperty("PostalCode")?.GetValue(tenant)?.ToString(),
-//                            Country = tenant.GetType().GetProperty("Country")?.GetValue(tenant)?.ToString(),
-//                            GateCode = tenant.GetType().GetProperty("GateCode")?.GetValue(tenant)?.ToString(),
-//                            IsResidential = tenant.GetType().GetProperty("IsResidential")?.GetValue(tenant) as bool? ?? false,
-//                            Latitude = tenant.GetType().GetProperty("Latitude")?.GetValue(tenant) as double?,
-//                            Longitude = tenant.GetType().GetProperty("Longitude")?.GetValue(tenant) as double?,
-//                            DeliveryInstructions = tenant.GetType().GetProperty("DeliveryInstructions")?.GetValue(tenant)?.ToString()
-//                        };
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses)
+                    .Include(t => t.ContactNumbers)
+                    .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId && !t.IsRemoved);
 
-//                        // Handle DateTime and GUID conversions
-//                        if (tenant.CreatedOn != DateTime.MinValue && tenant.CreatedOn.Kind == DateTimeKind.Unspecified)
-//                            tenant.CreatedOn = DateTime.SpecifyKind(tenant.CreatedOn, DateTimeKind.Utc);
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
 
-//                        if (tenant.UpdatedDate != DateTime.MinValue && tenant.UpdatedDate.Kind == DateTimeKind.Unspecified)
-//                            tenant.UpdatedDate = DateTime.SpecifyKind(tenant.UpdatedDate, DateTimeKind.Utc);
+                // Update tenant fields
+                tenant.FirstName = updatedTenant.FirstName;
+                tenant.LastName = updatedTenant.LastName;
+                tenant.IdNumber = updatedTenant.IdNumber;
+                tenant.IsEmailNotificationsEnabled = updatedTenant.IsEmailNotificationsEnabled;
+                tenant.IsSmsNotificationsEnabled = updatedTenant.IsSmsNotificationsEnabled;
+                tenant.LeaseStartDate = updatedTenant.LeaseStartDate;
+                tenant.LeaseEndDate = updatedTenant.LeaseEndDate;
+                tenant.RentAmount = updatedTenant.RentAmount;
+                tenant.DepositAmount = updatedTenant.DepositAmount;
+                tenant.DebitDayOfMonth = updatedTenant.DebitDayOfMonth;
+                tenant.StatusId = updatedTenant.StatusId;
+                tenant.Balance = updatedTenant.Balance;
+                tenant.DepositBalance = updatedTenant.DepositBalance;
+                tenant.BankAccount = updatedTenant.BankAccount;
+                tenant.Address = updatedTenant.Address;
+                tenant.EmergencyContactName = updatedTenant.EmergencyContactName;
+                tenant.EmergencyContactPhone = updatedTenant.EmergencyContactPhone;
+                tenant.EmergencyContactRelationship = updatedTenant.EmergencyContactRelationship;
+                tenant.CustomerRefTenant = updatedTenant.CustomerRefTenant;
+                tenant.CustomerRefProperty = updatedTenant.CustomerRefProperty;
+                tenant.ResponsibleAgent = updatedTenant.ResponsibleAgent;
+                tenant.ResponsibleUser = updatedTenant.ResponsibleUser;
+                tenant.Tags = updatedTenant.Tags;
+                tenant.LeaseDocumentId = updatedTenant.LeaseDocumentId;
+                tenant.UpdatedDate = DateTime.Now;
+                tenant.UpdatedBy = updatedTenant.UpdatedBy;
 
-//                        if (tenant.CreatedBy == Guid.Empty && tenant.CreatedBy != null)
-//                        {
-//                            Guid.TryParse(tenant.CreatedBy.ToString(), out var createdBy);
-//                            tenant.CreatedBy = createdBy;
-//                        }
-//                        if (tenant.UpdatedBy == Guid.Empty && tenant.UpdatedBy != null)
-//                        {
-//                            Guid.TryParse(tenant.UpdatedBy.ToString(), out var updatedBy);
-//                            tenant.UpdatedBy = updatedBy;
-//                        }
-//                    }
+                await context.SaveChangesAsync();
 
-//                    response.Response = tenants;
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Tenants retrieved successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
-//            }
+                // Reload with related data
+                var updatedResult = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Property)
+                    .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
+                    .FirstOrDefaultAsync(t => t.Id == id);
 
-//            return response;
-//        }
+                response.Response = updatedResult;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenant updated successfully.";
 
-//        public async Task<ResponseModel> GetTenantWithPropertyId(int propertyId, int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = "SELECT * FROM [PropertyTenants] WHERE PropertyId = @PropertyId AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
+                _logger.LogInformation("Tenant updated: {TenantId}", id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating tenant {TenantId}", id);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while updating the tenant: " + ex.Message;
+            }
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.QueryFirstOrDefaultAsync<PropertyTenant>(sql, new { PropertyId = propertyId, CompanyId = companyId });
-//                    response.Response = result;
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Tenants retrieved successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
-//            }
+            return response;
+        }
 
-//            return response;
-//        }
-//    }
-//}
+        public async Task<ResponseModel> DeleteTenant(int id, int companyId, ApplicationUser user)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.Property)
+                    .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // Soft delete
+                tenant.IsRemoved = true;
+                tenant.RemovedDate = DateTime.Now;
+                tenant.RemovedBy = user?.Id;
+
+                // Update property to indicate no tenant
+                if (tenant.Property != null && tenant.Property.CurrentTenantId == tenant.Id)
+                {
+                    tenant.Property.HasTenant = false;
+                    tenant.Property.CurrentTenantId = null;
+                    tenant.Property.UpdatedDate = DateTime.Now;
+                }
+
+                await context.SaveChangesAsync();
+
+                response.Response = tenant;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenant deleted successfully.";
+
+                _logger.LogInformation("Tenant soft deleted: {TenantId} by {UserId}", id, user?.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting tenant {TenantId}", id);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while deleting the tenant: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetAllTenants(int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenants = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Property)
+                    .Include(t => t.Status)
+                    .Where(t => t.CompanyId == companyId && !t.IsRemoved)
+                    .OrderBy(t => t.LastName)
+                    .ThenBy(t => t.FirstName)
+                    .ToListAsync();
+
+                response.Response = tenants;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenants retrieved successfully.";
+
+                _logger.LogInformation("Retrieved {Count} tenants for company {CompanyId}", tenants.Count, companyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tenants for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetTenantsByProperty(int propertyId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenants = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Status)
+                    .Where(t => t.PropertyId == propertyId && t.CompanyId == companyId && !t.IsRemoved)
+                    .OrderBy(t => t.LeaseStartDate)
+                    .ToListAsync();
+
+                response.Response = tenants;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenants retrieved successfully.";
+
+                _logger.LogInformation("Retrieved {Count} tenants for property {PropertyId}", tenants.Count, propertyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tenants for property {PropertyId}", propertyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetCurrentTenant(int propertyId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Status)
+                    .Include(t => t.LeaseDocument)
+                    .Where(t => t.PropertyId == propertyId &&
+                                t.CompanyId == companyId &&
+                                !t.IsRemoved &&
+                                t.StatusId == 1) // Assuming 1 is Active status
+                    .OrderByDescending(t => t.LeaseStartDate)
+                    .FirstOrDefaultAsync();
+
+                if (tenant != null)
+                {
+                    response.Response = tenant;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Current tenant retrieved successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "No current tenant found for this property.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving current tenant for property {PropertyId}", propertyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving the tenant: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> AddEmailAddress(int tenantId, Email email)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses)
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // If marking as primary, unset other primary emails
+                if (email.IsPrimary)
+                {
+                    foreach (var existingEmail in tenant.EmailAddresses.Where(e => e.IsPrimary))
+                    {
+                        existingEmail.IsPrimary = false;
+                        existingEmail.UpdatedDate = DateTime.Now;
+                    }
+                }
+
+                // Set relation properties
+                email.RelatedEntityType = "PropertyTenant";
+                email.RelatedEntityId = tenantId;
+                email.PropertyTenantId = tenantId;
+                email.CreatedOn = DateTime.Now;
+                email.CreatedBy = tenant.UpdatedBy;
+
+                tenant.EmailAddresses.Add(email);
+                await context.SaveChangesAsync();
+
+                response.Response = email;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Email address added successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding email address for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while adding the email address: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> AddContactNumber(int tenantId, ContactNumber contactNumber)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.ContactNumbers)
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // If marking as primary, unset other primary numbers
+                if (contactNumber.IsPrimary)
+                {
+                    foreach (var existingNumber in tenant.ContactNumbers.Where(c => c.IsPrimary))
+                    {
+                        existingNumber.IsPrimary = false;
+                        existingNumber.UpdatedDate = DateTime.Now;
+                    }
+                }
+
+                // Set relation properties
+                contactNumber.RelatedEntityType = "PropertyTenant";
+                contactNumber.RelatedEntityId = tenantId;
+                contactNumber.PropertyTenantId = tenantId;
+                contactNumber.CreatedOn = DateTime.Now;
+                contactNumber.CreatedBy = tenant.UpdatedBy;
+
+                tenant.ContactNumbers.Add(contactNumber);
+                await context.SaveChangesAsync();
+
+                response.Response = contactNumber;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Contact number added successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding contact number for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while adding the contact number: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> UpdateTenantLease(int tenantId, DateTime leaseStartDate, DateTime leaseEndDate, decimal rentAmount, string userId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenant = await context.PropertyTenants
+                    .Include(t => t.Property)
+                    .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsRemoved);
+
+                if (tenant == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Tenant not found.";
+                    return response;
+                }
+
+                // Update lease information
+                tenant.LeaseStartDate = leaseStartDate;
+                tenant.LeaseEndDate = leaseEndDate;
+                tenant.RentAmount = rentAmount;
+                tenant.UpdatedDate = DateTime.Now;
+                tenant.UpdatedBy = userId;
+
+                // Update property lease dates if this is the current tenant
+                if (tenant.Property != null && tenant.Property.CurrentTenantId == tenant.Id)
+                {
+                    tenant.Property.CurrentLeaseStartDate = leaseStartDate;
+                    tenant.Property.LeaseEndDate = leaseEndDate;
+                    tenant.Property.RentalAmount = rentAmount;
+                    tenant.Property.UpdatedDate = DateTime.Now;
+                }
+
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Lease information updated successfully.";
+
+                _logger.LogInformation("Lease updated for tenant {TenantId} by {UserId}", tenantId, userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating lease for tenant {TenantId}", tenantId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while updating the lease: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetTenantsInArrears(int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenantsInArrears = await context.PropertyTenants
+                    .Include(t => t.EmailAddresses.Where(e => e.IsActive))
+                    .Include(t => t.ContactNumbers.Where(c => c.IsActive))
+                    .Include(t => t.Property)
+                    .Include(t => t.Status)
+                    .Where(t => t.CompanyId == companyId &&
+                                !t.IsRemoved &&
+                                t.Balance < 0 &&
+                                t.StatusId == 1) // Active tenants only
+                    .OrderBy(t => t.Balance)
+                    .ToListAsync();
+
+                response.Response = tenantsInArrears;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenants in arrears retrieved successfully.";
+
+                _logger.LogInformation("Retrieved {Count} tenants in arrears for company {CompanyId}", tenantsInArrears.Count, companyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tenants in arrears for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving tenants: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetTenantStatistics(int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var tenants = await context.PropertyTenants
+                    .Where(t => t.CompanyId == companyId && !t.IsRemoved)
+                    .ToListAsync();
+
+                var statistics = new
+                {
+                    TotalTenants = tenants.Count,
+                    ActiveTenants = tenants.Count(t => t.StatusId == 1),
+                    InactiveTenants = tenants.Count(t => t.StatusId != 1),
+                    TenantsInArrears = tenants.Count(t => t.Balance < 0),
+                    TotalArrears = Math.Abs(tenants.Where(t => t.Balance < 0).Sum(t => t.Balance)),
+                    TotalMonthlyRent = tenants.Where(t => t.StatusId == 1).Sum(t => t.RentAmount),
+                    TenantsByStatus = tenants.GroupBy(t => t.StatusId)
+                        .Select(g => new { StatusId = g.Key, Count = g.Count() })
+                        .ToList()
+                };
+
+                response.Response = statistics;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Tenant statistics retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tenant statistics for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving statistics: " + ex.Message;
+            }
+
+            return response;
+        }
+    }
+}

@@ -1,630 +1,397 @@
-﻿//using Dapper;
-//using Microsoft.Data.SqlClient;
-//using Roovia.Interfaces;
-//
-//
-//
-//
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Roovia.Data;
+using Roovia.Interfaces;
+using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.BusinessModels;
+using Roovia.Models.UserCompanyModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-//namespace Roovia.Services
-//{
-//    public class PropertyOwnerService : IPropertyOwner
-//    {
-//        private readonly IConfiguration _configuration;
-//        private string _connectionString = string.Empty;
+namespace Roovia.Services
+{
+    public class PropertyOwnerService : IPropertyOwner
+    {
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly ILogger<PropertyOwnerService> _logger;
 
-//        public PropertyOwnerService(IConfiguration configuration)
-//        {
-//            _configuration = configuration;
-//            _connectionString = _configuration.GetConnectionString("DefaultConnection");
-//        }
+        public PropertyOwnerService(
+            IDbContextFactory<ApplicationDbContext> contextFactory,
+            ILogger<PropertyOwnerService> logger)
+        {
+            _contextFactory = contextFactory;
+            _logger = logger;
+        }
 
-//        public async Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner)
-//        {
-//            ResponseModel response = new();
+        public async Task<ResponseModel> CreatePropertyOwner(PropertyOwner propertyOwner)
+        {
+            ResponseModel response = new();
 
-//            propertyOwner.CreatedOn = DateTime.Now;
-//            propertyOwner.UpdatedDate = DateTime.Now;
-//            string sql = @"  
-//          INSERT INTO PropertyOwners  
-//          (  
-//              CompanyId,  
-//              FirstName,  
-//              LastName,  
-//              IdNumber,  
-//              VatNumber,  
-//              EmailAddress,  
-//              IsEmailNotificationsEnabled,  
-//              MobileNumber,  
-//              IsSmsNotificationsEnabled,  
-//              AccountType,  
-//              AccountNumber,  
-//              BankName,  
-//              BranchCode,  
-//              Street,  
-//              UnitNumber,  
-//              ComplexName,  
-//              BuildingName,  
-//              Floor,  
-//              City,  
-//              Suburb,  
-//              Province,  
-//              PostalCode,  
-//              Country,  
-//              GateCode,  
-//              IsResidential,  
-//              Latitude,  
-//              Longitude,  
-//              DeliveryInstructions,  
-//              CreatedOn,  
-//              CreatedBy  
-//          )  
-//          VALUES  
-//          (  
-//              @CompanyId,  
-//              @FirstName,  
-//              @LastName,  
-//              @IdNumber,  
-//              @VatNumber,  
-//              @EmailAddress,  
-//              @IsEmailNotificationsEnabled,  
-//              @MobileNumber,  
-//              @IsSmsNotificationsEnabled,  
-//              @AccountType,  
-//              @AccountNumber,  
-//              @BankName,  
-//              @BranchCode,  
-//              @Street,  
-//              @UnitNumber,  
-//              @ComplexName,  
-//              @BuildingName,  
-//              @Floor,  
-//              @City,  
-//              @Suburb,  
-//              @Province,  
-//              @PostalCode,  
-//              @Country,  
-//              @GateCode,  
-//              @IsResidential,  
-//              @Latitude,  
-//              @Longitude,  
-//              @DeliveryInstructions,  
-//              @CreatedOn,  
-//              @CreatedBy  
-//          );
-//          SELECT CAST(SCOPE_IDENTITY() as int)";
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    // Execute the query and get the newly inserted ID
-//                    var newId = await conn.QuerySingleAsync<int>(sql, new
-//                    {
-//                        propertyOwner.CompanyId,
-//                        propertyOwner.FirstName,
-//                        propertyOwner.LastName,
-//                        propertyOwner.IdNumber,
-//                        propertyOwner.VatNumber,
-//                        propertyOwner.EmailAddress,
-//                        propertyOwner.IsEmailNotificationsEnabled,
-//                        propertyOwner.MobileNumber,
-//                        propertyOwner.IsSmsNotificationsEnabled,
-//                        AccountType = propertyOwner.BankAccount?.AccountType,
-//                        AccountNumber = propertyOwner.BankAccount?.AccountNumber,
-//                        BankName = propertyOwner.BankAccount?.BankName.ToString(),
-//                        BranchCode = propertyOwner.BankAccount?.BranchCode,
-//                        Street = propertyOwner.Address?.Street,
-//                        UnitNumber = propertyOwner.Address?.UnitNumber,
-//                        ComplexName = propertyOwner.Address?.ComplexName,
-//                        BuildingName = propertyOwner.Address?.BuildingName,
-//                        Floor = propertyOwner.Address?.Floor,
-//                        City = propertyOwner.Address?.City,
-//                        Suburb = propertyOwner.Address?.Suburb,
-//                        Province = propertyOwner.Address?.Province,
-//                        PostalCode = propertyOwner.Address?.PostalCode,
-//                        Country = propertyOwner.Address?.Country,
-//                        GateCode = propertyOwner.Address?.GateCode,
-//                        IsResidential = propertyOwner.Address?.IsResidential ?? false,
-//                        Latitude = propertyOwner.Address?.Latitude,
-//                        Longitude = propertyOwner.Address?.Longitude,
-//                        DeliveryInstructions = propertyOwner.Address?.DeliveryInstructions,
-//                        propertyOwner.CreatedOn,
-//                        propertyOwner.CreatedBy
-//                    });
+                // Set audit fields
+                propertyOwner.CreatedOn = DateTime.Now;
 
-//                    // Update the object with the new ID and return it
-//                    propertyOwner.Id = newId;
-//                    response.Response = propertyOwner;
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Property owner created successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while creating the property owner: " + ex.Message;
-//            }
+                // Add the property owner
+                await context.PropertyOwners.AddAsync(propertyOwner);
+                await context.SaveChangesAsync();
 
-//            return response;
-//        }
+                // Reload with related data
+                var createdOwner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses)
+                    .Include(o => o.ContactNumbers)
+                    .Include(o => o.Properties)
+                    .FirstOrDefaultAsync(o => o.Id == propertyOwner.Id);
 
-//        public async Task<ResponseModel> GetPropertyOwnerById(int companyId, int id)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"SELECT * FROM PropertyOwners WHERE Id = @Id AND CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
+                response.Response = createdOwner;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owner created successfully.";
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    // Get the raw data from the database
-//                    var row = await conn.QueryFirstOrDefaultAsync(sql, new { Id = id, CompanyId = companyId });
+                _logger.LogInformation("Property owner created with ID: {OwnerId}", propertyOwner.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating property owner");
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while creating the property owner: " + ex.Message;
+            }
 
-//                    if (row == null)
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Property owner not found.";
-//                        return response;
-//                    }
+            return response;
+        }
 
-//                    // Map the flat data to the nested object model
-//                    var propertyOwner = new PropertyOwner
-//                    {
-//                        Id = row.Id,
-//                        CompanyId = row.CompanyId,
-//                        FirstName = row.FirstName,
-//                        LastName = row.LastName,
-//                        IdNumber = row.IdNumber,
-//                        VatNumber = row.VatNumber,
-//                        EmailAddress = row.EmailAddress,
-//                        IsEmailNotificationsEnabled = row.IsEmailNotificationsEnabled,
-//                        MobileNumber = row.MobileNumber,
-//                        IsSmsNotificationsEnabled = row.IsSmsNotificationsEnabled,
+        public async Task<ResponseModel> GetPropertyOwnerById(int companyId, int id)
+        {
+            ResponseModel response = new();
 
-//                        // Handle nullable DateTime fields
-//                        CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-//                        CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-//                        UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
-//                        UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                        // Map BankAccount properties
-//                        BankAccount = new BankAccount
-//                        {
-//                            AccountType = row.AccountType,
-//                            AccountNumber = row.AccountNumber,
-//                            BankName = Enum.TryParse<BankName>(row.BankName?.ToString(), out BankName bankName)
-//                                ? bankName
-//                                : default,
-//                            BranchCode = row.BranchCode
-//                        },
+                var owner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses.Where(e => e.IsActive))
+                    .Include(o => o.ContactNumbers.Where(c => c.IsActive))
+                    .Include(o => o.Properties)
+                        .ThenInclude(p => p.Status)
+                    .Include(o => o.Properties)
+                        .ThenInclude(p => p.MainImage)
+                    .Where(o => o.Id == id && o.CompanyId == companyId && !o.IsRemoved)
+                    .FirstOrDefaultAsync();
 
-//                        // Map Address properties
-//                        Address = new Address
-//                        {
-//                            Street = row.Street,
-//                            UnitNumber = row.UnitNumber,
-//                            ComplexName = row.ComplexName,
-//                            BuildingName = row.BuildingName,
-//                            Floor = row.Floor,
-//                            City = row.City,
-//                            Suburb = row.Suburb,
-//                            Province = row.Province,
-//                            PostalCode = row.PostalCode,
-//                            Country = row.Country,
-//                            GateCode = row.GateCode,
-//                            IsResidential = row.IsResidential ?? false,
-//                            Latitude = row.Latitude,
-//                            Longitude = row.Longitude,
-//                            DeliveryInstructions = row.DeliveryInstructions
-//                        }
-//                    };
+                if (owner != null)
+                {
+                    response.Response = owner;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property owner retrieved successfully.";
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving property owner {OwnerId} for company {CompanyId}", id, companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving the property owner: " + ex.Message;
+            }
 
-//                    // Get related properties if applicable
-//                    string propertiesSql = @"SELECT * FROM Properties WHERE OwnerId = @OwnerId";
-//                    var properties = await conn.QueryAsync(propertiesSql, new { OwnerId = id });
+            return response;
+        }
 
-//                    if (properties != null && properties.Any())
-//                    {
-//                        propertyOwner.Properties = properties.Select(p => new Property
-//                        {
-//                            Id = p.Id,
-//                            OwnerId = p.OwnerId,
-//                            RentalAmount = p.RentalAmount,
-//                            HasTenant = p.HasTenant,
-//                            LeaseOriginalStartDate = p.LeaseOriginalStartDate != null ? p.LeaseOriginalStartDate : DateTime.MinValue,
-//                            CurrentLeaseStartDate = p.CurrentLeaseStartDate != null ? p.CurrentLeaseStartDate : DateTime.MinValue,
-//                            LeaseEndDate = p.LeaseEndDate != null ? p.LeaseEndDate : DateTime.MinValue,
-//                            CurrentTenantId = p.CurrentTenantId != null ? p.CurrentTenantId : Guid.Empty,
-//                            CreatedOn = p.CreatedOn != null ? p.CreatedOn : DateTime.MinValue,
-//                            CreatedBy = p.CreatedBy != null ? p.CreatedBy : Guid.Empty,
-//                            UpdatedDate = p.UpdatedDate != null ? p.UpdatedDate : DateTime.MinValue,
-//                            UpdatedBy = p.UpdatedBy != null ? p.UpdatedBy : Guid.Empty,
+        public async Task<ResponseModel> UpdatePropertyOwner(int id, PropertyOwner updatedOwner)
+        {
+            ResponseModel response = new();
 
-//                            // Map property address
-//                            Address = new Address
-//                            {
-//                                Street = p.Street,
-//                                UnitNumber = p.UnitNumber,
-//                                ComplexName = p.ComplexName,
-//                                BuildingName = p.BuildingName,
-//                                Floor = p.Floor,
-//                                City = p.City,
-//                                Suburb = p.Suburb,
-//                                Province = p.Province,
-//                                PostalCode = p.PostalCode,
-//                                Country = p.Country,
-//                                GateCode = p.GateCode,
-//                                IsResidential = p.IsResidential ?? true,
-//                                Latitude = p.Latitude,
-//                                Longitude = p.Longitude,
-//                                DeliveryInstructions = p.DeliveryInstructions
-//                            }
-//                        }).ToList();
-//                    }
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                    response.Response = propertyOwner;
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Property owner retrieved successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while retrieving the property owner: " + ex.Message;
-//            }
+                var owner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses)
+                    .Include(o => o.ContactNumbers)
+                    .FirstOrDefaultAsync(o => o.Id == id && !o.IsRemoved);
 
-//            return response;
-//        }
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
 
-//        public async Task<ResponseModel> UpdatePropertyOwner(int id, PropertyOwner updatedProperty)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"  
-//           UPDATE PropertyOwners  
-//           SET  
-//               CompanyId = @CompanyId,  
-//               FirstName = @FirstName,  
-//               LastName = @LastName,  
-//               IdNumber = @IdNumber,  
-//               VatNumber = @VatNumber,  
-//               EmailAddress = @EmailAddress,  
-//               IsEmailNotificationsEnabled = @IsEmailNotificationsEnabled,  
-//               IsSmsNotificationsEnabled = @IsSmsNotificationsEnabled,  
-//               MobileNumber = @MobileNumber,  
-//               AccountType = @AccountType,  
-//               AccountNumber = @AccountNumber,  
-//               BankName = @BankName,  
-//               BranchCode = @BranchCode,  
-//               Street = @Street,  
-//               UnitNumber = @UnitNumber,  
-//               ComplexName = @ComplexName,  
-//               BuildingName = @BuildingName,  
-//               Floor = @Floor,  
-//               City = @City,  
-//               Suburb = @Suburb,  
-//               Province = @Province,  
-//               PostalCode = @PostalCode,  
-//               Country = @Country,  
-//               GateCode = @GateCode,  
-//               IsResidential = @IsResidential,  
-//               Latitude = @Latitude,  
-//               Longitude = @Longitude,  
-//               DeliveryInstructions = @DeliveryInstructions,  
-//               UpdatedDate = @UpdatedDate,  
-//               UpdatedBy = @UpdatedBy  
-//           WHERE Id = @Id";
+                // Update owner properties
+                owner.FirstName = updatedOwner.FirstName;
+                owner.LastName = updatedOwner.LastName;
+                owner.IdNumber = updatedOwner.IdNumber;
+                owner.VatNumber = updatedOwner.VatNumber;
+                owner.Address = updatedOwner.Address;
+                owner.BankAccount = updatedOwner.BankAccount;
+                owner.IsEmailNotificationsEnabled = updatedOwner.IsEmailNotificationsEnabled;
+                owner.IsSmsNotificationsEnabled = updatedOwner.IsSmsNotificationsEnabled;
+                owner.CustomerRef = updatedOwner.CustomerRef;
+                owner.Tags = updatedOwner.Tags;
+                owner.UpdatedDate = DateTime.Now;
+                owner.UpdatedBy = updatedOwner.UpdatedBy;
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    var result = await conn.ExecuteAsync(sql, new
-//                    {
-//                        Id = id,
-//                        updatedProperty.CompanyId,
-//                        updatedProperty.FirstName,
-//                        updatedProperty.LastName,
-//                        updatedProperty.IdNumber,
-//                        updatedProperty.VatNumber,
-//                        updatedProperty.EmailAddress,
-//                        updatedProperty.IsEmailNotificationsEnabled,
-//                        updatedProperty.IsSmsNotificationsEnabled,
-//                        updatedProperty.MobileNumber,
-//                        AccountType = updatedProperty.BankAccount?.AccountType,
-//                        AccountNumber = updatedProperty.BankAccount?.AccountNumber,
-//                        BankName = updatedProperty.BankAccount?.BankName.ToString(),
-//                        BranchCode = updatedProperty.BankAccount?.BranchCode,
-//                        Street = updatedProperty.Address?.Street,
-//                        UnitNumber = updatedProperty.Address?.UnitNumber,
-//                        ComplexName = updatedProperty.Address?.ComplexName,
-//                        BuildingName = updatedProperty.Address?.BuildingName,
-//                        Floor = updatedProperty.Address?.Floor,
-//                        City = updatedProperty.Address?.City,
-//                        Suburb = updatedProperty.Address?.Suburb,
-//                        Province = updatedProperty.Address?.Province,
-//                        PostalCode = updatedProperty.Address?.PostalCode,
-//                        Country = updatedProperty.Address?.Country,
-//                        GateCode = updatedProperty.Address?.GateCode,
-//                        IsResidential = updatedProperty.Address?.IsResidential ?? false,
-//                        Latitude = updatedProperty.Address?.Latitude,
-//                        Longitude = updatedProperty.Address?.Longitude,
-//                        DeliveryInstructions = updatedProperty.Address?.DeliveryInstructions,
-//                        UpdatedDate = DateTime.UtcNow,
-//                        updatedProperty.UpdatedBy
-//                    });
+                await context.SaveChangesAsync();
 
-//                    if (result > 0)
-//                    {
-//                        // Get the updated property owner with all the details
-//                        var getResponse = await GetPropertyOwnerById(updatedProperty.CompanyId, id);
-//                        if (getResponse.ResponseInfo.Success)
-//                        {
-//                            response.Response = getResponse.Response;
-//                        }
-//                        else
-//                        {
-//                            response.Response = updatedProperty;
-//                        }
+                // Reload with related data
+                var updatedResult = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses.Where(e => e.IsActive))
+                    .Include(o => o.ContactNumbers.Where(c => c.IsActive))
+                    .Include(o => o.Properties)
+                    .FirstOrDefaultAsync(o => o.Id == id);
 
-//                        response.ResponseInfo.Success = true;
-//                        response.ResponseInfo.Message = "Property owner updated successfully.";
-//                    }
-//                    else
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Property owner not found or no changes made.";
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while updating the property owner: " + ex.Message;
-//            }
+                response.Response = updatedResult;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owner updated successfully.";
 
-//            return response;
-//        }
+                _logger.LogInformation("Property owner updated: {OwnerId}", id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating property owner {OwnerId}", id);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while updating the property owner: " + ex.Message;
+            }
 
-//        public async Task<ResponseModel> DeleteProperty(int id, ApplicationUser user)
-//        {
-//            ResponseModel response = new();
+            return response;
+        }
 
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    // First get the property owner to return in the response
-//                    string selectSql = "SELECT * FROM PropertyOwners WHERE Id = @Id";
-//                    var row = await conn.QueryFirstOrDefaultAsync(selectSql, new { Id = id });
+        public async Task<ResponseModel> DeletePropertyOwner(int id, ApplicationUser user)
+        {
+            ResponseModel response = new();
 
-//                    if (row == null)
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Property owner not found.";
-//                        return response;
-//                    }
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                    // Map the data to return the deleted object
-//                    var propertyOwner = new PropertyOwner
-//                    {
-//                        Id = row.Id,
-//                        CompanyId = row.CompanyId,
-//                        FirstName = row.FirstName,
-//                        LastName = row.LastName,
-//                        IdNumber = row.IdNumber,
-//                        VatNumber = row.VatNumber,
-//                        EmailAddress = row.EmailAddress,
-//                        IsEmailNotificationsEnabled = row.IsEmailNotificationsEnabled,
-//                        MobileNumber = row.MobileNumber,
-//                        IsSmsNotificationsEnabled = row.IsSmsNotificationsEnabled,
-//                        CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-//                        CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-//                        UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
-//                        UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
-//                        BankAccount = new BankAccount
-//                        {
-//                            AccountType = row.AccountType,
-//                            AccountNumber = row.AccountNumber,
-//                            BankName = Enum.TryParse<BankName>(row.BankName?.ToString(), out BankName bankName)
-//                                ? bankName
-//                                : default,
-//                            BranchCode = row.BranchCode
-//                        },
-//                        Address = new Address
-//                        {
-//                            Street = row.Street,
-//                            UnitNumber = row.UnitNumber,
-//                            ComplexName = row.ComplexName,
-//                            BuildingName = row.BuildingName,
-//                            Floor = row.Floor,
-//                            City = row.City,
-//                            Suburb = row.Suburb,
-//                            Province = row.Province,
-//                            PostalCode = row.PostalCode,
-//                            Country = row.Country,
-//                            GateCode = row.GateCode,
-//                            IsResidential = row.IsResidential ?? false,
-//                            Latitude = row.Latitude,
-//                            Longitude = row.Longitude,
-//                            DeliveryInstructions = row.DeliveryInstructions
-//                        }
-//                    };
+                var owner = await context.PropertyOwners
+                    .Include(o => o.Properties)
+                    .FirstOrDefaultAsync(o => o.Id == id && !o.IsRemoved);
 
-//                    // Update IsRemoved, RemovedDate, RemovedBy
-//                    string updateSql = @"UPDATE PropertyOwners 
-//                                         SET IsRemoved = 1, RemovedDate = @RemovedDate, RemovedBy = @RemovedBy 
-//                                         WHERE Id = @Id";
-//                    var result = await conn.ExecuteAsync(updateSql, new
-//                    {
-//                        Id = id,
-//                        RemovedDate = DateTime.UtcNow,
-//                        RemovedBy = !string.IsNullOrEmpty(user?.Id) ? Guid.Parse(user.Id) : Guid.Empty
-//                    });
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
 
-//                    if (result > 0)
-//                    {
-//                        response.Response = propertyOwner;
-//                        response.ResponseInfo.Success = true;
-//                        response.ResponseInfo.Message = "Property owner removed successfully.";
-//                    }
-//                    else
-//                    {
-//                        response.ResponseInfo.Success = false;
-//                        response.ResponseInfo.Message = "Property owner not found.";
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while removing the property owner: " + ex.Message;
-//            }
+                // Check if owner has active properties
+                if (owner.Properties.Any(p => !p.IsRemoved))
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Cannot delete property owner with active properties.";
+                    return response;
+                }
 
-//            return response;
-//        }
+                // Soft delete
+                owner.IsRemoved = true;
+                owner.RemovedDate = DateTime.Now;
+                owner.RemovedBy = user?.Id;
 
-//        public async Task<ResponseModel> GetAllPropertyOwners(int companyId)
-//        {
-//            ResponseModel response = new();
-//            string sql = @"  
-//        SELECT *  
-//        FROM PropertyOwners 
-//        WHERE CompanyId = @CompanyId AND (IsRemoved = 0 OR IsRemoved IS NULL)";
-//            try
-//            {
-//                using (var conn = new SqlConnection(_connectionString))
-//                {
-//                    // First, get the raw data from the database
-//                    var propertyOwnersRaw = await conn.QueryAsync(sql, new { CompanyId = companyId });
+                await context.SaveChangesAsync();
 
-//                    // Process the results to map flattened DB columns to nested objects
-//                    var result = propertyOwnersRaw.Select(row =>
-//                    {
-//                        var propertyOwner = new PropertyOwner
-//                        {
-//                            Id = row.Id,
-//                            CompanyId = row.CompanyId,
-//                            FirstName = row.FirstName,
-//                            LastName = row.LastName,
-//                            IdNumber = row.IdNumber,
-//                            VatNumber = row.VatNumber,
-//                            EmailAddress = row.EmailAddress,
-//                            IsEmailNotificationsEnabled = row.IsEmailNotificationsEnabled,
-//                            MobileNumber = row.MobileNumber,
-//                            IsSmsNotificationsEnabled = row.IsSmsNotificationsEnabled,
+                response.Response = owner;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owner deleted successfully.";
 
-//                            // Handle nullable DateTime fields
-//                            CreatedOn = row.CreatedOn != null ? row.CreatedOn : DateTime.MinValue,
-//                            CreatedBy = row.CreatedBy != null ? row.CreatedBy : Guid.Empty,
-//                            UpdatedDate = row.UpdatedDate != null ? row.UpdatedDate : DateTime.MinValue,
-//                            UpdatedBy = row.UpdatedBy != null ? row.UpdatedBy : Guid.Empty,
+                _logger.LogInformation("Property owner soft deleted: {OwnerId} by {UserId}", id, user?.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting property owner {OwnerId}", id);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while deleting the property owner: " + ex.Message;
+            }
 
-//                            // Map BankAccount properties
-//                            BankAccount = new BankAccount
-//                            {
-//                                AccountType = row.AccountType,
-//                                AccountNumber = row.AccountNumber,
-//                                BankName = Enum.TryParse<BankName>(row.BankName?.ToString(), out BankName bankName)
-//                                    ? bankName
-//                                    : default,
-//                                BranchCode = row.BranchCode
-//                            },
+            return response;
+        }
 
-//                            // Map Address properties
-//                            Address = new Address
-//                            {
-//                                Street = row.Street,
-//                                UnitNumber = row.UnitNumber,
-//                                ComplexName = row.ComplexName,
-//                                BuildingName = row.BuildingName,
-//                                Floor = row.Floor,
-//                                City = row.City,
-//                                Suburb = row.Suburb,
-//                                Province = row.Province,
-//                                PostalCode = row.PostalCode,
-//                                Country = row.Country,
-//                                GateCode = row.GateCode,
-//                                IsResidential = row.IsResidential ?? false,
-//                                Latitude = row.Latitude,
-//                                Longitude = row.Longitude,
-//                                DeliveryInstructions = row.DeliveryInstructions
-//                            }
-//                        };
+        public async Task<ResponseModel> GetAllPropertyOwners(int companyId)
+        {
+            ResponseModel response = new();
 
-//                        return propertyOwner;
-//                    }).ToList();
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//                    // Get the properties for each owner
-//                    string propertiesSql = @"SELECT * FROM Properties WHERE OwnerId IN @OwnerIds";
-//                    var ownerIds = result.Select(o => o.Id).ToArray();
+                var owners = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses.Where(e => e.IsActive))
+                    .Include(o => o.ContactNumbers.Where(c => c.IsActive))
+                    .Include(o => o.Properties)
+                    .Where(o => o.CompanyId == companyId && !o.IsRemoved)
+                    .OrderBy(o => o.LastName)
+                    .ThenBy(o => o.FirstName)
+                    .ToListAsync();
 
-//                    if (ownerIds.Any())
-//                    {
-//                        var properties = await conn.QueryAsync(propertiesSql, new { OwnerIds = ownerIds });
+                response.Response = owners;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owners retrieved successfully.";
 
-//                        if (properties != null && properties.Any())
-//                        {
-//                            foreach (var property in properties)
-//                            {
-//                                var owner = result.FirstOrDefault(o => o.Id == property.OwnerId);
-//                                if (owner != null)
-//                                {
-//                                    if (owner.Properties == null)
-//                                        owner.Properties = new List<Property>();
+                _logger.LogInformation("Retrieved {Count} property owners for company {CompanyId}", owners.Count, companyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving property owners for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving property owners: " + ex.Message;
+            }
 
-//                                    owner.Properties.Add(new Property
-//                                    {
-//                                        Id = property.Id,
-//                                        OwnerId = property.OwnerId,
-//                                        RentalAmount = property.RentalAmount,
-//                                        HasTenant = property.HasTenant,
-//                                        LeaseOriginalStartDate = property.LeaseOriginalStartDate != null ? property.LeaseOriginalStartDate : DateTime.MinValue,
-//                                        CurrentLeaseStartDate = property.CurrentLeaseStartDate != null ? property.CurrentLeaseStartDate : DateTime.MinValue,
-//                                        LeaseEndDate = property.LeaseEndDate != null ? property.LeaseEndDate : DateTime.MinValue,
-//                                        CurrentTenantId = property.CurrentTenantId != null ? property.CurrentTenantId : Guid.Empty,
-//                                        CreatedOn = property.CreatedOn != null ? property.CreatedOn : DateTime.MinValue,
-//                                        CreatedBy = property.CreatedBy != null ? property.CreatedBy : Guid.Empty,
-//                                        UpdatedDate = property.UpdatedDate != null ? property.UpdatedDate : DateTime.MinValue,
-//                                        UpdatedBy = property.UpdatedBy != null ? property.UpdatedBy : Guid.Empty,
+            return response;
+        }
 
-//                                        // Map property address
-//                                        Address = new Address
-//                                        {
-//                                            Street = property.Street,
-//                                            UnitNumber = property.UnitNumber,
-//                                            ComplexName = property.ComplexName,
-//                                            BuildingName = property.BuildingName,
-//                                            Floor = property.Floor,
-//                                            City = property.City,
-//                                            Suburb = property.Suburb,
-//                                            Province = property.Province,
-//                                            PostalCode = property.PostalCode,
-//                                            Country = property.Country,
-//                                            GateCode = property.GateCode,
-//                                            IsResidential = property.IsResidential ?? true,
-//                                            Latitude = property.Latitude,
-//                                            Longitude = property.Longitude,
-//                                            DeliveryInstructions = property.DeliveryInstructions
-//                                        }
-//                                    });
-//                                }
-//                            }
-//                        }
-//                    }
+        public async Task<ResponseModel> AddEmailAddress(int ownerId, Email email)
+        {
+            ResponseModel response = new();
 
-//                    response.Response = result;
-//                    response.ResponseInfo.Success = true;
-//                    response.ResponseInfo.Message = "Property owners retrieved successfully.";
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                response.ResponseInfo.Success = false;
-//                response.ResponseInfo.Message = "An error occurred while retrieving property owners: " + ex.Message;
-//            }
-//            return response;
-//        }
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
 
-//    }
-//}
+                var owner = await context.PropertyOwners
+                    .Include(o => o.EmailAddresses)
+                    .FirstOrDefaultAsync(o => o.Id == ownerId && !o.IsRemoved);
+
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
+
+                // If marking as primary, unset other primary emails
+                if (email.IsPrimary)
+                {
+                    foreach (var existingEmail in owner.EmailAddresses.Where(e => e.IsPrimary))
+                    {
+                        existingEmail.IsPrimary = false;
+                        existingEmail.UpdatedDate = DateTime.Now;
+                    }
+                }
+
+                // Set relation properties
+                email.RelatedEntityType = "PropertyOwner";
+                email.RelatedEntityId = ownerId;
+                email.PropertyOwnerId = ownerId;
+                email.CreatedOn = DateTime.Now;
+                email.CreatedBy = owner.UpdatedBy;
+
+                owner.EmailAddresses.Add(email);
+                await context.SaveChangesAsync();
+
+                response.Response = email;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Email address added successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding email address for property owner {OwnerId}", ownerId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while adding the email address: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> AddContactNumber(int ownerId, ContactNumber contactNumber)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var owner = await context.PropertyOwners
+                    .Include(o => o.ContactNumbers)
+                    .FirstOrDefaultAsync(o => o.Id == ownerId && !o.IsRemoved);
+
+                if (owner == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property owner not found.";
+                    return response;
+                }
+
+                // If marking as primary, unset other primary numbers
+                if (contactNumber.IsPrimary)
+                {
+                    foreach (var existingNumber in owner.ContactNumbers.Where(c => c.IsPrimary))
+                    {
+                        existingNumber.IsPrimary = false;
+                        existingNumber.UpdatedDate = DateTime.Now;
+                    }
+                }
+
+                // Set relation properties
+                contactNumber.RelatedEntityType = "PropertyOwner";
+                contactNumber.RelatedEntityId = ownerId;
+                contactNumber.PropertyOwnerId = ownerId;
+                contactNumber.CreatedOn = DateTime.Now;
+                contactNumber.CreatedBy = owner.UpdatedBy;
+
+                owner.ContactNumbers.Add(contactNumber);
+                await context.SaveChangesAsync();
+
+                response.Response = contactNumber;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Contact number added successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding contact number for property owner {OwnerId}", ownerId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while adding the contact number: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ResponseModel> GetPropertyOwnersByPage(int companyId, int pageNumber, int pageSize)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var query = context.PropertyOwners
+                    .Include(o => o.EmailAddresses.Where(e => e.IsActive))
+                    .Include(o => o.ContactNumbers.Where(c => c.IsActive))
+                    .Include(o => o.Properties)
+                    .Where(o => o.CompanyId == companyId && !o.IsRemoved)
+                    .OrderBy(o => o.LastName)
+                    .ThenBy(o => o.FirstName);
+
+                var totalCount = await query.CountAsync();
+                var owners = await query
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                response.Response = new
+                {
+                    Data = owners,
+                    TotalCount = totalCount,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                };
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Property owners retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paginated property owners for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving property owners: " + ex.Message;
+            }
+
+            return response;
+        }
+    }
+}
