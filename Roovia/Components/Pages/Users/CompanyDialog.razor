@@ -1,21 +1,24 @@
 ﻿@using Roovia.Components.Elements.Forms
 @using Roovia.Interfaces
-
-
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyMappingModels
+@using Roovia.Models.ProjectCdnConfigModels
 @using Roovia.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject IUser UserService
+@inject ICdnService CdnService
 @inject ToastService ToastService
 
 <RVModal IsVisible="true"
-Title="@GetDialogTitle()"
-Icon="@GetDialogIcon()"
-OnClose="OnCancel"
-OnCancel="OnCancel"
+         Title="@GetDialogTitle()"
+         Icon="@GetDialogIcon()"
+         OnClose="OnCancel"
+         OnCancel="OnCancel"
          OnConfirm="HandleConfirmAction"
          ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
-CancelText="@(IsEditMode ? "Cancel" : "Close")"
-Size="lg">
+         CancelText="@(IsEditMode ? "Cancel" : "Close")"
+         Size="lg">
     <ChildContent>
         @if (isLoading)
         {
@@ -32,21 +35,35 @@ Size="lg">
                     <div class="view-mode">
                         <div class="detail-header">
                             <div class="detail-icon">
-                                <i class="fa-light fa-building"></i>
+                                @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
+                                {
+                                    <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name" class="company-logo-icon" />
+                                }
+                                else
+                                {
+                                    <i class="fa-light fa-building"></i>
+                                }
                             </div>
                             <div class="detail-title">
                                 <h2>@CompanyModel.Name</h2>
                                 <div class="company-status">
-                                    <span class="status-badge @(CompanyModel.IsActive ? "active" : "inactive")">
-                                        @(CompanyModel.IsActive ? "Active" : "Inactive")
-                                    </span>
+                                    @if (CompanyModel.Status != null)
+                                    {
+                                        <span class="status-badge @(CompanyModel.IsActive ? "active" : "inactive")">
+                                            @CompanyModel.Status.Name
+                                        </span>
+                                    }
+                                    @if (CompanyModel.SubscriptionPlanId.HasValue && currentSubscriptionPlan != null)
+                                    {
+                                        <span class="subscription-badge">@currentSubscriptionPlan.Name</span>
+                                    }
                                 </div>
                             </div>
                             @if (CanEdit)
                             {
                                 <div class="detail-actions">
-                                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit" 
-                                    OnClick="SwitchToEditMode" CssClass="edit-btn" />
+                                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit"
+                                              OnClick="SwitchToEditMode" CssClass="edit-btn" />
                                 </div>
                             }
                         </div>
@@ -73,6 +90,32 @@ Size="lg">
                                             else
                                             {
                                                 <span>Not provided</span>
+                                            }
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Status</span>
+                                        <span class="detail-value">
+                                            @if (CompanyModel.Status != null)
+                                            {
+                                                @CompanyModel.Status.Name
+                                            }
+                                            else
+                                            {
+                                                <span>Not set</span>
+                                            }
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Subscription Plan</span>
+                                        <span class="detail-value">
+                                            @if (currentSubscriptionPlan != null)
+                                            {
+                                                @currentSubscriptionPlan.Name
+                                            }
+                                            else
+                                            {
+                                                <span>No plan selected</span>
                                             }
                                         </span>
                                     </div>
@@ -179,7 +222,9 @@ Size="lg">
                                         <p>
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.Street))
                                             {
-                                                @CompanyModel.Address.Street<br />
+                                                @CompanyModel.Address.Street
+
+                                                <br />
                                             }
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.UnitNumber))
                                             {
@@ -192,11 +237,15 @@ Size="lg">
                                             }
                                             else if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
                                             {
-                                                @CompanyModel.Address.ComplexName<br />
+                                                @CompanyModel.Address.ComplexName
+
+                                                <br />
                                             }
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.BuildingName))
                                             {
-                                                @CompanyModel.Address.BuildingName<br />
+                                                @CompanyModel.Address.BuildingName
+
+                                                <br />
                                             }
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.Suburb))
                                             {
@@ -209,7 +258,9 @@ Size="lg">
                                             }
                                             else if (!string.IsNullOrEmpty(CompanyModel.Address.City))
                                             {
-                                                @CompanyModel.Address.City<br />
+                                                @CompanyModel.Address.City
+
+                                                <br />
                                             }
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.Province))
                                             {
@@ -222,7 +273,9 @@ Size="lg">
                                             }
                                             else if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
                                             {
-                                                @CompanyModel.Address.PostalCode<br />
+                                                @CompanyModel.Address.PostalCode
+
+                                                <br />
                                             }
                                             @if (!string.IsNullOrEmpty(CompanyModel.Address.Country))
                                             {
@@ -240,10 +293,10 @@ Size="lg">
                             <div class="detail-section">
                                 <h3><i class="fa-light fa-image"></i> Company Logo</h3>
                                 <div class="logo-display">
-                                    @if (!string.IsNullOrEmpty(companyLogoPath))
+                                    @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
                                     {
                                         <div class="logo-container">
-                                            <img src="@companyLogoPath" alt="Company Logo" class="company-logo" />
+                                            <img src="@CompanyModel.MainLogo.Url" alt="Company Logo" class="company-logo" />
                                         </div>
                                     }
                                     else
@@ -274,11 +327,11 @@ Size="lg">
 
                                     <div class="form-group">
                                         <label for="name">Company Name</label>
-                                        <RVTextbox Id="name" 
-                                        Value="@CompanyModel.Name"
-                                        ValueChanged="value => CompanyModel.Name = value"
-                                        Placeholder="Enter company name"
-                                        IconLeft="fa-light fa-building" />
+                                        <RVTextbox Id="name"
+                                                   Value="@CompanyModel.Name"
+                                                   ValueChanged="value => CompanyModel.Name = value"
+                                                   Placeholder="Enter company name"
+                                                   IconLeft="fa-light fa-building" />
                                         <ValidationMessage For="@(() => CompanyModel.Name)" />
                                     </div>
 
@@ -286,20 +339,20 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="registrationNumber">Registration Number</label>
                                             <RVTextbox Id="registrationNumber"
-                                            Value="@CompanyModel.RegistrationNumber"
-                                            ValueChanged="value => CompanyModel.RegistrationNumber = value"
-                                            Placeholder="Enter registration number"
-                                            IconLeft="fa-light fa-id-card" />
+                                                       Value="@CompanyModel.RegistrationNumber"
+                                                       ValueChanged="value => CompanyModel.RegistrationNumber = value"
+                                                       Placeholder="Enter registration number"
+                                                       IconLeft="fa-light fa-id-card" />
                                             <ValidationMessage For="@(() => CompanyModel.RegistrationNumber)" />
                                         </div>
 
                                         <div class="form-group">
                                             <label for="vatNumber">VAT Number</label>
                                             <RVTextbox Id="vatNumber"
-                                            Value="@CompanyModel.VatNumber"
-                                            ValueChanged="value => CompanyModel.VatNumber = value"
-                                            Placeholder="Enter VAT number (optional)"
-                                            IconLeft="fa-light fa-receipt" />
+                                                       Value="@CompanyModel.VatNumber"
+                                                       ValueChanged="value => CompanyModel.VatNumber = value"
+                                                       Placeholder="Enter VAT number (optional)"
+                                                       IconLeft="fa-light fa-receipt" />
                                             <ValidationMessage For="@(() => CompanyModel.VatNumber)" />
                                         </div>
                                     </div>
@@ -307,18 +360,54 @@ Size="lg">
                                     <div class="form-group">
                                         <label for="website">Website</label>
                                         <RVTextbox Id="website"
-                                        Value="@CompanyModel.Website"
-                                        ValueChanged="value => CompanyModel.Website = value"
-                                        Placeholder="Enter website URL (optional)"
-                                        IconLeft="fa-light fa-globe" />
+                                                   Value="@CompanyModel.Website"
+                                                   ValueChanged="value => CompanyModel.Website = value"
+                                                   Placeholder="Enter website URL (optional)"
+                                                   IconLeft="fa-light fa-globe" />
                                         <ValidationMessage For="@(() => CompanyModel.Website)" />
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="status">Status</label>
+                                            <RVSelect Id="status"
+                                                      Value="@(CompanyModel.StatusId?.ToString() ?? "")"
+                                                      ValueChanged="value => UpdateStatus(value)"
+                                                      Placeholder="Select status"
+                                                      IconLeft="fa-light fa-toggle-on">
+                                                @if (StatusTypes != null)
+                                                {
+                                                    @foreach (var status in StatusTypes)
+                                                    {
+                                                        <option value="@status.Id">@status.Name</option>
+                                                    }
+                                                }
+                                            </RVSelect>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="subscription">Subscription Plan</label>
+                                            <RVSelect Id="subscription"
+                                                      Value="@(CompanyModel.SubscriptionPlanId?.ToString() ?? "")"
+                                                      ValueChanged="value => UpdateSubscriptionPlan(value)"
+                                                      Placeholder="Select subscription plan"
+                                                      IconLeft="fa-light fa-credit-card">
+                                                @if (SubscriptionPlans != null)
+                                                {
+                                                    @foreach (var plan in SubscriptionPlans)
+                                                    {
+                                                        <option value="@plan.Id">@plan.Name - $@plan.Price/@plan.BillingCycleDays days</option>
+                                                    }
+                                                }
+                                            </RVSelect>
+                                        </div>
                                     </div>
 
                                     <div class="form-group">
                                         <RVSwitch Label="Active"
-                                        Value="CompanyModel.IsActive"
-                                        ValueChanged="value => CompanyModel.IsActive = value"
-                                        HelperText="Inactive companies will not be accessible to users" />
+                                                  Value="CompanyModel.IsActive"
+                                                  ValueChanged="value => CompanyModel.IsActive = value"
+                                                  HelperText="Inactive companies will not be accessible to users" />
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -334,22 +423,22 @@ Size="lg">
                                     <div class="form-group">
                                         <label for="primaryEmail">Primary Email Address</label>
                                         <RVTextbox Id="primaryEmail"
-                                        Type="email"
-                                        Value="@GetPrimaryEmail()"
-                                        ValueChanged="UpdatePrimaryEmail"
-                                        Placeholder="Enter primary email address"
-                                        IconLeft="fa-light fa-envelope" />
+                                                   Type="email"
+                                                   Value="@GetPrimaryEmail()"
+                                                   ValueChanged="UpdatePrimaryEmail"
+                                                   Placeholder="Enter primary email address"
+                                                   IconLeft="fa-light fa-envelope" />
                                     </div>
 
                                     <!-- Primary Phone -->
                                     <div class="form-group">
                                         <label for="primaryPhone">Primary Phone Number</label>
                                         <RVTextbox Id="primaryPhone"
-                                        Type="tel"
-                                        Value="@GetPrimaryPhone()"
-                                        ValueChanged="UpdatePrimaryPhone"
-                                        Placeholder="Enter primary phone number"
-                                        IconLeft="fa-light fa-phone" />
+                                                   Type="tel"
+                                                   Value="@GetPrimaryPhone()"
+                                                   ValueChanged="UpdatePrimaryPhone"
+                                                   Placeholder="Enter primary phone number"
+                                                   IconLeft="fa-light fa-phone" />
                                     </div>
 
                                     <!-- Additional Email Addresses Section -->
@@ -357,7 +446,7 @@ Size="lg">
                                         <div class="section-subtitle">
                                             <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
                                             <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
-                                            OnClick="AddEmail" CssClass="add-btn" />
+                                                      OnClick="AddEmail" CssClass="add-btn" />
                                         </div>
 
                                         @if (CompanyModel.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
@@ -368,18 +457,18 @@ Size="lg">
                                                     <div class="email-item">
                                                         <div class="email-content">
                                                             <RVTextbox Value="@email.EmailAddress"
-                                                            ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                            Placeholder="Enter email address"
-                                                            IconLeft="fa-light fa-envelope"
-                                                            Size="sm" />
+                                                                       ValueChanged="value => UpdateEmailAddress(email, value)"
+                                                                       Placeholder="Enter email address"
+                                                                       IconLeft="fa-light fa-envelope"
+                                                                       Size="sm" />
                                                             <RVTextbox Value="@email.Description"
-                                                            ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                            Placeholder="Description (e.g. Work, Support)"
-                                                            IconLeft="fa-light fa-tag"
-                                                            Size="sm" />
+                                                                       ValueChanged="value => UpdateEmailDescription(email, value)"
+                                                                       Placeholder="Description (e.g. Work, Support)"
+                                                                       IconLeft="fa-light fa-tag"
+                                                                       Size="sm" />
                                                         </div>
                                                         <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                        OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                                  OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
                                                     </div>
                                                 }
                                             </div>
@@ -398,7 +487,7 @@ Size="lg">
                                         <div class="section-subtitle">
                                             <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
                                             <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
-                                            OnClick="AddPhone" CssClass="add-btn" />
+                                                      OnClick="AddPhone" CssClass="add-btn" />
                                         </div>
 
                                         @if (CompanyModel.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
@@ -409,28 +498,28 @@ Size="lg">
                                                     <div class="phone-item">
                                                         <div class="phone-content">
                                                             <RVTextbox Value="@phone.Number"
-                                                            ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                            Placeholder="Enter phone number"
-                                                            IconLeft="fa-light fa-phone"
-                                                            Size="sm" />
+                                                                       ValueChanged="value => UpdatePhoneNumber(phone, value)"
+                                                                       Placeholder="Enter phone number"
+                                                                       IconLeft="fa-light fa-phone"
+                                                                       Size="sm" />
                                                             <RVSelect Value="@phone.Type.ToString()"
-                                                            ValueChanged="value => UpdatePhoneType(phone, value)"
-                                                            Placeholder="Select type"
-                                                            IconLeft="fa-light fa-phone-office"
-                                                            Size="sm">
+                                                                      ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                                      Placeholder="Select type"
+                                                                      IconLeft="fa-light fa-phone-office"
+                                                                      Size="sm">
                                                                 @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
                                                                 {
                                                                     <option value="@type">@type</option>
                                                                 }
                                                             </RVSelect>
                                                             <RVTextbox Value="@phone.Description"
-                                                            ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                            Placeholder="Description"
-                                                            IconLeft="fa-light fa-tag"
-                                                            Size="sm" />
+                                                                       ValueChanged="value => UpdatePhoneDescription(phone, value)"
+                                                                       Placeholder="Description"
+                                                                       IconLeft="fa-light fa-tag"
+                                                                       Size="sm" />
                                                         </div>
                                                         <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                        OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                                  OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
                                                     </div>
                                                 }
                                             </div>
@@ -457,10 +546,10 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="street">Street</label>
                                             <RVTextbox Id="street"
-                                            Value="@CompanyModel.Address.Street"
-                                            ValueChanged="value => CompanyModel.Address.Street = value"
-                                            Placeholder="Enter street address"
-                                            IconLeft="fa-light fa-road" />
+                                                       Value="@CompanyModel.Address.Street"
+                                                       ValueChanged="value => CompanyModel.Address.Street = value"
+                                                       Placeholder="Enter street address"
+                                                       IconLeft="fa-light fa-road" />
                                         </div>
                                     </div>
 
@@ -468,19 +557,19 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="unitNumber">Unit Number</label>
                                             <RVTextbox Id="unitNumber"
-                                            Value="@CompanyModel.Address.UnitNumber"
-                                            ValueChanged="value => CompanyModel.Address.UnitNumber = value"
-                                            Placeholder="Enter unit number (optional)"
-                                            IconLeft="fa-light fa-door-closed" />
+                                                       Value="@CompanyModel.Address.UnitNumber"
+                                                       ValueChanged="value => CompanyModel.Address.UnitNumber = value"
+                                                       Placeholder="Enter unit number (optional)"
+                                                       IconLeft="fa-light fa-door-closed" />
                                         </div>
 
                                         <div class="form-group">
                                             <label for="complexName">Complex Name</label>
                                             <RVTextbox Id="complexName"
-                                            Value="@CompanyModel.Address.ComplexName"
-                                            ValueChanged="value => CompanyModel.Address.ComplexName = value"
-                                            Placeholder="Enter complex name (optional)"
-                                            IconLeft="fa-light fa-building" />
+                                                       Value="@CompanyModel.Address.ComplexName"
+                                                       ValueChanged="value => CompanyModel.Address.ComplexName = value"
+                                                       Placeholder="Enter complex name (optional)"
+                                                       IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
@@ -488,10 +577,10 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="buildingName">Building Name</label>
                                             <RVTextbox Id="buildingName"
-                                            Value="@CompanyModel.Address.BuildingName"
-                                            ValueChanged="value => CompanyModel.Address.BuildingName = value"
-                                            Placeholder="Enter building name (optional)"
-                                            IconLeft="fa-light fa-building" />
+                                                       Value="@CompanyModel.Address.BuildingName"
+                                                       ValueChanged="value => CompanyModel.Address.BuildingName = value"
+                                                       Placeholder="Enter building name (optional)"
+                                                       IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
@@ -499,19 +588,19 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="suburb">Suburb</label>
                                             <RVTextbox Id="suburb"
-                                            Value="@CompanyModel.Address.Suburb"
-                                            ValueChanged="value => CompanyModel.Address.Suburb = value"
-                                            Placeholder="Enter suburb"
-                                            IconLeft="fa-light fa-map" />
+                                                       Value="@CompanyModel.Address.Suburb"
+                                                       ValueChanged="value => CompanyModel.Address.Suburb = value"
+                                                       Placeholder="Enter suburb"
+                                                       IconLeft="fa-light fa-map" />
                                         </div>
 
                                         <div class="form-group">
                                             <label for="city">City</label>
                                             <RVTextbox Id="city"
-                                            Value="@CompanyModel.Address.City"
-                                            ValueChanged="value => CompanyModel.Address.City = value"
-                                            Placeholder="Enter city"
-                                            IconLeft="fa-light fa-city" />
+                                                       Value="@CompanyModel.Address.City"
+                                                       ValueChanged="value => CompanyModel.Address.City = value"
+                                                       Placeholder="Enter city"
+                                                       IconLeft="fa-light fa-city" />
                                         </div>
                                     </div>
 
@@ -519,29 +608,29 @@ Size="lg">
                                         <div class="form-group">
                                             <label for="province">Province</label>
                                             <RVTextbox Id="province"
-                                            Value="@CompanyModel.Address.Province"
-                                            ValueChanged="value => CompanyModel.Address.Province = value"
-                                            Placeholder="Enter province"
-                                            IconLeft="fa-light fa-map-marked" />
+                                                       Value="@CompanyModel.Address.Province"
+                                                       ValueChanged="value => CompanyModel.Address.Province = value"
+                                                       Placeholder="Enter province"
+                                                       IconLeft="fa-light fa-map-marked" />
                                         </div>
 
                                         <div class="form-group">
                                             <label for="postalCode">Postal Code</label>
                                             <RVTextbox Id="postalCode"
-                                            Value="@CompanyModel.Address.PostalCode"
-                                            ValueChanged="value => CompanyModel.Address.PostalCode = value"
-                                            Placeholder="Enter postal code"
-                                            IconLeft="fa-light fa-mailbox" />
+                                                       Value="@CompanyModel.Address.PostalCode"
+                                                       ValueChanged="value => CompanyModel.Address.PostalCode = value"
+                                                       Placeholder="Enter postal code"
+                                                       IconLeft="fa-light fa-mailbox" />
                                         </div>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="country">Country</label>
                                         <RVTextbox Id="country"
-                                        Value="@CompanyModel.Address.Country"
-                                        ValueChanged="value => CompanyModel.Address.Country = value"
-                                        Placeholder="Enter country"
-                                        IconLeft="fa-light fa-globe" />
+                                                   Value="@CompanyModel.Address.Country"
+                                                   ValueChanged="value => CompanyModel.Address.Country = value"
+                                                   Placeholder="Enter country"
+                                                   IconLeft="fa-light fa-globe" />
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -556,10 +645,14 @@ Size="lg">
                                     <div class="logo-upload-section">
                                         <div class="current-logo">
                                             <h5>Current Logo</h5>
-                                            @if (!string.IsNullOrEmpty(companyLogoPath))
+                                            @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
                                             {
                                                 <div class="logo-preview">
-                                                    <img src="@companyLogoPath" alt="Company Logo" class="logo-image" />
+                                                    <img src="@CompanyModel.MainLogo.Url" alt="Company Logo" class="logo-image" />
+                                                </div>
+                                                <div class="logo-actions mt-2">
+                                                    <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-trash"
+                                                              Text="Remove Logo" OnClick="RemoveLogo" />
                                                 </div>
                                             }
                                             else
@@ -586,13 +679,15 @@ Size="lg">
                                                     <span>Uploading logo... @uploadProgress%</span>
                                                 </div>
                                             }
-                                            @if (logoPreview != null)
+                                            @if (!string.IsNullOrEmpty(logoPreview))
                                             {
                                                 <div class="logo-preview-new">
                                                     <img src="@logoPreview" alt="New Logo Preview" class="preview-image" />
                                                     <div class="preview-actions">
                                                         <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-times"
-                                                        Text="Remove" OnClick="CancelLogoUpload" />
+                                                                  Text="Remove" OnClick="CancelLogoUpload" />
+                                                        <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-check"
+                                                                  Text="Use This Logo" OnClick="ApplyLogo" />
                                                     </div>
                                                 </div>
                                             }
@@ -608,9 +703,10 @@ Size="lg">
     </ChildContent>
 </RVModal>
 
-
 @code {
     [Parameter] public Company CompanyModel { get; set; } = new Company();
+    [Parameter] public IEnumerable<CompanyStatusType>? StatusTypes { get; set; }
+    [Parameter] public IEnumerable<SubscriptionPlan>? SubscriptionPlans { get; set; }
     [Parameter] public bool IsEdit { get; set; } = false;
     [Parameter] public bool IsView { get; set; } = false;
     [Parameter] public bool CanEdit { get; set; } = true;
@@ -622,11 +718,11 @@ Size="lg">
     private bool IsEditMode => (IsEdit || isInEditMode) && !IsView;
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
+    private SubscriptionPlan? currentSubscriptionPlan = null;
 
     // Logo handling
-    private string companyLogoPath = string.Empty;
     private string logoPreview = string.Empty;
-    private IBrowserFile logoFile;
+    private IBrowserFile? logoFile;
     private bool isUploading = false;
     private int uploadProgress = 0;
     private long maxFileSize = 1024 * 1024 * 5; // 5MB
@@ -656,23 +752,30 @@ Size="lg">
         {
             isInEditMode = true;
         }
-        else if (IsView) 
+        else if (IsView)
         {
             isInEditMode = false;
+        }
+
+        // Load current subscription plan
+        if (CompanyModel.SubscriptionPlanId.HasValue && SubscriptionPlans != null)
+        {
+            currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == CompanyModel.SubscriptionPlanId.Value);
         }
     }
 
     private void InitializeNewCompany()
     {
         CompanyModel = new Company
-        {
-            IsActive = true,
-            Address = new Address { Country = "South Africa" },
-            EmailAddresses = new List<Email>(),
-            ContactNumbers = new List<ContactNumber>(),
-            CreatedOn = DateTime.Now
-        };
+            {
+                IsActive = true,
+                Address = new Address { Country = "South Africa" },
+                EmailAddresses = new List<Email>(),
+                ContactNumbers = new List<ContactNumber>(),
+                CreatedOn = DateTime.Now
+            };
     }
+
     private async Task HandleConfirmAction()
     {
         if (IsView)
@@ -681,28 +784,30 @@ Size="lg">
         }
         else if (IsEditMode)
         {
-            await OnSave.InvokeAsync(CompanyModel);
+            await Save();
         }
         else
         {
             SwitchToEditMode();
         }
     }
+
     private async Task LoadCompanyData()
     {
         isLoading = true;
 
         try
         {
-            var response = await UserService.GetCompanyById(CompanyModel.Id);
+            var response = await UserService.GetCompanyWithDetails(CompanyModel.Id);
             if (response.ResponseInfo.Success)
             {
                 CompanyModel = (Company)response.Response;
 
-                // Initialize the logo if available
-                // In a real app, you'd likely have a field in the Company model for the logo path
-                // Since we don't have that in the model, I'm simulating it with a local variable
-                companyLogoPath = $"/company-logos/{CompanyModel.Id}.png"; // This path would be replaced with real logic
+                // Load current subscription plan
+                if (CompanyModel.SubscriptionPlanId.HasValue && SubscriptionPlans != null)
+                {
+                    currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == CompanyModel.SubscriptionPlanId.Value);
+                }
             }
             else
             {
@@ -777,9 +882,9 @@ Size="lg">
                 CompanyModel.UpdatedBy = "CurrentUser"; // Replace with actual current user ID
                 CompanyModel.UpdatedDate = DateTime.Now;
             }
-            
+
             await OnSave.InvokeAsync(CompanyModel);
-            
+
             // If we're in "switch to edit mode" state, go back to view mode after save
             if (isInEditMode)
             {
@@ -789,6 +894,33 @@ Size="lg">
         catch (Exception ex)
         {
             ToastService.ShowError($"Error saving company: {ex.Message}", "Error");
+        }
+    }
+
+    // Status and Subscription Plan handlers
+    private void UpdateStatus(string value)
+    {
+        if (int.TryParse(value, out var statusId))
+        {
+            CompanyModel.StatusId = statusId;
+            // Update the status object if needed
+            if (StatusTypes != null)
+            {
+                CompanyModel.Status = StatusTypes.FirstOrDefault(s => s.Id == statusId);
+            }
+        }
+    }
+
+    private void UpdateSubscriptionPlan(string value)
+    {
+        if (int.TryParse(value, out var planId))
+        {
+            CompanyModel.SubscriptionPlanId = planId;
+            // Update the current subscription plan
+            if (SubscriptionPlans != null)
+            {
+                currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == planId);
+            }
         }
     }
 
@@ -813,7 +945,7 @@ Size="lg">
         }
 
         var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
-        
+
         if (primaryEmail != null)
         {
             primaryEmail.EmailAddress = value;
@@ -822,13 +954,13 @@ Size="lg">
         else if (!string.IsNullOrEmpty(value))
         {
             CompanyModel.EmailAddresses.Add(new Email
-            {
-                EmailAddress = value,
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Company",
-                CreatedOn = DateTime.Now
-            });
+                {
+                    EmailAddress = value,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    CreatedOn = DateTime.Now
+                });
         }
     }
 
@@ -840,7 +972,7 @@ Size="lg">
         }
 
         var primaryPhone = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
-        
+
         if (primaryPhone != null)
         {
             primaryPhone.Number = value;
@@ -849,14 +981,14 @@ Size="lg">
         else if (!string.IsNullOrEmpty(value))
         {
             CompanyModel.ContactNumbers.Add(new ContactNumber
-            {
-                Number = value,
-                Type = ContactNumberType.Mobile,
-                IsPrimary = true,
-                IsActive = true,
-                RelatedEntityType = "Company",
-                CreatedOn = DateTime.Now
-            });
+                {
+                    Number = value,
+                    Type = ContactNumberType.Mobile,
+                    IsPrimary = true,
+                    IsActive = true,
+                    RelatedEntityType = "Company",
+                    CreatedOn = DateTime.Now
+                });
         }
     }
 
@@ -868,12 +1000,12 @@ Size="lg">
         }
 
         CompanyModel.EmailAddresses.Add(new Email
-        {
-            IsPrimary = false,
-            IsActive = true,
-            RelatedEntityType = "Company",
-            CreatedOn = DateTime.Now
-        });
+            {
+                IsPrimary = false,
+                IsActive = true,
+                RelatedEntityType = "Company",
+                CreatedOn = DateTime.Now
+            });
     }
 
     private void RemoveEmail(Email email)
@@ -902,13 +1034,13 @@ Size="lg">
         }
 
         CompanyModel.ContactNumbers.Add(new ContactNumber
-        {
-            Type = ContactNumberType.Mobile,
-            IsPrimary = false,
-            IsActive = true,
-            RelatedEntityType = "Company",
-            CreatedOn = DateTime.Now
-        });
+            {
+                Type = ContactNumberType.Mobile,
+                IsPrimary = false,
+                IsActive = true,
+                RelatedEntityType = "Company",
+                CreatedOn = DateTime.Now
+            });
     }
 
     private void RemovePhone(ContactNumber phone)
@@ -943,7 +1075,7 @@ Size="lg">
         try
         {
             logoFile = e.File;
-            
+
             if (logoFile.Size > maxFileSize)
             {
                 ToastService.ShowError("File size exceeds 5MB limit", "Error");
@@ -971,19 +1103,15 @@ Size="lg">
 
             var imageFormat = logoFile.ContentType.Split('/')[1];
             var resizedImageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 512, 512);
-            
+
             using var stream = resizedImageFile.OpenReadStream();
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             byte[] imageData = ms.ToArray();
-            
+
             // Generate base64 preview
             logoPreview = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(imageData)}";
-            
-            // In a real implementation, you would upload this file to your server
-            // Here we're just saving the preview so it can be displayed
-            // companyLogoPath = await UploadLogoToServer(imageData);
-            
+
             isUploading = false;
             uploadProgress = 100;
         }
@@ -998,5 +1126,62 @@ Size="lg">
     {
         logoPreview = string.Empty;
         logoFile = null;
+    }
+
+    private async Task RemoveLogo()
+    {
+        try
+        {
+            if (CompanyModel.MainLogoId.HasValue)
+            {
+                CompanyModel.MainLogoId = null;
+                CompanyModel.MainLogo = null;
+                ToastService.ShowSuccess("Logo removed successfully", "Success");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task ApplyLogo()
+    {
+        if (logoFile == null) return;
+
+        try
+        {
+            isUploading = true;
+
+            // Upload the file using CDN service
+            var response = await CdnService.UploadFile(
+                logoFile,
+                CdnService.CdnCategory.Logos,
+                CompanyModel.Id.ToString()
+            );
+
+            if (response.ResponseInfo.Success)
+            {
+                var uploadedFile = (CdnFileMetadata)response.Response;
+                CompanyModel.MainLogoId = uploadedFile.Id;
+                CompanyModel.MainLogo = uploadedFile;
+
+                ToastService.ShowSuccess("Logo uploaded successfully", "Success");
+                logoPreview = string.Empty;
+                logoFile = null;
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error uploading logo: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isUploading = false;
+        }
     }
 }

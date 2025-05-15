@@ -230,6 +230,7 @@
 
 @code {
     [Parameter] public string UserId { get; set; } = string.Empty;
+    [Parameter] public int? CompanyId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
@@ -307,6 +308,16 @@
             if (rolesResponse.ResponseInfo.Success)
             {
                 allRoles = (List<Role>)rolesResponse.Response;
+
+                // Filter roles based on CompanyId if provided
+                if (CompanyId.HasValue)
+                {
+                    // Filter to only show roles for this company (both company-specific and system roles)
+                    allRoles = allRoles.Where(r =>
+                        r.CompanyId == null || // System roles
+                        r.CompanyId == CompanyId.Value // Company-specific roles
+                    ).ToList();
+                }
 
                 // Filter out roles that current user cannot assign
                 if (currentUser?.Role != SystemRole.SystemAdministrator)

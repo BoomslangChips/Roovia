@@ -98,6 +98,24 @@
                             @if (!isNewUser)
                             {
                                 <div class="form-group">
+                                    <label for="userStatus">Status</label>
+                                    <RVSelect Id="userStatus"
+                                              Value="@(userModel.StatusId?.ToString() ?? "")"
+                                              ValueChanged="HandleStatusChange"
+                                              Placeholder="Select status"
+                                              IconLeft="fa-light fa-check-circle">
+                                        <option value="">-- Select Status --</option>
+                                        @if (StatusTypes != null)
+                                        {
+                                            @foreach (var status in StatusTypes)
+                                            {
+                                                <option value="@status.Id">@status.Name</option>
+                                            }
+                                        }
+                                    </RVSelect>
+                                </div>
+
+                                <div class="form-group">
                                     <RVSwitch Label="Active"
                                               Value="userModel.IsActive"
                                               ValueChanged="value => userModel.IsActive = value"
@@ -471,6 +489,7 @@
 @code {
     [Parameter] public string? UserId { get; set; }
     [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public IEnumerable<dynamic>? StatusTypes { get; set; }
     [Parameter] public int SelectedBranchId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
@@ -809,6 +828,18 @@
         ToastService.ShowSuccess("User permissions updated successfully", "Success");
     }
 
+    private void HandleStatusChange(string value)
+    {
+        if (int.TryParse(value, out var statusId))
+        {
+            userModel.StatusId = statusId;
+        }
+        else
+        {
+            userModel.StatusId = null;
+        }
+    }
+
     private async Task LoadData()
     {
         try
@@ -892,7 +923,8 @@
                     {
                         IsActive = true,
                         CreatedDate = DateTime.Now,
-                        CreatedBy = currentUserId
+                        CreatedBy = currentUserId,
+                        StatusId = StatusTypes?.FirstOrDefault(s => s.Name == "Active")?.Id
                     };
 
                 // Set default role based on available roles
