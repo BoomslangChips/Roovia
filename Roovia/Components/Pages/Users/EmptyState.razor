@@ -9,8 +9,10 @@
     @if (!string.IsNullOrEmpty(ActionText))
     {
         <div class="empty-state-actions">
-            <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="@ActionText"
-                      OnClick="HandleAction" />
+            <button class="empty-btn empty-btn-primary" @onclick="HandleAction">
+                <i class="fa-light fa-plus"></i>
+                <span>@ActionText</span>
+            </button>
         </div>
     }
 </div>

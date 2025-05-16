@@ -1,12 +1,13 @@
 ﻿@using Roovia.Models.UserCompanyModels
 @using Roovia.Models.UserCompanyMappingModels
 @using Roovia.Interfaces
-<div class="user-filters-panel">
+
+<div class="filter-panel">
     <div class="filter-section">
         <div class="search-section">
             <div class="search-input-wrapper">
                 <i class="fa-light fa-search search-icon"></i>
-                <input type="text" class="custom-search-input" placeholder="Search @SearchTypePlaceholder..."
+                <input type="text" class="search-input" placeholder="Search @SearchTypePlaceholder..."
                        @bind="searchValue" @bind:event="oninput" @onkeyup="HandleKeyPress" />
                 @if (!string.IsNullOrEmpty(searchValue))
                 {
@@ -15,137 +16,170 @@
                     </button>
                 }
             </div>
-            <RVChips Chips="@SearchTypeChips"
-                     IsInputChip="false"
-                     OnChipSelected="HandleSearchTypeSelection"
-                     CssClass="search-type-chips" />
+            <div class="search-type-chips">
+                @foreach (var chip in SearchTypeChips)
+                {
+                    <button class="chip-item @(chip.IsActive ? "active" : "")"
+                            @onclick="() => HandleSearchTypeSelection(chip.Id)">
+                        <i class="@chip.Icon"></i>
+                        <span>@chip.Label</span>
+                    </button>
+                }
+            </div>
         </div>
 
         <div class="filter-selectors">
             <div class="filter-group">
-                <RVDropdown @ref="companyDropdown" TriggerText="@GetCompanyFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown company-dropdown" FullWidth="true">
-                    <div class="dropdown-header">
-                        <span>Filter by Company</span>
-                    </div>
-                    <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == null ? "active" : "")"
-                            @onclick="async () => await SelectCompany(null)">
-                        <i class="fa-light fa-building"></i>
-                        <span>All Companies</span>
-                        @if (SelectedCompanyId == null)
-                        {
-                            <i class="fa-light fa-check"></i>
-                        }
+                <div class="dropdown filter-dropdown">
+                    <button class="dropdown-toggle" @onclick="ToggleCompanyDropdown">
+                        @GetCompanyFilterText() <i class="fa-light fa-chevron-down"></i>
                     </button>
-                    <div class="dropdown-divider"></div>
-                    @if (Companies != null)
+                    @if (showCompanyDropdown)
                     {
-                        @foreach (var company in Companies.OrderBy(c => c.Name))
-                        {
-                            <button type="button" class="roovia-dropdown-item @(SelectedCompanyId == company.Id ? "active" : "")"
-                                    @onclick="async () => await SelectCompany(company.Id)">
+                        <div class="dropdown-menu company-dropdown">
+                            <div class="dropdown-header">
+                                <span>Filter by Company</span>
+                            </div>
+                            <button type="button" class="dropdown-item @(SelectedCompanyId == null ? "active" : "")"
+                                    @onclick="async () => await SelectCompany(null)">
                                 <i class="fa-light fa-building"></i>
-                                <span>@company.Name</span>
-                                @if (SelectedCompanyId == company.Id)
+                                <span>All Companies</span>
+                                @if (SelectedCompanyId == null)
                                 {
                                     <i class="fa-light fa-check"></i>
                                 }
                             </button>
-                        }
-                    }
-                </RVDropdown>
-
-                <RVDropdown @ref="roleDropdown" TriggerText="@GetRoleFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown role-dropdown" FullWidth="true">
-                    <div class="dropdown-header">
-                        <span>Filter by Role</span>
-                    </div>
-                    <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == "all" ? "active" : "")"
-                            @onclick='async () => await SelectRole("all")'>
-                        <i class="fa-light fa-users"></i>
-                        <span>All Roles</span>
-                        @if (SelectedRoleFilter == "all")
-                        {
-                            <i class="fa-light fa-check"></i>
-                        }
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    @foreach (var role in Enum.GetValues(typeof(SystemRole)))
-                    {
-                        var roleValue = role.ToString();
-                        <button type="button" class="roovia-dropdown-item @(SelectedRoleFilter == roleValue ? "active" : "")"
-                                @onclick="async () => await SelectRole(roleValue)">
-                            <i class="@PermissionFormat.GetRoleIcon((SystemRole)role)"></i>
-                            <span>@PermissionFormat.GetRoleDisplayName((SystemRole)role)</span>
-                            @if (SelectedRoleFilter == roleValue)
+                            <div class="dropdown-divider"></div>
+                            @if (Companies != null)
                             {
-                                <i class="fa-light fa-check"></i>
+                                @foreach (var company in Companies.OrderBy(c => c.Name))
+                                {
+                                    <button type="button" class="dropdown-item @(SelectedCompanyId == company.Id ? "active" : "")"
+                                            @onclick="async () => await SelectCompany(company.Id)">
+                                        <i class="fa-light fa-building"></i>
+                                        <span>@company.Name</span>
+                                        @if (SelectedCompanyId == company.Id)
+                                        {
+                                            <i class="fa-light fa-check"></i>
+                                        }
+                                    </button>
+                                }
                             }
-                        </button>
+                        </div>
                     }
-                </RVDropdown>
+                </div>
 
-                <RVDropdown @ref="statusDropdown" TriggerText="@GetStatusFilterText()" ButtonType="outline" Position="bottom-start"
-                            CssClass="filter-dropdown status-dropdown" FullWidth="true">
-                    <div class="dropdown-header">
-                        <span>Filter by Status</span>
-                    </div>
-                    <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "all" ? "active" : "")"
-                            @onclick='async () => await SelectStatus("all")'>
-                        <i class="fa-light fa-users"></i>
-                        <span>All Statuses</span>
-                        @if (SelectedStatusFilter == "all")
-                        {
-                            <i class="fa-light fa-check"></i>
-                        }
+                <div class="dropdown filter-dropdown">
+                    <button class="dropdown-toggle" @onclick="ToggleRoleDropdown">
+                        @GetRoleFilterText() <i class="fa-light fa-chevron-down"></i>
                     </button>
-                    <div class="dropdown-divider"></div>
-                    @if (StatusTypes != null && StatusTypes.Any())
+                    @if (showRoleDropdown)
                     {
-                        @foreach (var status in StatusTypes.OrderBy(s => s.DisplayOrder))
-                        {
-                            var statusValue = status.Id.ToString();
-                            <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == statusValue ? "active" : "")"
-                                    @onclick="async () => await SelectStatus(statusValue)">
-                                <i class="@GetStatusIcon(status.Name)"></i>
-                                <span>@status.Name</span>
-                                @if (SelectedStatusFilter == statusValue)
+                        <div class="dropdown-menu role-dropdown">
+                            <div class="dropdown-header">
+                                <span>Filter by Role</span>
+                            </div>
+                            <button type="button" class="dropdown-item @(SelectedRoleFilter == "all" ? "active" : "")"
+                                    @onclick='async () => await SelectRole("all")'>
+                                <i class="fa-light fa-users"></i>
+                                <span>All Roles</span>
+                                @if (SelectedRoleFilter == "all")
                                 {
                                     <i class="fa-light fa-check"></i>
                                 }
                             </button>
-                        }
+                            <div class="dropdown-divider"></div>
+                            @foreach (var role in Enum.GetValues(typeof(SystemRole)))
+                            {
+                                var roleValue = role.ToString();
+                                <button type="button" class="dropdown-item @(SelectedRoleFilter == roleValue ? "active" : "")"
+                                        @onclick="async () => await SelectRole(roleValue)">
+                                    <i class="@PermissionFormat.GetRoleIcon((SystemRole)role)"></i>
+                                    <span>@PermissionFormat.GetRoleDisplayName((SystemRole)role)</span>
+                                    @if (SelectedRoleFilter == roleValue)
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                            }
+                        </div>
                     }
-                    else
+                </div>
+
+                <div class="dropdown filter-dropdown">
+                    <button class="dropdown-toggle" @onclick="ToggleStatusDropdown">
+                        @GetStatusFilterText() <i class="fa-light fa-chevron-down"></i>
+                    </button>
+                    @if (showStatusDropdown)
                     {
-                        @* Fallback to simple active/inactive *@
-                        <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
-                                @onclick='async () => await SelectStatus("active")'>
-                            <i class="fa-light fa-user-check"></i>
-                            <span>Active</span>
-                            @if (SelectedStatusFilter == "active")
+                        <div class="dropdown-menu status-dropdown">
+                            <div class="dropdown-header">
+                                <span>Filter by Status</span>
+                            </div>
+                            <button type="button" class="dropdown-item @(SelectedStatusFilter == "all" ? "active" : "")"
+                                    @onclick='async () => await SelectStatus("all")'>
+                                <i class="fa-light fa-users"></i>
+                                <span>All Statuses</span>
+                                @if (SelectedStatusFilter == "all")
+                                {
+                                    <i class="fa-light fa-check"></i>
+                                }
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            @if (StatusTypes != null && StatusTypes.Any())
                             {
-                                <i class="fa-light fa-check"></i>
+                                @foreach (var status in StatusTypes)
+                                {
+                                    var statusValue = status.Id.ToString();
+                                    <button type="button" class="dropdown-item @(SelectedStatusFilter == statusValue ? "active" : "")"
+                                            @onclick="async () => await SelectStatus(statusValue)">
+                                        <i class="@GetStatusIcon(status.Name)"></i>
+                                        <span>@status.Name</span>
+                                        @if (SelectedStatusFilter == statusValue)
+                                        {
+                                            <i class="fa-light fa-check"></i>
+                                        }
+                                    </button>
+                                }
                             }
-                        </button>
-                        <button type="button" class="roovia-dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
-                                @onclick='async () => await SelectStatus("inactive")'>
-                            <i class="fa-light fa-user-slash"></i>
-                            <span>Inactive</span>
-                            @if (SelectedStatusFilter == "inactive")
+                            else
                             {
-                                <i class="fa-light fa-check"></i>
+                                <button type="button" class="dropdown-item @(SelectedStatusFilter == "active" ? "active" : "")"
+                                        @onclick='async () => await SelectStatus("active")'>
+                                    <i class="fa-light fa-user-check"></i>
+                                    <span>Active</span>
+                                    @if (SelectedStatusFilter == "active")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
+                                <button type="button" class="dropdown-item @(SelectedStatusFilter == "inactive" ? "active" : "")"
+                                        @onclick='async () => await SelectStatus("inactive")'>
+                                    <i class="fa-light fa-user-slash"></i>
+                                    <span>Inactive</span>
+                                    @if (SelectedStatusFilter == "inactive")
+                                    {
+                                        <i class="fa-light fa-check"></i>
+                                    }
+                                </button>
                             }
-                        </button>
+                        </div>
                     }
-                </RVDropdown>
+                </div>
             </div>
 
             <div class="filter-actions">
-                <RVButton ButtonType="secondary" IconLeft="fa-light fa-filter-slash" Text="Clear" OnClick="HandleClearFilters"
-                          Disabled="@(!HasActiveFilters)" CssClass="clear-filters-btn" />
+                <button class="filter-btn filter-btn-secondary"
+                        @onclick="HandleClearFilters"
+                        disabled="@(!HasActiveFilters)">
+                    <i class="fa-light fa-filter-slash"></i>
+                    <span>Clear</span>
+                </button>
 
-                <RVButton ButtonType="outline" IconLeft="fa-light fa-sync" Text="Refresh" OnClick="HandleRefresh" CssClass="refresh-btn" />
+                <button class="filter-btn filter-btn-outline" @onclick="HandleRefresh">
+                    <i class="fa-light fa-sync"></i>
+                    <span>Refresh</span>
+                </button>
             </div>
         </div>
 
@@ -158,6 +192,7 @@
         }
     </div>
 </div>
+
 @code {
     [Parameter] public List<Company>? Companies { get; set; }
     [Parameter] public IEnumerable<dynamic>? StatusTypes { get; set; }
@@ -181,12 +216,20 @@
     [Parameter] public EventCallback OnRefresh { get; set; }
 
     private string searchValue = string.Empty;
-    private List<RVChips.ChipItem> SearchTypeChips { get; set; } = new List<RVChips.ChipItem>();
+    private bool showCompanyDropdown = false;
+    private bool showRoleDropdown = false;
+    private bool showStatusDropdown = false;
 
-    // References to the dropdown components
-    private RVDropdown companyDropdown;
-    private RVDropdown roleDropdown;
-    private RVDropdown statusDropdown;
+    // Replace RVChips with a custom model for chips
+    private List<ChipItem> SearchTypeChips { get; set; } = new List<ChipItem>();
+
+    public class ChipItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Label { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public bool IsActive { get; set; } = false;
+    }
 
     private string SearchTypePlaceholder => SearchType switch
     {
@@ -208,43 +251,34 @@
 
     private void InitializeSearchTypeChips()
     {
-        SearchTypeChips = new List<RVChips.ChipItem>
-    {
-    new RVChips.ChipItem
-    {
-    Label = "Users",
-    Icon = "fa-light fa-users",
-    Type = "primary",
-    IsActive = SearchType == "users",
-    IsDeletable = false
-    },
-    new RVChips.ChipItem
-    {
-    Label = "Companies",
-    Icon = "fa-light fa-building",
-    Type = "primary",
-    IsActive = SearchType == "companies",
-    IsDeletable = false
-    },
-    new RVChips.ChipItem
-    {
-    Label = "Branches",
-    Icon = "fa-light fa-code-branch",
-    Type = "primary",
-    IsActive = SearchType == "branches",
-    IsDeletable = false
-    }
-    };
+        SearchTypeChips = new List<ChipItem>
+        {
+            new ChipItem
+            {
+                Label = "Users",
+                Icon = "fa-light fa-users",
+                IsActive = SearchType == "users"
+            },
+            new ChipItem
+            {
+                Label = "Companies",
+                Icon = "fa-light fa-building",
+                IsActive = SearchType == "companies"
+            },
+            new ChipItem
+            {
+                Label = "Branches",
+                Icon = "fa-light fa-code-branch",
+                IsActive = SearchType == "branches"
+            }
+        };
     }
 
     private void UpdateSearchTypeChips()
     {
         foreach (var chip in SearchTypeChips)
         {
-            if (chip.Label.ToLower() == SearchType)
-                chip.IsActive = true;
-            else
-                chip.IsActive = false;
+            chip.IsActive = chip.Label.ToLower() == SearchType;
         }
     }
 
@@ -292,18 +326,17 @@
         }
     }
 
+    private void ToggleCompanyDropdown() => showCompanyDropdown = !showCompanyDropdown;
+    private void ToggleRoleDropdown() => showRoleDropdown = !showRoleDropdown;
+    private void ToggleStatusDropdown() => showStatusDropdown = !showStatusDropdown;
+
     private async Task SelectCompany(int? companyId)
     {
         if (SelectedCompanyId != companyId)
         {
             await OnCompanySelected.InvokeAsync(companyId);
         }
-
-        // Close the dropdown after selection
-        if (companyDropdown != null)
-        {
-            await companyDropdown.Close();
-        }
+        showCompanyDropdown = false;
     }
 
     private async Task SelectRole(string role)
@@ -312,12 +345,7 @@
         {
             await OnRoleFilterChanged.InvokeAsync(role);
         }
-
-        // Close the dropdown after selection
-        if (roleDropdown != null)
-        {
-            await roleDropdown.Close();
-        }
+        showRoleDropdown = false;
     }
 
     private async Task SelectStatus(string status)
@@ -326,12 +354,7 @@
         {
             await OnStatusFilterChanged.InvokeAsync(status);
         }
-
-        // Close the dropdown after selection
-        if (statusDropdown != null)
-        {
-            await statusDropdown.Close();
-        }
+        showStatusDropdown = false;
     }
 
     private async Task ClearSearch()
@@ -420,4 +443,3 @@
         };
     }
 }
-

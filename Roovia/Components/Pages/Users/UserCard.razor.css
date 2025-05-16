@@ -1,72 +1,105 @@
-﻿/* UserCard Component - Mobile First */
-
+﻿/* UserCard.razor.css */
 .user-card {
     display: flex;
-    flex-direction: column;
-    padding: var(--spacing-2);
-    background: var(--content-bg);
-    border-radius: var(--border-radius-md);
+    background-color: var(--content-bg);
+    border-radius: 0.75rem;
     border: 1px solid var(--border-divider);
-    margin-bottom: var(--spacing-2);
-    transition: all 0.3s ease;
-    animation: fade-in-up 0.2s ease;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
 }
 
     .user-card:hover {
-        border-color: var(--primary-light);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        transform: translateY(-2px);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        border-color: rgba(var(--primary-rgb), 0.3);
     }
 
-/* Card header with user info */
-.user-card-header {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-2);
-    width: 100%;
-}
+    .user-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--primary), rgba(var(--primary-rgb), 0.4));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
 
-/* Avatar styles */
+    .user-card:hover::before {
+        opacity: 1;
+    }
+
 .user-card-avatar {
-    flex-shrink: 0;
-}
-
-.avatar-initials {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius-pill);
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-    color: white;
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: var(--subtle-bg);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: var(--font-size-base);
-    box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.2);
-    transition: all 0.3s ease;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease;
 }
 
-.user-card:hover .avatar-initials {
+.user-card:hover .user-card-avatar {
     transform: scale(1.05);
-    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
 }
 
-/* User name and badges */
-.user-card-info {
+.avatar-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initials {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: white;
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.user-card-content {
+    display: flex;
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
 }
 
-    .user-card-info h4 {
-        margin: 0 0 var(--spacing-1) 0;
-        font-size: var(--font-size-sm);
+.user-card-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.user-card-header {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+}
+
+    .user-card-header h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
         font-weight: 600;
         color: var(--text-primary);
         line-height: 1.2;
-        white-space: normal;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -74,283 +107,233 @@
 .user-badges {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: var(--spacing-1);
+    gap: 0.35rem;
+    margin-bottom: 0.25rem;
 }
 
 .role-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 6px;
-    border-radius: var(--border-radius-pill);
-    font-size: 9px;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.625rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.2s ease;
-}
-
-.role-admin {
-    background-color: rgba(var(--danger-rgb), 0.1);
-    color: var(--danger);
-}
-
-.role-company-admin {
-    background-color: rgba(var(--info-rgb), 0.1);
-    color: var(--info);
-}
-
-.role-branch-manager {
-    background-color: rgba(var(--warning-rgb), 0.1);
-    color: var(--warning);
-}
-
-.role-property-manager {
-    background-color: rgba(var(--primary-rgb), 0.1);
+    background-color: var(--primary-light);
     color: var(--primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.role-financial {
-    background-color: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
-}
+    .role-badge.role-system-admin {
+        background-color: rgba(var(--info-rgb), 0.1);
+        color: var(--info);
+    }
 
-.role-tenant {
-    background-color: rgba(var(--purple-rgb), 0.1);
-    color: var(--purple);
-}
+    .role-badge.role-company-admin {
+        background-color: rgba(var(--success-rgb), 0.1);
+        color: var(--success);
+    }
 
-.role-reports {
-    background-color: rgba(var(--orange-rgb), 0.1);
-    color: var(--orange);
-}
+    .role-badge.role-branch-manager {
+        background-color: rgba(var(--warning-rgb), 0.1);
+        color: var(--warning);
+    }
 
-.role-default {
-    background-color: var(--subtle-bg);
-    color: var(--text-secondary);
-}
+    .role-badge.role-custom {
+        background-color: rgba(var(--secondary-rgb), 0.1);
+        color: var(--secondary);
+    }
 
 .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 6px;
-    border-radius: var(--border-radius-pill);
-    font-size: 9px;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.625rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.status-active {
-    background-color: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
-}
+    .status-badge.status-active {
+        background-color: var(--success-bg);
+        color: var(--success);
+    }
 
-.status-inactive {
-    background-color: rgba(var(--danger-rgb), 0.1);
-    color: var(--danger);
-}
+    .status-badge.status-inactive {
+        background-color: var(--danger-bg);
+        color: var(--danger);
+    }
 
-/* User details */
 .user-card-details {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: var(--spacing-1) var(--spacing-2);
-    width: 100%;
-    margin-bottom: var(--spacing-2);
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem 1rem;
 }
 
 .detail-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-1);
     color: var(--text-secondary);
-    font-size: 11px;
-    transition: all 0.2s ease;
+    font-size: 0.75rem;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-    .detail-item:hover {
-        color: var(--text-primary);
-    }
-
     .detail-item i {
-        width: 14px;
-        text-align: center;
-        opacity: 0.7;
-        flex-shrink: 0;
+        width: 16px;
+        margin-right: 0.35rem;
+        color: var(--text-muted);
+        font-size: 0.875rem;
     }
 
-/* Action buttons */
+    .detail-item span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
 .user-card-actions {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--spacing-1);
-    width: 100%;
-    padding-top: var(--spacing-2);
-    border-top: 1px solid var(--border-divider);
+    display: flex;
+    margin-left: 1.5rem;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--border-divider);
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
 }
 
-.action-btn {
-    min-width: 0 !important;
-    width: 100% !important;
-    height: 36px !important;
-    padding: 0 !important;
-    font-size: 14px !important;
-    opacity: 0.8;
-    transition: all 0.2s ease !important;
-    border-radius: var(--border-radius-sm);
+/* Button Styling */
+.user-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid var(--border-divider);
+    background-color: transparent;
+    color: var(--text-secondary);
+    position: relative;
 }
 
-    .action-btn:hover {
-        opacity: 1;
-        background-color: var(--primary-light);
-        transform: translateY(-1px);
-    }
-
-    .action-btn i {
-        font-size: inherit !important;
-    }
-
-/* Animations */
-@keyframes fade-in-up {
-    from {
+    .user-btn::after {
+        content: attr(title);
+        position: absolute;
+        top: -24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        background-color: var(--text-primary);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.6875rem;
+        white-space: nowrap;
         opacity: 0;
-        transform: translateY(10px);
+        visibility: hidden;
+        transition: all 0.2s ease;
+        pointer-events: none;
+        z-index: 10;
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .user-btn:hover::after {
+        opacity: 0.9;
+        transform: translateX(-50%) translateY(0);
+        visibility: visible;
     }
+
+    .user-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+    }
+
+.user-btn-outline:hover:not(:disabled) {
+    background-color: var(--primary-lighter);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
-/* Responsive Design - Tablet */
-@media (min-width: 576px) {
-    .user-card {
-        flex-direction: row;
-        align-items: center;
-        padding: var(--spacing-3);
-        gap: var(--spacing-3);
+.user-btn-outline-danger:hover:not(:disabled) {
+    background-color: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.user-btn-outline-success:hover:not(:disabled) {
+    background-color: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.user-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+    .user-btn:disabled::after {
+        display: none;
     }
 
-    .user-card-header {
-        margin-bottom: 0;
-        width: auto;
-    }
-
-    .avatar-initials {
-        width: 48px;
-        height: 48px;
-        font-size: var(--font-size-lg);
-    }
-
-    .user-card-details {
-        width: auto;
-        display: flex;
-        flex-wrap: wrap;
-        margin-bottom: 0;
-    }
-
-    .detail-item {
-        font-size: var(--font-size-xs);
-        width: auto;
+/* Responsive styles */
+@media (max-width: 992px) {
+    .user-card-content {
+        flex-direction: column;
     }
 
     .user-card-actions {
-        width: auto;
-        display: flex;
-        padding-top: 0;
-        border-top: none;
-        margin-left: auto;
-    }
-
-    .action-btn {
-        width: 32px !important;
+        margin-left: 0;
+        margin-top: 0.75rem;
+        padding-left: 0;
+        padding-top: 0.75rem;
+        border-left: none;
+        border-top: 1px solid var(--border-divider);
+        justify-content: flex-start;
     }
 }
 
-/* Responsive Design - Desktop */
-@media (min-width: 768px) {
-    .user-card-info h4 {
-        font-size: var(--font-size-base);
-    }
-
-    .role-badge, .status-badge {
-        font-size: 10px;
-        padding: 2px 8px;
-    }
-
-    .detail-item {
-        margin-right: var(--spacing-2);
-    }
-}
-
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .user-card {
-        padding: var(--spacing-1);
-        position: relative;
+        flex-direction: column;
     }
 
-    .avatar-initials {
-        width: 24px;
-        height: 24px;
-        font-size: 12px;
-        position: absolute;
-        right: 10px;
-        border-radius: 2px;
-    }
-}
-/* Extra small screen optimizations */
-@media (max-width: 400px) {
-    .user-card {
-        padding: var(--spacing-1);
+    .user-card-avatar {
+        margin-right: 0;
+        margin-bottom: 0.75rem;
+        align-self: center;
     }
 
-    .user-card-info h4 {
-        font-size: 13px;
+    .user-card-header {
+        align-items: center;
+        text-align: center;
     }
 
-    .role-badge, .status-badge {
-        padding: 1px 4px;
-        font-size: 8px;
+    .user-badges {
+        justify-content: center;
     }
 
     .user-card-details {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: var(--spacing-1);
+        grid-template-columns: 1fr;
+        text-align: center;
     }
 
     .detail-item {
-        font-size: 10px;
+        justify-content: center;
     }
 
-    .action-btn {
-        height: 32px !important;
+    .user-card-actions {
+        justify-content: center;
     }
 }
 
-/* Dark Mode */
-.theme-dark .user-card {
-    background: var(--content-bg);
-    border-color: var(--border-color);
-}
-
-    .theme-dark .user-card:hover {
-        border-color: var(--primary-light);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+@media (max-width: 480px) {
+    .user-btn {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: 0.75rem;
     }
-
-.theme-dark .avatar-initials {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-}
-
-.theme-dark .role-badge, .theme-dark .status-badge {
-    border: 1px solid var(--border-color);
-}
-
-.theme-dark .action-btn:hover {
-    background-color: rgba(var(--primary-rgb), 0.15);
 }

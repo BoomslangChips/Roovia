@@ -2,9 +2,9 @@
 @using Roovia.Models.BusinessHelperModels
 @using Roovia.Models.UserCompanyMappingModels
 @using Roovia.Models.UserCompanyModels
-@using Roovia.Services.General
 @inject NavigationManager NavigationManager
 @inject ICdnService CdnService
+
 <div class="user-card">
     <div class="user-card-avatar">
         @if (User.ProfilePictureId.HasValue && User.ProfilePicture != null)
@@ -21,131 +21,145 @@
                 else
                 {
                     @(User.FirstName?.Substring(0, 1).ToUpper() ?? "")
-
                     @(User.LastName?.Substring(0, 1).ToUpper() ?? "")
                 }
             </div>
         }
     </div>
-    <div class="user-card-info">
-        <div class="user-card-header">
-            <h4>@(string.IsNullOrEmpty(User.FullName) ? User.UserName : User.FullName)</h4>
-            <div class="user-badges">
-                @if (User.Role.HasValue)
-                {
-                    <span class="role-badge @PermissionFormat.GetRoleBadgeClass(User.Role.Value)">
-                        @PermissionFormat.GetRoleDisplayName(User.Role.Value)
-                    </span>
-                }
-                @if (CustomRoles != null && CustomRoles.Any())
-                {
-                    @foreach (var customRole in CustomRoles)
+
+    <div class="user-card-content">
+        <div class="user-card-info">
+            <div class="user-card-header">
+                <h4>@(string.IsNullOrEmpty(User.FullName) ? User.UserName : User.FullName)</h4>
+                <div class="user-badges">
+                    @if (User.Role.HasValue)
                     {
-                        @if (customRole.Role != null)
+                        <span class="role-badge @PermissionFormat.GetRoleBadgeClass(User.Role.Value)">
+                            @PermissionFormat.GetRoleDisplayName(User.Role.Value)
+                        </span>
+                    }
+                    @if (CustomRoles != null && CustomRoles.Any())
+                    {
+                        @foreach (var customRole in CustomRoles)
                         {
-                            <span class="role-badge role-custom">
-                                @customRole.Role.Name
-                            </span>
+                            @if (customRole.Role != null)
+                            {
+                                <span class="role-badge role-custom">
+                                    @customRole.Role.Name
+                                </span>
+                            }
                         }
                     }
-                }
-                @if (User.Status != null)
+                    @if (User.Status != null)
+                    {
+                        <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
+                            @User.Status.Name
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
+                            @(User.IsActive ? "Active" : "Inactive")
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="user-card-details">
+                <div class="detail-item">
+                    <i class="fa-light fa-envelope"></i>
+                    <span>@User.Email</span>
+                </div>
+                @if (!string.IsNullOrEmpty(User.PhoneNumber))
                 {
-                    <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
-                        @User.Status.Name
-                    </span>
+                    <div class="detail-item">
+                        <i class="fa-light fa-phone"></i>
+                        <span>@User.PhoneNumber</span>
+                    </div>
                 }
-                else
+                @if (!string.IsNullOrEmpty(User.EmployeeNumber))
                 {
-                    <span class="status-badge @(User.IsActive ? "status-active" : "status-inactive")">
-                        @(User.IsActive ? "Active" : "Inactive")
-                    </span>
+                    <div class="detail-item">
+                        <i class="fa-light fa-id-badge"></i>
+                        <span>@User.EmployeeNumber</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(User.JobTitle))
+                {
+                    <div class="detail-item">
+                        <i class="fa-light fa-briefcase"></i>
+                        <span>@User.JobTitle</span>
+                    </div>
+                }
+                @if (User.Company != null)
+                {
+                    <div class="detail-item">
+                        <i class="fa-light fa-building"></i>
+                        <span>@User.Company.Name</span>
+                    </div>
+                }
+                @if (User.Branch != null)
+                {
+                    <div class="detail-item">
+                        <i class="fa-light fa-code-branch"></i>
+                        <span>@User.Branch.Name</span>
+                    </div>
+                }
+                @if (User.LastLoginDate.HasValue)
+                {
+                    <div class="detail-item">
+                        <i class="fa-light fa-clock"></i>
+                        <span>Last login: @User.LastLoginDate.Value.ToString("MMM dd, yyyy")</span>
+                    </div>
                 }
             </div>
         </div>
 
-        <div class="user-card-details">
-            <div class="detail-item">
-                <i class="fa-light fa-envelope"></i>
-                <span>@User.Email</span>
-            </div>
-            @if (!string.IsNullOrEmpty(User.PhoneNumber))
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-phone"></i>
-                    <span>@User.PhoneNumber</span>
-                </div>
-            }
-            @if (!string.IsNullOrEmpty(User.EmployeeNumber))
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-id-badge"></i>
-                    <span>@User.EmployeeNumber</span>
-                </div>
-            }
-            @if (!string.IsNullOrEmpty(User.JobTitle))
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-briefcase"></i>
-                    <span>@User.JobTitle</span>
-                </div>
-            }
-            @if (User.Company != null)
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-building"></i>
-                    <span>@User.Company.Name</span>
-                </div>
-            }
-            @if (User.Branch != null)
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-code-branch"></i>
-                    <span>@User.Branch.Name</span>
-                </div>
-            }
-            @if (User.LastLoginDate.HasValue)
-            {
-                <div class="detail-item">
-                    <i class="fa-light fa-clock"></i>
-                    <span>Last login: @User.LastLoginDate.Value.ToString("MMM dd, yyyy")</span>
-                </div>
-            }
+        <div class="user-card-actions">
+            <button class="user-btn user-btn-outline"
+                    @onclick="HandleView"
+                    title="View Details">
+                <i class="fa-light fa-eye"></i>
+            </button>
+
+            <button class="user-btn user-btn-outline"
+                    @onclick="HandleEdit"
+                    disabled="@DisableActions"
+                    title="@(DisableActions ? "No permission" : "Edit User")">
+                <i class="fa-light fa-edit"></i>
+            </button>
+
+            <button class="user-btn user-btn-outline"
+                    @onclick="HandleRoles"
+                    disabled="@DisableActions"
+                    title="@(DisableActions ? "No permission" : "Roles")">
+                <i class="fa-light fa-shield-check"></i>
+            </button>
+
+            <button class="user-btn user-btn-outline"
+                    @onclick="HandlePermissions"
+                    disabled="@DisableActions"
+                    title="@(DisableActions ? "No permission" : "Permissions")">
+                <i class="fa-light fa-lock"></i>
+            </button>
+
+            <button class="user-btn user-btn-outline"
+                    @onclick="HandleResetPassword"
+                    disabled="@DisableActions"
+                    title="@(DisableActions ? "No permission" : "Reset Password")">
+                <i class="fa-light fa-key"></i>
+            </button>
+
+            <button class="user-btn @(User.IsActive ? "user-btn-outline-danger" : "user-btn-outline-success")"
+                    @onclick="HandleToggleStatus"
+                    disabled="@DisableActions"
+                    title="@(DisableActions ? "No permission" : User.IsActive ? "Deactivate" : "Activate")">
+                <i class="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"></i>
+            </button>
         </div>
-    </div>
-
-    <div class="user-card-actions">
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye"
-                  OnClick="HandleView" CssClass="action-btn"
-                  Title="View User Details" />
-
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit"
-                  OnClick="HandleEdit" CssClass="action-btn"
-                  Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to edit this user" : "Edit User")" />
-
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check"
-                  OnClick="HandleRoles" CssClass="action-btn"
-                  Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to manage this user's roles" : "Manage Roles")" />
-
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-lock"
-                  OnClick="HandlePermissions" CssClass="action-btn"
-                  Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to manage this user's permissions" : "Manage Permissions")" />
-
-        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-key"
-                  OnClick="HandleResetPassword" CssClass="action-btn"
-                  Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to reset this user's password" : "Reset Password")" />
-
-        <RVButton ButtonType="@(User.IsActive ? "outline-danger" : "outline-success")"
-                  Size="xs" IconLeft="@(User.IsActive ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
-                  OnClick="HandleToggleStatus" CssClass="action-btn"
-                  Disabled="@DisableActions"
-                  Title="@(DisableActions ? "You don't have permission to change this user's status" : User.IsActive ? "Deactivate User" : "Activate User")" />
     </div>
 </div>
+
 @code {
     [Parameter] public ApplicationUser User { get; set; } = null!;
     [Parameter] public List<UserRoleAssignment>? CustomRoles { get; set; }
@@ -156,6 +170,7 @@
     [Parameter] public EventCallback<string> OnResetPassword { get; set; }
     [Parameter] public EventCallback<ApplicationUser> OnToggleStatus { get; set; }
     [Parameter] public bool DisableActions { get; set; } = false;
+
     private void HandleView()
     {
         OnView.InvokeAsync(User.Id);
@@ -200,7 +215,4 @@
             OnToggleStatus.InvokeAsync(User);
         }
     }
-
- 
-
 }

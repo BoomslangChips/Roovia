@@ -1,0 +1,41 @@
+﻿/* ====== Users Management Page Styles ====== */
+/* Modern, clean UI with glassmorphism and smooth animations */
+
+:root {
+    /* Enhanced header variables */
+    --users-header-height: 110px;
+    --users-header-gradient: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    --users-header-pattern-color: rgba(255, 255, 255, 0.08);
+    --users-header-icon-bg: rgba(255, 255, 255, 0.15);
+    --users-header-icon-border: rgba(255, 255, 255, 0.25);
+    --users-glass-bg: rgba(255, 255, 255, 0.95);
+    --users-glass-border: rgba(255, 255, 255, 0.18);
+    --users-shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --users-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Accent colors */
+    --users-accent-green: #3fd5b3;
+    --users-accent-lime: #57e795;
+    /* Card & section variables */
+    --users-card-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    --users-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --users-card-border: 1px solid var(--border-divider);
+    --users-card-radius: var(--border-radius-lg);
+    /* Animation timings */
+    --users-animation-normal: 0.3s;
+    --users-animation-slow: 0.5s;
+}
+
+.theme-dark {
+    --users-header-gradient: linear-gradient(135deg, var(--primary) 0%, #296768 100%);
+    --users-header-pattern-color: rgba(0, 0, 0, 0.2);
+    --users-header-icon-bg: rgba(255, 255, 255, 0.1);
+    --users-header-icon-border: rgba(255, 255, 255, 0.15);
+    --users-glass-bg: rgba(26, 48, 66, 0.95);
+    --users-glass-border: rgba(255, 255, 255, 0.08);
+    --users-card-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    --users-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    --users-card-border: 1px solid var(--border-divider);
+    /* Preserve green accent colors for dark mode too */
+    --users-accent-green: #4aefca;
+    --users-accent-lime: #6affaa;
+}
