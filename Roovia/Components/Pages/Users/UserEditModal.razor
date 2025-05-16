@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
-@using Roovia.Components.Elements.Forms
 @using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
@@ -22,701 +21,859 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
-<RVModal IsVisible="true"
-         Title="@(isNewUser ? "Create User" : "Edit User")"
-         Icon="@(isNewUser ? "fa-light fa-user-plus" : "fa-light fa-user-edit")"
-         OnClose="OnClose"
-         OnCancel="OnClose"
-         OnConfirm="SaveUser"
-         ConfirmText="@(isNewUser ? "Create" : "Save")"
-         CancelText="Cancel"
-         Size="lg">
-    <ChildContent>
+<div class="ue-modal-backdrop" @onclick="OnClose"></div>
+<div class="ue-modal-wrapper">
+    <div class="ue-modal-header">
+        <div class="ue-modal-title">
+            <i class="@(isNewUser ? "fa-light fa-user-plus" : "fa-light fa-user-edit")"></i>
+            <span>@(isNewUser ? "Create User" : "Edit User")</span>
+        </div>
+        <button class="ue-close-button" @onclick="OnClose">
+            <i class="fa-light fa-times"></i>
+        </button>
+    </div>
+
+    <div class="ue-modal-body">
         @if (isLoading)
         {
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <h3 class="loading-text">Loading user details...</h3>
+            <div class="ue-loading">
+                <div class="ue-spinner"></div>
+                <span class="ue-loading-text">Loading user details...</span>
             </div>
         }
         else if (!hasAccessPermission)
         {
-            <div class="alert alert-danger">
-                <i class="fa-light fa-exclamation-triangle"></i>
-                <div class="alert-content">
+            <div class="ue-message-panel ue-message-error">
+                <div class="ue-message-icon"><i class="fa-light fa-exclamation-triangle"></i></div>
+                <div class="ue-message-content">
                     <p>You do not have permission to manage users.</p>
                 </div>
             </div>
         }
         else if (!canEditThisUser)
         {
-            <div class="alert alert-danger">
-                <i class="fa-light fa-exclamation-triangle"></i>
-                <div class="alert-content">
+            <div class="ue-message-panel ue-message-error">
+                <div class="ue-message-icon"><i class="fa-light fa-exclamation-triangle"></i></div>
+                <div class="ue-message-content">
                     <p>You do not have permission to edit this user.</p>
                 </div>
             </div>
         }
         else
         {
-            <EditForm Model="userModel" OnValidSubmit="SaveUser" FormName="editUser" class="user-edit-form">
+            <EditForm Model="userModel" OnValidSubmit="SaveUser" FormName="editUser" class="ue-user-form">
                 <DataAnnotationsValidator />
-                <FluentValidationValidator />
 
-                <RVTab Tabs="topLevelTabs" Size="sm" Style="boxed" OnTabChange="HandleTopLevelTabChange">
-                    <RVTabPanel TabId="basic" IsActive='activeTopTab == "basic"'>
-                        <div class="form-section animate-fade-in">
-                            <div class="section-title">
-                                <h4><i class="fa-light fa-user-circle"></i> User Information</h4>
-                                <p>Enter the basic information for this user</p>
-                            </div>
+                <div class="ue-tabs-container">
+                    <div class="ue-tabs-header">
+                        @foreach (var tab in topLevelTabs)
+                        {
+                            <button class="ue-tab-button @(activeTopTab == tab.Id ? "ue-active" : "")" @onclick="() => HandleTopLevelTabChange(tab.Id)">
+                                <i class="@tab.Icon"></i>
+                                <span>@tab.Title</span>
+                            </button>
+                        }
+                    </div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="firstName">First Name</label>
-                                    <RVTextbox Id="firstName"
-                                               Value="@userModel.FirstName"
-                                               ValueChanged="value => userModel.FirstName = value"
-                                               Placeholder="Enter first name" />
-                                    <ValidationMessage For="@(() => userModel.FirstName)" />
+                    <div class="ue-tab-content">
+                        <!-- Basic Info Tab -->
+                        <div class="ue-tab-pane @(activeTopTab == "basic" ? "ue-active" : "")">
+                            <div class="ue-form-section">
+                                <div class="ue-section-title">
+                                    <i class="fa-light fa-user-circle"></i>
+                                    <h3>User Information</h3>
+                                    <p>Enter the basic information for this user</p>
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="lastName">Last Name</label>
-                                    <RVTextbox Id="lastName"
-                                               Value="@userModel.LastName"
-                                               ValueChanged="value => userModel.LastName = value"
-                                               Placeholder="Enter last name" />
-                                    <ValidationMessage For="@(() => userModel.LastName)" />
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="userName">Username</label>
-                                    <RVTextbox Id="userName"
-                                               Value="@userModel.UserName"
-                                               ValueChanged="value => userModel.UserName = value"
-                                               Placeholder="Enter username"
-                                               Disabled="@(!isNewUser)"
-                                               IconLeft="fa-light fa-user" />
-                                    <ValidationMessage For="@(() => userModel.UserName)" />
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="idNumber">ID Number</label>
-                                    <RVTextbox Id="idNumber"
-                                               Value="@userModel.IdNumber"
-                                               ValueChanged="value => userModel.IdNumber = value"
-                                               Placeholder="Enter ID number"
-                                               IconLeft="fa-light fa-id-card" />
-                                    <ValidationMessage For="@(() => userModel.IdNumber)" />
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="jobTitle">Job Title</label>
-                                <RVTextbox Id="jobTitle"
-                                           Value="@userModel.JobTitle"
-                                           ValueChanged="value => userModel.JobTitle = value"
-                                           Placeholder="Enter job title"
-                                           IconLeft="fa-light fa-briefcase" />
-                                <ValidationMessage For="@(() => userModel.JobTitle)" />
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="department">Department</label>
-                                    <RVTextbox Id="department"
-                                               Value="@userModel.Department"
-                                               ValueChanged="value => userModel.Department = value"
-                                               Placeholder="Enter department"
-                                               IconLeft="fa-light fa-building-user" />
-                                    <ValidationMessage For="@(() => userModel.Department)" />
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="employeeNumber">Employee Number</label>
-                                    <RVTextbox Id="employeeNumber"
-                                               Value="@userModel.EmployeeNumber"
-                                               ValueChanged="value => userModel.EmployeeNumber = value"
-                                               Placeholder="Enter employee number"
-                                               IconLeft="fa-light fa-hashtag" />
-                                    <ValidationMessage For="@(() => userModel.EmployeeNumber)" />
-                                </div>
-                            </div>
-
-                            @if (!isNewUser)
-                            {
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="userStatus">Status</label>
-                                        <RVSelect Id="userStatus"
-                                                  Value="@(userModel.StatusId?.ToString() ?? "")"
-                                                  ValueChanged="HandleStatusChange"
-                                                  Placeholder="Select status"
-                                                  IconLeft="fa-light fa-check-circle">
-                                            <option value="">-- Select Status --</option>
-                                            @if (UserStatusTypes != null)
-                                            {
-                                                @foreach (var status in UserStatusTypes)
-                                                {
-                                                    <option value="@status.Id">@status.Name</option>
-                                                }
-                                            }
-                                        </RVSelect>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <RVSwitch Label="Active"
-                                                  Value="userModel.IsActive"
-                                                  ValueChanged="value => userModel.IsActive = value"
-                                                  HelperText="Inactive users will not be able to log in to the system" />
-                                    </div>
-                                </div>
-                            }
-
-                            <div class="profile-image-section">
-                                <div class="section-subtitle">
-                                    <h5><i class="fa-light fa-image-user"></i> Profile Picture</h5>
-                                </div>
-                                <div class="profile-image-container">
-                                    <div class="profile-image-preview">
-                                        @if (userModel.ProfilePictureId.HasValue && userModel.ProfilePicture != null)
-                                        {
-                                            <img src="@userModel.ProfilePicture.Url" alt="Profile Picture" />
-                                        }
-                                        else
-                                        {
-                                            <div class="profile-image-placeholder">
-                                                <i class="fa-light fa-user"></i>
-                                            </div>
-                                        }
-                                    </div>
-                                    <div class="profile-image-controls">
-                                        <InputFile OnChange="HandleProfileImageUpload" accept=".jpg,.jpeg,.png" id="profile-image-upload" class="d-none" />
-                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-upload" Text="Upload Image"
-                                                  OnClick="() => ClickProfileImageUpload()" />
-                                        @if (userModel.ProfilePictureId.HasValue)
-                                        {
-                                            <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-trash" Text="Remove"
-                                                      OnClick="RemoveProfileImage" />
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </RVTabPanel>
-
-                    <RVTabPanel TabId="contact" IsActive='activeTopTab == "contact"'>
-                        <div class="form-section animate-fade-in">
-                            <div class="section-title">
-                                <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
-                                <p>Enter the contact details for this user</p>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="email">Primary Email Address</label>
-                                    <RVTextbox Id="email"
-                                               Type="email"
-                                               Value="@userModel.Email"
-                                               ValueChanged="value => userModel.Email = value"
-                                               Placeholder="Enter email address"
-                                               IconLeft="fa-light fa-envelope" />
-                                    <ValidationMessage For="@(() => userModel.Email)" />
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="phoneNumber">Primary Phone Number</label>
-                                    <RVTextbox Id="phoneNumber"
-                                               Type="tel"
-                                               Value="@userModel.PhoneNumber"
-                                               ValueChanged="value => userModel.PhoneNumber = value"
-                                               Placeholder="Enter phone number"
-                                               IconLeft="fa-light fa-phone" />
-                                    <ValidationMessage For="@(() => userModel.PhoneNumber)" />
-                                </div>
-                            </div>
-
-                            <!-- Additional Email Addresses Section -->
-                            <div class="additional-contacts">
-                                <div class="section-subtitle">
-                                    <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
-                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
-                                              OnClick="AddEmail" CssClass="add-btn" />
-                                </div>
-
-                                @if (additionalEmails.Any())
-                                {
-                                    <div class="email-list">
-                                        @foreach (var email in additionalEmails)
-                                        {
-                                            <div class="email-item">
-                                                <div class="email-content">
-                                                    <RVTextbox Value="@email.EmailAddress"
-                                                               ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                               Placeholder="Enter email address"
-                                                               IconLeft="fa-light fa-envelope"
-                                                               Size="sm" />
-                                                    <RVTextbox Value="@email.Description"
-                                                               ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                               Placeholder="Description (e.g. Work, Personal)"
-                                                               IconLeft="fa-light fa-tag"
-                                                               Size="sm" />
-                                                </div>
-                                                <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                          OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="empty-list">
-                                        <i class="fa-light fa-inbox-empty"></i>
-                                        <p>No additional email addresses added</p>
-                                    </div>
-                                }
-                            </div>
-
-                            <!-- Additional Phone Numbers Section -->
-                            <div class="additional-contacts">
-                                <div class="section-subtitle">
-                                    <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
-                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
-                                              OnClick="AddPhone" CssClass="add-btn" />
-                                </div>
-
-                                @if (additionalPhones.Any())
-                                {
-                                    <div class="phone-list">
-                                        @foreach (var phone in additionalPhones)
-                                        {
-                                            <div class="phone-item">
-                                                <div class="phone-content">
-                                                    <RVTextbox Value="@phone.Number"
-                                                               ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                               Placeholder="Enter phone number"
-                                                               IconLeft="fa-light fa-phone"
-                                                               Size="sm" />
-                                                    <RVSelect Value="@phone.ContactNumberTypeId.ToString()"
-                                                              ValueChanged="value => UpdatePhoneType(phone, value)"
-                                                              Placeholder="Select type"
-                                                              IconLeft="fa-light fa-phone-office"
-                                                              Size="sm">
-                                                        @foreach (var type in contactNumberTypes)
-                                                        {
-                                                            <option value="@type.Id">@type.Name</option>
-                                                        }
-                                                    </RVSelect>
-                                                    <RVTextbox Value="@phone.Description"
-                                                               ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                               Placeholder="Description"
-                                                               IconLeft="fa-light fa-tag"
-                                                               Size="sm" />
-                                                </div>
-                                                <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                          OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="empty-list">
-                                        <i class="fa-light fa-phone-slash"></i>
-                                        <p>No additional phone numbers added</p>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </RVTabPanel>
-
-                    <RVTabPanel TabId="access" IsActive='activeTopTab == "access"'>
-                        <div class="form-section animate-fade-in">
-                            <div class="section-title">
-                                <h4><i class="fa-light fa-shield-check"></i> Access & Roles</h4>
-                                <p>Manage user roles, permissions, and security settings</p>
-                            </div>
-
-                            <RVTab Tabs="accessTabs" Size="sm" Style="pills" OnTabChange="HandleAccessTabChange">
-                                <RVTabPanel TabId="roles" IsActive='activeAccessTab == "roles"'>
-                                    <div class="access-card">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-user-shield"></i> System Role</h5>
+                                <div class="ue-form-row">
+                                    <div class="ue-form-group">
+                                        <label for="firstName">First Name</label>
+                                        <div class="ue-input-wrapper">
+                                            <InputText id="firstName" @bind-Value="userModel.FirstName" class="ue-input" placeholder="Enter first name" />
                                         </div>
-
-                                        <div class="form-group">
-                                            <label for="systemRole">Base System Role</label>
-                                            <RVSelect Id="systemRole"
-                                                      Value="@selectedRole"
-                                                      ValueChanged="value => selectedRole = value"
-                                                      Placeholder="Select role"
-                                                      Disabled="@(!canChangeRole)"
-                                                      IconLeft="fa-light fa-shield-check">
-                                                @foreach (var role in availableRoles)
-                                                {
-                                                    <option value="@role">@PermissionFormat.GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
-                                                }
-                                            </RVSelect>
-                                            <div class="field-info">
-                                                <i class="fa-light fa-info-circle"></i>
-                                                <span>This defines the user's base system role and associated permissions</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="role-description">
-                                            @if (!string.IsNullOrEmpty(selectedRole) && Enum.TryParse<SystemRole>(selectedRole, out var selectedRoleEnum))
-                                            {
-                                                <div class="role-icon">
-                                                    <i class="@PermissionFormat.GetRoleIcon(selectedRoleEnum)"></i>
-                                                </div>
-                                                <div class="role-details">
-                                                    <h5>@PermissionFormat.GetRoleDisplayName(selectedRoleEnum)</h5>
-                                                    <p>@PermissionFormat.GetRoleDescription(selectedRoleEnum)</p>
-                                                </div>
-                                            }
-                                        </div>
+                                        <ValidationMessage For="@(() => userModel.FirstName)" class="ue-validation-message" />
                                     </div>
 
-                                    <div class="access-card">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-building"></i> Company Access</h5>
+                                    <div class="ue-form-group">
+                                        <label for="lastName">Last Name</label>
+                                        <div class="ue-input-wrapper">
+                                            <InputText id="lastName" @bind-Value="userModel.LastName" class="ue-input" placeholder="Enter last name" />
                                         </div>
+                                        <ValidationMessage For="@(() => userModel.LastName)" class="ue-validation-message" />
+                                    </div>
+                                </div>
 
-                                        <div class="form-group">
-                                            <label for="company">Company</label>
-                                            <RVSelect Id="company"
-                                                      Value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")"
-                                                      ValueChanged="HandleCompanyChange"
-                                                      Placeholder="Select company"
-                                                      Disabled="@(!canAssignAnyCompany)"
-                                                      IconLeft="fa-light fa-building">
-                                                <option value="">-- None --</option>
-                                                @if (availableCompanies != null)
-                                                {
-                                                    @foreach (var company in availableCompanies.OrderBy(c => c.Name))
+                                <div class="ue-form-row">
+                                    <div class="ue-form-group">
+                                        <label for="userName">Username</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-user ue-input-icon"></i>
+                                            <InputText id="userName" @bind-Value="userModel.UserName" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter username" disabled="@(!isNewUser)" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.UserName)" class="ue-validation-message" />
+                                    </div>
+
+                                    <div class="ue-form-group">
+                                        <label for="idNumber">ID Number</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-id-card ue-input-icon"></i>
+                                            <InputText id="idNumber" @bind-Value="userModel.IdNumber" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter ID number" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.IdNumber)" class="ue-validation-message" />
+                                    </div>
+                                </div>
+
+                                <div class="ue-form-group">
+                                    <label for="jobTitle">Job Title</label>
+                                    <div class="ue-input-wrapper">
+                                        <i class="fa-light fa-briefcase ue-input-icon"></i>
+                                        <InputText id="jobTitle" @bind-Value="userModel.JobTitle" class="ue-input ue-input-with-icon" 
+                                                 placeholder="Enter job title" />
+                                    </div>
+                                    <ValidationMessage For="@(() => userModel.JobTitle)" class="ue-validation-message" />
+                                </div>
+
+                                <div class="ue-form-row">
+                                    <div class="ue-form-group">
+                                        <label for="department">Department</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-building-user ue-input-icon"></i>
+                                            <InputText id="department" @bind-Value="userModel.Department" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter department" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.Department)" class="ue-validation-message" />
+                                    </div>
+
+                                    <div class="ue-form-group">
+                                        <label for="employeeNumber">Employee Number</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-hashtag ue-input-icon"></i>
+                                            <InputText id="employeeNumber" @bind-Value="userModel.EmployeeNumber" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter employee number" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.EmployeeNumber)" class="ue-validation-message" />
+                                    </div>
+                                </div>
+
+                                @if (!isNewUser)
+                                {
+                                    <div class="ue-form-row">
+                                        <div class="ue-form-group">
+                                            <label for="userStatus">Status</label>
+                                            <div class="ue-select-wrapper">
+                                                <i class="fa-light fa-check-circle ue-input-icon"></i>
+                                                <select id="userStatus" class="ue-select ue-select-with-icon" value="@(userModel.StatusId?.ToString() ?? "")" 
+                                                        @onchange="(e) => HandleStatusChange(e.Value.ToString())">
+                                                    <option value="">-- Select Status --</option>
+                                                    @if (UserStatusTypes != null)
                                                     {
-                                                        <option value="@company.Id">@company.Name</option>
+                                                        @foreach (var status in UserStatusTypes)
+                                                        {
+                                                            <option value="@status.Id">@status.Name</option>
+                                                        }
                                                     }
-                                                }
-                                            </RVSelect>
-                                            <div class="field-info">
-                                                <i class="fa-light fa-info-circle"></i>
-                                                <span>Assign the user to a company to grant access to company data</span>
+                                                </select>
+                                                <i class="fa-light fa-chevron-down ue-select-arrow"></i>
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="branch">Branch</label>
-                                            <RVSelect Id="branch"
-                                                      Value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")"
-                                                      ValueChanged="HandleBranchChange"
-                                                      Placeholder="Select branch"
-                                                      Disabled="@(!canAssignBranch || !userModel.CompanyId.HasValue || availableBranches.Count == 0)"
-                                                      IconLeft="fa-light fa-code-branch">
-                                                <option value="">-- None --</option>
-                                                @foreach (var branch in availableBranches.OrderBy(b => b.Name))
-                                                {
-                                                    <option value="@branch.Id">@branch.Name</option>
-                                                }
-                                            </RVSelect>
-                                            <div class="field-info">
-                                                <i class="fa-light fa-info-circle"></i>
-                                                <span>Assign the user to a specific branch within the company</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    @if (isNewUser)
-                                    {
-                                        <div class="permissions-info-card">
-                                            <div class="info-box">
-                                                <div class="info-icon"><i class="fa-light fa-info-circle"></i></div>
-                                                <div class="info-content">
-                                                    <h5>Permissions Management</h5>
-                                                    <p>You'll be able to manage specific permissions after creating the user. Permission management allows you to grant or deny specific capabilities beyond their base role.</p>
+                                        <div class="ue-form-group">
+                                            <div class="ue-switch-container">
+                                                <label class="ue-switch">
+                                                    <input type="checkbox" @bind="userModel.IsActive" />
+                                                    <span class="ue-switch-slider"></span>
+                                                </label>
+                                                <div class="ue-switch-content">
+                                                    <span class="ue-switch-label">Active</span>
+                                                    <span class="ue-switch-description">Inactive users will not be able to log in to the system</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    }
-                                </RVTabPanel>
+                                    </div>
+                                }
 
-                                <RVTabPanel TabId="permissions" IsActive='activeAccessTab == "permissions"'>
-                                    @if (!isNewUser)
+                                <div class="ue-profile-image-section">
+                                    <div class="ue-section-subtitle">
+                                        <i class="fa-light fa-image-user"></i>
+                                        <h4>Profile Picture</h4>
+                                    </div>
+                                    <div class="ue-profile-image-container">
+                                        <div class="ue-profile-image-preview">
+                                            @if (userModel.ProfilePictureId.HasValue && userModel.ProfilePicture != null)
+                                            {
+                                                <img src="@userModel.ProfilePicture.Url" alt="Profile Picture" />
+                                            }
+                                            else
+                                            {
+                                                <div class="ue-profile-image-placeholder">
+                                                    <i class="fa-light fa-user"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="ue-profile-image-controls">
+                                            <InputFile OnChange="HandleProfileImageUpload" accept=".jpg,.jpeg,.png" id="profile-image-upload" class="ue-hidden" />
+                                            <button type="button" class="ue-button ue-button-outline ue-button-sm" @onclick="() => ClickProfileImageUpload()">
+                                                <i class="fa-light fa-upload"></i>
+                                                <span>Upload Image</span>
+                                            </button>
+                                            @if (userModel.ProfilePictureId.HasValue)
+                                            {
+                                                <button type="button" class="ue-button ue-button-outline-danger ue-button-sm" @onclick="RemoveProfileImage">
+                                                    <i class="fa-light fa-trash"></i>
+                                                    <span>Remove</span>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info Tab -->
+                        <div class="ue-tab-pane @(activeTopTab == "contact" ? "ue-active" : "")">
+                            <div class="ue-form-section">
+                                <div class="ue-section-title">
+                                    <i class="fa-light fa-address-book"></i>
+                                    <h3>Contact Information</h3>
+                                    <p>Enter the contact details for this user</p>
+                                </div>
+
+                                <div class="ue-form-row">
+                                    <div class="ue-form-group">
+                                        <label for="email">Primary Email Address</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-envelope ue-input-icon"></i>
+                                            <InputText id="email" type="email" @bind-Value="userModel.Email" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter email address" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.Email)" class="ue-validation-message" />
+                                    </div>
+
+                                    <div class="ue-form-group">
+                                        <label for="phoneNumber">Primary Phone Number</label>
+                                        <div class="ue-input-wrapper">
+                                            <i class="fa-light fa-phone ue-input-icon"></i>
+                                            <InputText id="phoneNumber" type="tel" @bind-Value="userModel.PhoneNumber" class="ue-input ue-input-with-icon" 
+                                                     placeholder="Enter phone number" />
+                                        </div>
+                                        <ValidationMessage For="@(() => userModel.PhoneNumber)" class="ue-validation-message" />
+                                    </div>
+                                </div>
+
+                                <!-- Additional Email Addresses Section -->
+                                <div class="ue-additional-contacts">
+                                    <div class="ue-section-subtitle">
+                                        <i class="fa-light fa-envelope"></i>
+                                        <h4>Additional Email Addresses</h4>
+                                        <button type="button" class="ue-button ue-button-outline ue-button-xs" @onclick="AddEmail">
+                                            <i class="fa-light fa-plus"></i>
+                                            <span>Add Email</span>
+                                        </button>
+                                    </div>
+
+                                    @if (additionalEmails.Any())
                                     {
-                                        <div class="permissions-container">
-                                            <UserPermissionsPanel @ref="permissionsPanel" UserId="@UserId" OnSaved="HandlePermissionsSaved" />
+                                        <div class="ue-email-list">
+                                            @foreach (var email in additionalEmails)
+                                            {
+                                                <div class="ue-email-item">
+                                                    <div class="ue-email-content">
+                                                        <div class="ue-input-wrapper">
+                                                            <i class="fa-light fa-envelope ue-input-icon"></i>
+                                                            <input type="email" value="@email.EmailAddress" 
+                                                                 @onchange="(e) => UpdateEmailAddress(email, e.Value.ToString())" 
+                                                                 class="ue-input ue-input-with-icon" 
+                                                                 placeholder="Enter email address" />
+                                                        </div>
+                                                        <div class="ue-input-wrapper">
+                                                            <i class="fa-light fa-tag ue-input-icon"></i>
+                                                            <input type="text" value="@email.Description" 
+                                                                 @onchange="(e) => UpdateEmailDescription(email, e.Value.ToString())" 
+                                                                 class="ue-input ue-input-with-icon" 
+                                                                 placeholder="Description (e.g. Work, Personal)" />
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="ue-button ue-button-outline-danger ue-button-xs" @onclick="() => RemoveEmail(email)">
+                                                        <i class="fa-light fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
                                         </div>
                                     }
                                     else
                                     {
-                                        <div class="permissions-info-card">
-                                            <div class="info-box">
-                                                <div class="info-icon"><i class="fa-light fa-info-circle"></i></div>
-                                                <div class="info-content">
-                                                    <h5>Permissions Management</h5>
-                                                    <p>You'll be able to manage specific permissions after creating the user. Permission management allows you to grant or deny specific capabilities beyond their base role.</p>
-                                                </div>
-                                            </div>
+                                        <div class="ue-empty-list">
+                                            <i class="fa-light fa-inbox-empty"></i>
+                                            <p>No additional email addresses added</p>
                                         </div>
                                     }
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="security" IsActive='activeAccessTab == "security"'>
-                                    @if (!isNewUser)
+                                <!-- Additional Phone Numbers Section -->
+                                <div class="ue-additional-contacts">
+                                    <div class="ue-section-subtitle">
+                                        <i class="fa-light fa-phone"></i>
+                                        <h4>Additional Phone Numbers</h4>
+                                        <button type="button" class="ue-button ue-button-outline ue-button-xs" @onclick="AddPhone">
+                                            <i class="fa-light fa-plus"></i>
+                                            <span>Add Phone</span>
+                                        </button>
+                                    </div>
+
+                                    @if (additionalPhones.Any())
                                     {
-                                        <div class="security-card">
-                                            <div class="section-subtitle">
-                                                <h5><i class="fa-light fa-key"></i> Password Management</h5>
-                                            </div>
-
-                                            <div class="password-options">
-                                                <RVButton ButtonType="primary"
-                                                          IconLeft="fa-light fa-key"
-                                                          Text="Reset Password"
-                                                          OnClick="ShowResetPasswordConfirmation" />
-
-                                                <div class="form-group mt-3">
-                                                    <RVSwitch Label="Require password change on next login"
-                                                              Value="userModel.RequireChangePasswordOnLogin"
-                                                              ValueChanged="value => userModel.RequireChangePasswordOnLogin = value"
-                                                              HelperText="User will be prompted to change their password when they next log in" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="security-card">
-                                            <div class="section-subtitle">
-                                                <h5><i class="fa-light fa-shield-check"></i> Account Security</h5>
-                                            </div>
-
-                                            <div class="form-row">
-                                                <div class="form-group">
-                                                    <RVSwitch Label="Email Confirmed"
-                                                              Value="userModel.EmailConfirmed"
-                                                              ValueChanged="value => userModel.EmailConfirmed = value"
-                                                              HelperText="Toggle whether the user's email address is confirmed" />
-                                                </div>
-
-                                                <div class="form-group">
-                                                    <RVSwitch Label="Two-Factor Authentication"
-                                                              Value="userModel.IsTwoFactorRequired"
-                                                              ValueChanged="value => userModel.IsTwoFactorRequired = value"
-                                                              HelperText="Toggle whether two-factor authentication is required for this user" />
-                                                </div>
-                                            </div>
-
-                                            @if (userModel.IsTwoFactorRequired)
+                                        <div class="ue-phone-list">
+                                            @foreach (var phone in additionalPhones)
                                             {
-                                                <div class="form-group">
-                                                    <label for="twoFactorMethod">Preferred Two-Factor Method</label>
-                                                    <RVSelect Id="twoFactorMethod"
-                                                              Value="@userModel.PreferredTwoFactorMethod"
-                                                              ValueChanged="value => userModel.PreferredTwoFactorMethod = value"
-                                                              Placeholder="Select preferred method"
-                                                              IconLeft="fa-light fa-mobile">
-                                                        <option value="Email">Email</option>
-                                                        <option value="SMS">SMS</option>
-                                                        <option value="Authenticator">Authenticator App</option>
-                                                    </RVSelect>
+                                                <div class="ue-phone-item">
+                                                    <div class="ue-phone-content">
+                                                        <div class="ue-input-wrapper">
+                                                            <i class="fa-light fa-phone ue-input-icon"></i>
+                                                            <input type="tel" value="@phone.Number" 
+                                                                 @onchange="(e) => UpdatePhoneNumber(phone, e.Value.ToString())" 
+                                                                 class="ue-input ue-input-with-icon" 
+                                                                 placeholder="Enter phone number" />
+                                                        </div>
+                                                        <div class="ue-select-wrapper">
+                                                            <i class="fa-light fa-phone-office ue-input-icon"></i>
+                                                            <select value="@phone.ContactNumberTypeId.ToString()" 
+                                                                   @onchange="(e) => UpdatePhoneType(phone, e.Value.ToString())" 
+                                                                   class="ue-select ue-select-with-icon">
+                                                                @foreach (var type in contactNumberTypes)
+                                                                {
+                                                                    <option value="@type.Id">@type.Name</option>
+                                                                }
+                                                            </select>
+                                                            <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                        </div>
+                                                        <div class="ue-input-wrapper">
+                                                            <i class="fa-light fa-tag ue-input-icon"></i>
+                                                            <input type="text" value="@phone.Description" 
+                                                                 @onchange="(e) => UpdatePhoneDescription(phone, e.Value.ToString())" 
+                                                                 class="ue-input ue-input-with-icon" 
+                                                                 placeholder="Description" />
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="ue-button ue-button-outline-danger ue-button-xs" @onclick="() => RemovePhone(phone)">
+                                                        <i class="fa-light fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             }
-                                        </div>
-
-                                        <div class="security-card">
-                                            <div class="section-subtitle">
-                                                <h5><i class="fa-light fa-clock-rotate-left"></i> Account History</h5>
-                                            </div>
-
-                                            <div class="account-history">
-                                                <div class="history-item">
-                                                    <div class="history-label">Created:</div>
-                                                    <div class="history-value">
-                                                        @(userModel.CreatedDate?.ToString("dd MMM yyyy HH:mm") ?? "Unknown")
-                                                        @if (!string.IsNullOrEmpty(userModel.CreatedBy))
-                                                        {
-                                                            <span>by @userModel.CreatedBy</span>
-                                                        }
-                                                    </div>
-                                                </div>
-                                                @if (userModel.LastLoginDate.HasValue)
-                                                {
-                                                    <div class="history-item">
-                                                        <div class="history-label">Last Login:</div>
-                                                        <div class="history-value">
-                                                            @userModel.LastLoginDate?.ToString("dd MMM yyyy HH:mm")
-                                                            @if (!string.IsNullOrEmpty(userModel.LastLoginIpAddress))
-                                                            {
-                                                                <span>from @userModel.LastLoginIpAddress</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                                @if (userModel.UpdatedDate.HasValue)
-                                                {
-                                                    <div class="history-item">
-                                                        <div class="history-label">Last Updated:</div>
-                                                        <div class="history-value">
-                                                            @userModel.UpdatedDate?.ToString("dd MMM yyyy HH:mm")
-                                                            @if (!string.IsNullOrEmpty(userModel.UpdatedBy))
-                                                            {
-                                                                <span>by @userModel.UpdatedBy</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                                @if (userModel.LoginFailureCount > 0)
-                                                {
-                                                    <div class="history-item">
-                                                        <div class="history-label">Failed Logins:</div>
-                                                        <div class="history-value">
-                                                            @userModel.LoginFailureCount
-                                                            @if (userModel.LastLoginFailureDate.HasValue)
-                                                            {
-                                                                <span>(last attempt: @userModel.LastLoginFailureDate?.ToString("dd MMM yyyy HH:mm"))</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
                                         </div>
                                     }
                                     else
                                     {
-                                        <div class="password-section">
-                                            <div class="section-title">
-                                                <h4><i class="fa-light fa-key"></i> User Password</h4>
-                                                <p>Set an initial password for the user</p>
-                                            </div>
-
-                                            <div class="form-row">
-                                                <div class="form-group">
-                                                    <label for="password">Password</label>
-                                                    <RVTextbox Id="password"
-                                                               Type="password"
-                                                               Value="@password"
-                                                               ValueChanged="value => password = value"
-                                                               Placeholder="Enter password"
-                                                               IconLeft="fa-light fa-lock" />
-                                                    @if (!string.IsNullOrEmpty(passwordError))
-                                                    {
-                                                        <div class="validation-message">@passwordError</div>
-                                                    }
-                                                </div>
-
-                                                <div class="form-group">
-                                                    <label for="confirmPassword">Confirm Password</label>
-                                                    <RVTextbox Id="confirmPassword"
-                                                               Type="password"
-                                                               Value="@confirmPassword"
-                                                               ValueChanged="value => confirmPassword = value"
-                                                               Placeholder="Confirm password"
-                                                               IconLeft="fa-light fa-lock" />
-                                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
-                                                    {
-                                                        <div class="validation-message">@confirmPasswordError</div>
-                                                    }
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <RVSwitch Label="Require password change on first login"
-                                                          Value="requirePasswordChange"
-                                                          ValueChanged="value => requirePasswordChange = value"
-                                                          HelperText="User will be prompted to change their password when they first log in" />
-                                            </div>
+                                        <div class="ue-empty-list">
+                                            <i class="fa-light fa-phone-slash"></i>
+                                            <p>No additional phone numbers added</p>
                                         </div>
                                     }
-                                </RVTabPanel>
+                                </div>
+                            </div>
+                        </div>
 
-                                <RVTabPanel TabId="preferences" IsActive='activeAccessTab == "preferences"'>
-                                    <div class="preferences-section">
-                                        <div class="section-title">
-                                            <h4><i class="fa-light fa-sliders"></i> User Preferences</h4>
-                                            <p>Configure user display and notification preferences</p>
+                        <!-- Access & Security Tab -->
+                        <div class="ue-tab-pane @(activeTopTab == "access" ? "ue-active" : "")">
+                            <div class="ue-form-section">
+                                <div class="ue-section-title">
+                                    <i class="fa-light fa-shield-check"></i>
+                                    <h3>Access & Security</h3>
+                                    <p>Manage user roles, permissions, and security settings</p>
+                                </div>
+
+                                <div class="ue-access-subtabs">
+                                    <div class="ue-subtabs-header">
+                                        @foreach (var tab in accessTabs)
+                                        {
+                                            <button type="button" class="ue-subtab-button @(activeAccessTab == tab.Id ? "ue-active" : "")" 
+                                                  @onclick="() => HandleAccessTabChange(tab.Id)">
+                                                <i class="@tab.Icon"></i>
+                                                <span>@tab.Title</span>
+                                            </button>
+                                        }
+                                    </div>
+
+                                    <div class="ue-subtab-content">
+                                        <!-- System Role Tab -->
+                                        <div class="ue-subtab-pane @(activeAccessTab == "roles" ? "ue-active" : "")">
+                                            <div class="ue-card">
+                                                <div class="ue-card-header">
+                                                    <i class="fa-light fa-user-shield"></i>
+                                                    <h4>System Role</h4>
+                                                </div>
+                                                <div class="ue-card-body">
+                                                    <div class="ue-form-group">
+                                                        <label for="systemRole">Base System Role</label>
+                                                        <div class="ue-select-wrapper">
+                                                            <i class="fa-light fa-shield-check ue-input-icon"></i>
+                                                            <select id="systemRole" class="ue-select ue-select-with-icon" 
+                                                                   value="@selectedRole" 
+                                                                   @onchange="(e) => selectedRole = e.Value.ToString()" 
+                                                                   disabled="@(!canChangeRole)">
+                                                                @foreach (var role in availableRoles)
+                                                                {
+                                                                    <option value="@role">@PermissionFormat.GetRoleDisplayName((SystemRole)Enum.Parse(typeof(SystemRole), role))</option>
+                                                                }
+                                                            </select>
+                                                            <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                        </div>
+                                                        <div class="ue-field-info">
+                                                            <i class="fa-light fa-info-circle"></i>
+                                                            <span>This defines the user's base system role and associated permissions</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="ue-role-description">
+                                                        @if (!string.IsNullOrEmpty(selectedRole) && Enum.TryParse<SystemRole>(selectedRole, out var selectedRoleEnum))
+                                                        {
+                                                            <div class="ue-role-icon">
+                                                                <i class="@PermissionFormat.GetRoleIcon(selectedRoleEnum)"></i>
+                                                            </div>
+                                                            <div class="ue-role-details">
+                                                                <h5>@PermissionFormat.GetRoleDisplayName(selectedRoleEnum)</h5>
+                                                                <p>@PermissionFormat.GetRoleDescription(selectedRoleEnum)</p>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="ue-card">
+                                                <div class="ue-card-header">
+                                                    <i class="fa-light fa-building"></i>
+                                                    <h4>Company Access</h4>
+                                                </div>
+                                                <div class="ue-card-body">
+                                                    <div class="ue-form-group">
+                                                        <label for="company">Company</label>
+                                                        <div class="ue-select-wrapper">
+                                                            <i class="fa-light fa-building ue-input-icon"></i>
+                                                            <select id="company" class="ue-select ue-select-with-icon" 
+                                                                   value="@(userModel.CompanyId.HasValue ? userModel.CompanyId.Value.ToString() : "")" 
+                                                                   @onchange="(e) => HandleCompanyChange(e.Value.ToString())" 
+                                                                   disabled="@(!canAssignAnyCompany)">
+                                                                <option value="">-- None --</option>
+                                                                @if (availableCompanies != null)
+                                                                {
+                                                                    @foreach (var company in availableCompanies.OrderBy(c => c.Name))
+                                                                    {
+                                                                        <option value="@company.Id">@company.Name</option>
+                                                                    }
+                                                                }
+                                                            </select>
+                                                            <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                        </div>
+                                                        <div class="ue-field-info">
+                                                            <i class="fa-light fa-info-circle"></i>
+                                                            <span>Assign the user to a company to grant access to company data</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="ue-form-group">
+                                                        <label for="branch">Branch</label>
+                                                        <div class="ue-select-wrapper">
+                                                            <i class="fa-light fa-code-branch ue-input-icon"></i>
+                                                            <select id="branch" class="ue-select ue-select-with-icon" 
+                                                                   value="@(userModel.BranchId.HasValue ? userModel.BranchId.Value.ToString() : "")" 
+                                                                   @onchange="(e) => HandleBranchChange(e.Value.ToString())" 
+                                                                   disabled="@(!canAssignBranch || !userModel.CompanyId.HasValue || availableBranches.Count == 0)">
+                                                                <option value="">-- None --</option>
+                                                                @foreach (var branch in availableBranches.OrderBy(b => b.Name))
+                                                                {
+                                                                    <option value="@branch.Id">@branch.Name</option>
+                                                                }
+                                                            </select>
+                                                            <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                        </div>
+                                                        <div class="ue-field-info">
+                                                            <i class="fa-light fa-info-circle"></i>
+                                                            <span>Assign the user to a specific branch within the company</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (isNewUser)
+                                            {
+                                                <div class="ue-card ue-card-highlight">
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-info-box">
+                                                            <div class="ue-info-icon"><i class="fa-light fa-info-circle"></i></div>
+                                                            <div class="ue-info-content">
+                                                                <h5>Setting Up a New User</h5>
+                                                                <p>After creating this user, you'll be able to manage specific permissions that will determine exactly what they can access in the system.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="theme">Theme Preference</label>
-                                            <RVSelect Id="theme"
-                                                      Value="@selectedTheme"
-                                                      ValueChanged="value => selectedTheme = value"
-                                                      Placeholder="Select theme"
-                                                      IconLeft="fa-light fa-palette">
-                                                <option value="system">System Default</option>
-                                                <option value="light">Light Mode</option>
-                                                <option value="dark">Dark Mode</option>
-                                                @foreach (var theme in customThemes)
-                                                {
-                                                    <option value="@theme.Id">@theme.Name</option>
-                                                }
-                                            </RVSelect>
+                                        <!-- Permissions Tab -->
+                                        <div class="ue-subtab-pane @(activeAccessTab == "permissions" ? "ue-active" : "")">
+                                            @if (!isNewUser)
+                                            {
+                                                <div class="ue-permissions-container">
+                                                    <UserPermissionsPanel @ref="permissionsPanel" UserId="@UserId" OnSaved="HandlePermissionsSaved" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="ue-card ue-card-highlight">
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-info-box">
+                                                            <div class="ue-info-icon"><i class="fa-light fa-info-circle"></i></div>
+                                                            <div class="ue-info-content">
+                                                                <h5>Permissions Management</h5>
+                                                                <p>You'll be able to manage specific permissions after creating the user. Permission management allows you to grant or deny specific capabilities beyond their base role.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
                                         </div>
 
-                                        <div class="form-group">
-                                            <RVSwitch Label="Email notifications"
-                                                      Value="emailNotifications"
-                                                      ValueChanged="value => emailNotifications = value"
-                                                      HelperText="Receive notifications via email" />
+                                        <!-- Security Tab -->
+                                        <div class="ue-subtab-pane @(activeAccessTab == "security" ? "ue-active" : "")">
+                                            @if (!isNewUser)
+                                            {
+                                                <div class="ue-card">
+                                                    <div class="ue-card-header">
+                                                        <i class="fa-light fa-key"></i>
+                                                        <h4>Password Management</h4>
+                                                    </div>
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-password-options">
+                                                            <button type="button" class="ue-button ue-button-primary" @onclick="ShowResetPasswordConfirmation">
+                                                                <i class="fa-light fa-key"></i>
+                                                                <span>Reset Password</span>
+                                                            </button>
+
+                                                            <div class="ue-form-group ue-mt-3">
+                                                                <div class="ue-switch-container">
+                                                                    <label class="ue-switch">
+                                                                        <input type="checkbox" @bind="userModel.RequireChangePasswordOnLogin" />
+                                                                        <span class="ue-switch-slider"></span>
+                                                                    </label>
+                                                                    <div class="ue-switch-content">
+                                                                        <span class="ue-switch-label">Require password change on next login</span>
+                                                                        <span class="ue-switch-description">User will be prompted to change their password when they next log in</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="ue-card">
+                                                    <div class="ue-card-header">
+                                                        <i class="fa-light fa-shield-check"></i>
+                                                        <h4>Account Security</h4>
+                                                    </div>
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-form-row">
+                                                            <div class="ue-form-group">
+                                                                <div class="ue-switch-container">
+                                                                    <label class="ue-switch">
+                                                                        <input type="checkbox" @bind="userModel.EmailConfirmed" />
+                                                                        <span class="ue-switch-slider"></span>
+                                                                    </label>
+                                                                    <div class="ue-switch-content">
+                                                                        <span class="ue-switch-label">Email Confirmed</span>
+                                                                        <span class="ue-switch-description">Toggle whether the user's email address is confirmed</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="ue-form-group">
+                                                                <div class="ue-switch-container">
+                                                                    <label class="ue-switch">
+                                                                        <input type="checkbox" @bind="userModel.IsTwoFactorRequired" />
+                                                                        <span class="ue-switch-slider"></span>
+                                                                    </label>
+                                                                    <div class="ue-switch-content">
+                                                                        <span class="ue-switch-label">Two-Factor Authentication</span>
+                                                                        <span class="ue-switch-description">Toggle whether two-factor authentication is required for this user</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        @if (userModel.IsTwoFactorRequired)
+                                                        {
+                                                            <div class="ue-form-group">
+                                                                <label for="twoFactorMethod">Preferred Two-Factor Method</label>
+                                                                <div class="ue-select-wrapper">
+                                                                    <i class="fa-light fa-mobile ue-input-icon"></i>
+                                                                    <select id="twoFactorMethod" class="ue-select ue-select-with-icon" 
+                                                                           value="@userModel.PreferredTwoFactorMethod" 
+                                                                           @onchange="(e) => userModel.PreferredTwoFactorMethod = e.Value.ToString()">
+                                                                        <option value="Email">Email</option>
+                                                                        <option value="SMS">SMS</option>
+                                                                        <option value="Authenticator">Authenticator App</option>
+                                                                    </select>
+                                                                    <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <div class="ue-card">
+                                                    <div class="ue-card-header">
+                                                        <i class="fa-light fa-clock-rotate-left"></i>
+                                                        <h4>Account History</h4>
+                                                    </div>
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-account-history">
+                                                            <div class="ue-history-item">
+                                                                <div class="ue-history-label">Created:</div>
+                                                                <div class="ue-history-value">
+                                                                    @(userModel.CreatedDate?.ToString("dd MMM yyyy HH:mm") ?? "Unknown")
+                                                                    @if (!string.IsNullOrEmpty(userModel.CreatedBy))
+                                                                    {
+                                                                        <span>by @userModel.CreatedBy</span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                            @if (userModel.LastLoginDate.HasValue)
+                                                            {
+                                                                <div class="ue-history-item">
+                                                                    <div class="ue-history-label">Last Login:</div>
+                                                                    <div class="ue-history-value">
+                                                                        @userModel.LastLoginDate?.ToString("dd MMM yyyy HH:mm")
+                                                                        @if (!string.IsNullOrEmpty(userModel.LastLoginIpAddress))
+                                                                        {
+                                                                            <span>from @userModel.LastLoginIpAddress</span>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                            @if (userModel.UpdatedDate.HasValue)
+                                                            {
+                                                                <div class="ue-history-item">
+                                                                    <div class="ue-history-label">Last Updated:</div>
+                                                                    <div class="ue-history-value">
+                                                                        @userModel.UpdatedDate?.ToString("dd MMM yyyy HH:mm")
+                                                                        @if (!string.IsNullOrEmpty(userModel.UpdatedBy))
+                                                                        {
+                                                                            <span>by @userModel.UpdatedBy</span>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                            @if (userModel.LoginFailureCount > 0)
+                                                            {
+                                                                <div class="ue-history-item">
+                                                                    <div class="ue-history-label">Failed Logins:</div>
+                                                                    <div class="ue-history-value">
+                                                                        @userModel.LoginFailureCount
+                                                                        @if (userModel.LastLoginFailureDate.HasValue)
+                                                                        {
+                                                                            <span>(last attempt: @userModel.LastLoginFailureDate?.ToString("dd MMM yyyy HH:mm"))</span>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="ue-card ue-card-highlight ue-password-card">
+                                                    <div class="ue-card-header">
+                                                        <i class="fa-light fa-key"></i>
+                                                        <h4>Set User Password</h4>
+                                                    </div>
+                                                    <div class="ue-card-body">
+                                                        <div class="ue-password-form">
+                                                            <div class="ue-form-row">
+                                                                <div class="ue-form-group">
+                                                                    <label for="password">Password</label>
+                                                                    <div class="ue-input-wrapper">
+                                                                        <i class="fa-light fa-lock ue-input-icon"></i>
+                                                                        <input type="password" id="password" 
+                                                                              value="@password" 
+                                                                              @onchange="(e) => password = e.Value.ToString()" 
+                                                                              class="ue-input ue-input-with-icon" 
+                                                                              placeholder="Enter password" />
+                                                                    </div>
+                                                                    @if (!string.IsNullOrEmpty(passwordError))
+                                                                    {
+                                                                        <div class="ue-validation-message">@passwordError</div>
+                                                                    }
+                                                                </div>
+
+                                                                <div class="ue-form-group">
+                                                                    <label for="confirmPassword">Confirm Password</label>
+                                                                    <div class="ue-input-wrapper">
+                                                                        <i class="fa-light fa-lock ue-input-icon"></i>
+                                                                        <input type="password" id="confirmPassword" 
+                                                                              value="@confirmPassword" 
+                                                                              @onchange="(e) => confirmPassword = e.Value.ToString()" 
+                                                                              class="ue-input ue-input-with-icon" 
+                                                                              placeholder="Confirm password" />
+                                                                    </div>
+                                                                    @if (!string.IsNullOrEmpty(confirmPasswordError))
+                                                                    {
+                                                                        <div class="ue-validation-message">@confirmPasswordError</div>
+                                                                    }
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="ue-form-group">
+                                                                <div class="ue-switch-container">
+                                                                    <label class="ue-switch">
+                                                                        <input type="checkbox" @bind="requirePasswordChange" />
+                                                                        <span class="ue-switch-slider"></span>
+                                                                    </label>
+                                                                    <div class="ue-switch-content">
+                                                                        <span class="ue-switch-label">Require password change on first login</span>
+                                                                        <span class="ue-switch-description">User will be prompted to change their password when they first log in</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
                                         </div>
 
-                                        <div class="form-group">
-                                            <RVSwitch Label="SMS notifications"
-                                                      Value="smsNotifications"
-                                                      ValueChanged="value => smsNotifications = value"
-                                                      HelperText="Receive notifications via SMS (requires valid phone number)" />
-                                        </div>
+                                        <!-- Preferences Tab -->
+                                        <div class="ue-subtab-pane @(activeAccessTab == "preferences" ? "ue-active" : "")">
+                                            <div class="ue-card">
+                                                <div class="ue-card-header">
+                                                    <i class="fa-light fa-sliders"></i>
+                                                    <h4>User Preferences</h4>
+                                                </div>
+                                                <div class="ue-card-body">
+                                                    <div class="ue-form-group">
+                                                        <label for="theme">Theme Preference</label>
+                                                        <div class="ue-select-wrapper">
+                                                            <i class="fa-light fa-palette ue-input-icon"></i>
+                                                            <select id="theme" class="ue-select ue-select-with-icon" 
+                                                                   value="@selectedTheme" 
+                                                                   @onchange="(e) => selectedTheme = e.Value.ToString()">
+                                                                <option value="system">System Default</option>
+                                                                <option value="light">Light Mode</option>
+                                                                <option value="dark">Dark Mode</option>
+                                                                @foreach (var theme in customThemes)
+                                                                {
+                                                                    <option value="@theme.Id">@theme.Name</option>
+                                                                }
+                                                            </select>
+                                                            <i class="fa-light fa-chevron-down ue-select-arrow"></i>
+                                                        </div>
+                                                    </div>
 
-                                        <div class="form-group">
-                                            <RVSwitch Label="Web notifications"
-                                                      Value="webNotifications"
-                                                      ValueChanged="value => webNotifications = value"
-                                                      HelperText="Receive notifications in the web interface" />
+                                                    <div class="ue-notification-preferences">
+                                                        <h5>Notification Preferences</h5>
+                                                        
+                                                        <div class="ue-form-group">
+                                                            <div class="ue-switch-container">
+                                                                <label class="ue-switch">
+                                                                    <input type="checkbox" @bind="emailNotifications" />
+                                                                    <span class="ue-switch-slider"></span>
+                                                                </label>
+                                                                <div class="ue-switch-content">
+                                                                    <span class="ue-switch-label">Email notifications</span>
+                                                                    <span class="ue-switch-description">Receive notifications via email</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="ue-form-group">
+                                                            <div class="ue-switch-container">
+                                                                <label class="ue-switch">
+                                                                    <input type="checkbox" @bind="smsNotifications" />
+                                                                    <span class="ue-switch-slider"></span>
+                                                                </label>
+                                                                <div class="ue-switch-content">
+                                                                    <span class="ue-switch-label">SMS notifications</span>
+                                                                    <span class="ue-switch-description">Receive notifications via SMS (requires valid phone number)</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="ue-form-group">
+                                                            <div class="ue-switch-container">
+                                                                <label class="ue-switch">
+                                                                    <input type="checkbox" @bind="webNotifications" />
+                                                                    <span class="ue-switch-slider"></span>
+                                                                </label>
+                                                                <div class="ue-switch-content">
+                                                                    <span class="ue-switch-label">Web notifications</span>
+                                                                    <span class="ue-switch-description">Receive notifications in the web interface</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
-                            </RVTab>
+                                </div>
+                            </div>
                         </div>
-                    </RVTabPanel>
-                </RVTab>
+                    </div>
+                </div>
             </EditForm>
         }
-    </ChildContent>
-</RVModal>
+    </div>
+
+    <div class="ue-modal-footer">
+        <button type="button" class="ue-button ue-button-outline" @onclick="OnClose">Cancel</button>
+        <button type="button" class="ue-button ue-button-primary" @onclick="SaveUser" disabled="@(!hasAccessPermission || !canEditThisUser)">
+            @(isNewUser ? "Create User" : "Save Changes")
+        </button>
+    </div>
+</div>
 
 @if (showResetPasswordModal)
 {
-    <RVModal IsVisible="true"
-             Title="Reset Password"
-             Icon="fa-light fa-key"
-             OnClose="() => showResetPasswordModal = false"
-             OnCancel="() => showResetPasswordModal = false"
-             OnConfirm="ResetPassword"
-             ConfirmText="Reset Password"
-             CancelText="Cancel"
-             Size="md">
-        <ChildContent>
-            <div class="reset-password-form">
-                <div class="alert alert-warning">
-                    <i class="fa-light fa-exclamation-triangle"></i>
-                    <div class="alert-content">
-                        <p>You are about to reset the password for <strong>@GetUserDisplayName()</strong>.</p>
-                        <p>The user will receive a password reset link via email.</p>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <RVSwitch Label="Force password change on next login"
-                              Value="forcePasswordChange"
-                              ValueChanged="value => forcePasswordChange = value"
-                              HelperText="The user will be required to change their password when they next log in" />
+    <div class="ue-modal-backdrop" @onclick="() => showResetPasswordModal = false"></div>
+    <div class="ue-reset-modal">
+        <div class="ue-modal-header">
+            <div class="ue-modal-title">
+                <i class="fa-light fa-key"></i>
+                <span>Reset Password</span>
+            </div>
+            <button class="ue-close-button" @onclick="() => showResetPasswordModal = false">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="ue-modal-body">
+            <div class="ue-message-panel ue-message-warning">
+                <div class="ue-message-icon"><i class="fa-light fa-exclamation-triangle"></i></div>
+                <div class="ue-message-content">
+                    <p>You are about to reset the password for <strong>@GetUserDisplayName()</strong>.</p>
+                    <p>The user will receive a password reset link via email.</p>
                 </div>
             </div>
-        </ChildContent>
-    </RVModal>
+
+            <div class="ue-form-group">
+                <div class="ue-switch-container">
+                    <label class="ue-switch">
+                        <input type="checkbox" @bind="forcePasswordChange" />
+                        <span class="ue-switch-slider"></span>
+                    </label>
+                    <div class="ue-switch-content">
+                        <span class="ue-switch-label">Force password change on next login</span>
+                        <span class="ue-switch-description">The user will be required to change their password when they next log in</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ue-modal-footer">
+            <button type="button" class="ue-button ue-button-outline" @onclick="() => showResetPasswordModal = false">Cancel</button>
+            <button type="button" class="ue-button ue-button-primary" @onclick="ResetPassword">Reset Password</button>
+        </div>
+    </div>
 }
+
 
 @code {
     [Parameter] public string? UserId { get; set; }
@@ -1996,3 +2153,1345 @@
         return userModel.UserName ?? "New User";
     }
 }
+<style>
+    /* ====== UserEditModal Stylesheet ====== */
+    :root {
+        /* Colors */
+        --ue-primary: var(--primary, #377f80);
+        --ue-primary-hover: var(--primary-hover, #2d6869);
+        --ue-primary-light: rgba(55, 127, 128, 0.08);
+        --ue-primary-lighter: rgba(55, 127, 128, 0.05);
+        --ue-danger: var(--danger, #d14141);
+        --ue-danger-hover: var(--danger-hover, #b53535);
+        --ue-danger-light: rgba(209, 65, 65, 0.1);
+        --ue-warning: var(--warning, #f5a623);
+        --ue-warning-light: rgba(245, 166, 35, 0.1);
+        --ue-success: var(--success, #34a853);
+        --ue-success-light: rgba(52, 168, 83, 0.1);
+        /* Neutral colors */
+        --ue-white: #ffffff;
+        --ue-gray-50: #f8f9fa;
+        --ue-gray-100: #f0f0f0;
+        --ue-gray-200: #e5e5e5;
+        --ue-gray-300: #d4d4d4;
+        --ue-gray-400: #a3a3a3;
+        --ue-gray-500: #737373;
+        --ue-gray-600: #525252;
+        --ue-gray-700: #404040;
+        --ue-gray-800: #262626;
+        --ue-gray-900: #171717;
+        /* Text colors */
+        --ue-text-primary: var(--text-primary, #333333);
+        --ue-text-secondary: var(--text-secondary, #666666);
+        --ue-text-tertiary: var(--text-tertiary, #999999);
+        /* Spacing */
+        --ue-spacing-xxs: 0.25rem;
+        --ue-spacing-xs: 0.5rem;
+        --ue-spacing-sm: 0.75rem;
+        --ue-spacing-md: 1rem;
+        --ue-spacing-lg: 1.5rem;
+        --ue-spacing-xl: 2rem;
+        /* Borders & Shadows */
+        --ue-border-radius-sm: 6px;
+        --ue-border-radius-md: 8px;
+        --ue-border-radius-lg: 12px;
+        --ue-border-color: var(--border-divider, #e5e5e5);
+        --ue-shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.05);
+        --ue-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --ue-shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.12);
+        /* Transitions */
+        --ue-transition-fast: 0.15s ease;
+        --ue-transition-normal: 0.25s ease;
+        --ue-transition-slow: 0.35s ease;
+    }
+
+    /* Modal Backdrop & Wrapper */
+    .ue-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        z-index: 9500;
+        animation: ue-fade-in var(--ue-transition-normal);
+    }
+
+    .ue-modal-wrapper {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--ue-white);
+        border-radius: var(--ue-border-radius-lg);
+        box-shadow: var(--ue-shadow-lg);
+        width: 96%;
+        max-width: 980px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        z-index: 9600;
+        border: 1px solid var(--ue-border-color);
+        animation: ue-slide-in var(--ue-transition-normal);
+        overflow: hidden;
+    }
+
+    .ue-reset-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--ue-white);
+        border-radius: var(--ue-border-radius-lg);
+        box-shadow: var(--ue-shadow-lg);
+        width: 96%;
+        max-width: 480px;
+        z-index: 9700;
+        border: 1px solid var(--ue-border-color);
+        animation: ue-slide-in var(--ue-transition-normal);
+        overflow: hidden;
+    }
+
+    /* Modal Header, Body, Footer */
+    .ue-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--ue-spacing-md) var(--ue-spacing-lg);
+        border-bottom: 1px solid var(--ue-border-color);
+        background-color: var(--ue-gray-50);
+    }
+
+    .ue-modal-title {
+        display: flex;
+        align-items: center;
+        gap: var(--ue-spacing-sm);
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--ue-text-primary);
+    }
+
+        .ue-modal-title i {
+            color: var(--ue-primary);
+            font-size: 1.25rem;
+        }
+
+    .ue-close-button {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--ue-border-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        color: var(--ue-text-secondary);
+        border: none;
+        cursor: pointer;
+        transition: all var(--ue-transition-fast);
+    }
+
+        .ue-close-button:hover {
+            background-color: var(--ue-danger-light);
+            color: var(--ue-danger);
+        }
+
+    .ue-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--ue-gray-300) transparent;
+    }
+
+        .ue-modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .ue-modal-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .ue-modal-body::-webkit-scrollbar-thumb {
+            background-color: var(--ue-gray-300);
+            border-radius: 6px;
+        }
+
+    .ue-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--ue-spacing-sm);
+        padding: var(--ue-spacing-md) var(--ue-spacing-lg);
+        border-top: 1px solid var(--ue-border-color);
+        background-color: var(--ue-gray-50);
+    }
+
+    /* Loading State */
+    .ue-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--ue-spacing-xl) var(--ue-spacing-lg);
+        text-align: center;
+    }
+
+    .ue-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(55, 127, 128, 0.2);
+        border-top-color: var(--ue-primary);
+        border-radius: 50%;
+        animation: ue-spin 1s linear infinite;
+        margin-bottom: var(--ue-spacing-md);
+    }
+
+    .ue-loading-text {
+        color: var(--ue-text-secondary);
+        font-size: 1rem;
+    }
+
+    /* Message Panels */
+    .ue-message-panel {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--ue-spacing-md);
+        padding: var(--ue-spacing-md) var(--ue-spacing-lg);
+        margin: var(--ue-spacing-lg);
+        border-radius: var(--ue-border-radius-md);
+        animation: ue-fade-in var(--ue-transition-normal);
+    }
+
+    .ue-message-error {
+        background-color: var(--ue-danger-light);
+        border: 1px solid rgba(209, 65, 65, 0.2);
+    }
+
+    .ue-message-warning {
+        background-color: var(--ue-warning-light);
+        border: 1px solid rgba(245, 166, 35, 0.2);
+    }
+
+    .ue-message-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .ue-message-error .ue-message-icon {
+        color: var(--ue-danger);
+    }
+
+    .ue-message-warning .ue-message-icon {
+        color: var(--ue-warning);
+    }
+
+    .ue-message-content {
+        flex: .ml-1;
+    }
+
+        .ue-message-content p {
+            margin: 0;
+            line-height: 1.5;
+            color: var(--ue-text-primary);
+        }
+
+            .ue-message-content p + p {
+                margin-top: var(--ue-spacing-xs);
+                font-size: 0.875rem;
+                opacity: 0.9;
+            }
+
+    .ue-message-error .ue-message-content p {
+        color: var(--ue-danger);
+    }
+
+    .ue-message-warning .ue-message-content p {
+        color: var(--ue-warning);
+    }
+
+    /* Form Structure */
+    .ue-user-form {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .ue-form-section {
+        padding: var(--ue-spacing-lg);
+        animation: ue-fade-in var(--ue-transition-normal);
+    }
+
+    .ue-section-title {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: var(--ue-spacing-lg);
+        position: relative;
+        padding-left: 32px;
+    }
+
+        .ue-section-title i {
+            position: absolute;
+            left: 0;
+            top: 3px;
+            font-size: 1.5rem;
+            color: var(--ue-primary);
+        }
+
+        .ue-section-title h3 {
+            margin: 0 0 var(--ue-spacing-xs) 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--ue-text-primary);
+        }
+
+        .ue-section-title p {
+            margin: 0;
+            color: var(--ue-text-secondary);
+            font-size: 0.875rem;
+        }
+
+    .ue-section-subtitle {
+        display: flex;
+        align-items: center;
+        margin: var(--ue-spacing-lg) 0 var(--ue-spacing-md);
+        border-bottom: 1px solid #e5eef0;
+        padding-bottom: var(--ue-spacing-xs);
+    }
+
+        .ue-section-subtitle i {
+            color: var(--ue-primary);
+            margin-right: var(--ue-spacing-xs);
+            font-size: 1rem;
+        }
+
+        .ue-section-subtitle h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ue-text-primary);
+            flex: 1;
+        }
+
+    .ue-form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--ue-spacing-lg);
+        margin-bottom: 0;
+    }
+
+    .ue-form-group {
+        margin-bottom: var(--ue-spacing-md);
+    }
+
+    /* Tab System */
+    .ue-tabs-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ue-tabs-header {
+        display: flex;
+        background-color: var(--ue-gray-50);
+        border-bottom: 1px solid var(--ue-border-color);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+        .ue-tabs-header::-webkit-scrollbar {
+            display: none;
+        }
+
+    .ue-tab-button {
+        display: flex;
+        align-items: center;
+        gap: var(--ue-spacing-xs);
+        padding: var(--ue-spacing-md) var(--ue-spacing-lg);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ue-text-secondary);
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        transition: all var(--ue-transition-fast);
+        white-space: nowrap;
+    }
+
+        .ue-tab-button:hover {
+            color: var(--ue-primary);
+            background-color: var(--ue-primary-lighter);
+        }
+
+        .ue-tab-button.ue-active {
+            color: var(--ue-primary);
+            border-bottom-color: var(--ue-primary);
+            background-color: var(--ue-primary-light);
+            font-weight: 600;
+        }
+
+    .ue-tab-content {
+        flex: 1;
+    }
+
+    .ue-tab-pane {
+        display: none;
+    }
+
+        .ue-tab-pane.ue-active {
+            display: block;
+            animation: ue-fade-in var(--ue-transition-normal);
+        }
+
+    /* Sub-tabs for Access Section */
+    .ue-access-subtabs {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ue-subtabs-header {
+        display: flex;
+        background-color: var(--ue-gray-50);
+        border-radius: var(--ue-border-radius-md);
+        padding: 4px;
+        margin-bottom: var(--ue-spacing-lg);
+        flex-wrap: wrap;
+        border: 1px solid var(--ue-border-color);
+    }
+
+    .ue-subtab-button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--ue-spacing-xs);
+        padding: var(--ue-spacing-sm) var(--ue-spacing-md);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--ue-text-secondary);
+        background-color: transparent;
+        border: none;
+        border-radius: var(--ue-border-radius-sm);
+        cursor: pointer;
+        transition: all var(--ue-transition-fast);
+        white-space: nowrap;
+        min-width: 100px;
+    }
+
+        .ue-subtab-button:hover {
+            color: var(--ue-primary);
+            background-color: var(--ue-primary-lighter);
+        }
+
+        .ue-subtab-button.ue-active {
+            color: var(--ue-primary);
+            background-color: var(--ue-white);
+            box-shadow: var(--ue-shadow-sm);
+            font-weight: 600;
+        }
+
+    .ue-subtab-content {
+        flex: 1;
+    }
+
+    .ue-subtab-pane {
+        display: none;
+    }
+
+        .ue-subtab-pane.ue-active {
+            display: block;
+            animation: ue-fade-in var(--ue-transition-normal);
+        }
+
+    /* Cards */
+    .ue-card {
+        background-color: var(--ue-white);
+        border-radius: var(--ue-border-radius-lg);
+        box-shadow: var(--ue-shadow-sm);
+        border: 1px solid var(--ue-border-color);
+        overflow: hidden;
+        margin-bottom: var(--ue-spacing-lg);
+        transition: all var(--ue-transition-fast);
+    }
+
+        .ue-card:hover {
+            box-shadow: var(--ue-shadow-md);
+            transform: translateY(-1px);
+        }
+
+    .ue-card-header {
+        display: flex;
+        align-items: center;
+        gap: var(--ue-spacing-sm);
+        padding: var(--ue-spacing-md) var(--ue-spacing-lg);
+        background-color: var(--ue-gray-50);
+        border-bottom: 1px solid var(--ue-border-color);
+    }
+
+        .ue-card-header i {
+            color: var(--ue-primary);
+            font-size: 1.125rem;
+        }
+
+        .ue-card-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ue-text-primary);
+        }
+
+    .ue-card-body {
+        padding: var(--ue-spacing-lg);
+    }
+
+    .ue-card-highlight {
+        border: 1px solid rgba(55, 127, 128, 0.2);
+        background-color: rgba(55, 127, 128, 0.02);
+    }
+
+        .ue-card-highlight .ue-card-header {
+            background-color: rgba(55, 127, 128, 0.05);
+            border-bottom: 1px solid rgba(55, 127, 128, 0.1);
+        }
+
+    .ue-password-card {
+        border: 1px solid rgba(55, 127, 128, 0.4);
+        box-shadow: 0 4px 12px rgba(55, 127, 128, 0.1);
+    }
+
+        .ue-password-card .ue-card-header {
+            background-color: rgba(55, 127, 128, 0.1);
+        }
+
+    /* Form Controls */
+    label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ue-text-primary);
+        margin-bottom: var(--ue-spacing-xs);
+    }
+
+    .ue-input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .ue-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--ue-border-color);
+        border-radius: var(--ue-border-radius-md);
+        background-color: var(--ue-white);
+        color: var(--ue-text-primary);
+        transition: all var(--ue-transition-fast);
+    }
+
+        .ue-input:focus {
+            border-color: var(--ue-primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(55, 127, 128, 0.1);
+        }
+
+        .ue-input::placeholder {
+            color: var(--ue-text-tertiary);
+        }
+
+    .ue-input-with-icon {
+        padding-left: 2.5rem;
+    }
+
+    .ue-input-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--ue-text-tertiary);
+        font-size: 1rem;
+        pointer-events: none;
+    }
+
+    .ue-select-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .ue-select {
+        width: 100%;
+        appearance: none;
+        padding: 0.625rem 2.25rem 0.625rem 1rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--ue-border-color);
+        border-radius: var(--ue-border-radius-md);
+        background-color: var(--ue-white);
+        color: var(--ue-text-primary);
+        cursor: pointer;
+        transition: all var(--ue-transition-fast);
+    }
+
+        .ue-select:focus {
+            border-color: var(--ue-primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(55, 127, 128, 0.1);
+        }
+
+    .ue-select-with-icon {
+        padding-left: 2.5rem;
+    }
+
+    .ue-select-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--ue-text-tertiary);
+        pointer-events: none;
+    }
+
+    .ue-switch-container {
+        display: flex;
+        align-items: center;
+        padding: var(--ue-spacing-xs) 0;
+    }
+
+    .ue-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+        margin-right: var(--ue-spacing-sm);
+        flex-shrink: 0;
+    }
+
+        .ue-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .ue-switch-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--ue-gray-300);
+        transition: .3s;
+        border-radius: 24px;
+    }
+
+        .ue-switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+    .ue-switch input:checked + .ue-switch-slider {
+        background-color: var(--ue-primary);
+    }
+
+    .ue-switch input:focus + .ue-switch-slider {
+        box-shadow: 0 0 1px var(--ue-primary);
+    }
+
+    .ue-switch input:checked + .ue-switch-slider:before {
+        transform: translateX(22px);
+    }
+
+    .ue-switch-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ue-switch-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ue-text-primary);
+    }
+
+    .ue-switch-description {
+        font-size: 0.75rem;
+        color: var(--ue-text-secondary);
+        margin-top: 2px;
+    }
+
+    .ue-validation-message {
+        color: var(--ue-danger);
+        font-size: 0.75rem;
+        margin-top: 4px;
+    }
+
+    .ue-field-info {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--ue-spacing-xs);
+        margin-top: var(--ue-spacing-xs);
+        font-size: 0.75rem;
+        color: var(--ue-text-secondary);
+    }
+
+        .ue-field-info i {
+            color: var(--ue-text-tertiary);
+            margin-top: 2px;
+        }
+
+    /* Profile Image */
+    .ue-profile-image-section {
+        margin-top: var(--ue-spacing-lg);
+        padding-top: var(--ue-spacing-lg);
+        border-top: 1px solid #e5eef0;
+    }
+
+    .ue-profile-image-container {
+        display: flex;
+        align-items: center;
+        gap: var(--ue-spacing-lg);
+        margin-top: var(--ue-spacing-md);
+    }
+
+    .ue-profile-image-preview {
+        width: 120px;
+        height: 120px;
+        border-radius: var(--ue-border-radius-lg);
+        overflow: hidden;
+        border: 1px solid var(--ue-border-color);
+        box-shadow: var(--ue-shadow-sm);
+        background-color: var(--ue-gray-50);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .ue-profile-image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .ue-profile-image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ue-gray-300);
+        font-size: 2.5rem;
+    }
+
+    .ue-profile-image-controls {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ue-spacing-sm);
+        align-items: flex-start;
+    }
+
+    /* Additional Contacts */
+    .ue-additional-contacts {
+        margin-top: var(--ue-spacing-xl);
+    }
+
+    .ue-email-list, .ue-phone-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ue-spacing-md);
+    }
+
+    .ue-email-item, .ue-phone-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--ue-spacing-sm);
+        padding: var(--ue-spacing-md);
+        background-color: var(--ue-gray-50);
+        border-radius: var(--ue-border-radius-md);
+        border: 1px solid #e5eef0;
+        transition: all var(--ue-transition-fast);
+    }
+
+        .ue-email-item:hover, .ue-phone-item:hover {
+            border-color: var(--ue-primary);
+            background-color: rgba(55, 127, 128, 0.02);
+        }
+
+    .ue-email-content, .ue-phone-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ue-spacing-sm);
+        flex: 1;
+    }
+
+    .ue-phone-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: var(--ue-spacing-sm);
+    }
+
+    .ue-empty-list {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--ue-spacing-xl);
+        background-color: var(--ue-gray-50);
+        border-radius: var(--ue-border-radius-md);
+        color: var(--ue-text-tertiary);
+        text-align: center;
+    }
+
+        .ue-empty-list i {
+            font-size: 2rem;
+            margin-bottom: var(--ue-spacing-sm);
+            opacity: 0.5;
+        }
+
+        .ue-empty-list p {
+            margin: 0;
+            font-size: 0.875rem;
+        }
+
+    /* Role Description */
+    .ue-role-description {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--ue-spacing-md);
+        padding: var(--ue-spacing-md);
+        background-color: var(--ue-gray-50);
+        border-radius: var(--ue-border-radius-md);
+        margin-top: var(--ue-spacing-md);
+    }
+
+    .ue-role-icon {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+        border-radius: var(--ue-border-radius-md);
+        background: linear-gradient(135deg, var(--ue-primary) 0%, var(--ue-primary-hover) 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        box-shadow: var(--ue-shadow-sm);
+    }
+
+    .ue-role-details {
+        flex: 1;
+    }
+
+        .ue-role-details h5 {
+            margin: 0 0 var(--ue-spacing-xs) 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ue-text-primary);
+        }
+
+        .ue-role-details p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--ue-text-secondary);
+            line-height: 1.5;
+        }
+
+    /* Info Box */
+    .ue-info-box {
+        display: flex;
+        gap: var(--ue-spacing-md);
+        padding: var(--ue-spacing-md);
+        border-radius: var(--ue-border-radius-md);
+        background-color: rgba(55, 127, 128, 0.05);
+        border: 1px solid rgba(55, 127, 128, 0.1);
+    }
+
+    .ue-info-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        background-color: rgba(55, 127, 128, 0.1);
+        color: var(--ue-primary);
+        border-radius: 50%;
+        font-size: 1.125rem;
+    }
+
+    .ue-info-content {
+        flex: 1;
+    }
+
+        .ue-info-content h5 {
+            margin: 0 0 var(--ue-spacing-xs) 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ue-text-primary);
+        }
+
+        .ue-info-content p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--ue-text-secondary);
+            line-height: 1.5;
+        }
+
+    /* Account History */
+    .ue-account-history {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ue-history-item {
+        display: flex;
+        padding: var(--ue-spacing-sm) 0;
+        border-bottom: 1px solid var(--ue-gray-100);
+    }
+
+        .ue-history-item:last-child {
+            border-bottom: none;
+        }
+
+    .ue-history-label {
+        flex: 1;
+        font-weight: 500;
+        color: var(--ue-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .ue-history-value {
+        flex: 3;
+        color: var(--ue-text-primary);
+        font-size: 0.875rem;
+    }
+
+        .ue-history-value span {
+            color: var(--ue-text-secondary);
+            font-size: 0.8125rem;
+            margin-left: 6px;
+        }
+
+    /* Password Options */
+    .ue-password-options {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ue-spacing-md);
+        width: 100%;
+    }
+
+    .ue-password-form {
+        width: 100%;
+    }
+
+    /* Notification Preferences */
+    .ue-notification-preferences {
+        margin-top: var(--ue-spacing-lg);
+    }
+
+        .ue-notification-preferences h5 {
+            margin: 0 0 var(--ue-spacing-md) 0;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--ue-text-primary);
+            border-bottom: 1px solid #e5eef0;
+            padding-bottom: var(--ue-spacing-xs);
+        }
+
+    /* Permissions Container */
+    .ue-permissions-container {
+        margin-top: 0;
+    }
+
+    /* Buttons */
+    .ue-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--ue-spacing-xs);
+        padding: 0.625rem 1.125rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: var(--ue-border-radius-md);
+        cursor: pointer;
+        transition: all var(--ue-transition-fast);
+        border: none;
+        text-decoration: none;
+        line-height: 1.2;
+    }
+
+        .ue-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+    .ue-button-primary {
+        background: linear-gradient(135deg, var(--ue-primary) 0%, var(--ue-primary-hover) 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .ue-button-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .ue-button-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--ue-primary-hover) 0%, var(--ue-primary) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(55, 127, 128, 0.3);
+        }
+
+            .ue-button-primary:hover:not(:disabled)::after {
+                transform: translateX(100%);
+            }
+
+    .ue-button-outline {
+        background-color: transparent;
+        border: 1px solid var(--ue-border-color);
+        color: var(--ue-text-secondary);
+    }
+
+        .ue-button-outline:hover:not(:disabled) {
+            background-color: var(--ue-gray-50);
+            border-color: var(--ue-primary);
+            color: var(--ue-primary);
+            transform: translateY(-2px);
+        }
+
+    .ue-button-outline-danger {
+        background-color: transparent;
+        border: 1px solid var(--ue-border-color);
+        color: var(--ue-text-secondary);
+    }
+
+        .ue-button-outline-danger:hover:not(:disabled) {
+            background-color: var(--ue-danger-light);
+            border-color: var(--ue-danger);
+            color: var(--ue-danger);
+            transform: translateY(-2px);
+        }
+
+    .ue-button-sm {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8125rem;
+    }
+
+    .ue-button-xs {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.75rem;
+        border-radius: var(--ue-border-radius-sm);
+    }
+
+    /* Utility Classes */
+    .ue-hidden {
+        display: none;
+    }
+
+    .ue-mt-3 {
+        margin-top: var(--ue-spacing-md);
+    }
+
+    /* Animations */
+    @@keyframes ue-fade-in {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    @@keyframes ue-slide-in {
+        from
+
+    {
+        opacity: 0;
+        transform: translate(-50%, calc(-50% - 20px));
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+
+    }
+
+    @@keyframes ue-spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* Responsive Styles */
+    @@media (max-width: 992px) {
+        .ue-modal-wrapper
+
+    {
+        max-width: 90%;
+    }
+
+    .ue-form-row {
+        grid-template-columns: 1fr;
+        gap: var(--ue-spacing-sm);
+    }
+
+    .ue-phone-content {
+        grid-template-columns: 1fr;
+    }
+
+    .ue-profile-image-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .ue-profile-image-controls {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .ue-modal-wrapper
+
+    {
+        max-width: none;
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        border-radius: 0;
+        animation: ue-fade-in var(--ue-transition-normal);
+        top: 0;
+        left: 0;
+        transform: none;
+    }
+
+    .ue-section-title {
+        padding-left: 0;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+        .ue-section-title i {
+            position: static;
+            margin-bottom: var(--ue-spacing-xs);
+        }
+
+    .ue-tabs-header {
+        overflow-x: auto;
+    }
+
+    .ue-tab-button {
+        padding: var(--ue-spacing-sm) var(--ue-spacing-md);
+    }
+
+    .ue-subtabs-header {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .ue-subtab-button {
+        flex: 0 0 auto;
+    }
+
+    .ue-history-item {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .ue-history-label {
+        font-weight: 600;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .ue-modal-header, .ue-modal-footer
+
+    {
+        padding: var(--ue-spacing-sm) var(--ue-spacing-md);
+    }
+
+    .ue-form-section {
+        padding: var(--ue-spacing-md);
+    }
+
+    .ue-tab-button {
+        padding: var(--ue-spacing-sm);
+        font-size: 0.8125rem;
+    }
+
+        .ue-tab-button i {
+            margin-right: 0;
+        }
+
+    .ue-subtab-button {
+        padding: var(--ue-spacing-xs) var(--ue-spacing-sm);
+        font-size: 0.75rem;
+    }
+
+    .ue-card-header {
+        padding: var(--ue-spacing-sm) var(--ue-spacing-md);
+    }
+
+    .ue-card-body {
+        padding: var(--ue-spacing-md);
+    }
+
+    .ue-modal-footer {
+        flex-direction: column;
+    }
+
+        .ue-modal-footer .ue-button {
+            width: 100%;
+        }
+
+    .ue-section-title h3 {
+        font-size: 1.125rem;
+    }
+
+    .ue-info-box {
+        flex-direction: column;
+    }
+
+    .ue-info-icon {
+        margin: 0 auto var(--ue-spacing-sm);
+    }
+
+    .ue-info-content {
+        text-align: center;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .ue-tab-button
+
+    {
+        flex-direction: column;
+        padding: var(--ue-spacing-xs);
+        gap: 4px;
+    }
+
+    .ue-tab-button span {
+        font-size: 0.6875rem;
+    }
+
+    .ue-subtab-button {
+        min-width: 80px;
+        padding: var(--ue-spacing-xs);
+    }
+
+        .ue-subtab-button span {
+            display: none;
+        }
+
+        .ue-subtab-button.ue-active span {
+            display: inline;
+        }
+
+    .ue-role-description {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .ue-role-icon {
+        margin-bottom: var(--ue-spacing-sm);
+    }
+
+    }
+
+    @@media (max-width: 400px) {
+        .ue-modal-title
+
+    {
+        font-size: 1rem;
+    }
+
+    .ue-section-title h3 {
+        font-size: 1rem;
+    }
+
+    .ue-section-title p {
+        font-size: 0.75rem;
+    }
+
+    .ue-card-header h4 {
+        font-size: 0.875rem;
+    }
+
+    .ue-tab-button {
+        font-size: 0;
+        width: 20%;
+    }
+
+        .ue-tab-button i {
+            font-size: 1rem;
+            margin-right: 0;
+        }
+
+        .ue-tab-button span {
+            display: none;
+        }
+
+        .ue-tab-button.ue-active::after {
+            content: attr(title);
+            font-size: 0.625rem;
+            display: block;
+            font-weight: normal;
+            margin-top: 4px;
+        }
+
+    label,
+    .ue-input,
+    .ue-select,
+    .ue-switch-label {
+        font-size: 0.8125rem;
+    }
+
+    }
+
+    /* Extra small height adjustments */
+    @@media (max-height: 600px) {
+        .ue-modal-header, .ue-modal-footer
+
+    {
+        padding: var(--ue-spacing-xs) var(--ue-spacing-md);
+    }
+
+    .ue-form-section {
+        padding: var(--ue-spacing-sm);
+    }
+
+    .ue-form-group {
+        margin-bottom: var(--ue-spacing-sm);
+    }
+
+    .ue-section-title {
+        margin-bottom: var(--ue-spacing-md);
+    }
+
+    }
+</style>
