@@ -8,6 +8,7 @@ using Roovia.Models.BusinessHelperModels;
 using Roovia.Interfaces;
 using Roovia.Models.UserCompanyMappingModels;
 using Roovia.Models.ProjectCdnConfigModels;
+using Roovia.Models.BusinessModels;
 
 namespace Roovia.Models.UserCompanyModels
 {
@@ -58,7 +59,7 @@ namespace Roovia.Models.UserCompanyModels
         public int? MaxBranches { get; set; }
 
         // Settings
-        [StringLength(1000)]
+        [StringLength(4000)]
         public string? Settings { get; set; } // JSON configuration
 
         // Tags for categorization
@@ -87,14 +88,21 @@ namespace Roovia.Models.UserCompanyModels
         // Navigation properties
         [ForeignKey("StatusId")]
         public virtual CompanyStatusType? Status { get; set; }
-        
+
         [ForeignKey("MainLogoId")]
         public virtual CdnFileMetadata? MainLogo { get; set; }
+
+        [ForeignKey("SubscriptionPlanId")]
+        public virtual SubscriptionPlan? SubscriptionPlan { get; set; }
 
         public virtual ICollection<Branch> Branches { get; set; } = new List<Branch>();
         public virtual ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
+        public virtual ICollection<EntityDocumentRequirement> DocumentRequirements { get; set; } = new List<EntityDocumentRequirement>();
 
         // Helper properties
         [NotMapped]
@@ -175,13 +183,16 @@ namespace Roovia.Models.UserCompanyModels
 
         [ForeignKey("StatusId")]
         public virtual BranchStatusType? Status { get; set; }
-        
+
         [ForeignKey("MainLogoId")]
         public virtual CdnFileMetadata? MainLogo { get; set; }
 
         public virtual ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
 
         // Helper properties
         [NotMapped]
@@ -239,13 +250,8 @@ namespace Roovia.Models.UserCompanyModels
 
         public bool RequireChangePasswordOnLogin { get; set; }
 
-        // Notification preferences
-        public bool IsEmailNotificationsEnabled { get; set; } = true;
-        public bool IsSmsNotificationsEnabled { get; set; } = false;
-        public bool IsPushNotificationsEnabled { get; set; } = true;
-
         // Settings
-        [StringLength(1000)]
+        [StringLength(4000)]
         public string? UserPreferences { get; set; } // JSON configuration
 
         // Two-factor settings
@@ -289,7 +295,7 @@ namespace Roovia.Models.UserCompanyModels
 
         [ForeignKey("StatusId")]
         public virtual UserStatusType? Status { get; set; }
-        
+
         [ForeignKey("ProfilePictureId")]
         public virtual CdnFileMetadata? ProfilePicture { get; set; }
 
@@ -297,6 +303,11 @@ namespace Roovia.Models.UserCompanyModels
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
         public virtual ICollection<UserRoleAssignment> CustomRoles { get; set; } = new List<UserRoleAssignment>();
         public virtual ICollection<UserPermissionOverride> PermissionOverrides { get; set; } = new List<UserPermissionOverride>();
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+        public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
 
         // Helper property for display
         [NotMapped]
@@ -370,7 +381,7 @@ namespace Roovia.Models.UserCompanyModels
                 {
                     Number = value,
                     IsPrimary = true,
-                    Type = ContactNumberType.Mobile,
+                    ContactNumberTypeId = 1, // Assuming 1 is Mobile
                     IsActive = true,
                     RelatedEntityType = "User",
                     RelatedEntityStringId = Id,
@@ -392,7 +403,7 @@ namespace Roovia.Models.UserCompanyModels
         BranchManager = 6,            // Manages operations for a specific branch
         CompanyAdministrator = 7      // Administrates all branches within a company
     }
-   
+
     #endregion
 
     #region Permissions and Roles

@@ -4,6 +4,9 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using FluentValidation;
 using Roovia.Models.UserCompanyModels;
+using Roovia.Models.BusinessMappingModels;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Roovia.Models.UserCompanyMappingModels;
 
 namespace Roovia.Models.BusinessHelperModels
 {
@@ -15,22 +18,22 @@ namespace Roovia.Models.BusinessHelperModels
         public string? Street { get; set; }
 
         [StringLength(20)]
-        public string? UnitNumber { get; set; } // For apartment/unit number
+        public string? UnitNumber { get; set; }
 
         [StringLength(100)]
-        public string? ComplexName { get; set; } // For complex/estate name
+        public string? ComplexName { get; set; }
 
         [StringLength(100)]
-        public string? BuildingName { get; set; } // For building name
+        public string? BuildingName { get; set; }
 
         [StringLength(10)]
-        public string? Floor { get; set; } // For building floor
+        public string? Floor { get; set; }
 
         [StringLength(100)]
         public string? City { get; set; }
 
         [StringLength(100)]
-        public string? Suburb { get; set; } // Added suburb for South African addresses
+        public string? Suburb { get; set; }
 
         [StringLength(50)]
         public string? Province { get; set; }
@@ -39,17 +42,17 @@ namespace Roovia.Models.BusinessHelperModels
         public string? PostalCode { get; set; }
 
         [StringLength(50)]
-        public string? Country { get; set; }
+        public string? Country { get; set; } = "South Africa";
 
         [StringLength(20)]
-        public string? GateCode { get; set; } // For secure complexes
+        public string? GateCode { get; set; }
 
-        public bool IsResidential { get; set; } = true; // To distinguish between residential and business addresses
-        public double? Latitude { get; set; } // For geo-coordinates
-        public double? Longitude { get; set; } // For geo-coordinates
+        public bool IsResidential { get; set; } = true;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         [StringLength(500)]
-        public string? DeliveryInstructions { get; set; } // Special instructions for delivery
+        public string? DeliveryInstructions { get; set; }
     }
 
     public class AddressValidator : AbstractValidator<Address>
@@ -71,7 +74,7 @@ namespace Roovia.Models.BusinessHelperModels
             RuleFor(address => address.PostalCode)
                 .NotEmpty().WithMessage("Postal Code is required.")
                 .MaximumLength(10).WithMessage("Postal Code cannot exceed 10 characters.")
-                .Matches(@"^\d{4}$").WithMessage("Postal Code must be in a valid format (4 digits)."); // Updated for South Africa format
+                .Matches(@"^\d{4}$").WithMessage("Postal Code must be in a valid format (4 digits).");
 
             RuleFor(address => address.Country)
                 .NotEmpty().WithMessage("Country is required.")
@@ -103,22 +106,16 @@ namespace Roovia.Models.BusinessHelperModels
         [StringLength(100)]
         public string? AccountType { get; set; }
 
-        [StringLength(10)]
+        [StringLength(20)]
         public string? AccountNumber { get; set; }
 
-        public BankName? BankName { get; set; }
+        public int? BankNameId { get; set; } // FK to BankNameType
 
-        [StringLength(6)]
+        [StringLength(10)]
         public string? BranchCode { get; set; }
-    }
 
-    public enum BankName
-    {
-        Absa,
-        Capitec,
-        FNB,
-        Nedbank,
-        StandardBank,
+        [ForeignKey("BankNameId")]
+        public virtual BankNameType? BankName { get; set; }
     }
 
     public class BankAccountValidator : AbstractValidator<BankAccount>
@@ -128,12 +125,17 @@ namespace Roovia.Models.BusinessHelperModels
             RuleFor(account => account.AccountType)
                 .NotEmpty().WithMessage("Account type is required.")
                 .MaximumLength(100).WithMessage("Account name must not exceed 100 characters.");
+
             RuleFor(account => account.AccountNumber)
                 .NotEmpty().WithMessage("Account number is required.")
-                .Matches(@"^\d{10}$").WithMessage("Account number must be a valid 10-digit number.");
+                .Matches(@"^\d{1,20}$").WithMessage("Account number must be a valid numeric value.");
+
             RuleFor(account => account.BranchCode)
                 .NotEmpty().WithMessage("Branch code is required.")
-                .Matches(@"^\d{6}$").WithMessage("Branch code must be a valid 6-digit number.");
+                .Matches(@"^\d{1,10}$").WithMessage("Branch code must be a valid numeric value.");
+
+            RuleFor(account => account.BankNameId)
+                .NotEmpty().WithMessage("Bank name is required.");
         }
     }
 
@@ -151,10 +153,10 @@ namespace Roovia.Models.BusinessHelperModels
         [StringLength(20)]
         public string? Number { get; set; }
 
-        public ContactNumberType Type { get; set; } = ContactNumberType.Mobile;
+        public int ContactNumberTypeId { get; set; } // FK to ContactNumberType
 
         [StringLength(50)]
-        public string? Description { get; set; } // e.g., "Work", "Home", etc.
+        public string? Description { get; set; }
 
         public bool IsPrimary { get; set; }
         public bool IsActive { get; set; } = true;
@@ -162,14 +164,14 @@ namespace Roovia.Models.BusinessHelperModels
         // Entity relationship fields
         [Required]
         [StringLength(20)]
-        public string? RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
+        public string? RelatedEntityType { get; set; }
 
-        public int? RelatedEntityId { get; set; } // For entities with int IDs
+        public int? RelatedEntityId { get; set; }
 
         [StringLength(50)]
-        public string? RelatedEntityStringId { get; set; } // For entities with string IDs
+        public string? RelatedEntityStringId { get; set; }
 
-        // Navigation properties to support relationships (optional)
+        // Navigation properties to support relationships
         public string? ApplicationUserId { get; set; }
         public int? CompanyId { get; set; }
         public int? BranchId { get; set; }
@@ -188,6 +190,10 @@ namespace Roovia.Models.BusinessHelperModels
 
         [StringLength(100)]
         public string? UpdatedBy { get; set; }
+
+        // Navigation property
+        [ForeignKey("ContactNumberTypeId")]
+        public virtual ContactNumberType? ContactNumberType { get; set; }
 
         // Helper method to set related entity regardless of ID type
         public void SetRelatedEntity(string type, object id)
@@ -232,15 +238,6 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    public enum ContactNumberType
-    {
-        Mobile,
-        Landline,
-        Fax,
-        WhatsApp,
-        Other
-    }
-
     public class ContactNumberValidator : AbstractValidator<ContactNumber>
     {
         public ContactNumberValidator()
@@ -260,6 +257,9 @@ namespace Roovia.Models.BusinessHelperModels
             RuleFor(contact => contact)
                 .Must(c => c.RelatedEntityId.HasValue || !string.IsNullOrEmpty(c.RelatedEntityStringId))
                 .WithMessage("Related entity ID is required.");
+
+            RuleFor(contact => contact.ContactNumberTypeId)
+                .NotEmpty().WithMessage("Contact number type is required.");
         }
     }
 
@@ -279,7 +279,7 @@ namespace Roovia.Models.BusinessHelperModels
         public string? EmailAddress { get; set; }
 
         [StringLength(50)]
-        public string? Description { get; set; } // e.g., "Work", "Personal", etc.
+        public string? Description { get; set; }
 
         public bool IsPrimary { get; set; }
         public bool IsActive { get; set; } = true;
@@ -287,14 +287,14 @@ namespace Roovia.Models.BusinessHelperModels
         // Entity relationship fields
         [Required]
         [StringLength(20)]
-        public string? RelatedEntityType { get; set; } // "User", "Company", "Branch", "PropertyOwner", "Tenant", "Beneficiary", "Vendor"
+        public string? RelatedEntityType { get; set; }
 
-        public int? RelatedEntityId { get; set; } // For entities with int IDs
+        public int? RelatedEntityId { get; set; }
 
         [StringLength(50)]
-        public string? RelatedEntityStringId { get; set; } // For entities with string IDs
+        public string? RelatedEntityStringId { get; set; }
 
-        // Navigation properties to support relationships (optional)
+        // Navigation properties to support relationships
         public string? ApplicationUserId { get; set; }
         public int? CompanyId { get; set; }
         public int? BranchId { get; set; }
@@ -386,6 +386,8 @@ namespace Roovia.Models.BusinessHelperModels
 
     public class Media
     {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [StringLength(255)]
@@ -398,7 +400,9 @@ namespace Roovia.Models.BusinessHelperModels
         public string? ContentType { get; set; }
 
         public long FileSize { get; set; }
-        public MediaType Type { get; set; }
+
+        public int MediaTypeId { get; set; } // FK to MediaType
+
         public DateTime UploadedDate { get; set; } = DateTime.Now;
 
         [StringLength(100)]
@@ -409,15 +413,316 @@ namespace Roovia.Models.BusinessHelperModels
 
         [StringLength(50)]
         public string? RelatedEntityType { get; set; }
+
+        // Navigation property
+        [ForeignKey("MediaTypeId")]
+        public virtual BusinessMappingModels.MediaType? MediaType { get; set; }
     }
 
-    public enum MediaType
+    #endregion
+
+    #region Note
+
+    public class Note
     {
-        Image,
-        Document,
-        Video,
-        Audio,
-        Other
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(500)]
+        public string? Title { get; set; }
+
+        [Required]
+        [StringLength(4000)]
+        public string? Content { get; set; }
+
+        public int NoteTypeId { get; set; } // FK to NoteType
+
+        public bool IsPrivate { get; set; } = false;
+
+        // Entity relationship fields
+        [Required]
+        [StringLength(20)]
+        public string? RelatedEntityType { get; set; } // "Property", "PropertyOwner", "Tenant", "Beneficiary", "Vendor", etc.
+
+        public int? RelatedEntityId { get; set; }
+
+        [StringLength(50)]
+        public string? RelatedEntityStringId { get; set; } // For user IDs which are strings
+
+        // Audit fields
+        public DateTime CreatedOn { get; set; } = DateTime.Now;
+
+        [Required]
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        public DateTime? UpdatedDate { get; set; }
+
+        [StringLength(100)]
+        public string? UpdatedBy { get; set; }
+
+        // Navigation property
+        [ForeignKey("NoteTypeId")]
+        public virtual NoteType? NoteType { get; set; }
+    }
+
+    #endregion
+
+    #region Communication
+
+    public class Communication
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string? Subject { get; set; }
+
+        [Required]
+        [StringLength(4000)]
+        public string? Content { get; set; }
+
+        public int CommunicationChannelId { get; set; } // FK to CommunicationChannel
+
+        public int CommunicationDirectionId { get; set; } // FK to CommunicationDirection (Inbound/Outbound)
+
+        [StringLength(256)]
+        public string? FromEmailAddress { get; set; }
+
+        [StringLength(256)]
+        public string? ToEmailAddress { get; set; }
+
+        [StringLength(20)]
+        public string? FromPhoneNumber { get; set; }
+
+        [StringLength(20)]
+        public string? ToPhoneNumber { get; set; }
+
+        // Entity relationship fields
+        [Required]
+        [StringLength(20)]
+        public string? RelatedEntityType { get; set; }
+
+        public int? RelatedEntityId { get; set; }
+
+        [StringLength(50)]
+        public string? RelatedEntityStringId { get; set; }
+
+        // Related participants 
+        public string? RelatedUserId { get; set; } // The system user involved
+
+        public int? RelatedPropertyId { get; set; }
+
+        public int? RelatedOwnerId { get; set; }
+
+        public int? RelatedTenantId { get; set; }
+
+        public int? RelatedBeneficiaryId { get; set; }
+
+        public int? RelatedVendorId { get; set; }
+
+        // Document attachment
+        public int? AttachmentId { get; set; } // FK to CdnFileMetadata
+
+        // Audit fields
+        public DateTime CommunicationDate { get; set; } = DateTime.Now;
+
+        public DateTime CreatedOn { get; set; } = DateTime.Now;
+
+        [Required]
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        // Navigation properties
+        [ForeignKey("CommunicationChannelId")]
+        public virtual CommunicationChannel? CommunicationChannel { get; set; }
+
+        [ForeignKey("CommunicationDirectionId")]
+        public virtual CommunicationDirection? CommunicationDirection { get; set; }
+    }
+
+    #endregion
+
+    #region Reminder
+
+    public class Reminder
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string? Title { get; set; }
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
+
+        public int ReminderTypeId { get; set; } // FK to ReminderType
+
+        public int ReminderStatusId { get; set; } // FK to ReminderStatus
+
+        public DateTime DueDate { get; set; }
+
+        public DateTime? CompletedDate { get; set; }
+
+        public bool IsRecurring { get; set; } = false;
+
+        public int? RecurrenceFrequencyId { get; set; } // FK to RecurrenceFrequency
+
+        public int? RecurrenceInterval { get; set; } // Every X days/weeks/months
+
+        public DateTime? RecurrenceEndDate { get; set; }
+
+        // Notification settings
+        public bool SendNotification { get; set; } = true;
+
+        public int? NotifyDaysBefore { get; set; }
+
+        // Entity relationship fields
+        [Required]
+        [StringLength(20)]
+        public string? RelatedEntityType { get; set; }
+
+        public int? RelatedEntityId { get; set; }
+
+        [StringLength(50)]
+        public string? RelatedEntityStringId { get; set; }
+
+        // Assigned to
+        [StringLength(50)]
+        public string? AssignedToUserId { get; set; }
+
+        // Audit fields
+        public DateTime CreatedOn { get; set; } = DateTime.Now;
+
+        [Required]
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        public DateTime? UpdatedDate { get; set; }
+
+        [StringLength(100)]
+        public string? UpdatedBy { get; set; }
+
+        // Navigation properties
+        [ForeignKey("ReminderTypeId")]
+        public virtual ReminderType? ReminderType { get; set; }
+
+        [ForeignKey("ReminderStatusId")]
+        public virtual ReminderStatus? ReminderStatus { get; set; }
+
+        [ForeignKey("RecurrenceFrequencyId")]
+        public virtual RecurrenceFrequency? RecurrenceFrequency { get; set; }
+    }
+
+    #endregion
+
+    #region NotificationPreference
+
+    public class NotificationPreference
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        // Entity identification
+        [Required]
+        [StringLength(20)]
+        public string? RelatedEntityType { get; set; }
+
+        public int? RelatedEntityId { get; set; }
+
+        [StringLength(50)]
+        public string? RelatedEntityStringId { get; set; }
+
+        // Notification event type
+        public int NotificationEventTypeId { get; set; } // FK to NotificationEventType
+
+        // Channel preferences
+        public bool EmailEnabled { get; set; } = true;
+
+        public bool SmsEnabled { get; set; } = false;
+
+        public bool PushEnabled { get; set; } = false;
+
+        public bool WebEnabled { get; set; } = true;
+
+        // Time preferences
+        public bool OnlyDuringBusinessHours { get; set; } = false;
+
+        [StringLength(100)]
+        public string? PreferredTimeOfDay { get; set; } // e.g., "Morning", "Afternoon", "Evening"
+
+        // Audit fields
+        public DateTime CreatedOn { get; set; } = DateTime.Now;
+
+        [Required]
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        public DateTime? UpdatedDate { get; set; }
+
+        [StringLength(100)]
+        public string? UpdatedBy { get; set; }
+
+        // Navigation property
+        [ForeignKey("NotificationEventTypeId")]
+        public virtual NotificationEventType? NotificationEventType { get; set; }
+    }
+
+    #endregion
+
+    #region EntityDocument
+
+    public class EntityDocument
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        // Entity relationship
+        [Required]
+        [StringLength(20)]
+        public string? EntityType { get; set; } // "Property", "PropertyOwner", "Tenant", etc.
+
+        public int EntityId { get; set; }
+
+        // Document type and mapping
+        public int DocumentTypeId { get; set; } // FK to DocumentType
+
+        public int? CdnFileMetadataId { get; set; } // FK to CdnFileMetadata
+
+        // Status
+        public int DocumentStatusId { get; set; } // FK to DocumentStatus
+
+        public bool IsRequired { get; set; } = false;
+
+        [StringLength(1000)]
+        public string? Notes { get; set; }
+
+        // Audit fields
+        public DateTime CreatedOn { get; set; } = DateTime.Now;
+
+        [Required]
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        public DateTime? UpdatedDate { get; set; }
+
+        [StringLength(100)]
+        public string? UpdatedBy { get; set; }
+
+        // Navigation properties
+        [ForeignKey("DocumentTypeId")]
+        public virtual DocumentType? DocumentType { get; set; }
+
+        [ForeignKey("DocumentStatusId")]
+        public virtual DocumentStatus? DocumentStatus { get; set; }
     }
 
     #endregion
@@ -439,7 +744,7 @@ namespace Roovia.Models.BusinessHelperModels
     #endregion
 
     #region Extensions
-  
+
     public static class FileNameExtensions
     {
         public static string InsertBeforeExtension(this string fileName, string insert)

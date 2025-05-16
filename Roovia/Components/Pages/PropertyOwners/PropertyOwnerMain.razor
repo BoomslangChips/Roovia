@@ -1,58 +1,94 @@
-﻿
-
-@page "/beneficiaries"
-
+﻿@page "/propertyowners"
 
 @using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.UserCompanyModels
 @using Roovia.Services
 
 @inject IPropertyOwner PropertyOwnerService
+@inject ToastService ToastService
+@inject IUser UserService
+@inject IJSRuntime JSRuntime
 
 @rendermode InteractiveServer
-@* 
 
-<CardView CssClass="management-card">
-    <HeaderActions>
-        <div class="d-flex align-items-center justify-content-between">
-            <h3>Owners Overview</h3>
-            <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="Add Owner" OnClick="AddPropertyOwner" />
+<div class="ro-card management-card">
+    <div class="ro-card-header">
+        <div class="ro-card-header-actions">
+            <div class="ro-flex ro-justify-between ro-items-center">
+                <h3 class="ro-title">Property Owners</h3>
+                <button class="ro-btn ro-btn-primary" @onclick="AddPropertyOwner">
+                    <i class="fa-light fa-plus ro-mr-1"></i> Add Owner
+                </button>
+            </div>
+            <div class="ro-search-container ro-mt-2">
+                <div class="ro-input-group">
+                    <i class="fa-light fa-search ro-input-icon"></i>
+                    <input type="text" placeholder="Search property owners..." class="ro-input"
+                           @bind="searchTerm" @bind:event="oninput" @onkeyup="FilterPropertyOwners" />
+                    @if (!string.IsNullOrEmpty(searchTerm))
+                    {
+                        <button class="ro-clear-btn" @onclick="ClearSearch">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    }
+                </div>
+            </div>
         </div>
-        <div class="search-bar mt-2">
-            <input type="text" placeholder="Search property owners..." class="form-control" style="max-width: 300px;" @bind="searchTerm" />
-        </div>
-    </HeaderActions>
-    <ChildContent>
-        @if (FilteredPropertyOwners.Any())
+    </div>
+    <div class="ro-card-body">
+        @if (isLoading)
         {
-            <div class="table-responsive">
-                <table class="table table-striped">
+            <div class="ro-loader-container">
+                <div class="ro-loader"></div>
+            </div>
+        }
+        else if (filteredPropertyOwners.Any())
+        {
+            <div class="ro-table-container">
+                <table class="ro-table">
                     <thead>
                         <tr>
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>ID Number</th>
                             <th>VAT Number</th>
-                            <th>Mobile Number</th>
-                            <th>Email</th>
+                            <th>Primary Contact</th>
+                            <th>Primary Email</th>
+                            <th>Properties</th>
                             <th>Date Added</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var owner in FilteredPropertyOwners)
+                        @foreach (var owner in filteredPropertyOwners)
                         {
                             <tr>
                                 <td>@owner.FirstName</td>
                                 <td>@owner.LastName</td>
                                 <td>@owner.IdNumber</td>
                                 <td>@owner.VatNumber</td>
-                                <td>@owner.MobileNumber</td>
-                                <td>@owner.EmailAddress</td>
+                                <td>@owner.PrimaryContactNumber</td>
+                                <td>@owner.PrimaryEmail</td>
+                                <td>
+                                    <span class="ro-badge ro-badge-info">@(owner.Properties?.Count ?? 0)</span>
+                                </td>
                                 <td>@owner.CreatedOn.ToShortDateString()</td>
                                 <td>
-                                     <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View" OnClick="() => ViewPropertyOwner(owner)" />
-                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit" OnClick="() => EditPropertyOwner(owner)" CssClass="ms-2" />
-                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-trash" Text="Delete" OnClick="() => DeletePropertyOwner(owner)" CssClass="ms-2" />
+                                    <div class="ro-action-buttons">
+                                        <button class="ro-btn ro-btn-icon ro-btn-outline" @onclick="() => ViewPropertyOwner(owner)"
+                                                title="View details">
+                                            <i class="fa-light fa-eye"></i>
+                                        </button>
+                                        <button class="ro-btn ro-btn-icon ro-btn-outline" @onclick="() => EditPropertyOwner(owner)"
+                                                title="Edit owner">
+                                            <i class="fa-light fa-edit"></i>
+                                        </button>
+                                        <button class="ro-btn ro-btn-icon ro-btn-outline ro-btn-danger" @onclick="() => DeletePropertyOwner(owner)"
+                                                title="Delete owner">
+                                            <i class="fa-light fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -62,47 +98,60 @@
         }
         else
         {
-            <Roovia.Components.Pages.Users.EmptyState Title="No property owners available" 
-                        Description="There are no property owners to display at this time." 
-                        Icon="fa-light fa-user-slash" 
-                        ActionText="Refresh" 
-                        OnAction="LoadPropertyOwnersAsync" />
+            <div class="ro-empty-state">
+                <div class="ro-empty-state-icon">
+                    <i class="fa-light fa-user-slash"></i>
+                </div>
+                <h4 class="ro-empty-state-title">No property owners found</h4>
+                <p class="ro-empty-state-description">
+                    @(string.IsNullOrEmpty(searchTerm)
+                        ? "There are no property owners registered in the system yet."
+                        : $"No property owners match the search term '{searchTerm}'.")
+                </p>
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button class="ro-btn ro-btn-outline" @onclick="ClearSearch">
+                        <i class="fa-light fa-times ro-mr-2"></i>Clear Search
+                    </button>
+                }
+                else
+                {
+                    <button class="ro-btn ro-btn-primary" @onclick="AddPropertyOwner">
+                        <i class="fa-light fa-plus ro-mr-2"></i>Add Your First Owner
+                    </button>
+                }
+            </div>
         }
-    </ChildContent>
-</CardView> *@
-@* 
-@if (showPropertyOwnerModal)
+    </div>
+</div>
+
+@if (showAddModal)
 {
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <PropertyOwnerModal OnModalClosed="ModalClosed"></PropertyOwnerModal>
+    <CascadingValue Value="CurrentUser">
+        <PropertyOwnerModal OnModalClosed="ModalClosed" />
     </CascadingValue>
 }
 
 @if (showEditModal)
 {
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="PropertyOwner" Value="selectedOwner">
-            <PropertyOwnerEditModal OnModalClosed="EditModalClosed"></PropertyOwnerEditModal>
+    <CascadingValue Value="CurrentUser">
+        <CascadingValue Value="selectedOwner">
+            <PropertyOwnerEditModal OnModalClosed="EditModalClosed" />
         </CascadingValue>
     </CascadingValue>
-} *@
+}
 
-@* 
 @code {
     private string searchTerm = string.Empty;
-    bool showPropertyOwnerModal = false;
-    bool showEditModal = false;
-    PropertyOwner selectedOwner = new();
+    private bool isLoading = true;
+    private bool showAddModal = false;
+    private bool showEditModal = false;
+    private PropertyOwner selectedOwner = new();
     private List<PropertyOwner> propertyOwners = new List<PropertyOwner>();
-
-    [Inject]
-    public ToastService ToastService { get; set; }
+    private List<PropertyOwner> filteredPropertyOwners = new List<PropertyOwner>();
 
     [CascadingParameter]
     private ApplicationUser? CurrentUser { get; set; }
-
-    [Inject]
-    public IUser UserService { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,35 +164,71 @@
 
     private async Task LoadPropertyOwnersAsync()
     {
-        if (CurrentUser != null)
+        isLoading = true;
+        try
         {
-            var response = await PropertyOwnerService.GetAllPropertyOwners(CurrentUser.CompanyId.Value);
-            if (response.ResponseInfo.Success)
+            if (CurrentUser != null && CurrentUser.CompanyId.HasValue)
             {
-                propertyOwners = response.Response as List<PropertyOwner>;
+                var response = await PropertyOwnerService.GetAllPropertyOwners(CurrentUser.CompanyId.Value);
+                if (response.ResponseInfo.Success)
+                {
+                    propertyOwners = response.Response as List<PropertyOwner>;
+                    FilterPropertyOwners();
+                }
+                else
+                {
+                    ToastService.ShowError($"Error loading property owners: {response.ResponseInfo.Message}", "Error");
+                }
             }
-            else
-            {
-                Console.WriteLine($"Error loading property owners: {response.ResponseInfo.Message}");
-            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private IEnumerable<PropertyOwner> FilteredPropertyOwners =>
-        propertyOwners.Where(o => string.IsNullOrEmpty(searchTerm) ||
-                                  o.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                                  o.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+    private void FilterPropertyOwners()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredPropertyOwners = propertyOwners.ToList();
+        }
+        else
+        {
+            string term = searchTerm.ToLower();
+            filteredPropertyOwners = propertyOwners.Where(o =>
+                (o.FirstName?.ToLower().Contains(term) ?? false) ||
+                (o.LastName?.ToLower().Contains(term) ?? false) ||
+                (o.IdNumber?.ToLower().Contains(term) ?? false) ||
+                (o.VatNumber?.ToLower().Contains(term) ?? false) ||
+                (o.PrimaryEmail?.ToLower().Contains(term) ?? false) ||
+                (o.PrimaryContactNumber?.ToLower().Contains(term) ?? false)
+            ).ToList();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        FilterPropertyOwners();
+    }
 
     private void ViewPropertyOwner(PropertyOwner owner)
     {
-        Console.WriteLine($"Viewing property owner: {owner.FirstName} {owner.LastName}");
+        selectedOwner = owner;
+        showEditModal = true;
     }
 
     private async Task EditPropertyOwner(PropertyOwner owner)
     {
         selectedOwner = owner;
         showEditModal = true;
-        await InvokeAsync(() => StateHasChanged());
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task DeletePropertyOwner(PropertyOwner owner)
@@ -151,49 +236,327 @@
         if (owner == null || CurrentUser == null)
             return;
 
-        // Assuming PropertyOwnerService has a DeletePropertyOwner method that takes owner id and company id
-        var response = await PropertyOwnerService.DeleteProperty(owner.Id, CurrentUser);
-        if (response.ResponseInfo.Success)
+        // Confirm deletion
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {owner.FirstName} {owner.LastName}?"))
+            return;
+
+        try
         {
-            propertyOwners.Remove(owner);
-            ToastService.Show("Property owner deleted successfully.", ToastType.Success);
+            var response = await PropertyOwnerService.DeletePropertyOwner(owner.Id, CurrentUser);
+            if (response.ResponseInfo.Success)
+            {
+                propertyOwners.Remove(owner);
+                FilterPropertyOwners();
+                ToastService.ShowSuccess("Property owner deleted successfully.", "Success");
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to delete property owner: {response.ResponseInfo.Message}", "Error");
+            }
+            await InvokeAsync(StateHasChanged);
         }
-        else
+        catch (Exception ex)
         {
-            ToastService.Show($"Failed to delete property owner: {response.ResponseInfo.Message}", ToastType.Error);
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
         }
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task AddPropertyOwner()
     {
-        showPropertyOwnerModal = true;
+        showAddModal = true;
         await InvokeAsync(StateHasChanged);
     }
 
     public async Task GetLoggedInUser()
     {
-        var userResponse = await UserService.GetAuthenticatedUserInfo();
-        if (userResponse.ResponseInfo.Success)
+        try
         {
-            CurrentUser = userResponse.Response as ApplicationUser;
+            var userResponse = await UserService.GetAuthenticatedUserInfo();
+            if (userResponse.ResponseInfo.Success)
+            {
+                CurrentUser = userResponse.Response as ApplicationUser;
+            }
+            else
+            {
+                ToastService.ShowError($"Error loading user: {userResponse.ResponseInfo.Message}", "Error");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine($"Error loading user: {userResponse.ResponseInfo.Message}");
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
         }
     }
 
     public async Task ModalClosed()
     {
-        showPropertyOwnerModal = false;
+        showAddModal = false;
         await LoadPropertyOwnersAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     public async Task EditModalClosed()
     {
         showEditModal = false;
         await LoadPropertyOwnersAsync();
+        await InvokeAsync(StateHasChanged);
     }
 }
- *@
+
+<style>
+    /* Main Card Styling */
+    .ro-card {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        background-color: #ffffff;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+        .ro-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+    .ro-card-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .ro-card-body {
+        padding: 1rem;
+    }
+
+    .ro-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+
+    /* Flex Utilities */
+    .ro-flex {
+        display: flex;
+    }
+
+    .ro-justify-between {
+        justify-content: space-between;
+    }
+
+    .ro-items-center {
+        align-items: center;
+    }
+
+    .ro-mt-2 {
+        margin-top: 0.5rem;
+    }
+
+    .ro-mr-1 {
+        margin-right: 0.25rem;
+    }
+
+    .ro-mr-2 {
+        margin-right: 0.5rem;
+    }
+
+    /* Button Styling */
+    .ro-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ro-btn-primary {
+        background-color: #3a7de0;
+        color: white;
+    }
+
+        .ro-btn-primary:hover {
+            background-color: #2b6cd2;
+        }
+
+    .ro-btn-outline {
+        background-color: transparent;
+        border: 1px solid #d1d5db;
+        color: #4b5563;
+    }
+
+        .ro-btn-outline:hover {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+    .ro-btn-danger {
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+        .ro-btn-danger:hover {
+            background-color: #fee2e2;
+            border-color: #fca5a5;
+        }
+
+    .ro-btn-icon {
+        padding: 0.5rem;
+        width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Search Input Styling */
+    .ro-search-container {
+        max-width: 300px;
+    }
+
+    .ro-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .ro-input-icon {
+        position: absolute;
+        left: 0.75rem;
+        color: #6b7280;
+    }
+
+    .ro-input {
+        padding: 0.5rem 2rem 0.5rem 2.25rem;
+        border-radius: 0.375rem;
+        border: 1px solid #d1d5db;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+
+        .ro-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+    .ro-clear-btn {
+        position: absolute;
+        right: 0.75rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+    }
+
+        .ro-clear-btn:hover {
+            color: #1f2937;
+        }
+
+    /* Table Styling */
+    .ro-table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .ro-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .ro-table th {
+            background-color: #f9fafb;
+            color: #4b5563;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .ro-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+        .ro-table tr:hover {
+            background-color: #f9fafb;
+        }
+
+    /* Badge Styling */
+    .ro-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .ro-badge-info {
+        background-color: #e0f2fe;
+        color: #0369a1;
+    }
+
+    /* Action Buttons Container */
+    .ro-action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Loader Styling */
+    .ro-loader-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+    }
+
+    .ro-loader {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-top-color: #3a7de0;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* Empty State Styling */
+    .ro-empty-state {
+        text-align: center;
+        padding: 4rem 1rem;
+        max-width: 32rem;
+        margin: 0 auto;
+    }
+
+    .ro-empty-state-icon {
+        font-size: 4rem;
+        color: #9ca3af;
+        margin-bottom: 1.5rem;
+    }
+
+    .ro-empty-state-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-empty-state-description {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+</style>

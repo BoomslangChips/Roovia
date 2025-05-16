@@ -1,103 +1,300 @@
-﻿@* @using Roovia.Interfaces
-
+﻿@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
 @using Roovia.Services
 
 @rendermode InteractiveServer
 
-<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-edit" IsVisible="@IsVisible" Size="ModalSize.Large">
-    <ChildContent>
-        <div class="roovia-panel">
-            <div class="roovia-panel-header">
-                <h3 class="roovia-panel-title">Edit Property Owner</h3>
+@if (IsVisible)
+{
+    <div class="ro-modal-backdrop" @onclick="HandleBackdropClick"></div>
+    <div class="ro-modal @(isModalOpen ? "ro-modal-open" : "")">
+        <div class="ro-modal-content">
+            <div class="ro-modal-header">
+                <div class="ro-modal-icon">
+                    <i class="fa-light fa-edit"></i>
+                </div>
+                <h4 class="ro-modal-title">Edit Property Owner</h4>
+                <button class="ro-modal-close" @onclick="CloseModal">
+                    <i class="fa-light fa-times"></i>
+                </button>
             </div>
-            <div class="roovia-panel-body p-0">
+            <div class="ro-modal-body">
                 <!-- Tab Navigation -->
-                <div class="d-flex border-bottom">
-                    <div class="@GetTabClass(1)" @onclick="() => ActiveTab = 1">
-                        <i class="fas fa-user me-2"></i>Owner Details
-                    </div>
-                    <div class="@GetTabClass(2)" @onclick="() => ActiveTab = 2">
-                        <i class="fas fa-building me-2"></i>Properties (@(selectedOwner.Properties?.Count ?? 0))
+                <div class="ro-tabs">
+                    <div class="ro-tab-list">
+                        <button class="ro-tab-item @GetTabClass(1)" @onclick="() => ActiveTab = 1">
+                            <i class="fa-light fa-user ro-mr-2"></i>Owner Details
+                        </button>
+                        <button class="ro-tab-item @GetTabClass(2)" @onclick="() => ActiveTab = 2">
+                            <i class="fa-light fa-building ro-mr-2"></i>Properties (@(owner?.Properties?.Count(p => !p.IsRemoved) ?? 0))
+                        </button>
+                        <button class="ro-tab-item @GetTabClass(3)" @onclick="() => ActiveTab = 3">
+                            <i class="fa-light fa-file-invoice-dollar ro-mr-2"></i>Financial
+                        </button>
                     </div>
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-4">
+                <div class="ro-tab-content">
                     @if (ActiveTab == 1)
                     {
                         <!-- Owner Details Tab -->
-                        <div class="container-fluid">
+                        <div class="ro-tab-pane">
                             <!-- Owner Details Section -->
-                            <div class="row">
-                                <div class="col-12 mb-4">
-                                    <h5 class="text-primary mb-3">Personal Information</h5>
-                                    <div class="roovia-grid-cols-2 gap-4">
-                                        <div>
-                                            <RVTextbox Label="First Name" Value="@selectedOwner.FirstName" @onchange="(e => selectedOwner.FirstName = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="Last Name" Value="@selectedOwner.LastName" @onchange="(e => selectedOwner.LastName = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="ID Number" Value="@selectedOwner.IdNumber" @onchange="(e => selectedOwner.IdNumber = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="VAT Number" Value="@selectedOwner.VatNumber" @onchange="(e => selectedOwner.VatNumber = e.Value.ToString())"></RVTextbox>
-                                        </div>
+                            <div class="ro-section">
+                                <h5 class="ro-section-title">Personal Information</h5>
+                                <div class="ro-form-grid">
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label required">First Name</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.FirstName">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label required">Last Name</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.LastName">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">ID Number</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.IdNumber">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">VAT Number</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.VatNumber">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ro-section">
+                                <h5 class="ro-section-title">Contact Information</h5>
+
+                                <!-- Email Addresses -->
+                                <div class="ro-subsection">
+                                    <div class="ro-subsection-header">
+                                        <h6 class="ro-subsection-title">Email Addresses</h6>
+                                        <button class="ro-btn ro-btn-sm ro-btn-outline" @onclick="AddNewEmail">
+                                            <i class="fa-light fa-plus ro-mr-1"></i> Add Email
+                                        </button>
+                                    </div>
+                                    <div class="ro-table-container">
+                                        <table class="ro-table ro-table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Email Address</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 100px;">Primary</th>
+                                                    <th style="width: 100px;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (owner.EmailAddresses != null && owner.EmailAddresses.Any(e => e.IsActive))
+                                                {
+                                                    @foreach (var email in owner.EmailAddresses.Where(e => e.IsActive).ToList())
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <input type="email" class="ro-form-input ro-form-input-sm"
+                                                                       @bind="email.EmailAddress" />
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" class="ro-form-input ro-form-input-sm"
+                                                                       @bind="email.Description" placeholder="Description" />
+                                                            </td>
+                                                            <td class="ro-text-center">
+                                                                <div class="ro-radio-container">
+                                                                    <input type="radio" name="primaryEmail"
+                                                                           id="email_@email.Id"
+                                                                           checked="@email.IsPrimary"
+                                                                           @onchange="() => SetPrimaryEmail(email)" />
+                                                                    <label for="email_@email.Id" class="ro-radio-label"></label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button type="button" class="ro-btn ro-btn-icon ro-btn-danger ro-btn-sm"
+                                                                        @onclick="() => RemoveEmail(email)">
+                                                                    <i class="fa-light fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="4" class="ro-text-center ro-text-muted">
+                                                            No email addresses found
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
 
-                                <div class="col-12 mb-4">
-                                    <h5 class="text-primary mb-3">Contact Information</h5>
-                                    <div class="roovia-grid-cols-2 gap-4">
-                                        <div>
-                                            <RVTextbox Label="Email Address" Value="@selectedOwner.EmailAddress" @onchange="(e => selectedOwner.EmailAddress = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="Mobile Number" Value="@selectedOwner.MobileNumber" @onchange="(e => selectedOwner.MobileNumber = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVCheckbox Label="Email Notifications" Value="@(selectedOwner.IsEmailNotificationsEnabled == "true")" @onchange="(e => selectedOwner.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
-                                        </div>
-                                        <div>
-                                            <RVCheckbox Label="SMS Notifications" Value="@(selectedOwner.IsSmsNotificationsEnabled == "true")" @onchange="(e => selectedOwner.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
-                                        </div>
+                                <!-- Contact Numbers -->
+                                <div class="ro-subsection">
+                                    <div class="ro-subsection-header">
+                                        <h6 class="ro-subsection-title">Contact Numbers</h6>
+                                        <button class="ro-btn ro-btn-sm ro-btn-outline" @onclick="AddNewContactNumber">
+                                            <i class="fa-light fa-plus ro-mr-1"></i> Add Number
+                                        </button>
+                                    </div>
+                                    <div class="ro-table-container">
+                                        <table class="ro-table ro-table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Number</th>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 100px;">Primary</th>
+                                                    <th style="width: 100px;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (owner.ContactNumbers != null && owner.ContactNumbers.Any(c => c.IsActive))
+                                                {
+                                                    @foreach (var contact in owner.ContactNumbers.Where(c => c.IsActive).ToList())
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <input type="tel" class="ro-form-input ro-form-input-sm"
+                                                                       @bind="contact.Number" />
+                                                            </td>
+                                                            <td>
+                                                                <div class="ro-custom-select ro-custom-select-sm">
+                                                                    <select class="ro-form-select ro-form-select-sm"
+                                                                            @bind="contact.Type">
+                                                                        @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                                        {
+                                                                            <option value="@type">@type</option>
+                                                                        }
+                                                                    </select>
+                                                                    <div class="ro-select-arrow">
+                                                                        <i class="fa-light fa-chevron-down"></i>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" class="ro-form-input ro-form-input-sm"
+                                                                       @bind="contact.Description" placeholder="Description" />
+                                                            </td>
+                                                            <td class="ro-text-center">
+                                                                <div class="ro-radio-container">
+                                                                    <input type="radio" name="primaryContact"
+                                                                           id="contact_@contact.Id"
+                                                                           checked="@contact.IsPrimary"
+                                                                           @onchange="() => SetPrimaryContact(contact)" />
+                                                                    <label for="contact_@contact.Id" class="ro-radio-label"></label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button type="button" class="ro-btn ro-btn-icon ro-btn-danger ro-btn-sm"
+                                                                        @onclick="() => RemoveContactNumber(contact)">
+                                                                    <i class="fa-light fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="5" class="ro-text-center ro-text-muted">
+                                                            No contact numbers found
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
 
-                                <div class="col-12 mb-4">
-                                    <h5 class="text-primary mb-3">Bank Details</h5>
-                                    <div class="roovia-grid-cols-3 gap-4">
-                                        <div>
-                                            <RVTextbox Label="Account Type" Value="@selectedOwner.BankAccount.AccountType" @onchange="(e => selectedOwner.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                                <div class="ro-form-grid">
+                                    <div class="ro-form-group">
+                                        <div class="ro-checkbox-container">
+                                            <input type="checkbox" id="emailNotifications" class="ro-checkbox"
+                                                   @bind="owner.IsEmailNotificationsEnabled">
+                                            <label for="emailNotifications" class="ro-checkbox-label">
+                                                Email Notifications
+                                            </label>
                                         </div>
-                                        <div>
-                                            <RVTextbox Label="Account Number" Value="@selectedOwner.BankAccount.AccountNumber" @onchange="(e => selectedOwner.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                                        <small class="ro-form-help">Receive notifications via email</small>
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <div class="ro-checkbox-container">
+                                            <input type="checkbox" id="smsNotifications" class="ro-checkbox"
+                                                   @bind="owner.IsSmsNotificationsEnabled">
+                                            <label for="smsNotifications" class="ro-checkbox-label">
+                                                SMS Notifications
+                                            </label>
                                         </div>
-                                        <div>
-                                            <RVTextbox Label="Branch Code" Value="@selectedOwner.BankAccount.BranchCode" @onchange="(e => selectedOwner.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
-                                        </div>
+                                        <small class="ro-form-help">Receive notifications via SMS</small>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="col-12">
-                                    <h5 class="text-primary mb-3">Address</h5>
-                                    <div class="roovia-grid-cols-2 gap-4">
-                                        <div>
-                                            <RVTextbox Label="Street" Value="@selectedOwner.Address.Street" @onchange="(e => selectedOwner.Address.Street = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-section">
+                                <h5 class="ro-section-title">Bank Details</h5>
+                                <div class="ro-form-grid">
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">Bank Name</label>
+                                        <div class="ro-custom-select">
+                                            <select class="ro-form-select" @bind="bankNameString">
+                                                @foreach (var option in bankOptions)
+                                                {
+                                                    <option value="@option">@option</option>
+                                                }
+                                            </select>
+                                            <div class="ro-select-arrow">
+                                                <i class="fa-light fa-chevron-down"></i>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <RVTextbox Label="City" Value="@selectedOwner.Address.City" @onchange="(e => selectedOwner.Address.City = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="Province" Value="@selectedOwner.Address.Province" @onchange="(e => selectedOwner.Address.Province = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div>
-                                            <RVTextbox Label="Postal Code" Value="@selectedOwner.Address.PostalCode" @onchange="(e => selectedOwner.Address.PostalCode = e.Value.ToString())"></RVTextbox>
-                                        </div>
-                                        <div class="grid-column-span-2">
-                                            <RVTextbox Label="Country" Value="@selectedOwner.Address.Country" @onchange="(e => selectedOwner.Address.Country = e.Value.ToString())"></RVTextbox>
-                                        </div>
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">Account Type</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.BankAccount.AccountType">
+                                        <small class="ro-form-help">e.g., Checking, Savings, etc.</small>
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">Account Number</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.BankAccount.AccountNumber">
+                                        <small class="ro-form-help">10-digit account number</small>
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">Branch Code</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.BankAccount.BranchCode">
+                                        <small class="ro-form-help">6-digit branch code</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ro-section">
+                                <h5 class="ro-section-title">Address</h5>
+                                <div class="ro-form-grid">
+                                    <div class="ro-form-group ro-form-group-full">
+                                        <label class="ro-form-label required">Street</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.Street">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label required">City</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.City">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label">Suburb</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.Suburb">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label required">Province</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.Province">
+                                    </div>
+                                    <div class="ro-form-group">
+                                        <label class="ro-form-label required">Postal Code</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.PostalCode">
+                                        <small class="ro-form-help">4-digit postal code</small>
+                                    </div>
+                                    <div class="ro-form-group ro-form-group-full">
+                                        <label class="ro-form-label required">Country</label>
+                                        <input type="text" class="ro-form-input" @bind="owner.Address.Country">
                                     </div>
                                 </div>
                             </div>
@@ -106,33 +303,35 @@
                     else if (ActiveTab == 2)
                     {
                         <!-- Properties Tab -->
-                        <div class="container-fluid">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="m-0">Properties Owned</h5>
-                                <button class="btn roovia-btn-primary btn-sm" @onclick="AddNewProperty">
-                                    <i class="fas fa-plus me-1"></i> Add Property
+                        <div class="ro-tab-pane">
+                            <div class="ro-properties-header">
+                                <h5 class="ro-tab-subtitle">Properties Owned</h5>
+                                <button class="ro-btn ro-btn-primary ro-btn-sm" @onclick="AddNewProperty">
+                                    <i class="fa-light fa-plus ro-mr-1"></i> Add Property
                                 </button>
                             </div>
 
-                            @if (selectedOwner.Properties != null && selectedOwner.Properties.Any())
+                            @if (owner.Properties != null && owner.Properties.Any(p => !p.IsRemoved))
                             {
-                                <div class="table-container">
-                                    <table class="table table-striped table-hover">
+                                <div class="ro-table-container">
+                                    <table class="ro-table">
                                         <thead>
                                             <tr>
-                                                <th>ID</th>
+                                                <th>Property Name</th>
+                                                <th>Property Code</th>
                                                 <th>Address</th>
                                                 <th>Rental Amount</th>
-                                                <th>Lease Status</th>
-                                                <th>Lease End Date</th>
-                                                 <th>Actions</th>
-                                             </tr>
+                                                <th>Status</th>
+                                                <th>Tenant</th>
+                                                <th>Actions</th>
+                                            </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach (var prop in selectedOwner.Properties)
+                                            @foreach (var prop in owner.Properties.Where(p => !p.IsRemoved))
                                             {
                                                 <tr>
-                                                    <td>@prop.Id</td>
+                                                    <td>@prop.PropertyName</td>
+                                                    <td>@prop.PropertyCode</td>
                                                     <td>
                                                         @GetPropertyAddress(prop)
                                                     </td>
@@ -140,22 +339,35 @@
                                                     <td>
                                                         @if (prop.HasTenant)
                                                         {
-                                                            <span class="badge bg-success-light">Occupied</span>
+                                                            <span class="ro-badge ro-badge-success">Occupied</span>
                                                         }
                                                         else
                                                         {
-                                                            <span class="badge bg-warning-light">Vacant</span>
+                                                            <span class="ro-badge ro-badge-warning">Vacant</span>
                                                         }
                                                     </td>
-                                                    <td>@prop.LeaseEndDate.Value.ToShortDateString()</td>
                                                     <td>
-                                                        <div class="d-flex gap-2">
-                                                            <RVButton ButtonType="primary" Size="sm" OnClick="() => ViewProperty(prop)" Title="View property">
-                                                                <i class="fas fa-eye me-1"></i> View
-                                                            </RVButton>
-                                                            <RVButton ButtonType="secondary" Size="sm" OnClick="() => EditProperty(prop)" Title="Edit property">
-                                                                <i class="fas fa-pencil-alt me-1"></i> Edit
-                                                            </RVButton>
+                                                        @if (prop.HasTenant && prop.Tenants != null && prop.Tenants.Any(t => !t.IsRemoved))
+                                                        {
+                                                            var tenant = prop.Tenants.FirstOrDefault(t => !t.IsRemoved);
+                                                            @if (tenant != null)
+                                                            {
+                                                                @tenant.FullName
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="ro-text-muted">None</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <div class="ro-action-buttons">
+                                                            <button class="ro-btn ro-btn-icon ro-btn-sm ro-btn-outline" @onclick="() => ViewProperty(prop)" title="View property">
+                                                                <i class="fa-light fa-eye"></i>
+                                                            </button>
+                                                            <button class="ro-btn ro-btn-icon ro-btn-sm ro-btn-outline" @onclick="() => EditProperty(prop)" title="Edit property">
+                                                                <i class="fa-light fa-edit"></i>
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -166,50 +378,113 @@
                             }
                             else
                             {
-                                <div class="auth-alert auth-alert-info">
-                                    <i class="fas fa-info-circle"></i>
-                                    <div class="auth-alert-content">
-                                        <h3>No Properties</h3>
-                                        <p>This owner doesn't have any properties yet. Click the "Add Property" button to add a property.</p>
+                                <div class="ro-empty-state ro-empty-state-sm">
+                                    <div class="ro-empty-state-icon">
+                                        <i class="fa-light fa-building"></i>
                                     </div>
+                                    <h4 class="ro-empty-state-title">No Properties</h4>
+                                    <p class="ro-empty-state-description">
+                                        This owner doesn't have any properties yet. Click the "Add Property" button to add a property.
+                                    </p>
                                 </div>
                             }
                         </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </ChildContent>
-    <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div>
-                @if (selectedOwner.Id != 0)
-                {
-                    <span class="text-muted">Owner: @selectedOwner.FirstName @selectedOwner.LastName</span>
-                }
-            </div>
-            <div>
-                <button class="btn roovia-btn-primary me-2" @onclick="UpdatePropertyOwner">
-                    <i class="fas fa-save me-1"></i> Save
-                </button>
-                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
-                    <i class="fas fa-times me-1"></i> Cancel
-                </button>
-            </div>
-        </div>
-    </FooterContent>
-</RVModal>
 
-@if (addPropertyClicked)
-{
-    <CascadingValue TValue="ApplicationUser" Value="CurrentUser">
-        <CascadingValue TValue="PropertyOwner" Value="selectedOwner">
-            <CascadingValue TValue="int" Value="ownerId">
-                <Roovia.Components.Pages.Properties.CreatePropertyModal OnModalClosed="AddPropertyModalClosed"></Roovia.Components.Pages.Properties.CreatePropertyModal>
-            </CascadingValue>
-        </CascadingValue>
-    </CascadingValue>
+                    }
+                    else if (ActiveTab == 3)
+                    {
+                    <!-- Financial Tab -->
+                    <div class="ro-tab-pane">
+                        <h5 class="ro-tab-subtitle">Financial Overview</h5>
+
+                        <div class="ro-stats-cards">
+                            <div class="ro-stat-card">
+                                <div class="ro-stat-card-body">
+                                    <div class="ro-stat-card-title">Total Properties</div>
+                                    <div class="ro-stat-card-value">@(owner.Properties?.Count(p => !p.IsRemoved) ?? 0)</div>
+                                </div>
+                            </div>
+                            <div class="ro-stat-card">
+                                <div class="ro-stat-card-body">
+                                    <div class="ro-stat-card-title">Monthly Rental Income</div>
+                                    <div class="ro-stat-card-value">
+                                            @(owner.Properties?.Where(p => !p.IsRemoved && p.HasTenant).Sum(p => p.RentalAmount).ToString("C") ?? "R0.00")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ro-stat-card">
+                                <div class="ro-stat-card-body">
+                                    <div class="ro-stat-card-title">Occupied Properties</div>
+                                    <div class="ro-stat-card-value">
+                                            @(owner.Properties?.Count(p => !p.IsRemoved && p.HasTenant) ?? 0)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment History Section -->
+                        <h5 class="ro-section-title ro-mt-4">Recent Payments</h5>
+
+                            @if (owner.Properties != null && owner.Properties.Where(p => !p.IsRemoved).SelectMany(p => p.Payments).Any())
+                            {
+                            <div class="ro-table-container">
+                                <table class="ro-table ro-table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Property</th>
+                                            <th>Reference</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                            @foreach (var payment in owner.Properties.Where(p => !p.IsRemoved)
+                                           .SelectMany(p => p.Payments)
+                                           .OrderByDescending(p => p.PaymentDate ?? p.DueDate)
+                                           .Take(10))
+                                            {
+                                            <tr>
+                                                <td>@(payment.PaymentDate?.ToShortDateString() ?? payment.DueDate.ToShortDateString())</td>
+                                                <td>@payment.Property?.PropertyName</td>
+                                                <td>@payment.PaymentReference</td>
+                                                <td>@payment.Amount.ToString("C")</td>
+                                                <td>
+                                                        @if (payment.StatusId == 1) // Assuming 1 is "Paid"
+                                                        {
+                                                        <span class="ro-badge ro-badge-success">Paid</span>
+                                                        }
+                                                        else if (payment.StatusId == 2) // Assuming 2 is "Pending"
+                                                        {
+                                                        <span class="ro-badge ro-badge-warning">Pending</span>
+                                                        }
+                                                        else
+                                                        {
+                                                        <span class="ro-badge ro-badge-danger">Unpaid</span>
+                                                        }
+                                                </td>
+                                            </tr>
+                                            }
+                                    </tbody>
+                                </table>
+                            </div>
+                            }
+                            else
+                            {
+                            <div class="ro-alert ro-alert-info">
+                                <i class="fa-light fa-info-circle ro-mr-2"></i>
+                                <span>No payment records found for this owner's properties.</span>
+                            </div>
+                            }
+                    </div>
+                    }
+            </div>
+        </div>
+
+    </div>
+        </div>
 }
+
 
 
 @code {
@@ -217,9 +492,7 @@
     ApplicationUser? CurrentUser { get; set; }
 
     [CascadingParameter]
-    PropertyOwner? selectedOwner { get; set; }
-
-    int ownerId = 0;
+    PropertyOwner? owner { get; set; }
 
     [Parameter]
     public EventCallback<bool> OnModalClosed { get; set; }
@@ -233,25 +506,44 @@
     [Inject]
     public IProperty PropertyService { get; set; }
 
-    bool addPropertyClicked = false;
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
 
-    bool IsVisible = true;
-    int ActiveTab = 1;
+    private bool addPropertyClicked = false;
+    private bool IsVisible = true;
+    private bool isModalOpen = false;
+    private int ActiveTab = 1;
+    private bool isProcessing = false;
+    private string bankNameString = string.Empty;
+    private List<string> bankOptions = Enum.GetNames(typeof(BankName)).ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        ownerId = selectedOwner.Id;
+        // Add delay before showing modal to allow animation
+        await Task.Delay(50);
+        isModalOpen = true;
+
+        if (owner?.BankAccount?.BankName != null)
+        {
+            bankNameString = owner.BankAccount.BankName.ToString();
+        }
+        else
+        {
+            bankNameString = "Absa";
+        }
     }
 
     private string GetTabClass(int tabNumber)
     {
         return tabNumber == ActiveTab
-            ? "tab-item tab-active"
-            : "tab-item tab-inactive";
+            ? "ro-tab-active"
+            : "";
     }
 
     private string GetPropertyAddress(Property property)
     {
+        if (property?.Address == null) return string.Empty;
+
         var addressParts = new List<string>();
 
         if (!string.IsNullOrEmpty(property.Address.Street))
@@ -270,111 +562,959 @@
     {
         try
         {
-            // Set updated date/time fields if necessary
-            selectedOwner.UpdatedDate = DateTime.Now;
+            isProcessing = true;
 
-            // Use the current user's ID if available
-            if (CurrentUser != null && Guid.TryParse(CurrentUser.Id, out Guid userId))
+            if (owner == null || CurrentUser == null)
             {
-                selectedOwner.UpdatedBy = userId;
-            }
-            else
-            {
-                selectedOwner.UpdatedBy = Guid.NewGuid(); // Fallback
+                ToastService.ShowError("Missing owner or user information", "Error");
+                return;
             }
 
-            var response = await PropertyOwnerService.UpdatePropertyOwner(selectedOwner.Id, selectedOwner);
+            // Set updated date/time fields
+            owner.UpdatedDate = DateTime.Now;
+            owner.UpdatedBy = CurrentUser.Id;
 
-            if (!response.ResponseInfo.Success)
+            // Update bank name from string to enum
+            if (Enum.TryParse<BankName>(bankNameString, out var bankNameEnum))
             {
-                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+                owner.BankAccount.BankName = bankNameEnum;
             }
-            else
+
+            var response = await PropertyOwnerService.UpdatePropertyOwner(owner.Id, owner);
+
+            if (response.ResponseInfo.Success)
             {
-                // Optionally update Owner with returned data (e.g., properties list)
-                selectedOwner = response.Response as PropertyOwner;
-                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                // Update owner with returned data (e.g., properties list)
+                var updatedOwner = response.Response as PropertyOwner;
+                if (updatedOwner != null)
+                {
+                    owner = updatedOwner;
+                }
+
+                ToastService.ShowSuccess("Property owner updated successfully", "Success");
                 await CloseModal();
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to update property owner: {response.ResponseInfo.Message}", "Error");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private void ViewProperty(Property property)
     {
-        // Implement view property functionality
-        ToastService.ShowInfo($"Viewing property at {GetPropertyAddress(property)}", "View Property");
+        // Navigate to property details page
+        ToastService.ShowInfo($"Navigating to property: {property.PropertyName}", "Info");
     }
 
     private void EditProperty(Property property)
     {
-        // Implement edit property functionality
-        ToastService.ShowInfo($"Editing property at {GetPropertyAddress(property)}", "Edit Property");
+        // Navigate to property edit page
+        ToastService.ShowInfo($"Editing property: {property.PropertyName}", "Info");
     }
 
-    private async void AddNewProperty()
+    private async Task AddNewProperty()
     {
         IsVisible = false;
         addPropertyClicked = true;
-        await InvokeAsync(() => StateHasChanged());
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleBackdropClick()
+    {
+        CloseModal();
     }
 
     private async Task CloseModal()
     {
-        OnModalClosed.InvokeAsync();
-        await InvokeAsync(() => StateHasChanged());
-
+        isModalOpen = false;
+        await Task.Delay(300); // Wait for the closing animation
+        IsVisible = false;
+        await OnModalClosed.InvokeAsync(true);
     }
 
     private async Task AddPropertyModalClosed()
     {
-
         addPropertyClicked = false;
         IsVisible = true;
-        await InvokeAsync(() => StateHasChanged());
-        var responseModel = await PropertyService.GetPropertiesByOwner(selectedOwner.Id);
-        if (responseModel.ResponseInfo.Success)
+        await Task.Delay(50);
+        isModalOpen = true;
+        await InvokeAsync(StateHasChanged);
+
+        // Refresh properties list
+        if (owner != null)
         {
-            selectedOwner.Properties = responseModel.Response as List<Property>;
+            var responseModel = await PropertyService.GetPropertiesByOwner(owner.Id);
+            if (responseModel.ResponseInfo.Success)
+            {
+                owner.Properties = responseModel.Response as List<Property>;
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                ToastService.ShowError($"Error refreshing properties: {responseModel.ResponseInfo.Message}", "Error");
+            }
+        }
+    }
+
+    // Email management
+    private void AddNewEmail()
+    {
+        if (owner?.EmailAddresses == null)
+        {
+            owner.EmailAddresses = new List<Email>();
+        }
+
+        var newEmail = new Email
+            {
+                EmailAddress = "",
+                Description = "New Email",
+                IsPrimary = !owner.EmailAddresses.Any(e => e.IsActive && e.IsPrimary),
+                IsActive = true,
+                CreatedOn = DateTime.Now,
+                CreatedBy = CurrentUser?.Id
+            };
+
+        newEmail.SetRelatedEntity("PropertyOwner", owner.Id);
+        owner.EmailAddresses.Add(newEmail);
+    }
+
+    private void SetPrimaryEmail(Email email)
+    {
+        if (owner?.EmailAddresses == null) return;
+
+        foreach (var e in owner.EmailAddresses.Where(e => e.IsActive))
+        {
+            e.IsPrimary = e == email;
+        }
+    }
+
+    private void RemoveEmail(Email email)
+    {
+        if (owner?.EmailAddresses == null) return;
+
+        if (email.Id == 0)
+        {
+            // New email not yet saved, just remove from collection
+            owner.EmailAddresses.Remove(email);
         }
         else
         {
-            ToastService.ShowError($"{responseModel.ResponseInfo.Message}", "Error!");
+            // Mark as inactive
+            email.IsActive = false;
+
+            // If this was primary, set another as primary
+            if (email.IsPrimary && owner.EmailAddresses.Any(e => e.IsActive && e != email))
+            {
+                owner.EmailAddresses.First(e => e.IsActive && e != email).IsPrimary = true;
+            }
+        }
+    }
+
+    // Contact number management
+    private void AddNewContactNumber()
+    {
+        if (owner?.ContactNumbers == null)
+        {
+            owner.ContactNumbers = new List<ContactNumber>();
+        }
+
+        var newContact = new ContactNumber
+            {
+                Number = "",
+                Type = ContactNumberType.Mobile,
+                Description = "New Number",
+                IsPrimary = !owner.ContactNumbers.Any(c => c.IsActive && c.IsPrimary),
+                IsActive = true,
+                CreatedOn = DateTime.Now,
+                CreatedBy = CurrentUser?.Id
+            };
+
+        newContact.SetRelatedEntity("PropertyOwner", owner.Id);
+        owner.ContactNumbers.Add(newContact);
+    }
+
+    private void SetPrimaryContact(ContactNumber contact)
+    {
+        if (owner?.ContactNumbers == null) return;
+
+        foreach (var c in owner.ContactNumbers.Where(c => c.IsActive))
+        {
+            c.IsPrimary = c == contact;
+        }
+    }
+
+    private void RemoveContactNumber(ContactNumber contact)
+    {
+        if (owner?.ContactNumbers == null) return;
+
+        if (contact.Id == 0)
+        {
+            // New contact not yet saved, just remove from collection
+            owner.ContactNumbers.Remove(contact);
+        }
+        else
+        {
+            // Mark as inactive
+            contact.IsActive = false;
+
+            // If this was primary, set another as primary
+            if (contact.IsPrimary && owner.ContactNumbers.Any(c => c.IsActive && c != contact))
+            {
+                owner.ContactNumbers.First(c => c.IsActive && c != contact).IsPrimary = true;
+            }
         }
     }
 }
 
 <style>
-    /* Custom tab styling */
-    .tab-item {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
+    /* Modal Backdrop */
+    .ro-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        animation: fadeIn 0.3s ease forwards;
+    }
+
+    /* Modal Container */
+    .ro-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .ro-modal-open {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    .ro-modal-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-height: 90vh;
+    }
+
+    /* Modal Header */
+    .ro-modal-header {
+        display: flex;
+        align-items: center;
+        padding: 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
         position: relative;
     }
 
-    .tab-active {
-        color: var(--primary) !important;
+    .ro-modal-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background-color: #3a7de0;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.75rem;
+        font-size: 1.25rem;
+    }
+
+    .ro-modal-title {
+        font-size: 1.25rem;
         font-weight: 600;
-        background-color: var(--primary-lighter);
-        border-bottom: 2px solid var(--primary);
+        color: #1f2937;
+        margin: 0;
     }
 
-    .tab-inactive {
-        color: var(--text-secondary);
+    .ro-modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: transparent;
+        border: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s ease;
     }
 
-        .tab-inactive:hover {
-            background-color: var(--subtle-bg);
-            color: var(--text-primary);
+        .ro-modal-close:hover {
+            background-color: #f3f4f6;
+            color: #1f2937;
         }
 
-    @@media (min-width: 1000px) {
-        .roovia-modal {
-            max-width: 60em !important;
-        }
+    /* Modal Body */
+    .ro-modal-body {
+        padding: 0;
+        overflow-y: auto;
+        flex: 1;
     }
-</style> *@
+
+    /* Modal Footer */
+    .ro-modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+    }
+
+    /* Tabs */
+    .ro-tabs {
+        margin-bottom: 1rem;
+    }
+
+    .ro-tab-list {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+    }
+
+        .ro-tab-list::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
+        }
+
+    .ro-tab-item {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6b7280;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        position: relative;
+    }
+
+        .ro-tab-item:hover {
+            color: #1f2937;
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+    .ro-tab-active {
+        color: #3a7de0;
+        font-weight: 600;
+    }
+
+        .ro-tab-active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #3a7de0;
+        }
+
+    .ro-tab-content {
+        padding: 1.5rem;
+    }
+
+    .ro-tab-pane {
+        animation: fadeIn 0.3s ease;
+    }
+
+    .ro-tab-subtitle {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+
+    /* Section Styling */
+    .ro-section {
+        margin-bottom: 2rem;
+    }
+
+        .ro-section:last-child {
+            margin-bottom: 0;
+        }
+
+    .ro-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #3a7de0;
+        margin-bottom: 1rem;
+        position: relative;
+        padding-bottom: 0.5rem;
+    }
+
+        .ro-section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: #3a7de0;
+        }
+
+    .ro-subsection {
+        margin-bottom: 1.5rem;
+    }
+
+    .ro-subsection-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-subsection-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin: 0;
+    }
+
+    /* Properties Header */
+    .ro-properties-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    /* Form Grid */
+    .ro-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .ro-form-group-full {
+        grid-column: span 2;
+    }
+
+    /* Form Controls */
+    .ro-form-group {
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #4b5563;
+        margin-bottom: 0.375rem;
+    }
+
+    .required::after {
+        content: '*';
+        color: #dc2626;
+        margin-left: 0.25rem;
+    }
+
+    .ro-form-input,
+    .ro-form-select {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: #1f2937;
+        background-color: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .ro-form-input-sm,
+    .ro-form-select-sm {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .ro-form-input:focus,
+    .ro-form-select:focus {
+        border-color: #3a7de0;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(58, 125, 224, 0.2);
+    }
+
+    .ro-form-help {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    /* Custom Select */
+    .ro-custom-select {
+        position: relative;
+    }
+
+    .ro-custom-select-sm {
+        font-size: 0.8125rem;
+    }
+
+    .ro-select-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6b7280;
+    }
+
+    /* Checkbox */
+    .ro-checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .ro-checkbox {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+    .ro-checkbox-label {
+        position: relative;
+        padding-left: 2rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        user-select: none;
+        margin-bottom: 0;
+        display: inline-block;
+    }
+
+        .ro-checkbox-label::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            background-color: white;
+        }
+
+    .ro-checkbox:checked + .ro-checkbox-label::before {
+        background-color: #3a7de0;
+        border-color: #3a7de0;
+    }
+
+    .ro-checkbox:checked + .ro-checkbox-label::after {
+        content: '✓';
+        position: absolute;
+        left: 0.375rem;
+        top: -0.125rem;
+        color: white;
+        font-size: 0.875rem;
+    }
+
+    /* Radio buttons */
+    .ro-radio-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .ro-radio-label {
+        display: block;
+        position: relative;
+        width: 1.25rem;
+        height: 1.25rem;
+        cursor: pointer;
+        margin: 0;
+    }
+
+        .ro-radio-label::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 50%;
+            background-color: white;
+        }
+
+    input[type="radio"]:checked + .ro-radio-label::before {
+        border-color: #3a7de0;
+        border-width: 2px;
+    }
+
+    input[type="radio"]:checked + .ro-radio-label::after {
+        content: '';
+        position: absolute;
+        left: 0.375rem;
+        top: 0.375rem;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background-color: #3a7de0;
+    }
+
+    /* Table Styling */
+    .ro-table-container {
+        width: 100%;
+        overflow-x: auto;
+        margin-bottom: 1rem;
+    }
+
+    .ro-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .ro-table th {
+            background-color: #f9fafb;
+            color: #4b5563;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .ro-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+    .ro-table-sm th {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .ro-table-sm td {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .ro-table tr:hover {
+        background-color: #f9fafb;
+    }
+
+    /* Action Buttons */
+    .ro-action-buttons {
+        display: flex;
+        gap: 0.375rem;
+    }
+
+    /* Badge Styling */
+    .ro-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .ro-badge-success {
+        background-color: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+
+    .ro-badge-warning {
+        background-color: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    .ro-badge-danger {
+        background-color: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .ro-badge-info {
+        background-color: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    /* Statistics Cards */
+    .ro-stats-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .ro-stat-card {
+        border-radius: 0.5rem;
+        background-color: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+        .ro-stat-card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+    .ro-stat-card-body {
+        padding: 1rem;
+    }
+
+    .ro-stat-card-title {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-stat-card-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    /* Alert */
+    .ro-alert {
+        display: flex;
+        align-items: flex-start;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+
+    .ro-alert-info {
+        background-color: #e0f2fe;
+        color: #0369a1;
+    }
+
+    /* Empty State */
+    .ro-empty-state {
+        text-align: center;
+        padding: 4rem 1rem;
+        max-width: 32rem;
+        margin: 0 auto;
+    }
+
+    .ro-empty-state-sm {
+        padding: 2rem 1rem;
+    }
+
+    .ro-empty-state-icon {
+        font-size: 3rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+
+    .ro-empty-state-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-empty-state-description {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Button Styling */
+    .ro-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ro-btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .ro-btn-primary {
+        background-color: #3a7de0;
+        color: white;
+    }
+
+        .ro-btn-primary:hover:not(:disabled) {
+            background-color: #2b6cd2;
+        }
+
+    .ro-btn-secondary {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #d1d5db;
+    }
+
+        .ro-btn-secondary:hover:not(:disabled) {
+            background-color: #e5e7eb;
+        }
+
+    .ro-btn-outline {
+        background-color: transparent;
+        border: 1px solid #d1d5db;
+        color: #4b5563;
+    }
+
+        .ro-btn-outline:hover:not(:disabled) {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+    .ro-btn-icon {
+        padding: 0.5rem;
+        width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ro-btn-danger {
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+        .ro-btn-danger:hover:not(:disabled) {
+            background-color: #fee2e2;
+            border-color: #fca5a5;
+        }
+
+    .ro-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    /* Button Group */
+    .ro-button-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Processing Indicator */
+    .ro-processing {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-left: 1rem;
+    }
+
+    .ro-spinner {
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(58, 125, 224, 0.25);
+        border-top-color: #3a7de0;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    /* Utility Classes */
+    .ro-flex {
+        display: flex;
+    }
+
+    .ro-justify-between {
+        justify-content: space-between;
+    }
+
+    .ro-items-center {
+        align-items: center;
+    }
+
+    .ro-w-full {
+        width: 100%;
+    }
+
+    .ro-mr-1 {
+        margin-right: 0.25rem;
+    }
+
+    .ro-mr-2 {
+        margin-right: 0.5rem;
+    }
+
+    .ro-mt-4 {
+        margin-top: 1rem;
+    }
+
+    .ro-text-center {
+        text-align: center;
+    }
+
+    .ro-text-muted {
+        color: #6b7280;
+    }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* Responsive Styles */
+    @@media (max-width: 768px) {
+        .ro-form-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .ro-form-group-full {
+        grid-column: span 1;
+    }
+
+    .ro-stats-cards {
+        grid-template-columns: 1fr;
+    }
+
+    }
+</style>

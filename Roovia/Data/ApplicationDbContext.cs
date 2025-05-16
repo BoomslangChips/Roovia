@@ -64,38 +64,76 @@ namespace Roovia.Data
         public DbSet<Email> Emails { get; set; }
         public DbSet<ContactNumber> ContactNumbers { get; set; }
         public DbSet<Media> Media { get; set; }
+        public DbSet<Note> Notes { get; set; }
+        public DbSet<Communication> Communications { get; set; }
+        public DbSet<Reminder> Reminders { get; set; }
+        public DbSet<EntityDocument> EntityDocuments { get; set; }
+        public DbSet<NotificationPreference> NotificationPreferences { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         #endregion
 
-        #region Business Mapping/Lookup Models
+        #region General Mapping Models
 
-        // Property Mappings
-        public DbSet<PropertyStatusType> PropertyStatusTypes { get; set; }
-        public DbSet<CommissionType> CommissionTypes { get; set; }
-        public DbSet<PropertyImageType> PropertyImageTypes { get; set; }
+        public DbSet<BankNameType> BankNameTypes { get; set; }
+        public DbSet<ContactNumberType> ContactNumberTypes { get; set; }
+        public DbSet<MediaType> MediaTypes { get; set; }
+        public DbSet<EntityType> EntityTypes { get; set; }
+
+        #endregion
+
+        #region Document Mapping Models
+
         public DbSet<DocumentType> DocumentTypes { get; set; }
         public DbSet<DocumentCategory> DocumentCategories { get; set; }
         public DbSet<DocumentAccessLevel> DocumentAccessLevels { get; set; }
+        public DbSet<DocumentStatus> DocumentStatuses { get; set; }
+        public DbSet<DocumentRequirementType> DocumentRequirementTypes { get; set; }
+        public DbSet<EntityDocumentRequirement> EntityDocumentRequirements { get; set; }
 
-        // Beneficiary & Tenant Mappings
+        #endregion
+
+        #region Property Mapping Models
+
+        public DbSet<PropertyStatusType> PropertyStatusTypes { get; set; }
+        public DbSet<PropertyType> PropertyTypes { get; set; }
+        public DbSet<PropertyOwnerType> PropertyOwnerTypes { get; set; }
+        public DbSet<PropertyOwnerStatusType> PropertyOwnerStatusTypes { get; set; }
+        public DbSet<CommissionType> CommissionTypes { get; set; }
+        public DbSet<PropertyImageType> PropertyImageTypes { get; set; }
+
+        #endregion
+
+        #region Tenant & Beneficiary Mapping Models
+
         public DbSet<BeneficiaryType> BeneficiaryTypes { get; set; }
         public DbSet<BeneficiaryStatusType> BeneficiaryStatusTypes { get; set; }
         public DbSet<TenantStatusType> TenantStatusTypes { get; set; }
+        public DbSet<TenantType> TenantTypes { get; set; }
 
-        // Inspection Mappings
+        #endregion
+
+        #region Inspection Mapping Models
+
         public DbSet<InspectionType> InspectionTypes { get; set; }
         public DbSet<InspectionStatusType> InspectionStatusTypes { get; set; }
         public DbSet<InspectionArea> InspectionAreas { get; set; }
         public DbSet<ConditionLevel> ConditionLevels { get; set; }
 
-        // Maintenance Mappings
+        #endregion
+
+        #region Maintenance Mapping Models
+
         public DbSet<MaintenanceCategory> MaintenanceCategories { get; set; }
         public DbSet<MaintenancePriority> MaintenancePriorities { get; set; }
         public DbSet<MaintenanceStatusType> MaintenanceStatusTypes { get; set; }
         public DbSet<MaintenanceImageType> MaintenanceImageTypes { get; set; }
         public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
 
-        // Payment Mappings
+        #endregion
+
+        #region Payment Mapping Models
+
         public DbSet<PaymentType> PaymentTypes { get; set; }
         public DbSet<PaymentStatusType> PaymentStatusTypes { get; set; }
         public DbSet<PaymentMethod> PaymentMethods { get; set; }
@@ -103,6 +141,19 @@ namespace Roovia.Data
         public DbSet<BeneficiaryPaymentStatusType> BeneficiaryPaymentStatusTypes { get; set; }
         public DbSet<PaymentFrequency> PaymentFrequencies { get; set; }
         public DbSet<PaymentRuleType> PaymentRuleTypes { get; set; }
+
+        #endregion
+
+        #region Communication & Notification Mapping Models
+
+        public DbSet<CommunicationChannel> CommunicationChannels { get; set; }
+        public DbSet<CommunicationDirection> CommunicationDirections { get; set; }
+        public DbSet<NotificationEventType> NotificationEventTypes { get; set; }
+        public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+        public DbSet<NoteType> NoteTypes { get; set; }
+        public DbSet<ReminderType> ReminderTypes { get; set; }
+        public DbSet<ReminderStatus> ReminderStatuses { get; set; }
+        public DbSet<RecurrenceFrequency> RecurrenceFrequencies { get; set; }
 
         #endregion
 
@@ -292,6 +343,11 @@ namespace Roovia.Data
                     .WithMany()
                     .HasForeignKey(p => p.BranchId)
                     .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(p => p.PropertyType)
+                    .WithMany()
+                    .HasForeignKey(p => p.PropertyTypeId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Property Owner configuration
@@ -304,6 +360,16 @@ namespace Roovia.Data
                 entity.HasOne(po => po.Company)
                     .WithMany()
                     .HasForeignKey(po => po.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(po => po.OwnerType)
+                    .WithMany()
+                    .HasForeignKey(po => po.PropertyOwnerTypeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(po => po.Status)
+                    .WithMany()
+                    .HasForeignKey(po => po.StatusId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -327,6 +393,11 @@ namespace Roovia.Data
                 entity.HasOne(pt => pt.Company)
                     .WithMany()
                     .HasForeignKey(pt => pt.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(pt => pt.TenantType)
+                    .WithMany()
+                    .HasForeignKey(pt => pt.TenantTypeId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -382,6 +453,11 @@ namespace Roovia.Data
                     .WithMany(i => i.InspectionItems)
                     .HasForeignKey(ii => ii.InspectionId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ii => ii.Image)
+                    .WithMany()
+                    .HasForeignKey(ii => ii.ImageId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Maintenance Ticket configuration
@@ -672,30 +748,78 @@ namespace Roovia.Data
                 entity.ToTable("Contact_Media");
             });
 
+            // Note configuration
+            modelBuilder.Entity<Note>(entity =>
+            {
+                entity.ToTable("Contact_Notes");
+            });
+
+            // Communication configuration
+            modelBuilder.Entity<Communication>(entity =>
+            {
+                entity.ToTable("Contact_Communications");
+            });
+
+            // Reminder configuration
+            modelBuilder.Entity<Reminder>(entity =>
+            {
+                entity.ToTable("Contact_Reminders");
+            });
+
+            // EntityDocument configuration
+            modelBuilder.Entity<EntityDocument>(entity =>
+            {
+                entity.ToTable("Contact_EntityDocuments");
+            });
+
+            // NotificationPreference configuration
+            modelBuilder.Entity<NotificationPreference>(entity =>
+            {
+                entity.ToTable("Contact_NotificationPreferences");
+            });
+
+            // Notification configuration
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("Contact_Notifications");
+            });
+
             #endregion
 
-            #region Business Mapping Models Configuration
+            #region General Mapping Models Configuration
 
-            // PropertyStatusType
-            modelBuilder.Entity<PropertyStatusType>(entity =>
+            // BankNameType
+            modelBuilder.Entity<BankNameType>(entity =>
             {
-                entity.ToTable("Lookup_PropertyStatusTypes");
+                entity.ToTable("Lookup_BankNameTypes");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            // CommissionType
-            modelBuilder.Entity<CommissionType>(entity =>
+            // ContactNumberType
+            modelBuilder.Entity<ContactNumberType>(entity =>
             {
-                entity.ToTable("Lookup_CommissionTypes");
+                entity.ToTable("Lookup_ContactNumberTypes");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            // PropertyImageType
-            modelBuilder.Entity<PropertyImageType>(entity =>
+            // MediaType
+            modelBuilder.Entity<MediaType>(entity =>
             {
-                entity.ToTable("Lookup_PropertyImageTypes");
+                entity.ToTable("Lookup_MediaTypes");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
+
+            // EntityType
+            modelBuilder.Entity<EntityType>(entity =>
+            {
+                entity.ToTable("Lookup_EntityTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.SystemName).IsUnique();
+            });
+
+            #endregion
+
+            #region Document Mapping Models Configuration
 
             // DocumentType
             modelBuilder.Entity<DocumentType>(entity =>
@@ -718,6 +842,78 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
+            // DocumentStatus
+            modelBuilder.Entity<DocumentStatus>(entity =>
+            {
+                entity.ToTable("Lookup_DocumentStatuses");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // DocumentRequirementType
+            modelBuilder.Entity<DocumentRequirementType>(entity =>
+            {
+                entity.ToTable("Lookup_DocumentRequirementTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // EntityDocumentRequirement
+            modelBuilder.Entity<EntityDocumentRequirement>(entity =>
+            {
+                entity.ToTable("Lookup_EntityDocumentRequirements");
+                entity.HasIndex(e => new { e.EntityTypeId, e.DocumentTypeId, e.CompanyId })
+                    .IsUnique();
+            });
+
+            #endregion
+
+            #region Property Mapping Models Configuration
+
+            // PropertyStatusType
+            modelBuilder.Entity<PropertyStatusType>(entity =>
+            {
+                entity.ToTable("Lookup_PropertyStatusTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // PropertyType
+            modelBuilder.Entity<PropertyType>(entity =>
+            {
+                entity.ToTable("Lookup_PropertyTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // PropertyOwnerType
+            modelBuilder.Entity<PropertyOwnerType>(entity =>
+            {
+                entity.ToTable("Lookup_PropertyOwnerTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // PropertyOwnerStatusType
+            modelBuilder.Entity<PropertyOwnerStatusType>(entity =>
+            {
+                entity.ToTable("Lookup_PropertyOwnerStatusTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // CommissionType
+            modelBuilder.Entity<CommissionType>(entity =>
+            {
+                entity.ToTable("Lookup_CommissionTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // PropertyImageType
+            modelBuilder.Entity<PropertyImageType>(entity =>
+            {
+                entity.ToTable("Lookup_PropertyImageTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            #endregion
+
+            #region Tenant & Beneficiary Mapping Models Configuration
+
             // BeneficiaryType
             modelBuilder.Entity<BeneficiaryType>(entity =>
             {
@@ -738,6 +934,17 @@ namespace Roovia.Data
                 entity.ToTable("Lookup_TenantStatusTypes");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
+
+            // TenantType
+            modelBuilder.Entity<TenantType>(entity =>
+            {
+                entity.ToTable("Lookup_TenantTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            #endregion
+
+            #region Inspection Mapping Models Configuration
 
             // InspectionType
             modelBuilder.Entity<InspectionType>(entity =>
@@ -766,6 +973,10 @@ namespace Roovia.Data
                 entity.ToTable("Lookup_ConditionLevels");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
+
+            #endregion
+
+            #region Maintenance Mapping Models Configuration
 
             // MaintenanceCategory
             modelBuilder.Entity<MaintenanceCategory>(entity =>
@@ -801,6 +1012,10 @@ namespace Roovia.Data
                 entity.ToTable("Lookup_ExpenseCategories");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
+
+            #endregion
+
+            #region Payment Mapping Models Configuration
 
             // PaymentType
             modelBuilder.Entity<PaymentType>(entity =>
@@ -848,6 +1063,66 @@ namespace Roovia.Data
             modelBuilder.Entity<PaymentRuleType>(entity =>
             {
                 entity.ToTable("Lookup_PaymentRuleTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            #endregion
+
+            #region Communication & Notification Mapping Models Configuration
+
+            // CommunicationChannel
+            modelBuilder.Entity<CommunicationChannel>(entity =>
+            {
+                entity.ToTable("Lookup_CommunicationChannels");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // CommunicationDirection
+            modelBuilder.Entity<CommunicationDirection>(entity =>
+            {
+                entity.ToTable("Lookup_CommunicationDirections");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // NotificationEventType
+            modelBuilder.Entity<NotificationEventType>(entity =>
+            {
+                entity.ToTable("Lookup_NotificationEventTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.SystemName).IsUnique();
+            });
+
+            // NotificationTemplate
+            modelBuilder.Entity<NotificationTemplate>(entity =>
+            {
+                entity.ToTable("Lookup_NotificationTemplates");
+            });
+
+            // NoteType
+            modelBuilder.Entity<NoteType>(entity =>
+            {
+                entity.ToTable("Lookup_NoteTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // ReminderType
+            modelBuilder.Entity<ReminderType>(entity =>
+            {
+                entity.ToTable("Lookup_ReminderTypes");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // ReminderStatus
+            modelBuilder.Entity<ReminderStatus>(entity =>
+            {
+                entity.ToTable("Lookup_ReminderStatuses");
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // RecurrenceFrequency
+            modelBuilder.Entity<RecurrenceFrequency>(entity =>
+            {
+                entity.ToTable("Lookup_RecurrenceFrequencies");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 

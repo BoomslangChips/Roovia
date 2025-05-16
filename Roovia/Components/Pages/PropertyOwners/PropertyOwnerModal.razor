@@ -1,122 +1,194 @@
-﻿@* @using Roovia.Interfaces
-
-
-@using Roovia.Models.PropertyOwner
-
+﻿@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
 @using Roovia.Services
 
 @rendermode InteractiveServer
 
-@page "/propertyowners"
-
-<RVModal CloseOnBackdrop="true" CloseOnEsc="true" Icon="fas fa-user" IsVisible="@IsVisible" Size="ModalSize.Medium">
-    <ChildContent>
-        <div class="rv-modal-custom">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <h3>Property Owner</h3>
-                    </div>
+@if (IsVisible)
+{
+    <div class="ro-modal-backdrop" @onclick="HandleBackdropClick"></div>
+    <div class="ro-modal @(isModalOpen ? "ro-modal-open" : "")">
+        <div class="ro-modal-content">
+            <div class="ro-modal-header">
+                <div class="ro-modal-icon">
+                    <i class="fa-light fa-user"></i>
                 </div>
-                <div class="row">
+                <h4 class="ro-modal-title">Add Property Owner</h4>
+                <button class="ro-modal-close" @onclick="CloseModal">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            </div>
+            <div class="ro-modal-body">
+                <div class="ro-container">
                     <!-- Owner Details -->
-                    <div class="col-12">
-                        <h5>Owner Details</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <RVTextbox Label="First Name" Value="@Owner.FirstName" @onchange="(e => Owner.FirstName = e.Value.ToString())"></RVTextbox>
+                    <div class="ro-section">
+                        <h5 class="ro-section-title">Owner Details</h5>
+                        <div class="ro-form-grid">
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">First Name</label>
+                                <input type="text" class="ro-form-input" @bind="owner.FirstName">
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Last Name" Value="@Owner.LastName" @onchange="(e => Owner.LastName = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">Last Name</label>
+                                <input type="text" class="ro-form-input" @bind="owner.LastName">
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="ID Number" Value="@Owner.IdNumber" @onchange="(e => Owner.IdNumber = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">ID Number</label>
+                                <input type="text" class="ro-form-input" @bind="owner.IdNumber">
+                                <small class="ro-form-help">South African ID number</small>
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="VAT Number" Value="@Owner.VatNumber" @onchange="(e => Owner.VatNumber = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">VAT Number</label>
+                                <input type="text" class="ro-form-input" @bind="owner.VatNumber">
+                                <small class="ro-form-help">Optional VAT registration number</small>
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Email Address" Value="@Owner.EmailAddress" @onchange="(e => Owner.EmailAddress = e.Value.ToString())"></RVTextbox>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="ro-section">
+                        <h5 class="ro-section-title">Contact Information</h5>
+                        <div class="ro-form-grid">
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">Email Address</label>
+                                <input type="email" class="ro-form-input @(IsValidEmail(primaryEmail) ? "" : "ro-input-error")" 
+                                       @bind="primaryEmail">
+                                @if (!IsValidEmail(primaryEmail) && !string.IsNullOrEmpty(primaryEmail))
+                                {
+                                    <small class="ro-form-error">Please enter a valid email address</small>
+                                }
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Mobile Number" Value="@Owner.MobileNumber" @onchange="(e => Owner.MobileNumber = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">Mobile Number</label>
+                                <input type="tel" class="ro-form-input @(IsValidPhone(primaryPhone) ? "" : "ro-input-error")" 
+                                       @bind="primaryPhone">
+                                @if (!IsValidPhone(primaryPhone) && !string.IsNullOrEmpty(primaryPhone))
+                                {
+                                    <small class="ro-form-error">Please enter a valid phone number</small>
+                                }
                             </div>
-                            <div class="col-md-6">
-                                <RVCheckbox Label="Email Notifications" Value="@(Owner.IsEmailNotificationsEnabled == "true")" @onchange="(e => Owner.IsEmailNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                            <div class="ro-form-group">
+                                <div class="ro-checkbox-container">
+                                    <input type="checkbox" id="emailNotifications" class="ro-checkbox" 
+                                           @bind="owner.IsEmailNotificationsEnabled">
+                                    <label for="emailNotifications" class="ro-checkbox-label">
+                                        Email Notifications
+                                    </label>
+                                </div>
+                                <small class="ro-form-help">Receive notifications via email</small>
                             </div>
-                            <div class="col-md-6">
-                                <RVCheckbox Label="SMS Notifications" Value="@(Owner.IsSmsNotificationsEnabled == "true")" @onchange="(e => Owner.IsSmsNotificationsEnabled = e.Value.ToString())"></RVCheckbox>
+                            <div class="ro-form-group">
+                                <div class="ro-checkbox-container">
+                                    <input type="checkbox" id="smsNotifications" class="ro-checkbox" 
+                                           @bind="owner.IsSmsNotificationsEnabled">
+                                    <label for="smsNotifications" class="ro-checkbox-label">
+                                        SMS Notifications
+                                    </label>
+                                </div>
+                                <small class="ro-form-help">Receive notifications via SMS</small>
                             </div>
                         </div>
                     </div>
 
                     <!-- Bank Details -->
-                    <div class="col-12 mt-4">
-                        <h5>Bank Details</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <RVTextbox Label="Account Type" Value="@Owner.BankAccount.AccountType" @onchange="(e => Owner.BankAccount.AccountType = e.Value.ToString())"></RVTextbox>
+                    <div class="ro-section">
+                        <h5 class="ro-section-title">Bank Details</h5>
+                        <div class="ro-form-grid">
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">Bank Name</label>
+                                <div class="ro-custom-select">
+                                    <select class="ro-form-select" @bind="bankNameString">
+                                        @foreach (var option in bankOptions)
+                                        {
+                                            <option value="@option">@option</option>
+                                        }
+                                    </select>
+                                    <div class="ro-select-arrow">
+                                        <i class="fa-light fa-chevron-down"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Account Number" Value="@Owner.BankAccount.AccountNumber" @onchange="(e => Owner.BankAccount.AccountNumber = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">Account Type</label>
+                                <input type="text" class="ro-form-input" @bind="owner.BankAccount.AccountType">
+                                <small class="ro-form-help">e.g., Checking, Savings, etc.</small>
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Branch Code" Value="@Owner.BankAccount.BranchCode" @onchange="(e => Owner.BankAccount.BranchCode = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">Account Number</label>
+                                <input type="text" class="ro-form-input" @bind="owner.BankAccount.AccountNumber">
+                                <small class="ro-form-help">10-digit account number</small>
+                            </div>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">Branch Code</label>
+                                <input type="text" class="ro-form-input" @bind="owner.BankAccount.BranchCode">
+                                <small class="ro-form-help">6-digit branch code</small>
                             </div>
                         </div>
                     </div>
 
                     <!-- Address Details -->
-                    <div class="col-12 mt-4">
-                        <h5>Address</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <RVTextbox Label="Street" Value="@Owner.Address.Street" @onchange="(e => Owner.Address.Street = e.Value.ToString())"></RVTextbox>
+                    <div class="ro-section">
+                        <h5 class="ro-section-title">Address Details</h5>
+                        <div class="ro-form-grid">
+                            <div class="ro-form-group ro-form-group-full">
+                                <label class="ro-form-label required">Street</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.Street">
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="City" Value="@Owner.Address.City" @onchange="(e => Owner.Address.City = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">City</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.City">
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Province" Value="@Owner.Address.Province" @onchange="(e => Owner.Address.Province = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label">Suburb</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.Suburb">
                             </div>
-                            <div class="col-md-6">
-                                <RVTextbox Label="Postal Code" Value="@Owner.Address.PostalCode" @onchange="(e => Owner.Address.PostalCode = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">Province</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.Province">
                             </div>
-                            <div class="col-md-12">
-                                <RVTextbox Label="Country" Value="@Owner.Address.Country" @onchange="(e => Owner.Address.Country = e.Value.ToString())"></RVTextbox>
+                            <div class="ro-form-group">
+                                <label class="ro-form-label required">Postal Code</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.PostalCode">
+                                <small class="ro-form-help">4-digit postal code</small>
+                            </div>
+                            <div class="ro-form-group ro-form-group-full">
+                                <label class="ro-form-label required">Country</label>
+                                <input type="text" class="ro-form-input" @bind="owner.Address.Country">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </ChildContent>
-    <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div>
-                @if (Owner.Id != 0)
-                {
-                    <span class="text-muted">ID: @Owner.Id</span>
-                }
+            <div class="ro-modal-footer">
+                <div class="ro-flex ro-justify-between ro-items-center ro-w-full">
+                    <div>
+                        @if (isProcessing)
+                        {
+                            <div class="ro-processing">
+                                <div class="ro-spinner"></div>
+                                <span>Processing...</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="ro-button-group">
+                        <button class="ro-btn ro-btn-primary" @onclick="SavePropertyOwner" disabled="@isProcessing">
+                            <i class="fa-light fa-save ro-mr-1"></i> Save
+                        </button>
+                        <button class="ro-btn ro-btn-secondary" @onclick="CloseModal" disabled="@isProcessing">
+                            <i class="fa-light fa-times ro-mr-1"></i> Cancel
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div>
-                <button class="btn roovia-btn-primary me-2" @onclick="SavePropertyOwner">
-                    <i class="fas fa-save me-1"></i> Save
-                </button>
-                <button class="btn roovia-btn-secondary" @onclick="CloseModal">
-                    <i class="fas fa-times me-1"></i> Cancel
-                </button>
-            </div>
         </div>
-    </FooterContent>
-</RVModal>
+    </div>
+}
 
 @code {
     [CascadingParameter]
     private ApplicationUser? CurrentUser { get; set; }
-
-    [Parameter]
-    public PropertyOwner Owner { get; set; } = new();
 
     [Parameter]
     public EventCallback<bool> OnModalClosed { get; set; }
@@ -125,116 +197,589 @@
     public IPropertyOwner PropertyOwnerService { get; set; }
 
     [Inject]
-    public IUser UserService { get; set; }
-
-    [Inject]
     public ToastService ToastService { get; set; }
 
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
 
-    bool IsVisible = true;
+    private PropertyOwner owner = new();
+    private string primaryEmail = string.Empty;
+    private string primaryPhone = string.Empty;
+    private string bankNameString = "Absa";
+    private bool IsVisible = true;
+    private bool isModalOpen = false;
+    private bool isProcessing = false;
+
+    private List<string> bankOptions = Enum.GetNames(typeof(BankName)).ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        if (Owner.Id == 0)
-        {
-            InitializeNewOwner();
-        }
+        InitializeNewOwner();
+        // Add delay before showing modal to allow animation
+        await Task.Delay(50);
+        isModalOpen = true;
     }
 
     private void InitializeNewOwner()
     {
-        Owner.FirstName = "";
-        Owner.LastName = "";
-        Owner.IdNumber = "";
-        Owner.VatNumber = "";
-        Owner.EmailAddress = "";
-        Owner.MobileNumber = "";
-        Owner.IsEmailNotificationsEnabled = "false";
-        Owner.IsSmsNotificationsEnabled = "false";
-        Owner.BankAccount = new BankAccount
+        owner = new PropertyOwner
+        {
+            FirstName = "",
+            LastName = "",
+            IdNumber = "",
+            VatNumber = "",
+            IsEmailNotificationsEnabled = true,
+            IsSmsNotificationsEnabled = false,
+            BankAccount = new BankAccount
             {
                 AccountType = "",
                 AccountNumber = "",
-                BankName = new BankName(),
                 BranchCode = ""
-            };
-        Owner.Address = new Address
+            },
+            Address = new Address
             {
                 Street = "",
                 City = "",
+                Suburb = "",
                 Province = "",
                 PostalCode = "",
-                Country = ""
-            };
+                Country = "South Africa",
+                IsResidential = true
+            },
+            EmailAddresses = new List<Email>(),
+            ContactNumbers = new List<ContactNumber>()
+        };
+        
+        primaryEmail = "";
+        primaryPhone = "";
+        bankNameString = "Absa";
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email)) return true; // Don't show error for empty field
+        var regex = new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
+        return regex.IsMatch(email);
+    }
+
+    private bool IsValidPhone(string phone)
+    {
+        if (string.IsNullOrEmpty(phone)) return true; // Don't show error for empty field
+        var regex = new System.Text.RegularExpressions.Regex(@"^\+?[0-9]{10,15}$");
+        return regex.IsMatch(phone);
+    }
+    
+    private bool ValidateForm()
+    {
+        if (string.IsNullOrWhiteSpace(owner.FirstName) || 
+            string.IsNullOrWhiteSpace(owner.LastName) ||
+            string.IsNullOrWhiteSpace(primaryEmail) ||
+            string.IsNullOrWhiteSpace(primaryPhone) ||
+            string.IsNullOrWhiteSpace(owner.Address.Street) ||
+            string.IsNullOrWhiteSpace(owner.Address.City) ||
+            string.IsNullOrWhiteSpace(owner.Address.Province) ||
+            string.IsNullOrWhiteSpace(owner.Address.PostalCode))
+        {
+            ToastService.ShowError("Please fill in all required fields", "Validation Error");
+            return false;
+        }
+        
+        if (!IsValidEmail(primaryEmail))
+        {
+            ToastService.ShowError("Please enter a valid email address", "Validation Error");
+            return false;
+        }
+        
+        if (!IsValidPhone(primaryPhone))
+        {
+            ToastService.ShowError("Please enter a valid phone number", "Validation Error");
+            return false;
+        }
+        
+        return true;
     }
 
     private async Task SavePropertyOwner()
     {
         try
         {
-            Owner.CreatedBy = Guid.Parse(CurrentUser.Id);
-            Owner.CompanyId = CurrentUser.CompanyId.Value;
-            Owner.UpdatedBy = Guid.Parse(CurrentUser.Id);
-
-            Owner.CreatedOn = DateTime.Now;
-            Owner.UpdatedDate = DateTime.Now;
-
-            var response = Owner.Id == 0
-                ? await PropertyOwnerService.CreatePropertyOwner(Owner)
-                : await PropertyOwnerService.UpdatePropertyOwner(Owner.Id, Owner);
-
-            if (!response.ResponseInfo.Success)
+            if (!ValidateForm())
             {
-                ToastService.ShowError($"{response.ResponseInfo.Message}", "Error!");
+                return;
+            }
+            
+            isProcessing = true;
+            
+            // Set company ID from current user
+            if (CurrentUser != null && CurrentUser.CompanyId.HasValue)
+            {
+                owner.CompanyId = CurrentUser.CompanyId.Value;
             }
             else
             {
-                Owner = response.Response as PropertyOwner; // Update with returned data that includes the ID
-                ToastService.ShowSuccess($"{response.ResponseInfo.Message}", "Success!");
+                ToastService.ShowError("User company information is missing", "Error");
+                isProcessing = false;
+                return;
+            }
+            
+            // Set created/updated info
+            owner.CreatedOn = DateTime.Now;
+            owner.CreatedBy = CurrentUser.Id;
+            
+            // Handle bank name enum
+            if (Enum.TryParse<BankName>(bankNameString, out var bankNameEnum))
+            {
+                owner.BankAccount.BankName = bankNameEnum;
+            }
+            
+            // Create email address
+            var email = new Email
+            {
+                EmailAddress = primaryEmail,
+                Description = "Primary",
+                IsPrimary = true,
+                IsActive = true,
+                CreatedOn = DateTime.Now,
+                CreatedBy = CurrentUser.Id
+            };
+            email.SetRelatedEntity("PropertyOwner", 0); // Will be updated after owner is created
+            owner.EmailAddresses.Add(email);
+            
+            // Create contact number
+            var contactNumber = new ContactNumber
+            {
+                Number = primaryPhone,
+                Type = ContactNumberType.Mobile,
+                Description = "Primary Mobile",
+                IsPrimary = true,
+                IsActive = true,
+                CreatedOn = DateTime.Now,
+                CreatedBy = CurrentUser.Id
+            };
+            contactNumber.SetRelatedEntity("PropertyOwner", 0); // Will be updated after owner is created
+            owner.ContactNumbers.Add(contactNumber);
+            
+            // Save to database
+            var response = await PropertyOwnerService.CreatePropertyOwner(owner);
+            
+            if (response.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess("Property owner created successfully", "Success");
                 await CloseModal();
+            }
+            else
+            {
+                ToastService.ShowError($"Failed to create property owner: {response.ResponseInfo.Message}", "Error");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"An error occurred: {ex.Message}", "Error!");
+            ToastService.ShowError($"An error occurred: {ex.Message}", "Error");
         }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void HandleBackdropClick()
+    {
+        CloseModal();
     }
 
     private async Task CloseModal()
     {
+        isModalOpen = false;
+        await Task.Delay(300); // Wait for the closing animation
         IsVisible = false;
         await OnModalClosed.InvokeAsync(true);
     }
-
 }
 
 <style>
-    /* Adjust modal width dynamically based on screen size */
-    .roovia-modal {
-        max-width: 90vw;
+    /* Modal Backdrop */
+    .ro-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        animation: fadeIn 0.3s ease forwards;
+    }
+
+    /* Modal Container */
+    .ro-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
         width: 90%;
-        margin: 0 auto;
+        max-width: 680px;
+        max-height: 90vh;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        z-index: 1001;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.3s ease;
     }
 
-    @@media (max-width: 1200px) {
-        .roovia-modal {
-            max-width: 80vw;
-            width: 80%;
+    .ro-modal-open {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    /* Modal Header */
+    .ro-modal-header {
+        display: flex;
+        align-items: center;
+        padding: 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        position: relative;
+    }
+
+    .ro-modal-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background-color: #3a7de0;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.75rem;
+        font-size: 1.25rem;
+    }
+
+    .ro-modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+
+    .ro-modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: transparent;
+        border: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .ro-modal-close:hover {
+        background-color: #f3f4f6;
+        color: #1f2937;
+    }
+
+    /* Modal Body */
+    .ro-modal-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        max-height: calc(90vh - 150px);
+    }
+
+    /* Modal Footer */
+    .ro-modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+    }
+
+    /* Container */
+    .ro-container {
+        width: 100%;
+    }
+
+    /* Section Styling */
+    .ro-section {
+        margin-bottom: 2rem;
+    }
+
+    .ro-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .ro-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #3a7de0;
+        margin-bottom: 1rem;
+        position: relative;
+        padding-bottom: 0.5rem;
+    }
+
+    .ro-section-title::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 2px;
+        background-color: #3a7de0;
+    }
+
+    /* Form Grid */
+    .ro-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .ro-form-group-full {
+        grid-column: span 2;
+    }
+
+    /* Form Controls */
+    .ro-form-group {
+        margin-bottom: 0.5rem;
+    }
+
+    .ro-form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #4b5563;
+        margin-bottom: 0.375rem;
+    }
+
+    .required::after {
+        content: '*';
+        color: #dc2626;
+        margin-left: 0.25rem;
+    }
+
+    .ro-form-input, 
+    .ro-form-select {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: #1f2937;
+        background-color: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .ro-form-input:focus, 
+    .ro-form-select:focus {
+        border-color: #3a7de0;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(58, 125, 224, 0.2);
+    }
+
+    .ro-input-error {
+        border-color: #dc2626;
+    }
+
+    .ro-input-error:focus {
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    }
+
+    .ro-form-help {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .ro-form-error {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: #dc2626;
+    }
+
+    /* Custom Select */
+    .ro-custom-select {
+        position: relative;
+    }
+
+    .ro-select-arrow {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6b7280;
+    }
+
+    /* Checkbox */
+    .ro-checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .ro-checkbox {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+    .ro-checkbox-label {
+        position: relative;
+        padding-left: 2rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        user-select: none;
+        margin-bottom: 0;
+        display: inline-block;
+    }
+
+    .ro-checkbox-label::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+        background-color: white;
+    }
+
+    .ro-checkbox:checked + .ro-checkbox-label::before {
+        background-color: #3a7de0;
+        border-color: #3a7de0;
+    }
+
+    .ro-checkbox:checked + .ro-checkbox-label::after {
+        content: '✓';
+        position: absolute;
+        left: 0.375rem;
+        top: -0.125rem;
+        color: white;
+        font-size: 0.875rem;
+    }
+
+    /* Button Group */
+    .ro-button-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Buttons */
+    .ro-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ro-btn-primary {
+        background-color: #3a7de0;
+        color: white;
+    }
+
+    .ro-btn-primary:hover:not(:disabled) {
+        background-color: #2b6cd2;
+    }
+
+    .ro-btn-secondary {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #d1d5db;
+    }
+
+    .ro-btn-secondary:hover:not(:disabled) {
+        background-color: #e5e7eb;
+    }
+
+    .ro-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    /* Processing Indicator */
+    .ro-processing {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .ro-spinner {
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(58, 125, 224, 0.25);
+        border-top-color: #3a7de0;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    /* Utility Classes */
+    .ro-flex {
+        display: flex;
+    }
+
+    .ro-justify-between {
+        justify-content: space-between;
+    }
+
+    .ro-items-center {
+        align-items: center;
+    }
+
+    .ro-w-full {
+        width: 100%;
+    }
+
+    .ro-mr-1 {
+        margin-right: 0.25rem;
+    }
+
+    /* Animations */
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
         }
     }
 
-    @@media (max-width: 992px) {
-        .roovia-modal {
-            max-width: 70vw;
-            width: 70%;
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
         }
     }
 
-    @@media (max-width: 768px) {
-        .roovia-modal {
-            max-width: 100vw;
-            width: 100%;
+    /* Responsive Adjustments */
+    @@media (max-width: 640px) {
+        .ro-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ro-form-group-full {
+            grid-column: span 1;
+        }
+
+        .ro-modal {
+            width: 95%;
         }
     }
 </style>
- *@

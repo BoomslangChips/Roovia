@@ -4,8 +4,216 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Roovia.Models.BusinessMappingModels
 {
+    #region General Mappings
+
+    [Table("BankNameTypes")]
+    public class BankNameType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        [StringLength(6)]
+        public string? DefaultBranchCode { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("ContactNumberTypes")]
+    public class ContactNumberType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("MediaTypes")]
+    public class MediaType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("EntityTypes")]
+    public class EntityType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        [StringLength(100)]
+        public string? SystemName { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    #endregion
+
+    #region Document Mappings
+
+    [Table("DocumentTypes")]
+    public class DocumentType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("DocumentCategories")]
+    public class DocumentCategory
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("DocumentAccessLevels")]
+    public class DocumentAccessLevel
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("DocumentStatuses")]
+    public class DocumentStatus
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("DocumentRequirementTypes")]
+    public class DocumentRequirementType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("EntityDocumentRequirements")]
+    public class EntityDocumentRequirement
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int EntityTypeId { get; set; } // FK to EntityType
+
+        public int DocumentTypeId { get; set; } // FK to DocumentType
+
+        public int DocumentRequirementTypeId { get; set; } // FK to DocumentRequirementType (Required, Optional, etc.)
+
+        public bool IsDefault { get; set; } = false;
+
+        public int? CompanyId { get; set; } // Null means system-wide, populated for company-specific requirements
+
+        [StringLength(255)]
+        public string? Description { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        // Navigation properties
+        [ForeignKey("EntityTypeId")]
+        public virtual EntityType? EntityType { get; set; }
+
+        [ForeignKey("DocumentTypeId")]
+        public virtual DocumentType? DocumentType { get; set; }
+
+        [ForeignKey("DocumentRequirementTypeId")]
+        public virtual DocumentRequirementType? DocumentRequirementType { get; set; }
+    }
+
+    #endregion
+
     #region Property Mappings
-    
+
     [Table("PropertyStatusTypes")]
     public class PropertyStatusType
     {
@@ -60,8 +268,8 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    [Table("DocumentTypes")]
-    public class DocumentType
+    [Table("PropertyTypes")]
+    public class PropertyType
     {
         [Key]
         public int Id { get; set; }
@@ -78,15 +286,15 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    [Table("DocumentCategories")]
-    public class DocumentCategory
+    [Table("PropertyOwnerTypes")]
+    public class PropertyOwnerType
     {
         [Key]
         public int Id { get; set; }
 
         [Required]
         [StringLength(50)]
-        public string? Name { get; set; }
+        public string? Name { get; set; } // Individual, Company, Trust, etc.
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -96,8 +304,8 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    [Table("DocumentAccessLevels")]
-    public class DocumentAccessLevel
+    [Table("PropertyOwnerStatusTypes")]
+    public class PropertyOwnerStatusType
     {
         [Key]
         public int Id { get; set; }
@@ -167,6 +375,24 @@ namespace Roovia.Models.BusinessMappingModels
         [Required]
         [StringLength(50)]
         public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("TenantTypes")]
+    public class TenantType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; } // Individual, Company, etc.
 
         [StringLength(200)]
         public string? Description { get; set; }
@@ -480,6 +706,184 @@ namespace Roovia.Models.BusinessMappingModels
 
         [StringLength(200)]
         public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    #endregion
+
+    #region Communication and Notification Mappings
+
+    [Table("CommunicationChannels")]
+    public class CommunicationChannel
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; } // Email, SMS, WhatsApp, Phone call, In-person, etc.
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("CommunicationDirections")]
+    public class CommunicationDirection
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; } // Inbound, Outbound
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("NotificationEventTypes")]
+    public class NotificationEventType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string? Name { get; set; } // RentDue, MaintenanceScheduled, LeaseExpiring, etc.
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        [StringLength(50)]
+        public string? Category { get; set; } // Property, Tenant, Payment, etc.
+
+        [StringLength(100)]
+        public string? SystemName { get; set; } // Used for programmatic reference
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public bool IsSystemEvent { get; set; } = true; // If false, it's a custom event
+    }
+
+    [Table("NotificationTemplates")]
+    public class NotificationTemplate
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int NotificationEventTypeId { get; set; } // FK to NotificationEventType
+
+        [Required]
+        [StringLength(100)]
+        public string? Name { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string? Subject { get; set; }
+
+        [Required]
+        [StringLength(4000)]
+        public string? BodyTemplate { get; set; } // Can contain placeholders like {{PropertyName}}
+
+        [StringLength(4000)]
+        public string? SmsTemplate { get; set; }
+
+        public int? CompanyId { get; set; } // Null for system templates, populated for company-specific templates
+
+        public bool IsDefault { get; set; } = false;
+
+        public bool IsActive { get; set; } = true;
+
+        // Navigation property
+        [ForeignKey("NotificationEventTypeId")]
+        public virtual NotificationEventType? NotificationEventType { get; set; }
+    }
+
+    #endregion
+
+    #region Note and Reminder Mappings
+
+    [Table("NoteTypes")]
+    public class NoteType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("ReminderTypes")]
+    public class ReminderType
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; }
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("ReminderStatuses")]
+    public class ReminderStatus
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; } // Pending, Completed, Snoozed, Cancelled
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    [Table("RecurrenceFrequencies")]
+    public class RecurrenceFrequency
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string? Name { get; set; } // Daily, Weekly, Monthly, Quarterly, Yearly
+
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        public int? DaysMultiplier { get; set; } // For calculating next occurrence: Daily=1, Weekly=7, etc.
 
         public int DisplayOrder { get; set; }
 

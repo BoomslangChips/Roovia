@@ -10,35 +10,37 @@ using Roovia.Models.ProjectCdnConfigModels;
 namespace Roovia.Models.BusinessModels
 {
     #region Properties
-    
+
     public class Property
     {
         [Key]
         public int Id { get; set; }
 
         public int OwnerId { get; set; }
-        
+
         public int CompanyId { get; set; }
-        
+
         public int? BranchId { get; set; }
+
+        public int PropertyTypeId { get; set; } // FK to PropertyType
 
         [Required]
         [StringLength(100)]
         public string? PropertyName { get; set; }
-        
+
         [Required]
         [StringLength(50)]
         public string? PropertyCode { get; set; } // Unique identifier for property
-        
+
         [StringLength(50)]
         public string? CustomerRef { get; set; } // Customer reference from CSV
 
         public decimal RentalAmount { get; set; }
-        
+
         public decimal? PropertyAccountBalance { get; set; }
-        
+
         public int StatusId { get; set; } // FK to PropertyStatusType
-        
+
         [StringLength(20)]
         public string? ServiceLevel { get; set; } // Could also be made into a mapping table
 
@@ -54,12 +56,12 @@ namespace Roovia.Models.BusinessModels
 
         // Commission settings
         public int CommissionTypeId { get; set; } // FK to CommissionType
-        
+
         public decimal CommissionValue { get; set; } // Percentage or fixed amount
 
         // Payment settings
         public bool PaymentsEnabled { get; set; } = true;
-        
+
         public bool PaymentsVerify { get; set; } = true;
 
         // CDN Integration for Main Image
@@ -74,51 +76,62 @@ namespace Roovia.Models.BusinessModels
 
         // Audit fields
         public DateTime CreatedOn { get; set; } = DateTime.Now;
-        
+
         [Required]
         [StringLength(100)]
         public string? CreatedBy { get; set; }
-        
+
         public DateTime? UpdatedDate { get; set; }
-        
+
         [StringLength(100)]
         public string? UpdatedBy { get; set; }
-        
+
         public bool IsRemoved { get; set; }
-        
+
         public DateTime? RemovedDate { get; set; }
-        
+
         [StringLength(100)]
         public string? RemovedBy { get; set; }
 
         // Navigation properties
         [ForeignKey("OwnerId")]
         public virtual PropertyOwner? Owner { get; set; }
-        
+
         [ForeignKey("CompanyId")]
         public virtual Company? Company { get; set; }
-        
+
         [ForeignKey("BranchId")]
         public virtual Branch? Branch { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual PropertyStatusType? Status { get; set; }
-        
+
         [ForeignKey("CommissionTypeId")]
         public virtual CommissionType? CommissionType { get; set; }
-        
+
         [ForeignKey("MainImageId")]
         public virtual CdnFileMetadata? MainImage { get; set; }
-        
+
+        [ForeignKey("PropertyTypeId")]
+        public virtual PropertyType? PropertyType { get; set; }
+
         public virtual ICollection<PropertyBeneficiary> Beneficiaries { get; set; } = new List<PropertyBeneficiary>();
-        
+
         public virtual ICollection<PropertyTenant> Tenants { get; set; } = new List<PropertyTenant>();
-        
+
         public virtual ICollection<PropertyInspection> Inspections { get; set; } = new List<PropertyInspection>();
-        
+
         public virtual ICollection<MaintenanceTicket> MaintenanceTickets { get; set; } = new List<MaintenanceTicket>();
-        
+
         public virtual ICollection<PropertyPayment> Payments { get; set; } = new List<PropertyPayment>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+
+        public virtual ICollection<Communication> Communications { get; set; } = new List<Communication>();
 
         // Helper methods
         public void EnsureValidDates()
@@ -168,11 +181,6 @@ namespace Roovia.Models.BusinessModels
         // Status
         public int BenStatusId { get; set; } // FK to BeneficiaryStatusType
 
-        // Notifications
-        public bool NotifyEmail { get; set; } = true;
-
-        public bool NotifySMS { get; set; } = false;
-
         // References
         [StringLength(50)]
         public string? CustomerRefBeneficiary { get; set; }
@@ -209,17 +217,27 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("CompanyId")]
         public virtual Company? Company { get; set; }
-        
+
         [ForeignKey("BenTypeId")]
         public virtual BeneficiaryType? BenType { get; set; }
-        
+
         [ForeignKey("CommissionTypeId")]
         public virtual CommissionType? CommissionType { get; set; }
-        
+
         [ForeignKey("BenStatusId")]
         public virtual BeneficiaryStatusType? BenStatus { get; set; }
 
         public virtual ICollection<BeneficiaryPayment> Payments { get; set; } = new List<BeneficiaryPayment>();
+
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+
+        public virtual ICollection<Communication> Communications { get; set; } = new List<Communication>();
 
         // Helper property to get primary email
         [NotMapped]
@@ -238,76 +256,101 @@ namespace Roovia.Models.BusinessModels
     {
         [Key]
         public int Id { get; set; }
-        
+
         public int CompanyId { get; set; }
-        
-        [Required]
+
+        public int PropertyOwnerTypeId { get; set; } // FK to PropertyOwnerType (Individual, Company, Trust, etc.)
+
+        public int StatusId { get; set; } // FK to PropertyOwnerStatusType
+
+        // Individual owner fields
         [StringLength(100)]
         public string? FirstName { get; set; }
-        
-        [Required]
+
         [StringLength(100)]
         public string? LastName { get; set; }
-        
+
         [StringLength(20)]
         public string? IdNumber { get; set; }
-        
-        [StringLength(20)]
+
+        // Company/Organization owner fields
+        [StringLength(200)]
+        public string? CompanyName { get; set; }
+
+        [StringLength(50)]
+        public string? RegistrationNumber { get; set; }
+
+        [StringLength(50)]
         public string? VatNumber { get; set; }
+
+        [StringLength(100)]
+        public string? ContactPerson { get; set; }
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
-        
+
         // Address
         public Address Address { get; set; } = new Address();
-        
+
         // Bank details
         public BankAccount BankAccount { get; set; } = new BankAccount();
-        
-        // Notification preferences
-        public bool IsEmailNotificationsEnabled { get; set; } = true;
-        public bool IsSmsNotificationsEnabled { get; set; } = false;
-        
+
         // References
         [StringLength(50)]
         public string? CustomerRef { get; set; }
-        
+
         [StringLength(500)]
         public string? Tags { get; set; }
-        
+
         // Audit fields
         public DateTime CreatedOn { get; set; } = DateTime.Now;
-        
+
         [Required]
         [StringLength(100)]
         public string? CreatedBy { get; set; }
-        
+
         public DateTime? UpdatedDate { get; set; }
-        
+
         [StringLength(100)]
         public string? UpdatedBy { get; set; }
-        
+
         public bool IsRemoved { get; set; }
-        
+
         public DateTime? RemovedDate { get; set; }
-        
+
         [StringLength(100)]
         public string? RemovedBy { get; set; }
-        
+
         // Navigation properties
         [ForeignKey("CompanyId")]
         public virtual Company? Company { get; set; }
-        
+
+        [ForeignKey("PropertyOwnerTypeId")]
+        public virtual PropertyOwnerType? OwnerType { get; set; }
+
+        [ForeignKey("StatusId")]
+        public virtual PropertyOwnerStatusType? Status { get; set; }
+
         public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
-        
+
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+
+        public virtual ICollection<Communication> Communications { get; set; } = new List<Communication>();
+
         // Helper properties
         [NotMapped]
-        public string FullName => $"{FirstName} {LastName}";
-        
+        public string DisplayName => PropertyOwnerTypeId == 1 ? $"{FirstName} {LastName}" : CompanyName;
+
         [NotMapped]
         public string? PrimaryEmail => EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
-        
+
         [NotMapped]
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
@@ -325,24 +368,34 @@ namespace Roovia.Models.BusinessModels
 
         public int CompanyId { get; set; }
 
-        [Required]
+        public int TenantTypeId { get; set; } // FK to TenantType (Individual, Company, etc.)
+
+        // Individual tenant fields
         [StringLength(50)]
         public string? FirstName { get; set; }
 
-        [Required]
         [StringLength(50)]
         public string? LastName { get; set; }
 
         [StringLength(20)]
         public string? IdNumber { get; set; }
 
+        // Company/Organization tenant fields
+        [StringLength(200)]
+        public string? CompanyName { get; set; }
+
+        [StringLength(50)]
+        public string? RegistrationNumber { get; set; }
+
+        [StringLength(50)]
+        public string? VatNumber { get; set; }
+
+        [StringLength(100)]
+        public string? ContactPerson { get; set; }
+
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
-
-        // Notification preferences
-        public bool IsEmailNotificationsEnabled { get; set; } = true;
-        public bool IsSmsNotificationsEnabled { get; set; } = false;
 
         // Lease details
         public DateTime LeaseStartDate { get; set; }
@@ -440,10 +493,13 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("MoveInInspectionId")]
         public virtual PropertyInspection? MoveInInspection { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual TenantStatusType? Status { get; set; }
-        
+
+        [ForeignKey("TenantTypeId")]
+        public virtual TenantType? TenantType { get; set; }
+
         [ForeignKey("LeaseDocumentId")]
         public virtual CdnFileMetadata? LeaseDocument { get; set; }
 
@@ -453,18 +509,28 @@ namespace Roovia.Models.BusinessModels
 
         public virtual ICollection<PaymentSchedule> PaymentSchedules { get; set; } = new List<PaymentSchedule>();
 
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+
+        public virtual ICollection<Communication> Communications { get; set; } = new List<Communication>();
+
         // Helper properties
         [NotMapped]
-        public string FullName => $"{FirstName} {LastName}";
+        public string DisplayName => TenantTypeId == 1 ? $"{FirstName} {LastName}" : CompanyName;
 
         [NotMapped]
         public bool IsLeaseActive => StatusId == 1 && // Assuming 1 is Active status
-                                    LeaseEndDate >= DateTime.Today && 
+                                    LeaseEndDate >= DateTime.Today &&
                                     LeaseStartDate <= DateTime.Today;
-        
+
         [NotMapped]
         public string? PrimaryEmail => EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
-        
+
         [NotMapped]
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
@@ -538,22 +604,26 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("CompanyId")]
         public virtual Company? Company { get; set; }
-        
+
         [ForeignKey("InspectionTypeId")]
         public virtual InspectionType? InspectionType { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual InspectionStatusType? Status { get; set; }
-        
+
         [ForeignKey("OverallConditionId")]
         public virtual ConditionLevel? OverallCondition { get; set; }
-        
+
         [ForeignKey("ReportDocumentId")]
         public virtual CdnFileMetadata? ReportDocument { get; set; }
 
         public virtual ICollection<InspectionItem> InspectionItems { get; set; } = new List<InspectionItem>();
 
         public virtual ICollection<MaintenanceTicket> MaintenanceTickets { get; set; } = new List<MaintenanceTicket>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
     }
 
     public class InspectionItem
@@ -583,18 +653,24 @@ namespace Roovia.Models.BusinessModels
         [StringLength(1000)]
         public string? MaintenanceNotes { get; set; }
 
+        // Images - CDN Integration
+        public int? ImageId { get; set; } // FK to CdnFileMetadata
+
         // Navigation property
         [ForeignKey("InspectionId")]
         public virtual PropertyInspection? Inspection { get; set; }
-        
+
         [ForeignKey("AreaId")]
         public virtual InspectionArea? Area { get; set; }
-        
+
         [ForeignKey("ConditionId")]
         public virtual ConditionLevel? Condition { get; set; }
-        
+
         [ForeignKey("MaintenancePriorityId")]
         public virtual MaintenancePriority? MaintenancePriority { get; set; }
+
+        [ForeignKey("ImageId")]
+        public virtual CdnFileMetadata? Image { get; set; }
     }
 
     #endregion
@@ -709,19 +785,25 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("VendorId")]
         public virtual Vendor? Vendor { get; set; }
-        
+
         [ForeignKey("CategoryId")]
         public virtual MaintenanceCategory? Category { get; set; }
-        
+
         [ForeignKey("PriorityId")]
         public virtual MaintenancePriority? Priority { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual MaintenanceStatusType? Status { get; set; }
 
         public virtual ICollection<MaintenanceComment> Comments { get; set; } = new List<MaintenanceComment>();
 
         public virtual ICollection<MaintenanceExpense> Expenses { get; set; } = new List<MaintenanceExpense>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
     }
 
     public class MaintenanceComment
@@ -783,10 +865,10 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("VendorId")]
         public virtual Vendor? Vendor { get; set; }
-        
+
         [ForeignKey("CategoryId")]
         public virtual ExpenseCategory? Category { get; set; }
-        
+
         [ForeignKey("ReceiptDocumentId")]
         public virtual CdnFileMetadata? ReceiptDocument { get; set; }
     }
@@ -847,11 +929,21 @@ namespace Roovia.Models.BusinessModels
         public virtual Company? Company { get; set; }
 
         public virtual ICollection<MaintenanceTicket> MaintenanceTickets { get; set; } = new List<MaintenanceTicket>();
-        
+
+        public virtual ICollection<NotificationPreference> NotificationPreferences { get; set; } = new List<NotificationPreference>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
+
+        public virtual ICollection<Communication> Communications { get; set; } = new List<Communication>();
+
         // Helper properties
         [NotMapped]
         public string? PrimaryEmail => EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
-        
+
         [NotMapped]
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
@@ -917,9 +1009,6 @@ namespace Roovia.Models.BusinessModels
         [StringLength(100)]
         public string? AllocatedBy { get; set; }
 
-        // Notes
-        [StringLength(1000)]
-        public string? Notes { get; set; }
 
         // Receipt - CDN Integration
         public int? ReceiptDocumentId { get; set; } // FK to CdnFileMetadata
@@ -948,20 +1037,24 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("TenantId")]
         public virtual PropertyTenant? Tenant { get; set; }
-        
+
         [ForeignKey("PaymentTypeId")]
         public virtual PaymentType? PaymentType { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual PaymentStatusType? Status { get; set; }
-        
+
         [ForeignKey("PaymentMethodId")]
         public virtual PaymentMethod? PaymentMethod { get; set; }
-        
+
         [ForeignKey("ReceiptDocumentId")]
         public virtual CdnFileMetadata? ReceiptDocument { get; set; }
 
         public virtual ICollection<PaymentAllocation> Allocations { get; set; } = new List<PaymentAllocation>();
+
+        public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
+        public virtual ICollection<EntityDocument> Documents { get; set; } = new List<EntityDocument>();
     }
 
     public class PaymentAllocation
@@ -994,7 +1087,7 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("BeneficiaryId")]
         public virtual PropertyBeneficiary? Beneficiary { get; set; }
-        
+
         [ForeignKey("AllocationTypeId")]
         public virtual AllocationType? AllocationType { get; set; }
     }
@@ -1037,7 +1130,7 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("PaymentAllocationId")]
         public virtual PaymentAllocation? PaymentAllocation { get; set; }
-        
+
         [ForeignKey("StatusId")]
         public virtual BeneficiaryPaymentStatusType? Status { get; set; }
     }
@@ -1090,7 +1183,7 @@ namespace Roovia.Models.BusinessModels
 
         [ForeignKey("TenantId")]
         public virtual PropertyTenant? Tenant { get; set; }
-        
+
         [ForeignKey("FrequencyId")]
         public virtual PaymentFrequency? Frequency { get; set; }
     }
@@ -1147,9 +1240,62 @@ namespace Roovia.Models.BusinessModels
         // Navigation property
         [ForeignKey("CompanyId")]
         public virtual Company? Company { get; set; }
-        
+
         [ForeignKey("RuleTypeId")]
         public virtual PaymentRuleType? RuleType { get; set; }
+    }
+
+    #endregion
+
+    #region Notifications
+
+    public class Notification
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
+        public int NotificationEventTypeId { get; set; } // FK to NotificationEventType
+
+        [Required]
+        [StringLength(200)]
+        public string? Title { get; set; }
+
+        [Required]
+        [StringLength(1000)]
+        public string? Message { get; set; }
+
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        public DateTime? ReadDate { get; set; }
+
+        public bool IsRead { get; set; } = false;
+
+        // Recipient details
+        [StringLength(50)]
+        public string? RecipientUserId { get; set; } // FK to ApplicationUser.Id
+
+        // If sent via email/SMS
+        public bool EmailSent { get; set; } = false;
+
+        public bool SmsSent { get; set; } = false;
+
+        public DateTime? EmailSentDate { get; set; }
+
+        public DateTime? SmsSentDate { get; set; }
+
+        // Related entity
+        [StringLength(20)]
+        public string? RelatedEntityType { get; set; }
+
+        public int? RelatedEntityId { get; set; }
+
+        [StringLength(100)]
+        public string? RelatedEntityReference { get; set; } // E.g., property code, tenant name
+
+        // Navigation property
+        [ForeignKey("NotificationEventTypeId")]
+        public virtual NotificationEventType? NotificationEventType { get; set; }
     }
 
     #endregion
