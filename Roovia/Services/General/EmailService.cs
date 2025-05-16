@@ -34,7 +34,7 @@ namespace Roovia.Services.General
             var smtpHost = _configuration["Email:SmtpHost"] ?? "smtp.office365.com";
             var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
             var smtpUsername = _configuration["Email:Username"] ?? "info@roovia.co.za";
-            var smtpPassword = _configuration["Email:Password"] ?? "fqlwdjlbklwcncrc";
+            var smtpPassword = _configuration["Email:Password"] ?? "gxjcjpnptwjzvhhf";
 
             _fromEmail = smtpUsername;
             _fromName = _configuration["Email:FromName"] ?? "Roovia Estate Management";

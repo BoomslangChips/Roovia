@@ -1,4 +1,4 @@
-﻿@* @page "/Account/Register"
+﻿@page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -15,7 +15,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
-@inject IEmailSender<ApplicationUser> EmailSender
+@inject IEmailService EmailService
 @inject ILogger<Register> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
@@ -1137,7 +1137,7 @@
             var companyPhone = new ContactNumber
                 {
                     Number = Input.CompanyPhone,
-                    Type = ContactNumberType.Landline,
+                    ContactNumberTypeId = 1, // Assuming 1 is Landline
                     Description = "Main Office",
                     IsPrimary = true,
                     IsActive = true,
@@ -1157,7 +1157,16 @@
                     Name = "Main Office",
                     Code = "HQ",
                     CompanyId = createdCompany.Id,
-                    Address = company.Address, // Use the same address
+                    Address = new Address
+                    {
+                        Street = Input.Street,
+                        City = Input.City,
+                        Suburb = Input.Suburb,
+                        Province = Input.Province,
+                        PostalCode = Input.PostalCode,
+                        Country = Input.Country,
+                        IsResidential = false
+                    },
                     IsActive = false, // Set to pending
                     IsHeadOffice = true,
                     CreatedOn = DateTime.Now,
@@ -1200,7 +1209,7 @@
             var branchPhone = new ContactNumber
                 {
                     Number = Input.CompanyPhone,
-                    Type = ContactNumberType.Landline,
+                    ContactNumberTypeId = 1, // Assuming 1 is Landline
                     Description = "Reception",
                     IsPrimary = true,
                     IsActive = true,
@@ -1234,7 +1243,7 @@
             var userPhone = new ContactNumber
                 {
                     Number = Input.PhoneNumber,
-                    Type = ContactNumberType.Mobile,
+                    ContactNumberTypeId = 2, // Assuming 2 is Mobile
                     Description = "Mobile",
                     IsPrimary = true,
                     IsActive = true,
@@ -1253,21 +1262,26 @@
             if (!roleResult.ResponseInfo.Success)
             {
                 Logger.LogError("Failed to assign role to user {UserId}: {Message}", userId, roleResult.ResponseInfo.Message);
-                // Consider whether to treat this as a critical error or continue
+                // Continue anyway - this isn't critical
             }
             else
             {
                 Logger.LogInformation("Assigned CompanyAdministrator role to user {UserId}", userId);
             }
 
-            // 9. Send email confirmation
+            // 9. Send email confirmation using new EmailService
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
             var callbackUrl = NavigationManager.GetUriWithQueryParameters(
                 NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
                 new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
 
-            await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+            // Use new EmailService interface
+            await EmailService.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+
+            // Send notification to admin about new company registration
+            await EmailService.SendRegistrationNotificationAsync(createdCompany, user);
+
             Logger.LogInformation("Sent confirmation email to {Email}", Input.Email);
 
             // 10. Navigate to registration confirmation
@@ -2250,175 +2264,205 @@
 
     /* Animations */
     @@keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
+        from
 
-        to {
-            opacity: 1;
-        }
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
     }
 
     @@keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
+        from
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
     }
 
     @@keyframes fadeSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
+        from
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
     }
 
     @@keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
     }
 
     @@keyframes gradientAnimation {
-        0% {
-            background-position: 0% 50%;
-        }
+        0%
 
-        50% {
-            background-position: 100% 50%;
-        }
+    {
+        background-position: 0% 50%;
+    }
 
-        100% {
-            background-position: 0% 50%;
-        }
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+
     }
 
     @@keyframes shake {
-        10%, 90% {
-            transform: translateX(-1px);
-        }
+        10%, 90%
 
-        20%, 80% {
-            transform: translateX(2px);
-        }
+    {
+        transform: translateX(-1px);
+    }
 
-        30%, 50%, 70% {
-            transform: translateX(-2px);
-        }
+    20%, 80% {
+        transform: translateX(2px);
+    }
 
-        40%, 60% {
-            transform: translateX(2px);
-        }
+    30%, 50%, 70% {
+        transform: translateX(-2px);
+    }
+
+    40%, 60% {
+        transform: translateX(2px);
+    }
+
     }
 
     /* Responsive Adjustments */
     @@media (max-width: 1200px) {
-        .registration-sidebar {
-            min-width: 350px;
-        }
+        .registration-sidebar
+
+    {
+        min-width: 350px;
+    }
+
     }
 
     @@media (max-width: 992px) {
-        .registration-page {
-            flex-direction: column;
-        }
+        .registration-page
 
-        .registration-sidebar {
-            width: 100%;
-            min-width: 0;
-            padding: var(--spacing-5);
-            order: -1;
-        }
+    {
+        flex-direction: column;
+    }
 
-        .sidebar-features {
-            gap: var(--spacing-3);
-            margin-bottom: var(--spacing-5);
-        }
+    .registration-sidebar {
+        width: 100%;
+        min-width: 0;
+        padding: var(--spacing-5);
+        order: -1;
+    }
 
-        .registration-container {
-            padding: var(--spacing-5);
-        }
+    .sidebar-features {
+        gap: var(--spacing-3);
+        margin-bottom: var(--spacing-5);
+    }
+
+    .registration-container {
+        padding: var(--spacing-5);
+    }
+
     }
 
     @@media (max-width: 768px) {
-        .form-row {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-4);
-        }
+        .form-row
 
-        .step-content {
-            padding: var(--spacing-4);
-        }
+    {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-4);
+    }
 
-        .wizard-buttons {
-            padding: var(--spacing-4);
-        }
+    .step-content {
+        padding: var(--spacing-4);
+    }
 
-        .requirements-list {
-            grid-template-columns: 1fr;
-        }
+    .wizard-buttons {
+        padding: var(--spacing-4);
+    }
 
-        .sidebar-features {
-            display: none;
-        }
+    .requirements-list {
+        grid-template-columns: 1fr;
+    }
 
-        .sidebar-testimonial {
-            display: none;
-        }
+    .sidebar-features {
+        display: none;
+    }
 
-        .verification-notice {
-            flex-direction: column;
-        }
+    .sidebar-testimonial {
+        display: none;
+    }
+
+    .verification-notice {
+        flex-direction: column;
+    }
+
     }
 
     @@media (max-width: 576px) {
-        .registration-header h1 {
-            font-size: var(--font-size-2xl);
-        }
+        .registration-header h1
 
-        .step-indicator {
-            width: 36px;
-            height: 36px;
-        }
+    {
+        font-size: var(--font-size-2xl);
+    }
 
-        .step-label {
-            display: none;
-        }
+    .step-indicator {
+        width: 36px;
+        height: 36px;
+    }
 
-        .wizard-buttons {
-            flex-direction: column;
-            gap: var(--spacing-3);
-        }
+    .step-label {
+        display: none;
+    }
 
-        .wizard-buttons-left,
-        .wizard-buttons-right {
+    .wizard-buttons {
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+
+    .wizard-buttons-left,
+    .wizard-buttons-right {
+        width: 100%;
+    }
+
+        .wizard-buttons-left .btn,
+        .wizard-buttons-right .btn {
             width: 100%;
         }
 
-            .wizard-buttons-left .btn,
-            .wizard-buttons-right .btn {
-                width: 100%;
-            }
+    .wizard-progress::before,
+    .wizard-progress::after {
+        left: 5%;
+        right: 5%;
+    }
 
-        .wizard-progress::before,
-        .wizard-progress::after {
-            left: 5%;
-            right: 5%;
-        }
+    .wizard-progress::after {
+        width: calc((90% / 3) * (var(--step-progress, 1) - 1));
+    }
 
-        .wizard-progress::after {
-            width: calc((90% / 3) * (var(--step-progress, 1) - 1));
-        }
     }
 
     /* Improved focus states for better accessibility */
@@ -2453,4 +2497,4 @@
         color: var(--danger);
         animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
     }
-</style> *@
+</style>

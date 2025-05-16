@@ -1572,8 +1572,6 @@
             {
                 IsActive = true,
                 Address = new Address { Country = "South Africa" },
-                EmailAddresses = new List<Email>(),
-                ContactNumbers = new List<ContactNumber>(),
                 CreatedOn = DateTime.Now,
                 StatusId = companyStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id,
                 SubscriptionPlanId = subscriptionPlans.FirstOrDefault(p => p.Name == "Starter")?.Id
@@ -1675,8 +1673,6 @@
                         : 0,
                 IsActive = true,
                 Address = new Address { Country = "South Africa" },
-                EmailAddresses = new List<Email>(),
-                ContactNumbers = new List<ContactNumber>(),
                 CreatedOn = DateTime.Now,
                 StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
             };
@@ -1705,8 +1701,6 @@
             CompanyId = companyId,
             IsActive = true,
             Address = new Address { Country = "South Africa" },
-            EmailAddresses = new List<Email>(),
-            ContactNumbers = new List<ContactNumber>(),
             CreatedOn = DateTime.Now,
             StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
         };
