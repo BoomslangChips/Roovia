@@ -1,28 +1,13 @@
 ﻿// CdnService.cs
-using System;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Roovia.Data;
-using System.Collections.Generic;
-using Roovia.Models;
-using Roovia.Models.ProjectCdnConfigModels;
 using Roovia.Interfaces;
-
+using Roovia.Models.ProjectCdnConfigModels;
+using System.Security.Cryptography;
 
 namespace Roovia.Services.General
 {
-
-
-
     public class CdnService : ICdnService
     {
         private readonly IConfiguration _configuration;
@@ -34,6 +19,7 @@ namespace Roovia.Services.General
 
         // Cache settings
         private const string CATEGORIES_CACHE_KEY = "CdnCategories";
+
         private const string CONFIG_CACHE_KEY = "CdnConfiguration";
         private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
 
@@ -193,6 +179,7 @@ namespace Roovia.Services.General
                 throw;
             }
         }
+
         private async Task<bool> OnlyBase64ExistsAsync(string cdnUrl)
         {
             var physicalPath = GetPhysicalPath(cdnUrl);
@@ -207,6 +194,7 @@ namespace Roovia.Services.General
             return await dbContext.Set<CdnFileMetadata>()
                 .AnyAsync(f => f.Url == cdnUrl && f.HasBase64Backup && !f.IsDeleted);
         }
+
         public async Task<string> UploadFileAsync(IFormFile file, string category = "documents", string folderPath = "")
         {
             if (file == null || file.Length == 0)
@@ -667,8 +655,6 @@ namespace Roovia.Services.General
 
             return await query.OrderBy(s => s.Date).ToListAsync();
         }
-
-
 
         // Utility methods
         public async Task MigrateFileToBase64Async(string cdnUrl)
@@ -1170,6 +1156,7 @@ namespace Roovia.Services.General
                 throw;
             }
         }
+
         // New method to get only base64 stream
         public async Task<Stream> GetBase64StreamAsync(string cdnUrl)
         {
@@ -1192,6 +1179,7 @@ namespace Roovia.Services.General
                 return null;
             }
         }
+
         public async Task<bool> FileExistsAsync(string cdnUrl)
         {
             // Check physical file first
@@ -1489,8 +1477,6 @@ namespace Roovia.Services.General
             var maxSizeBytes = config.MaxFileSizeMB * 1024 * 1024;
             return fileSize <= maxSizeBytes;
         }
-
-
 
         public async Task UpdateUsageStatisticsAsync(int categoryId, int fileCountChange, long storageBytesChange,
             int uploadCount = 0, int downloadCount = 0, int deleteCount = 0)

@@ -1,14 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Roovia.Services.General
 {
@@ -274,7 +269,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion CRUD Operations
 
         #region Vendor Listing Methods
 
@@ -438,7 +433,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Vendor Listing Methods
 
         #region Contact Management
 
@@ -554,7 +549,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Contact Management
 
         #region Vendor Management
 
@@ -728,7 +723,8 @@ namespace Roovia.Services.General
                     AverageCompletionTime = CalculateAverageCompletionTime(tickets),
                     JobsByCategory = tickets
                         .GroupBy(t => t.CategoryId)
-                        .Select(g => new {
+                        .Select(g => new
+                        {
                             CategoryId = g.Key,
                             CategoryName = g.First().Category?.Name ?? "Unknown",
                             Count = g.Count(),
@@ -740,7 +736,8 @@ namespace Roovia.Services.General
                     RecentTickets = tickets
                         .OrderByDescending(t => t.CreatedOn)
                         .Take(5)
-                        .Select(t => new {
+                        .Select(t => new
+                        {
                             TicketId = t.Id,
                             TicketNumber = t.TicketNumber,
                             Title = t.Title,
@@ -766,7 +763,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Vendor Management
 
         #region Documents
 
@@ -884,7 +881,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Documents
 
         #region Helper Methods
 
@@ -985,6 +982,6 @@ namespace Roovia.Services.General
             await _emailService.SendVendorInsuranceUpdateAsync(vendor);
         }
 
-        #endregion
+        #endregion Helper Methods
     }
 }

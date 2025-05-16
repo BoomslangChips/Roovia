@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
+using FluentValidation;
+using Roovia.Models.BusinessMappingModels;
+using Roovia.Models.UserCompanyModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using FluentValidation;
-using Roovia.Models.UserCompanyModels;
-using Roovia.Models.BusinessMappingModels;
-using Microsoft.AspNetCore.Mvc.Formatters;
-using Roovia.Models.UserCompanyMappingModels;
 
 namespace Roovia.Models.BusinessHelperModels
 {
@@ -97,7 +93,7 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    #endregion
+    #endregion Address
 
     #region BankAccount
 
@@ -139,7 +135,7 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    #endregion
+    #endregion BankAccount
 
     #region ContactNumber
 
@@ -173,6 +169,7 @@ namespace Roovia.Models.BusinessHelperModels
 
         // Navigation properties to support relationships
         public string? ApplicationUserId { get; set; }
+
         public int? CompanyId { get; set; }
         public int? BranchId { get; set; }
         public int? PropertyOwnerId { get; set; }
@@ -210,18 +207,23 @@ namespace Roovia.Models.BusinessHelperModels
                     case "Company":
                         CompanyId = intId;
                         break;
+
                     case "Branch":
                         BranchId = intId;
                         break;
+
                     case "PropertyOwner":
                         PropertyOwnerId = intId;
                         break;
+
                     case "PropertyTenant":
                         PropertyTenantId = intId;
                         break;
+
                     case "PropertyBeneficiary":
                         PropertyBeneficiaryId = intId;
                         break;
+
                     case "Vendor":
                         VendorId = intId;
                         break;
@@ -263,7 +265,7 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    #endregion
+    #endregion ContactNumber
 
     #region Email
 
@@ -296,6 +298,7 @@ namespace Roovia.Models.BusinessHelperModels
 
         // Navigation properties to support relationships
         public string? ApplicationUserId { get; set; }
+
         public int? CompanyId { get; set; }
         public int? BranchId { get; set; }
         public int? PropertyOwnerId { get; set; }
@@ -329,18 +332,23 @@ namespace Roovia.Models.BusinessHelperModels
                     case "Company":
                         CompanyId = intId;
                         break;
+
                     case "Branch":
                         BranchId = intId;
                         break;
+
                     case "PropertyOwner":
                         PropertyOwnerId = intId;
                         break;
+
                     case "PropertyTenant":
                         PropertyTenantId = intId;
                         break;
+
                     case "PropertyBeneficiary":
                         PropertyBeneficiaryId = intId;
                         break;
+
                     case "Vendor":
                         VendorId = intId;
                         break;
@@ -380,7 +388,7 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    #endregion
+    #endregion Email
 
     #region Media
 
@@ -419,7 +427,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual BusinessMappingModels.MediaType? MediaType { get; set; }
     }
 
-    #endregion
+    #endregion Media
 
     #region Note
 
@@ -468,7 +476,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual NoteType? NoteType { get; set; }
     }
 
-    #endregion
+    #endregion Note
 
     #region Communication
 
@@ -512,7 +520,7 @@ namespace Roovia.Models.BusinessHelperModels
         [StringLength(50)]
         public string? RelatedEntityStringId { get; set; }
 
-        // Related participants 
+        // Related participants
         public string? RelatedUserId { get; set; } // The system user involved
 
         public int? RelatedPropertyId { get; set; }
@@ -545,7 +553,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual CommunicationDirection? CommunicationDirection { get; set; }
     }
 
-    #endregion
+    #endregion Communication
 
     #region Reminder
 
@@ -620,7 +628,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual RecurrenceFrequency? RecurrenceFrequency { get; set; }
     }
 
-    #endregion
+    #endregion Reminder
 
     #region NotificationPreference
 
@@ -675,7 +683,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual NotificationEventType? NotificationEventType { get; set; }
     }
 
-    #endregion
+    #endregion NotificationPreference
 
     #region EntityDocument
 
@@ -725,7 +733,7 @@ namespace Roovia.Models.BusinessHelperModels
         public virtual DocumentStatus? DocumentStatus { get; set; }
     }
 
-    #endregion
+    #endregion EntityDocument
 
     #region Response Models
 
@@ -741,7 +749,7 @@ namespace Roovia.Models.BusinessHelperModels
         public bool Success { get; set; }
     }
 
-    #endregion
+    #endregion Response Models
 
     #region Extensions
 
@@ -768,9 +776,10 @@ namespace Roovia.Models.BusinessHelperModels
         }
     }
 
-    #endregion
+    #endregion Extensions
 
     #region Permission
+
     public static class PermissionFormat
     {
         public static string GetRoleBadgeClass(SystemRole role)
@@ -848,5 +857,6 @@ namespace Roovia.Models.BusinessHelperModels
             };
         }
     }
-    #endregion
+
+    #endregion Permission
 }

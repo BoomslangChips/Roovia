@@ -1,19 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
-using Roovia.Models.BusinessModels;
-using Roovia.Models.UserCompanyModels;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Roovia.Models.ReportingModels;
+using System.Text;
 
 namespace Roovia.Services.General
 {
@@ -21,15 +11,20 @@ namespace Roovia.Services.General
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<ReportingService> _logger;
+        private readonly ICdnService _cdnService;
+        private readonly IEmailService _emailService;
 
         public ReportingService(
             IDbContextFactory<ApplicationDbContext> contextFactory,
-            ILogger<ReportingService> logger)
+            ILogger<ReportingService> logger,
+            ICdnService cdnService,
+            IEmailService emailService)
         {
             _contextFactory = contextFactory;
             _logger = logger;
+            _cdnService = cdnService;
+            _emailService = emailService;
         }
-
         #region Dashboard Reports
 
         public async Task<ResponseModel> GetDashboardSummary(int companyId, int? branchId = null)
@@ -438,7 +433,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Dashboard Reports
 
         #region Property Reports
 
@@ -883,7 +878,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Property Reports
 
         #region Financial Reports
 
@@ -1503,7 +1498,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Financial Reports
 
         #region Tenant Reports
 
@@ -1875,7 +1870,7 @@ namespace Roovia.Services.General
             return Math.Max(0, Math.Min(100, finalScore));
         }
 
-        #endregion
+        #endregion Tenant Reports
 
         #region Owner Reports
 
@@ -2198,7 +2193,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Owner Reports
 
         #region Inspection & Maintenance Reports
 
@@ -2618,7 +2613,7 @@ namespace Roovia.Services.General
             return Math.Max(0, Math.Min(100, finalScore));
         }
 
-        #endregion
+        #endregion Inspection & Maintenance Reports
 
         #region Export and Custom Reports
 
@@ -2776,7 +2771,7 @@ namespace Roovia.Services.General
             return response;
         }
 
-        #endregion
+        #endregion Export and Custom Reports
 
         // Add these methods to the ReportingService.cs file
 
@@ -2997,6 +2992,1360 @@ namespace Roovia.Services.General
             }
 
             return response;
+        }
+
+        #endregion Custom Reports
+
+        #region Report Scheduling
+
+        /// <summary>
+        /// Creates a new report schedule
+        /// </summary>
+        public async Task<ResponseModel> CreateReportSchedule(ReportSchedule schedule)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Validate input
+                if (schedule.CustomReportId == null && string.IsNullOrEmpty(schedule.StandardReportType))
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Either CustomReportId or StandardReportType must be specified";
+                    return response;
+                }
+
+                // Validate frequency type
+                var frequencyType = await context.Set<ReportFrequencyType>()
+                    .FirstOrDefaultAsync(f => f.Id == schedule.FrequencyTypeId);
+
+                if (frequencyType == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Invalid frequency type specified";
+                    return response;
+                }
+
+                // Set the next run date based on frequency
+                schedule.NextRunDate = CalculateNextRunDate(schedule.FrequencyTypeId, schedule.DayOfWeek,
+                    schedule.DayOfMonth, schedule.ExecutionTime);
+
+                // Save the schedule
+                context.Add(schedule);
+                await context.SaveChangesAsync();
+
+                response.Response = schedule;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Report schedule created successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating report schedule: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error creating report schedule: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Updates an existing report schedule
+        /// </summary>
+        public async Task<ResponseModel> UpdateReportSchedule(int scheduleId, ReportSchedule updatedSchedule)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the existing schedule
+                var existingSchedule = await context.Set<ReportSchedule>()
+                    .FirstOrDefaultAsync(r => r.Id == scheduleId);
+
+                if (existingSchedule == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Report schedule with ID {scheduleId} not found";
+                    return response;
+                }
+
+                // Update properties
+                existingSchedule.Name = updatedSchedule.Name;
+                existingSchedule.CustomReportId = updatedSchedule.CustomReportId;
+                existingSchedule.StandardReportType = updatedSchedule.StandardReportType;
+                existingSchedule.Parameters = updatedSchedule.Parameters;
+                existingSchedule.FrequencyTypeId = updatedSchedule.FrequencyTypeId;
+                existingSchedule.DayOfWeek = updatedSchedule.DayOfWeek;
+                existingSchedule.DayOfMonth = updatedSchedule.DayOfMonth;
+                existingSchedule.ExecutionTime = updatedSchedule.ExecutionTime;
+                existingSchedule.RecipientEmails = updatedSchedule.RecipientEmails;
+                existingSchedule.ExportFormat = updatedSchedule.ExportFormat;
+                existingSchedule.IsActive = updatedSchedule.IsActive;
+                existingSchedule.UpdatedBy = updatedSchedule.UpdatedBy;
+                existingSchedule.UpdatedDate = DateTime.Now;
+
+                // Recalculate the next run date
+                existingSchedule.NextRunDate = CalculateNextRunDate(existingSchedule.FrequencyTypeId,
+                    existingSchedule.DayOfWeek, existingSchedule.DayOfMonth, existingSchedule.ExecutionTime);
+
+                context.Update(existingSchedule);
+                await context.SaveChangesAsync();
+
+                response.Response = existingSchedule;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Report schedule updated successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating report schedule: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error updating report schedule: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Deletes a report schedule
+        /// </summary>
+        public async Task<ResponseModel> DeleteReportSchedule(int scheduleId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the schedule
+                var schedule = await context.Set<ReportSchedule>()
+                    .FirstOrDefaultAsync(r => r.Id == scheduleId);
+
+                if (schedule == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Report schedule with ID {scheduleId} not found";
+                    return response;
+                }
+
+                // Remove the schedule
+                context.Remove(schedule);
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Report schedule deleted successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting report schedule: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error deleting report schedule: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets all report schedules for a company
+        /// </summary>
+        public async Task<ResponseModel> GetReportSchedules(int companyId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get schedules for the company
+                var schedules = await context.Set<ReportSchedule>()
+                    .Where(s => s.CompanyId == companyId)
+                    .Include(s => s.FrequencyType)
+                    .Include(s => s.CustomReport)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.Name,
+                        s.CustomReportId,
+                        CustomReportName = s.CustomReport != null ? s.CustomReport.Name : null,
+                        s.StandardReportType,
+                        s.Parameters,
+                        s.FrequencyTypeId,
+                        FrequencyName = s.FrequencyType.Name,
+                        s.DayOfWeek,
+                        s.DayOfMonth,
+                        s.ExecutionTime,
+                        s.RecipientEmails,
+                        s.ExportFormat,
+                        s.LastRunDate,
+                        s.NextRunDate,
+                        s.IsActive,
+                        s.CreatedOn,
+                        s.CreatedBy,
+                        CreatedByName = s.CreatedByUser.FullName
+                    })
+                    .OrderBy(s => s.NextRunDate)
+                    .ToListAsync();
+
+                response.Response = schedules;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = $"Retrieved {schedules.Count} report schedules";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving report schedules: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving report schedules: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets a specific report schedule by ID
+        /// </summary>
+        public async Task<ResponseModel> GetReportSchedule(int scheduleId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get the schedule
+                var schedule = await context.Set<ReportSchedule>()
+                    .Where(s => s.Id == scheduleId)
+                    .Include(s => s.FrequencyType)
+                    .Include(s => s.CustomReport)
+                    .FirstOrDefaultAsync();
+
+                if (schedule == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Report schedule with ID {scheduleId} not found";
+                    return response;
+                }
+
+                response.Response = schedule;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Report schedule retrieved successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving report schedule: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving report schedule: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Executes a scheduled report
+        /// </summary>
+        public async Task<ResponseModel> ExecuteScheduledReport(int scheduleId, string userId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get the schedule
+                var schedule = await context.Set<ReportSchedule>()
+                    .Include(s => s.CustomReport)
+                    .FirstOrDefaultAsync(r => r.Id == scheduleId);
+
+                if (schedule == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Report schedule with ID {scheduleId} not found";
+                    return response;
+                }
+
+                // Start the execution log
+                var executionLog = new ReportExecutionLog
+                {
+                    ReportScheduleId = scheduleId,
+                    ReportType = schedule.CustomReportId.HasValue ? "Custom" : "Standard",
+                    Parameters = schedule.Parameters,
+                    ExecutionStartTime = DateTime.Now,
+                    CompanyId = schedule.CompanyId,
+                    ExecutedBy = userId
+                };
+
+                context.Add(executionLog);
+                await context.SaveChangesAsync();
+
+                try
+                {
+                    // Parse parameters
+                    var parameters = string.IsNullOrEmpty(schedule.Parameters) ?
+                        new Dictionary<string, object>() :
+                        System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(schedule.Parameters);
+
+                    // Execute the appropriate report
+                    ResponseModel reportResult;
+
+                    if (schedule.CustomReportId.HasValue && schedule.CustomReport != null)
+                    {
+                        // Execute custom report
+                        reportResult = await GetCustomReport(schedule.CustomReport.Name, parameters);
+                    }
+                    else if (!string.IsNullOrEmpty(schedule.StandardReportType))
+                    {
+                        // Execute standard report
+                        reportResult = await ExportReport(schedule.StandardReportType, parameters, schedule.ExportFormat);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Neither CustomReportId nor StandardReportType is valid");
+                    }
+
+                    if (!reportResult.ResponseInfo.Success)
+                    {
+                        throw new Exception(reportResult.ResponseInfo.Message);
+                    }
+
+                    // Save the report to CDN if applicable
+                    string outputFilePath = null;
+                    int? cdnFileId = null;
+
+                    if (reportResult.Response != null)
+                    {
+                        try
+                        {
+                            dynamic resultObj = reportResult.Response;
+                            if (resultObj.GetType().GetProperty("FilePath") != null)
+                            {
+                                var filePath = (string)resultObj.FilePath;
+                                var fileName = (string)resultObj.FileName;
+
+                                if (File.Exists(filePath))
+                                {
+                                    // Upload to CDN for permanent storage
+                                    using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                                    var cdnUrl = await _cdnService.UploadFileAsync(
+                                        fileStream,
+                                        fileName,
+                                        GetContentType(schedule.ExportFormat),
+                                        "reports",
+                                        $"{DateTime.Now.Year}/{DateTime.Now.Month}");
+
+                                    // Get metadata for the uploaded file
+                                    var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                                    if (fileMetadata != null)
+                                    {
+                                        cdnFileId = fileMetadata.Id;
+                                        outputFilePath = cdnUrl;
+                                    }
+
+                                    // Delete temporary file
+                                    try { File.Delete(filePath); } catch { /* Ignore */ }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("Error processing report file path: {Message}", ex.Message);
+                        }
+                    }
+
+                    // Send email if recipients specified
+                    bool emailSent = false;
+                    if (!string.IsNullOrEmpty(schedule.RecipientEmails) && !string.IsNullOrEmpty(outputFilePath))
+                    {
+                        var recipients = schedule.RecipientEmails.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(e => e.Trim())
+                            .ToList();
+
+                        if (recipients.Any())
+                        {
+                            var subject = $"Scheduled Report: {schedule.Name}";
+                            var body = $"<p>Your scheduled report '{schedule.Name}' is attached.</p>" +
+                                       $"<p>Report generated on: {DateTime.Now:yyyy-MM-dd HH:mm}</p>";
+
+                            if (cdnFileId.HasValue)
+                            {
+                                // Email with link
+                                body += $"<p>You can access your report <a href='{outputFilePath}'>here</a>.</p>";
+                                await _emailService.SendEmailAsync(recipients, subject, body);
+                                emailSent = true;
+                            }
+                        }
+                    }
+
+                    // Update execution log
+                    executionLog.ExecutionEndTime = DateTime.Now;
+                    executionLog.IsSuccess = true;
+
+                    // Handle row count
+                    executionLog.RowCount = null; // Default value
+                    if (reportResult.Response != null)
+                    {
+                        try
+                        {
+                            dynamic dynamicResult = reportResult.Response;
+                            if (dynamicResult.GetType().GetProperty("RowCount") != null)
+                            {
+                                executionLog.RowCount = (int)dynamicResult.RowCount;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("Error extracting row count: {Message}", ex.Message);
+                        }
+                    }
+
+                    executionLog.OutputFilePath = outputFilePath;
+                    executionLog.CdnFileMetadataId = cdnFileId;
+                    executionLog.EmailSent = emailSent;
+                    executionLog.RecipientEmails = schedule.RecipientEmails;
+
+                    // Update schedule
+                    schedule.LastRunDate = DateTime.Now;
+                    schedule.NextRunDate = CalculateNextRunDate(schedule.FrequencyTypeId,
+                        schedule.DayOfWeek, schedule.DayOfMonth, schedule.ExecutionTime);
+
+                    context.Update(executionLog);
+                    context.Update(schedule);
+                    await context.SaveChangesAsync();
+
+                    response.Response = new
+                    {
+                        ExecutionId = executionLog.Id,
+                        ReportScheduleId = scheduleId,
+                        ReportName = schedule.Name,
+                        ExecutionTime = executionLog.ExecutionStartTime,
+                        Duration = (executionLog.ExecutionEndTime - executionLog.ExecutionStartTime).Value.TotalSeconds,
+                        Success = true,
+                        OutputFilePath = outputFilePath,
+                        EmailSent = emailSent
+                    };
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Report executed successfully";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during report execution: {Message}", ex.Message);
+
+                    // Update execution log with error
+                    executionLog.ExecutionEndTime = DateTime.Now;
+                    executionLog.IsSuccess = false;
+                    executionLog.ErrorMessage = ex.Message;
+
+                    context.Update(executionLog);
+                    await context.SaveChangesAsync();
+
+                    throw; // Re-throw to be caught by outer catch block
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing scheduled report: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error executing scheduled report: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Process all reports that are due for execution
+        /// </summary>
+        public async Task<ResponseModel> ProcessDueReports(string systemUserId)
+        {
+            var response = new ResponseModel();
+            var executedReports = new List<object>();
+            var failedReports = new List<object>();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find all active schedules that are due
+                var now = DateTime.Now;
+                var dueSchedules = await context.Set<ReportSchedule>()
+                    .Where(s => s.IsActive && s.NextRunDate <= now)
+                    .ToListAsync();
+
+                _logger.LogInformation("Found {Count} reports due for execution", dueSchedules.Count);
+
+                // Execute each due report
+                foreach (var schedule in dueSchedules)
+                {
+                    try
+                    {
+                        var result = await ExecuteScheduledReport(schedule.Id, systemUserId);
+
+                        if (result.ResponseInfo.Success)
+                        {
+                            executedReports.Add(new
+                            {
+                                ScheduleId = schedule.Id,
+                                ScheduleName = schedule.Name,
+                                Result = result.Response
+                            });
+                        }
+                        else
+                        {
+                            failedReports.Add(new
+                            {
+                                ScheduleId = schedule.Id,
+                                ScheduleName = schedule.Name,
+                                Error = result.ResponseInfo.Message
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing schedule {ScheduleId}: {Message}",
+                            schedule.Id, ex.Message);
+
+                        failedReports.Add(new
+                        {
+                            ScheduleId = schedule.Id,
+                            ScheduleName = schedule.Name,
+                            Error = ex.Message
+                        });
+                    }
+                }
+
+                response.Response = new
+                {
+                    TotalSchedulesProcessed = dueSchedules.Count,
+                    SuccessfulReports = executedReports.Count,
+                    FailedReports = failedReports.Count,
+                    ExecutedReports = executedReports,
+                    FailedReportDetails = failedReports
+                };
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = $"Processed {dueSchedules.Count} scheduled reports";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing due reports: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error processing due reports: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Get report execution logs
+        /// </summary>
+        public async Task<ResponseModel> GetReportExecutionLogs(int companyId, int? scheduleId = null,
+            DateTime? startDate = null, DateTime? endDate = null, bool? isSuccess = null, int page = 1, int pageSize = 20)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Build query
+                var query = context.Set<ReportExecutionLog>()
+                    .Where(l => l.CompanyId == companyId);
+
+                if (scheduleId.HasValue)
+                    query = query.Where(l => l.ReportScheduleId == scheduleId);
+
+                if (startDate.HasValue)
+                    query = query.Where(l => l.ExecutionStartTime >= startDate.Value);
+
+                if (endDate.HasValue)
+                    query = query.Where(l => l.ExecutionStartTime <= endDate.Value);
+
+                if (isSuccess.HasValue)
+                    query = query.Where(l => l.IsSuccess == isSuccess.Value);
+
+                // Get total count
+                var totalCount = await query.CountAsync();
+
+                // Get paginated results
+                var logs = await query
+                    .OrderByDescending(l => l.ExecutionStartTime)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(l => new
+                    {
+                        l.Id,
+                        l.ReportScheduleId,
+                        ScheduleName = l.ReportSchedule.Name,
+                        l.ReportType,
+                        l.ExecutionStartTime,
+                        l.ExecutionEndTime,
+                        Duration = l.ExecutionEndTime.HasValue ?
+                            (l.ExecutionEndTime.Value - l.ExecutionStartTime).TotalSeconds : (double?)null,
+                        l.IsSuccess,
+                        l.ErrorMessage,
+                        l.RowCount,
+                        l.OutputFilePath,
+                        l.EmailSent,
+                        l.ExecutedBy,
+                        ExecutedByName = l.ExecutedByUser.FullName
+                    })
+                    .ToListAsync();
+
+                response.Response = new
+                {
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    Logs = logs
+                };
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = $"Retrieved {logs.Count} execution logs";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving report execution logs: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving report execution logs: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #region Dashboards
+
+        /// <summary>
+        /// Creates a new dashboard
+        /// </summary>
+        public async Task<ResponseModel> CreateDashboard(ReportDashboard dashboard)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Check if default dashboard needs to be reset
+                if (dashboard.IsDefault)
+                {
+                    // Find existing default dashboards
+                    var existingDefaults = await context.Set<ReportDashboard>()
+                        .Where(d => d.CompanyId == dashboard.CompanyId &&
+                                   (dashboard.UserId == null ? d.UserId == null : d.UserId == dashboard.UserId) &&
+                                   d.IsDefault)
+                        .ToListAsync();
+
+                    // Reset default flag on other dashboards
+                    foreach (var existing in existingDefaults)
+                    {
+                        existing.IsDefault = false;
+                        context.Update(existing);
+                    }
+                }
+
+                // Save the dashboard
+                context.Add(dashboard);
+                await context.SaveChangesAsync();
+
+                response.Response = dashboard;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Dashboard created successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error creating dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Updates an existing dashboard
+        /// </summary>
+        public async Task<ResponseModel> UpdateDashboard(int dashboardId, ReportDashboard updatedDashboard)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the existing dashboard
+                var existingDashboard = await context.Set<ReportDashboard>()
+                    .FirstOrDefaultAsync(d => d.Id == dashboardId);
+
+                if (existingDashboard == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Dashboard with ID {dashboardId} not found";
+                    return response;
+                }
+
+                // Check if default dashboard needs to be reset
+                if (updatedDashboard.IsDefault && !existingDashboard.IsDefault)
+                {
+                    // Find existing default dashboards
+                    var existingDefaults = await context.Set<ReportDashboard>()
+                        .Where(d => d.CompanyId == existingDashboard.CompanyId &&
+                               (existingDashboard.UserId == null ? d.UserId == null : d.UserId == existingDashboard.UserId) &&
+                               d.IsDefault && d.Id != dashboardId)
+                        .ToListAsync();
+
+                    // Reset default flag on other dashboards
+                    foreach (var existing in existingDefaults)
+                    {
+                        existing.IsDefault = false;
+                        context.Update(existing);
+                    }
+                }
+
+                // Update properties
+                existingDashboard.Name = updatedDashboard.Name;
+                existingDashboard.Description = updatedDashboard.Description;
+                existingDashboard.IsDefault = updatedDashboard.IsDefault;
+                existingDashboard.LayoutColumns = updatedDashboard.LayoutColumns;
+                existingDashboard.Configuration = updatedDashboard.Configuration;
+                existingDashboard.IsActive = updatedDashboard.IsActive;
+                existingDashboard.UpdatedBy = updatedDashboard.UpdatedBy;
+                existingDashboard.UpdatedDate = DateTime.Now;
+
+                context.Update(existingDashboard);
+                await context.SaveChangesAsync();
+
+                response.Response = existingDashboard;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Dashboard updated successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error updating dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Deletes a dashboard
+        /// </summary>
+        public async Task<ResponseModel> DeleteDashboard(int dashboardId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the dashboard
+                var dashboard = await context.Set<ReportDashboard>()
+                    .Include(d => d.Widgets)
+                    .FirstOrDefaultAsync(d => d.Id == dashboardId);
+
+                if (dashboard == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Dashboard with ID {dashboardId} not found";
+                    return response;
+                }
+
+                // Remove all widgets first
+                context.RemoveRange(dashboard.Widgets);
+
+                // Remove the dashboard
+                context.Remove(dashboard);
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Dashboard deleted successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error deleting dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets all dashboards for a company or user
+        /// </summary>
+        public async Task<ResponseModel> GetDashboards(int companyId, string userId = null)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get dashboards for the company
+                var query = context.Set<ReportDashboard>()
+                    .Where(d => d.CompanyId == companyId && d.IsActive);
+
+                if (userId != null)
+                {
+                    // Get both company-wide dashboards and user-specific dashboards
+                    query = query.Where(d => d.UserId == null || d.UserId == userId);
+                }
+
+                var dashboards = await query
+                    .Select(d => new
+                    {
+                        d.Id,
+                        d.Name,
+                        d.Description,
+                        d.IsDefault,
+                        d.LayoutColumns,
+                        d.UserId,
+                        IsUserSpecific = d.UserId != null,
+                        UserName = d.User.FullName,
+                        d.CreatedOn,
+                        d.CreatedBy,
+                        CreatedByName = d.CreatedByUser.FullName,
+                        WidgetCount = d.Widgets.Count
+                    })
+                    .OrderByDescending(d => d.IsDefault)
+                    .ThenBy(d => d.Name)
+                    .ToListAsync();
+
+                response.Response = dashboards;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = $"Retrieved {dashboards.Count} dashboards";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving dashboards: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving dashboards: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets a specific dashboard with its widgets
+        /// </summary>
+        public async Task<ResponseModel> GetDashboard(int dashboardId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Get the dashboard with widgets
+                var dashboard = await context.Set<ReportDashboard>()
+                    .Include(d => d.Widgets)
+                    .FirstOrDefaultAsync(d => d.Id == dashboardId);
+
+                if (dashboard == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Dashboard with ID {dashboardId} not found";
+                    return response;
+                }
+
+                // Get additional data for each widget
+                var widgets = await context.Set<ReportDashboardWidget>()
+                    .Where(w => w.DashboardId == dashboardId)
+                    .Select(w => new
+                    {
+                        w.Id,
+                        w.Title,
+                        w.WidgetType,
+                        w.DataSource,
+                        w.CustomReportId,
+                        CustomReportName = w.CustomReport != null ? w.CustomReport.Name : null,
+                        w.StandardReportType,
+                        w.Parameters,
+                        w.VisualizationType,
+                        w.GridColumn,
+                        w.GridRow,
+                        w.GridWidth,
+                        w.GridHeight,
+                        w.Configuration,
+                        w.AutoRefresh,
+                        w.RefreshInterval,
+                        w.LastRefreshed,
+                        w.IsActive,
+                        w.CreatedOn,
+                        w.CreatedBy
+                    })
+                    .OrderBy(w => w.GridRow)
+                    .ThenBy(w => w.GridColumn)
+                    .ToListAsync();
+
+                var result = new
+                {
+                    Id = dashboard.Id,
+                    Name = dashboard.Name,
+                    Description = dashboard.Description,
+                    IsDefault = dashboard.IsDefault,
+                    LayoutColumns = dashboard.LayoutColumns,
+                    Configuration = dashboard.Configuration,
+                    CompanyId = dashboard.CompanyId,
+                    UserId = dashboard.UserId,
+                    IsUserSpecific = dashboard.UserId != null,
+                    CreatedOn = dashboard.CreatedOn,
+                    CreatedBy = dashboard.CreatedBy,
+                    UpdatedDate = dashboard.UpdatedDate,
+                    UpdatedBy = dashboard.UpdatedBy,
+                    Widgets = widgets
+                };
+
+                response.Response = result;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Dashboard retrieved successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets the default dashboard for a user
+        /// </summary>
+        public async Task<ResponseModel> GetDefaultDashboard(int companyId, string userId = null)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Try to find user-specific default first
+                ReportDashboard dashboard = null;
+
+                if (userId != null)
+                {
+                    dashboard = await context.Set<ReportDashboard>()
+                        .Where(d => d.CompanyId == companyId && d.UserId == userId && d.IsDefault && d.IsActive)
+                        .FirstOrDefaultAsync();
+                }
+
+                // If no user-specific default, try to find company-wide default
+                if (dashboard == null)
+                {
+                    dashboard = await context.Set<ReportDashboard>()
+                        .Where(d => d.CompanyId == companyId && d.UserId == null && d.IsDefault && d.IsActive)
+                        .FirstOrDefaultAsync();
+                }
+
+                // If no default found, just pick any active dashboard
+                if (dashboard == null)
+                {
+                    dashboard = await context.Set<ReportDashboard>()
+                        .Where(d => d.CompanyId == companyId && d.IsActive &&
+                               (userId == null || d.UserId == null || d.UserId == userId))
+                        .FirstOrDefaultAsync();
+                }
+
+                if (dashboard == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "No default dashboard found";
+                    return response;
+                }
+
+                // Get the full dashboard details
+                return await GetDashboard(dashboard.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving default dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving default dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #region Dashboard Widgets
+
+        /// <summary>
+        /// Adds a widget to a dashboard
+        /// </summary>
+        public async Task<ResponseModel> AddWidgetToDashboard(ReportDashboardWidget widget)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Validate the dashboard
+                var dashboard = await context.Set<ReportDashboard>()
+                    .FirstOrDefaultAsync(d => d.Id == widget.DashboardId);
+
+                if (dashboard == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Dashboard with ID {widget.DashboardId} not found";
+                    return response;
+                }
+
+                // Save the widget
+                context.Add(widget);
+                await context.SaveChangesAsync();
+
+                response.Response = widget;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Widget added to dashboard successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding widget to dashboard: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error adding widget to dashboard: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Updates a dashboard widget
+        /// </summary>
+        public async Task<ResponseModel> UpdateWidget(int widgetId, ReportDashboardWidget updatedWidget)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the existing widget
+                var existingWidget = await context.Set<ReportDashboardWidget>()
+                    .FirstOrDefaultAsync(w => w.Id == widgetId);
+
+                if (existingWidget == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Widget with ID {widgetId} not found";
+                    return response;
+                }
+
+                // Update properties
+                existingWidget.Title = updatedWidget.Title;
+                existingWidget.WidgetType = updatedWidget.WidgetType;
+                existingWidget.DataSource = updatedWidget.DataSource;
+                existingWidget.CustomReportId = updatedWidget.CustomReportId;
+                existingWidget.StandardReportType = updatedWidget.StandardReportType;
+                existingWidget.Parameters = updatedWidget.Parameters;
+                existingWidget.VisualizationType = updatedWidget.VisualizationType;
+                existingWidget.GridColumn = updatedWidget.GridColumn;
+                existingWidget.GridRow = updatedWidget.GridRow;
+                existingWidget.GridWidth = updatedWidget.GridWidth;
+                existingWidget.GridHeight = updatedWidget.GridHeight;
+                existingWidget.Configuration = updatedWidget.Configuration;
+                existingWidget.AutoRefresh = updatedWidget.AutoRefresh;
+                existingWidget.RefreshInterval = updatedWidget.RefreshInterval;
+                existingWidget.IsActive = updatedWidget.IsActive;
+
+                context.Update(existingWidget);
+                await context.SaveChangesAsync();
+
+                response.Response = existingWidget;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Widget updated successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating widget: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error updating widget: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Deletes a dashboard widget
+        /// </summary>
+        public async Task<ResponseModel> DeleteWidget(int widgetId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the widget
+                var widget = await context.Set<ReportDashboardWidget>()
+                    .FirstOrDefaultAsync(w => w.Id == widgetId);
+
+                if (widget == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Widget with ID {widgetId} not found";
+                    return response;
+                }
+
+                // Remove the widget
+                context.Remove(widget);
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Widget deleted successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting widget: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error deleting widget: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Gets dashboard widget data
+        /// </summary>
+        public async Task<ResponseModel> GetWidgetData(int widgetId)
+        {
+            var response = new ResponseModel();
+
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+
+                // Find the widget
+                var widget = await context.Set<ReportDashboardWidget>()
+                    .Include(w => w.CustomReport)
+                    .FirstOrDefaultAsync(w => w.Id == widgetId);
+
+                if (widget == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = $"Widget with ID {widgetId} not found";
+                    return response;
+                }
+
+                // Parse parameters
+                var parameters = string.IsNullOrEmpty(widget.Parameters) ?
+                    new Dictionary<string, object>() :
+                    System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(widget.Parameters);
+
+                // Get data based on the data source
+                ResponseModel dataResult;
+
+                if (widget.DataSource == "CustomReport" && widget.CustomReportId.HasValue && widget.CustomReport != null)
+                {
+                    // Execute custom report
+                    dataResult = await GetCustomReport(widget.CustomReport.Name, parameters);
+                }
+                else if (widget.DataSource == "StandardReport" && !string.IsNullOrEmpty(widget.StandardReportType))
+                {
+                    // Execute appropriate standard report method based on widget.StandardReportType
+                    dataResult = widget.StandardReportType switch
+                    {
+                        "dashboardSummary" => await GetDashboardSummary(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null),
+
+                        "financialDashboard" => await GetFinancialDashboard(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null),
+
+                        "maintenanceDashboard" => await GetMaintenanceDashboard(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null),
+
+                        "occupancyDashboard" => await GetOccupancyDashboard(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null),
+
+                        "arrearsReport" => await GetArrearsReport(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null),
+
+                        "leaseExpiryReport" => await GetLeaseExpiryReport(
+                            Convert.ToInt32(parameters["companyId"]),
+                            parameters.ContainsKey("branchId") ? Convert.ToInt32(parameters["branchId"]) : null,
+                            parameters.ContainsKey("monthsAhead") ? Convert.ToInt32(parameters["monthsAhead"]) : 3),
+
+                        _ => new ResponseModel
+                        {
+                            ResponseInfo = new ResponseInfo
+                            {
+                                Success = false,
+                                Message = $"Unsupported standard report type: {widget.StandardReportType}"
+                            }
+                        }
+                    };
+                }
+                else
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Invalid widget data source configuration";
+                    return response;
+                }
+
+                if (!dataResult.ResponseInfo.Success)
+                {
+                    return dataResult;
+                }
+
+                // Update last refreshed timestamp
+                widget.LastRefreshed = DateTime.Now;
+                context.Update(widget);
+                await context.SaveChangesAsync();
+
+                response.Response = new
+                {
+                    WidgetId = widgetId,
+                    WidgetType = widget.WidgetType,
+                    Title = widget.Title,
+                    LastRefreshed = widget.LastRefreshed,
+                    Data = dataResult.Response
+                };
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Widget data retrieved successfully";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving widget data: {Message}", ex.Message);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = $"Error retrieving widget data: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Calculate the next run date for a scheduled report
+        /// </summary>
+        private DateTime CalculateNextRunDate(int frequencyTypeId, int? dayOfWeek, int? dayOfMonth, TimeSpan executionTime)
+        {
+            var now = DateTime.Now;
+            var today = now.Date.Add(executionTime);
+
+            // If today's execution time has passed, start from tomorrow
+            var baseDate = now > today ? DateTime.Now.AddDays(1).Date : DateTime.Now.Date;
+            baseDate = baseDate.Add(executionTime);
+
+            switch (frequencyTypeId)
+            {
+                case 1: // Daily
+                    return baseDate;
+
+                case 2: // Weekly
+                    if (!dayOfWeek.HasValue || dayOfWeek.Value < 1 || dayOfWeek.Value > 7)
+                        dayOfWeek = 1; // Monday by default
+
+                    int daysToAdd = (dayOfWeek.Value - (int)baseDate.DayOfWeek + 7) % 7;
+                    return baseDate.AddDays(daysToAdd == 0 && now > today ? 7 : daysToAdd);
+
+                case 3: // Monthly
+                    if (!dayOfMonth.HasValue || dayOfMonth.Value < 1 || dayOfMonth.Value > 31)
+                        dayOfMonth = 1; // First day by default
+
+                    var firstDayOfMonth = new DateTime(baseDate.Year, baseDate.Month, 1).Add(executionTime);
+
+                    // If the specified day has passed this month, move to next month
+                    if (dayOfMonth.Value < baseDate.Day || (dayOfMonth.Value == baseDate.Day && now > today))
+                    {
+                        firstDayOfMonth = firstDayOfMonth.AddMonths(1);
+                    }
+
+                    // Make sure the day is valid for the month
+                    var daysInMonth = DateTime.DaysInMonth(firstDayOfMonth.Year, firstDayOfMonth.Month);
+                    var targetDay = Math.Min(dayOfMonth.Value, daysInMonth);
+
+                    return new DateTime(firstDayOfMonth.Year, firstDayOfMonth.Month, targetDay,
+                        executionTime.Hours, executionTime.Minutes, executionTime.Seconds);
+
+                case 4: // Quarterly
+                    if (!dayOfMonth.HasValue || dayOfMonth.Value < 1 || dayOfMonth.Value > 31)
+                        dayOfMonth = 1; // First day by default
+
+                    var currentQuarter = (baseDate.Month - 1) / 3;
+                    var nextQuarterMonth = currentQuarter * 3 + 1;
+
+                    // If we're already past the specified day in this quarter, move to the next quarter
+                    if (baseDate.Month % 3 == 0 && baseDate.Day >= dayOfMonth.Value && now > today)
+                    {
+                        nextQuarterMonth = ((currentQuarter + 1) % 4) * 3 + 1;
+                    }
+
+                    // If the month is past the quarter month, move to next quarter
+                    if (baseDate.Month > nextQuarterMonth)
+                    {
+                        nextQuarterMonth = ((currentQuarter + 1) % 4) * 3 + 1;
+                    }
+
+                    // If we're in the quarter month but after the target day, move to next quarter
+                    if (baseDate.Month == nextQuarterMonth && baseDate.Day > dayOfMonth.Value)
+                    {
+                        nextQuarterMonth = ((currentQuarter + 1) % 4) * 3 + 1;
+                    }
+
+                    // Move to next year if needed
+                    var targetYear = baseDate.Year;
+                    if (nextQuarterMonth < baseDate.Month)
+                    {
+                        targetYear++;
+                    }
+
+                    // Make sure the day is valid for the month
+                    var daysInTargetMonth = DateTime.DaysInMonth(targetYear, nextQuarterMonth);
+                    var targetDayOfMonth = Math.Min(dayOfMonth.Value, daysInTargetMonth);
+
+                    return new DateTime(targetYear, nextQuarterMonth, targetDayOfMonth,
+                        executionTime.Hours, executionTime.Minutes, executionTime.Seconds);
+
+                case 5: // Yearly
+                    if (!dayOfMonth.HasValue || dayOfMonth.Value < 1 || dayOfMonth.Value > 31)
+                        dayOfMonth = 1;
+
+                    // Check if this year's date has passed
+                    var targetDate = new DateTime(baseDate.Year, 1, Math.Min(dayOfMonth.Value, 31),
+                        executionTime.Hours, executionTime.Minutes, executionTime.Seconds);
+
+                    if (targetDate < now)
+                    {
+                        targetDate = new DateTime(baseDate.Year + 1, 1, Math.Min(dayOfMonth.Value, 31),
+                            executionTime.Hours, executionTime.Minutes, executionTime.Seconds);
+                    }
+
+                    return targetDate;
+
+                default:
+                    return baseDate; // Default to daily if frequency type is unknown
+            }
+        }
+
+        /// <summary>
+        /// Determine content type from export format
+        /// </summary>
+        private string GetContentType(string exportFormat)
+        {
+            return exportFormat.ToLower() switch
+            {
+                "csv" => "text/csv",
+                "json" => "application/json",
+                "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "pdf" => "application/pdf",
+                _ => "application/octet-stream"
+            };
         }
 
         #endregion

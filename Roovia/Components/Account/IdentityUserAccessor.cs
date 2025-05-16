@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Roovia.Models.UserCompanyModels;
 
-
 namespace Roovia.Components.Account
 {
     internal sealed class IdentityUserAccessor(UserManager<ApplicationUser> userManager, IdentityRedirectManager redirectManager)

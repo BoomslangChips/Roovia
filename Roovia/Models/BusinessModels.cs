@@ -1,11 +1,9 @@
-using System;
-using System.Collections.Generic;
+using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.BusinessMappingModels;
+using Roovia.Models.ProjectCdnConfigModels;
+using Roovia.Models.UserCompanyModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Roovia.Models.BusinessMappingModels;
-using Roovia.Models.BusinessHelperModels;
-using Roovia.Models.UserCompanyModels;
-using Roovia.Models.ProjectCdnConfigModels;
 
 namespace Roovia.Models.BusinessModels
 {
@@ -161,6 +159,7 @@ namespace Roovia.Models.BusinessModels
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
+
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
 
         // Address
@@ -248,7 +247,7 @@ namespace Roovia.Models.BusinessModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Properties
 
     #region Owners
 
@@ -288,6 +287,7 @@ namespace Roovia.Models.BusinessModels
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
+
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
 
         // Address
@@ -355,7 +355,7 @@ namespace Roovia.Models.BusinessModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Owners
 
     #region Tenants
 
@@ -395,6 +395,7 @@ namespace Roovia.Models.BusinessModels
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
+
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
 
         // Lease details
@@ -535,7 +536,7 @@ namespace Roovia.Models.BusinessModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Tenants
 
     #region Inspections
 
@@ -673,7 +674,7 @@ namespace Roovia.Models.BusinessModels
         public virtual CdnFileMetadata? Image { get; set; }
     }
 
-    #endregion
+    #endregion Inspections
 
     #region Maintenance
 
@@ -889,6 +890,7 @@ namespace Roovia.Models.BusinessModels
 
         // Using Email and ContactNumber collections
         public virtual ICollection<Email> EmailAddresses { get; set; } = new List<Email>();
+
         public virtual ICollection<ContactNumber> ContactNumbers { get; set; } = new List<ContactNumber>();
 
         public Address Address { get; set; } = new Address();
@@ -948,7 +950,7 @@ namespace Roovia.Models.BusinessModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Maintenance
 
     #region Payments
 
@@ -1008,7 +1010,6 @@ namespace Roovia.Models.BusinessModels
 
         [StringLength(100)]
         public string? AllocatedBy { get; set; }
-
 
         // Receipt - CDN Integration
         public int? ReceiptDocumentId { get; set; } // FK to CdnFileMetadata
@@ -1245,7 +1246,7 @@ namespace Roovia.Models.BusinessModels
         public virtual PaymentRuleType? RuleType { get; set; }
     }
 
-    #endregion
+    #endregion Payments
 
     #region Notifications
 
@@ -1298,5 +1299,5 @@ namespace Roovia.Models.BusinessModels
         public virtual NotificationEventType? NotificationEventType { get; set; }
     }
 
-    #endregion
+    #endregion Notifications
 }

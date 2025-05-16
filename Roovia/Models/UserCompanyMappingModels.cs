@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -56,7 +55,7 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Company Mappings
 
     #region Branch Mappings
 
@@ -78,7 +77,7 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Branch Mappings
 
     #region User Mappings
 
@@ -118,7 +117,7 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion User Mappings
 
     #region Permission Mappings
 
@@ -161,7 +160,7 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Permission Mappings
 
     #region Notification Mappings
 
@@ -204,7 +203,7 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Notification Mappings
 
     #region Theme Mappings
 
@@ -231,5 +230,5 @@ namespace Roovia.Models.UserCompanyMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Theme Mappings
 }

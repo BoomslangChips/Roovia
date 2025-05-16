@@ -1,20 +1,19 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Models.BusinessMappingModels;
-using Roovia.Models.UserCompanyMappingModels;
 using Roovia.Models.ProjectCdnConfigModels;
-using System;
-using System.Threading.Tasks;
+using Roovia.Models.UserCompanyMappingModels;
 
 namespace Roovia.Services.General
 {
     public interface ISeedDataService
     {
         Task InitializeAsync();
+
         Task SeedBusinessMappingDataAsync();
+
         Task SeedUserCompanyMappingDataAsync();
+
         Task SeedCdnConfigurationAsync();
     }
 
@@ -494,7 +493,7 @@ namespace Roovia.Services.General
             await context.PaymentRuleTypes.AddRangeAsync(items);
         }
 
-        #endregion
+        #endregion Business Mapping Data
 
         #region User Company Mapping Data
 
@@ -724,7 +723,7 @@ namespace Roovia.Services.General
             await context.ThemeTypes.AddRangeAsync(items);
         }
 
-        #endregion
+        #endregion User Company Mapping Data
 
         #region CDN Configuration
 
@@ -782,6 +781,6 @@ namespace Roovia.Services.General
             }
         }
 
-        #endregion
+        #endregion CDN Configuration
     }
 }

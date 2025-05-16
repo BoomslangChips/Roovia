@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity;
+using Roovia.Interfaces;
+using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.BusinessMappingModels;
+using Roovia.Models.BusinessModels;
+using Roovia.Models.ProjectCdnConfigModels;
+using Roovia.Models.UserCompanyMappingModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.AspNetCore.Identity;
-using Roovia.Models.BusinessMappingModels;
-using Roovia.Models.BusinessHelperModels;
-using Roovia.Interfaces;
-using Roovia.Models.UserCompanyMappingModels;
-using Roovia.Models.ProjectCdnConfigModels;
-using Roovia.Models.BusinessModels;
 
 namespace Roovia.Models.UserCompanyModels
 {
@@ -49,12 +47,14 @@ namespace Roovia.Models.UserCompanyModels
 
         // Subscription/Plan details
         public int? SubscriptionPlanId { get; set; }
+
         public DateTime? SubscriptionStartDate { get; set; }
         public DateTime? SubscriptionEndDate { get; set; }
         public bool IsTrialPeriod { get; set; } = false;
 
         // Limits
         public int? MaxUsers { get; set; }
+
         public int? MaxProperties { get; set; }
         public int? MaxBranches { get; set; }
 
@@ -112,7 +112,7 @@ namespace Roovia.Models.UserCompanyModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Companies
 
     #region Branches
 
@@ -152,6 +152,7 @@ namespace Roovia.Models.UserCompanyModels
 
         // Limits
         public int? MaxUsers { get; set; }
+
         public int? MaxProperties { get; set; }
 
         // Tags for categorization
@@ -202,7 +203,7 @@ namespace Roovia.Models.UserCompanyModels
         public string? PrimaryContactNumber => ContactNumbers?.FirstOrDefault(c => c.IsPrimary)?.Number;
     }
 
-    #endregion
+    #endregion Branches
 
     #region Users
 
@@ -210,6 +211,7 @@ namespace Roovia.Models.UserCompanyModels
     {
         // Override the base Email property to handle it through our custom Email entity
         public override string? Email { get => GetPrimaryEmail(); set => SetPrimaryEmail(value); }
+
         public override string? PhoneNumber { get => GetPrimaryPhoneNumber(); set => SetPrimaryPhoneNumber(value); }
 
         [StringLength(50)]
@@ -256,10 +258,12 @@ namespace Roovia.Models.UserCompanyModels
 
         // Two-factor settings
         public bool IsTwoFactorRequired { get; set; } = false;
+
         public string? PreferredTwoFactorMethod { get; set; }
 
         // Login tracking
         public DateTime? LastLoginDate { get; set; }
+
         public int LoginFailureCount { get; set; } = 0;
         public DateTime? LastLoginFailureDate { get; set; }
         public string? LastLoginIpAddress { get; set; }
@@ -404,7 +408,7 @@ namespace Roovia.Models.UserCompanyModels
         CompanyAdministrator = 7      // Administrates all branches within a company
     }
 
-    #endregion
+    #endregion Users
 
     #region Permissions and Roles
 
@@ -443,6 +447,7 @@ namespace Roovia.Models.UserCompanyModels
 
         // Navigation properties
         public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
+
         public virtual ICollection<UserPermissionOverride> UserPermissionOverrides { get; set; } = new List<UserPermissionOverride>();
     }
 
@@ -584,5 +589,5 @@ namespace Roovia.Models.UserCompanyModels
         public virtual Permission? Permission { get; set; }
     }
 
-    #endregion
+    #endregion Permissions and Roles
 }

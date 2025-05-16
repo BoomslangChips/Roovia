@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -84,7 +83,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion General Mappings
 
     #region Document Mappings
 
@@ -210,7 +209,7 @@ namespace Roovia.Models.BusinessMappingModels
         public virtual DocumentRequirementType? DocumentRequirementType { get; set; }
     }
 
-    #endregion
+    #endregion Document Mappings
 
     #region Property Mappings
 
@@ -322,7 +321,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Property Mappings
 
     #region Beneficiary Mappings
 
@@ -362,7 +361,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Beneficiary Mappings
 
     #region Tenant Mappings
 
@@ -402,7 +401,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Tenant Mappings
 
     #region Inspection Mappings
 
@@ -480,7 +479,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Inspection Mappings
 
     #region Maintenance Mappings
 
@@ -576,7 +575,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Maintenance Mappings
 
     #region Payment Mappings
 
@@ -712,7 +711,7 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Payment Mappings
 
     #region Communication and Notification Mappings
 
@@ -812,7 +811,7 @@ namespace Roovia.Models.BusinessMappingModels
         public virtual NotificationEventType? NotificationEventType { get; set; }
     }
 
-    #endregion
+    #endregion Communication and Notification Mappings
 
     #region Note and Reminder Mappings
 
@@ -890,5 +889,5 @@ namespace Roovia.Models.BusinessMappingModels
         public bool IsActive { get; set; } = true;
     }
 
-    #endregion
+    #endregion Note and Reminder Mappings
 }

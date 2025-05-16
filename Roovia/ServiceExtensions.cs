@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using Roovia.Interfaces;
 using Roovia.Models.UserCompanyModels;
 using Roovia.Security;
@@ -26,11 +25,11 @@ namespace Roovia
             services.AddScoped<IMaintenance, MaintenanceService>();
             services.AddScoped<IPayment, PaymentService>();
             services.AddScoped<ICdnService, CdnService>();
-            
+
             // Register Email Services
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IEmailSender<ApplicationUser>, IdentityEmailSender>();
-            
+
             // Register helper services
             services.AddScoped<INoteService, NoteService>();
             services.AddScoped<IReminderService, ReminderService>();
@@ -39,10 +38,10 @@ namespace Roovia
             services.AddScoped<IDocumentService, DocumentService>();
             services.AddScoped<IReportingService, ReportingService>();
             services.AddScoped<IAuditService, AuditService>();
-            
+
             // Register utility services
             services.AddScoped<ToastService>();
-            
+
             // Register seed data service
             services.AddScoped<ISeedDataService, SeedDataService>();
         }

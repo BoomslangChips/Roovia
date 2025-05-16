@@ -729,7 +729,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion User Methods
 
         #region Company Methods
 
@@ -1017,7 +1017,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Company Methods
 
         #region Branch Methods
 
@@ -1329,7 +1329,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Branch Methods
 
         #region Contact Methods
 
@@ -1704,7 +1704,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Contact Methods
 
         #region Helper Methods
 
@@ -1908,6 +1908,6 @@ namespace Roovia.Security
             }
         }
 
-        #endregion
+        #endregion Helper Methods
     }
 }

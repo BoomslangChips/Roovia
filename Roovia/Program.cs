@@ -1,22 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Roovia;
 using Roovia.Authentication;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
-using Roovia.Interfaces;
-using Roovia.Security;
-using System.IO;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Http.Features;
 using Roovia.Models.UserCompanyModels;
-using Microsoft.EntityFrameworkCore.Internal;
-using Roovia.Services.General;
-using Roovia.Services;
-using Roovia;
+using Roovia.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,8 +93,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 builder.Services.RegisterApplicationServices();
-
-
 
 // Register authorization configuration
 builder.Services.AddAuthorization(options =>

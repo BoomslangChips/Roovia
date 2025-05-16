@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace Roovia.Forms
+﻿namespace Roovia.Forms
 {
     /// <summary>
     /// Enum defining when validation should be triggered

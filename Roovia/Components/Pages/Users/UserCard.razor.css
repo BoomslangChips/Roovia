@@ -229,8 +229,6 @@
 
 /* Responsive Design - Tablet */
 @media (min-width: 576px) {
-
-
     .user-card {
         flex-direction: row;
         align-items: center;
@@ -276,8 +274,6 @@
 
 /* Responsive Design - Desktop */
 @media (min-width: 768px) {
-
-
     .user-card-info h4 {
         font-size: var(--font-size-base);
     }
@@ -291,11 +287,13 @@
         margin-right: var(--spacing-2);
     }
 }
+
 @media (max-width: 600px) {
     .user-card {
         padding: var(--spacing-1);
         position: relative;
     }
+
     .avatar-initials {
         width: 24px;
         height: 24px;

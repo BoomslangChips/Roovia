@@ -1,18 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
-using Roovia.Services.General;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Transactions;
 
 namespace Roovia.Services
@@ -1338,7 +1331,7 @@ namespace Roovia.Services
             // In a real implementation, you would have a more sophisticated cache key tracking system
             // For now, we rely on cache expiration to eventually clear out old keys
 
-            // If we had access to the underlying IMemoryCache implementation details, 
+            // If we had access to the underlying IMemoryCache implementation details,
             // we could enumerate and remove keys matching the pattern
         }
 
@@ -1425,6 +1418,6 @@ namespace Roovia.Services
             };
         }
 
-        #endregion
+        #endregion Private Helper Methods
     }
 }

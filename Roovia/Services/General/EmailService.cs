@@ -1,14 +1,10 @@
-﻿using System.Net;
-using System.Net.Mail;
-using Microsoft.Extensions.Logging;
-using Roovia.Data;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.StaticFiles;
-using System.Net.Mime;
-using Roovia.Models.UserCompanyModels;
-using Microsoft.Extensions.Configuration;
-using Roovia.Models.BusinessModels;
 using Roovia.Interfaces;
+using Roovia.Models.BusinessModels;
+using Roovia.Models.UserCompanyModels;
+using System.Net;
+using System.Net.Mail;
 
 namespace Roovia.Services.General
 {
@@ -794,8 +790,8 @@ namespace Roovia.Services.General
         body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
         .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
         .header {{ background-color: #3B5BA9; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -40px -40px 20px; }}
-        .alert {{ background-color: {(isExpired ? "#ffebee" : (isExpiringSoon ? "#fff3cd" : "#e8f5e9"))}; 
-                 padding: 15px; border-radius: 8px; 
+        .alert {{ background-color: {(isExpired ? "#ffebee" : (isExpiringSoon ? "#fff3cd" : "#e8f5e9"))};
+                 padding: 15px; border-radius: 8px;
                  border-left: 4px solid {(isExpired ? "#f44336" : (isExpiringSoon ? "#ffc107" : "#4caf50"))}; margin: 20px 0; }}
         .details {{ background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }}
     </style>
@@ -902,7 +898,7 @@ namespace Roovia.Services.General
                                             <p style='color: #666666; margin: 15px 0 0 0; font-family: Arial, sans-serif; font-size: 16px;'>A new estate agency has registered and requires activation</p>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Company Information -->
                                     <tr>
                                         <td style='background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;'>
@@ -986,9 +982,9 @@ namespace Roovia.Services.General
                                                         <table border='0' cellpadding='0' cellspacing='0'>
                                                             <tr>
                                                                 <td align='center' bgcolor='#3B5BA9' class='mobile-button' style='border-radius: 8px;'>
-                                                                    <a href='https://roovia.co.za/admin/pending-companies' target='_blank' 
-                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff; 
-                                                                              text-decoration: none; padding: 15px 30px; display: inline-block; 
+                                                                    <a href='https://roovia.co.za/admin/pending-companies' target='_blank'
+                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff;
+                                                                              text-decoration: none; padding: 15px 30px; display: inline-block;
                                                                               font-weight: bold;'>Manage Pending Registrations</a>
                                                                 </td>
                                                             </tr>
@@ -1001,7 +997,7 @@ namespace Roovia.Services.General
                                 </table>
                             </td>
                         </tr>
-                        
+
                         <!-- Footer -->
                         <tr>
                             <td bgcolor='#f8f9fa' style='padding: 30px; border-radius: 0 0 4px 4px;'>
@@ -1102,7 +1098,7 @@ namespace Roovia.Services.General
                                             <p style='color: #666666; margin: 15px 0 0 0; font-family: Arial, sans-serif; font-size: 16px;'>Your Roovia Estate Management account has been approved</p>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Approval Message -->
                                     <tr>
                                         <td style='background-color: #e8f6ee; border-radius: 8px; padding: 25px; margin-bottom: 30px; border-left: 4px solid #28a745;'>
@@ -1149,9 +1145,9 @@ namespace Roovia.Services.General
                                                         <table border='0' cellpadding='0' cellspacing='0'>
                                                             <tr>
                                                                 <td align='center' bgcolor='#3B5BA9' class='mobile-button' style='border-radius: 8px;'>
-                                                                    <a href='https://roovia.co.za/Account/Login' target='_blank' 
-                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff; 
-                                                                              text-decoration: none; padding: 15px 30px; display: inline-block; 
+                                                                    <a href='https://roovia.co.za/Account/Login' target='_blank'
+                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff;
+                                                                              text-decoration: none; padding: 15px 30px; display: inline-block;
                                                                               font-weight: bold;'>Login to Roovia</a>
                                                                 </td>
                                                             </tr>
@@ -1164,7 +1160,7 @@ namespace Roovia.Services.General
                                 </table>
                             </td>
                         </tr>
-                        
+
                         <!-- Footer -->
                         <tr>
                             <td bgcolor='#f8f9fa' style='padding: 30px; border-radius: 0 0 4px 4px;'>
@@ -1265,7 +1261,7 @@ namespace Roovia.Services.General
                                             <p style='color: #666666; margin: 15px 0 0 0; font-family: Arial, sans-serif; font-size: 16px;'>Information regarding your Roovia account application</p>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Status Message -->
                                     <tr>
                                         <td style='background-color: #FFF4F4; border-radius: 8px; padding: 25px; margin-bottom: 30px; border-left: 4px solid #d9534f;'>
@@ -1306,9 +1302,9 @@ namespace Roovia.Services.General
                                                         <table border='0' cellpadding='0' cellspacing='0'>
                                                             <tr>
                                                                 <td align='center' bgcolor='#3B5BA9' class='mobile-button' style='border-radius: 8px;'>
-                                                                    <a href='mailto:support@roovia.co.za' target='_blank' 
-                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff; 
-                                                                              text-decoration: none; padding: 15px 30px; display: inline-block; 
+                                                                    <a href='mailto:support@roovia.co.za' target='_blank'
+                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff;
+                                                                              text-decoration: none; padding: 15px 30px; display: inline-block;
                                                                               font-weight: bold;'>Contact Support</a>
                                                                 </td>
                                                             </tr>
@@ -1321,7 +1317,7 @@ namespace Roovia.Services.General
                                 </table>
                             </td>
                         </tr>
-                        
+
                         <!-- Footer -->
                         <tr>
                             <td bgcolor='#f8f9fa' style='padding: 30px; border-radius: 0 0 4px 4px;'>
@@ -1412,7 +1408,7 @@ namespace Roovia.Services.General
             <tr>
                 <td align='center' valign='top'>
                     <table border='0' cellpadding='0' cellspacing='0' width='600' class='responsive-table'>
-                       
+
                         <!-- Main Content -->
                         <tr>
                             <td bgcolor='#ffffff' style='padding: 40px 30px; border-radius: 4px 4px 0 0;'>
@@ -1423,7 +1419,7 @@ namespace Roovia.Services.General
                                             <p style='color: #666666; margin: 15px 0 0 0; font-family: Arial, sans-serif; font-size: 16px;'>Your account has been created successfully</p>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Account Details -->
                                     <tr>
                                         <td style='background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;'>
@@ -1440,7 +1436,7 @@ namespace Roovia.Services.General
                                             </table>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Action Required -->
                                     <tr>
                                         <td style='padding: 30px 0;'>
@@ -1454,7 +1450,7 @@ namespace Roovia.Services.General
                                             </table>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Button -->
                                     <tr>
                                         <td style='padding: 0 0 30px 0;'>
@@ -1473,7 +1469,7 @@ namespace Roovia.Services.General
                                             </table>
                                         </td>
                                     </tr>
-                                    
+
                                     <!-- Security Notice -->
                                     <tr>
                                         <td style='background-color: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center;'>
@@ -1489,7 +1485,7 @@ namespace Roovia.Services.General
                                 </table>
                             </td>
                         </tr>
-                        
+
                         <!-- Footer -->
                         <tr>
                             <td bgcolor='#f8f9fa' style='padding: 30px; border-radius: 0 0 4px 4px;'>
@@ -1602,9 +1598,9 @@ namespace Roovia.Services.General
                                                         <table border='0' cellpadding='0' cellspacing='0' style='margin: 0 auto;'>
                                                             <tr>
                                                                 <td align='center' bgcolor='#3B5BA9' style='border-radius: 8px;'>
-                                                                    <a href='" + resetLink + @"' target='_blank' 
-                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff; 
-                                                                              text-decoration: none; padding: 15px 30px; display: inline-block; 
+                                                                    <a href='" + resetLink + @"' target='_blank'
+                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff;
+                                                                              text-decoration: none; padding: 15px 30px; display: inline-block;
                                                                               font-weight: bold;'>Reset Password</a>
                                                                 </td>
                                                             </tr>
@@ -1732,9 +1728,9 @@ namespace Roovia.Services.General
                                                         <table border='0' cellpadding='0' cellspacing='0' style='margin: 0 auto;'>
                                                             <tr>
                                                                 <td align='center' bgcolor='#3B5BA9' style='border-radius: 8px;'>
-                                                                    <a href='" + confirmationLink + @"' target='_blank' 
-                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff; 
-                                                                              text-decoration: none; padding: 15px 30px; display: inline-block; 
+                                                                    <a href='" + confirmationLink + @"' target='_blank'
+                                                                       style='font-size: 16px; font-family: Arial, sans-serif; color: #ffffff;
+                                                                              text-decoration: none; padding: 15px 30px; display: inline-block;
                                                                               font-weight: bold;'>Confirm Email Address</a>
                                                                 </td>
                                                             </tr>

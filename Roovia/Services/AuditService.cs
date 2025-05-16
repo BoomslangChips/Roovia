@@ -1,12 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Roovia.Services.General
 {
@@ -46,7 +41,7 @@ namespace Roovia.Services.General
                     Timestamp = DateTime.Now,
                     CompanyId = await GetUserCompanyId(context, userId)
                 };
-                
+
                 context.AuditTrails.Add(audit);
                 await context.SaveChangesAsync();
                 */
@@ -75,15 +70,15 @@ namespace Roovia.Services.General
                 /* Example implementation:
                 var query = context.AuditTrails
                     .Where(a => a.EntityType == entityType && a.EntityId == entityId);
-                
+
                 if (startDate.HasValue)
                     query = query.Where(a => a.Timestamp >= startDate.Value);
-                
+
                 if (endDate.HasValue)
                     query = query.Where(a => a.Timestamp <= endDate.Value);
-                
+
                 var totalCount = await query.CountAsync();
-                
+
                 var auditTrail = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip((page - 1) * pageSize)
@@ -100,7 +95,7 @@ namespace Roovia.Services.General
                         a.Timestamp
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     AuditTrail = auditTrail,
                     TotalCount = totalCount,
@@ -139,17 +134,17 @@ namespace Roovia.Services.General
                     response.ResponseInfo.Message = "User not found";
                     return response;
                 }
-                
+
                 var query = context.AuditTrails.Where(a => a.UserId == userId);
-                
+
                 if (startDate.HasValue)
                     query = query.Where(a => a.Timestamp >= startDate.Value);
-                
+
                 if (endDate.HasValue)
                     query = query.Where(a => a.Timestamp <= endDate.Value);
-                
+
                 var totalCount = await query.CountAsync();
-                
+
                 var auditTrail = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip((page - 1) * pageSize)
@@ -165,7 +160,7 @@ namespace Roovia.Services.General
                         a.Timestamp
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     UserDetails = new {
                         user.FullName,
@@ -203,15 +198,15 @@ namespace Roovia.Services.General
 
                 /* Example implementation:
                 var query = context.AuditTrails.Where(a => a.CompanyId == companyId);
-                
+
                 if (startDate.HasValue)
                     query = query.Where(a => a.Timestamp >= startDate.Value);
-                
+
                 if (endDate.HasValue)
                     query = query.Where(a => a.Timestamp <= endDate.Value);
-                
+
                 var totalCount = await query.CountAsync();
-                
+
                 var auditTrail = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip((page - 1) * pageSize)
@@ -228,7 +223,7 @@ namespace Roovia.Services.General
                         a.Timestamp
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     AuditTrail = auditTrail,
                     TotalCount = totalCount,
@@ -268,7 +263,7 @@ namespace Roovia.Services.General
                     response.ResponseInfo.Message = "User not found";
                     return response;
                 }
-                
+
                 var audit = new SecurityAudit
                 {
                     UserId = userId,
@@ -279,24 +274,24 @@ namespace Roovia.Services.General
                     Action = "Authentication",
                     CompanyId = user.CompanyId ?? 0
                 };
-                
+
                 context.SecurityAudits.Add(audit);
                 await context.SaveChangesAsync();
-                
+
                 // Update user's last login info if successful
                 if (success)
                 {
                     user.LastLoginDate = DateTime.Now;
                     user.LastLoginIpAddress = ipAddress;
                     user.LoginFailureCount = 0;
-                    
+
                     await context.SaveChangesAsync();
                 }
                 else
                 {
                     user.LastLoginFailureDate = DateTime.Now;
                     user.LoginFailureCount++;
-                    
+
                     await context.SaveChangesAsync();
                 }
                 */
@@ -325,14 +320,14 @@ namespace Roovia.Services.General
                 /* Example implementation:
                 var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 var targetUser = await context.Users.FirstOrDefaultAsync(u => u.Id == targetUserId);
-                
+
                 if (user == null || targetUser == null)
                 {
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "User or target user not found";
                     return response;
                 }
-                
+
                 var audit = new SecurityAudit
                 {
                     UserId = userId,
@@ -342,7 +337,7 @@ namespace Roovia.Services.General
                     Timestamp = DateTime.Now,
                     CompanyId = user.CompanyId ?? 0
                 };
-                
+
                 context.SecurityAudits.Add(audit);
                 await context.SaveChangesAsync();
                 */
@@ -371,14 +366,14 @@ namespace Roovia.Services.General
                 /* Example implementation:
                 var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 var targetUser = await context.Users.FirstOrDefaultAsync(u => u.Id == targetUserId);
-                
+
                 if (user == null || targetUser == null)
                 {
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "User or target user not found";
                     return response;
                 }
-                
+
                 var audit = new SecurityAudit
                 {
                     UserId = userId,
@@ -388,7 +383,7 @@ namespace Roovia.Services.General
                     Timestamp = DateTime.Now,
                     CompanyId = user.CompanyId ?? 0
                 };
-                
+
                 context.SecurityAudits.Add(audit);
                 await context.SaveChangesAsync();
                 */
@@ -416,15 +411,15 @@ namespace Roovia.Services.General
 
                 /* Example implementation:
                 var query = context.SecurityAudits.Where(a => a.CompanyId == companyId);
-                
+
                 if (startDate.HasValue)
                     query = query.Where(a => a.Timestamp >= startDate.Value);
-                
+
                 if (endDate.HasValue)
                     query = query.Where(a => a.Timestamp <= endDate.Value);
-                
+
                 var totalCount = await query.CountAsync();
-                
+
                 var auditTrail = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip((page - 1) * pageSize)
@@ -440,7 +435,7 @@ namespace Roovia.Services.General
                         a.Timestamp
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     AuditTrail = auditTrail,
                     TotalCount = totalCount,
@@ -480,7 +475,7 @@ namespace Roovia.Services.General
                     response.ResponseInfo.Message = "User not found or not associated with a company";
                     return response;
                 }
-                
+
                 var audit = new FinancialAudit
                 {
                     EntityType = entityType,
@@ -493,7 +488,7 @@ namespace Roovia.Services.General
                     Timestamp = DateTime.Now,
                     CompanyId = user.CompanyId.Value
                 };
-                
+
                 context.FinancialAudits.Add(audit);
                 await context.SaveChangesAsync();
                 */
@@ -521,15 +516,15 @@ namespace Roovia.Services.General
 
                 /* Example implementation:
                 var query = context.FinancialAudits.Where(a => a.CompanyId == companyId);
-                
+
                 if (startDate.HasValue)
                     query = query.Where(a => a.Timestamp >= startDate.Value);
-                
+
                 if (endDate.HasValue)
                     query = query.Where(a => a.Timestamp <= endDate.Value);
-                
+
                 var totalCount = await query.CountAsync();
-                
+
                 var auditTrail = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip((page - 1) * pageSize)
@@ -546,7 +541,7 @@ namespace Roovia.Services.General
                         a.Timestamp
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     AuditTrail = auditTrail,
                     TotalCount = totalCount,
@@ -582,18 +577,18 @@ namespace Roovia.Services.General
 
                 /* Example implementation:
                 int deletedRecords = 0;
-                
+
                 if (companyId > 0)
                 {
                     // Delete company-specific audit records
                     deletedRecords += await context.AuditTrails
                         .Where(a => a.Timestamp < cutoffDate && a.CompanyId == companyId)
                         .ExecuteDeleteAsync();
-                    
+
                     deletedRecords += await context.SecurityAudits
                         .Where(a => a.Timestamp < cutoffDate && a.CompanyId == companyId)
                         .ExecuteDeleteAsync();
-                    
+
                     deletedRecords += await context.FinancialAudits
                         .Where(a => a.Timestamp < cutoffDate && a.CompanyId == companyId)
                         .ExecuteDeleteAsync();
@@ -604,16 +599,16 @@ namespace Roovia.Services.General
                     deletedRecords += await context.AuditTrails
                         .Where(a => a.Timestamp < cutoffDate)
                         .ExecuteDeleteAsync();
-                    
+
                     deletedRecords += await context.SecurityAudits
                         .Where(a => a.Timestamp < cutoffDate)
                         .ExecuteDeleteAsync();
-                    
+
                     deletedRecords += await context.FinancialAudits
                         .Where(a => a.Timestamp < cutoffDate)
                         .ExecuteDeleteAsync();
                 }
-                
+
                 response.Response = new { DeletedRecords = deletedRecords };
                 */
 
@@ -643,15 +638,15 @@ namespace Roovia.Services.General
                 var auditTrailRecords = await context.AuditTrails
                     .Where(a => a.Timestamp < cutoffDate && (companyId == 0 || a.CompanyId == companyId))
                     .ToListAsync();
-                
+
                 var securityAuditRecords = await context.SecurityAudits
                     .Where(a => a.Timestamp < cutoffDate && (companyId == 0 || a.CompanyId == companyId))
                     .ToListAsync();
-                
+
                 var financialAuditRecords = await context.FinancialAudits
                     .Where(a => a.Timestamp < cutoffDate && (companyId == 0 || a.CompanyId == companyId))
                     .ToListAsync();
-                
+
                 // 2. Copy to archive tables
                 foreach (var record in auditTrailRecords)
                 {
@@ -670,14 +665,14 @@ namespace Roovia.Services.General
                         ArchivedDate = DateTime.Now
                     });
                 }
-                
+
                 // Add similar code for security and financial audits
-                
+
                 await context.SaveChangesAsync();
-                
+
                 // 3. Delete from main tables
                 await PurgeOldAuditTrail(0, companyId, cutoffDate);
-                
+
                 var totalArchivedRecords = auditTrailRecords.Count + securityAuditRecords.Count + financialAuditRecords.Count;
                 response.Response = new { ArchivedRecords = totalArchivedRecords };
                 */
@@ -715,53 +710,53 @@ namespace Roovia.Services.General
                     .GroupBy(a => a.EntityType)
                     .Select(g => new { EntityType = g.Key, Count = g.Count() })
                     .ToListAsync();
-                
+
                 // Get count of audit records by action type
                 var actionCounts = await context.AuditTrails
                     .Where(a => a.CompanyId == companyId && a.Timestamp >= startDate && a.Timestamp <= endDate)
                     .GroupBy(a => a.Action)
                     .Select(g => new { Action = g.Key, Count = g.Count() })
                     .ToListAsync();
-                
+
                 // Get top users by audit activity
                 var topUsers = await context.AuditTrails
                     .Where(a => a.CompanyId == companyId && a.Timestamp >= startDate && a.Timestamp <= endDate)
                     .GroupBy(a => a.UserId)
-                    .Select(g => new { 
-                        UserId = g.Key, 
+                    .Select(g => new {
+                        UserId = g.Key,
                         UserName = g.First().User.FullName,
-                        Count = g.Count() 
+                        Count = g.Count()
                     })
                     .OrderByDescending(x => x.Count)
                     .Take(10)
                     .ToListAsync();
-                
+
                 // Get security audit counts by action type
                 var securityActionCounts = await context.SecurityAudits
                     .Where(a => a.CompanyId == companyId && a.Timestamp >= startDate && a.Timestamp <= endDate)
                     .GroupBy(a => a.Action)
                     .Select(g => new { Action = g.Key, Count = g.Count() })
                     .ToListAsync();
-                
+
                 // Get failed login attempts count
                 var failedLoginCount = await context.SecurityAudits
-                    .CountAsync(a => a.CompanyId == companyId && 
-                                   a.Timestamp >= startDate && 
-                                   a.Timestamp <= endDate && 
-                                   a.Action == "Authentication" && 
+                    .CountAsync(a => a.CompanyId == companyId &&
+                                   a.Timestamp >= startDate &&
+                                   a.Timestamp <= endDate &&
+                                   a.Action == "Authentication" &&
                                    !a.Success);
-                
+
                 // Get financial audit summary
                 var financialSummary = await context.FinancialAudits
                     .Where(a => a.CompanyId == companyId && a.Timestamp >= startDate && a.Timestamp <= endDate)
                     .GroupBy(a => a.Action)
-                    .Select(g => new { 
-                        Action = g.Key, 
+                    .Select(g => new {
+                        Action = g.Key,
                         Count = g.Count(),
                         TotalAmount = g.Sum(a => a.Amount)
                     })
                     .ToListAsync();
-                
+
                 response.Response = new {
                     DateRange = new { Start = startDate, End = endDate },
                     EntityTypeCounts = entityTypeCounts,
@@ -811,22 +806,22 @@ namespace Roovia.Services.General
                         Timestamp = a.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
                     })
                     .ToListAsync();
-                
+
                 // 2. Format data according to exportFormat
                 string fileContent = string.Empty;
                 string fileName = $"{entityType}_{entityId}_AuditTrail_{DateTime.Now:yyyyMMdd}.{exportFormat}";
-                
+
                 if (exportFormat.ToLower() == "csv")
                 {
                     // Generate CSV
                     var csv = new StringBuilder();
                     csv.AppendLine("ID,Entity Type,Entity ID,Action,Details,User,Old Value,New Value,Timestamp");
-                    
+
                     foreach (var record in auditTrail)
                     {
                         csv.AppendLine($"{record.Id},{record.EntityType},{record.EntityId},{record.Action},\"{record.Details}\",{record.UserName},\"{record.OldValue}\",\"{record.NewValue}\",{record.Timestamp}");
                     }
-                    
+
                     fileContent = csv.ToString();
                 }
                 else if (exportFormat.ToLower() == "json")
@@ -840,11 +835,11 @@ namespace Roovia.Services.General
                     response.ResponseInfo.Message = $"Unsupported export format: {exportFormat}";
                     return response;
                 }
-                
+
                 // 3. Save file to disk or memory
                 var filePath = Path.Combine(Path.GetTempPath(), fileName);
                 await File.WriteAllTextAsync(filePath, fileContent);
-                
+
                 response.Response = new {
                     FileName = fileName,
                     FilePath = filePath,

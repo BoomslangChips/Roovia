@@ -349,7 +349,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Permission Operations
 
         #region Role Operations
 
@@ -662,7 +662,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Role Operations
 
         #region Role-Permission Operations
 
@@ -845,7 +845,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion Role-Permission Operations
 
         #region User-Role Operations
 
@@ -982,7 +982,7 @@ namespace Roovia.Security
             return response;
         }
 
-        #endregion
+        #endregion User-Role Operations
 
         #region Permission Checks
 
@@ -1114,6 +1114,6 @@ namespace Roovia.Security
             }
         }
 
-        #endregion
+        #endregion Permission Checks
     }
 }

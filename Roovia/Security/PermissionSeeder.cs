@@ -45,7 +45,7 @@ namespace Roovia.Security
                 new Permission { Name = "Archive/Restore Properties", Description = "Archive or restore properties", Category = "Properties", SystemName = "properties.archive", CreatedBy = "System" },
                 new Permission { Name = "Access All Properties", Description = "Access all properties", Category = "Properties", SystemName = "properties.view.all", CreatedBy = "System" },
                 new Permission { Name = "Access Budgets", Description = "Access property budgets", Category = "Properties", SystemName = "properties.budgets", CreatedBy = "System" },
-                
+
                 // Beneficiaries
                 new Permission { Name = "Create Beneficiaries", Description = "Create beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.create", CreatedBy = "System" },
                 new Permission { Name = "Update Beneficiaries", Description = "Update beneficiaries (excluding bank details)", Category = "Beneficiaries", SystemName = "beneficiaries.update", CreatedBy = "System" },
@@ -53,7 +53,7 @@ namespace Roovia.Security
                 new Permission { Name = "Archive/Restore Beneficiaries", Description = "Archive or restore beneficiaries", Category = "Beneficiaries", SystemName = "beneficiaries.archive", CreatedBy = "System" },
                 new Permission { Name = "Manage Payments", Description = "Create or update beneficiary payments", Category = "Beneficiaries", SystemName = "beneficiaries.payments", CreatedBy = "System" },
                 new Permission { Name = "Approve Details", Description = "Approve beneficiary details", Category = "Beneficiaries", SystemName = "beneficiaries.approve", CreatedBy = "System" },
-                
+
                 // Tenants
                 new Permission { Name = "Create/Update Tenants", Description = "Create or update tenants", Category = "Tenants", SystemName = "tenants.create", CreatedBy = "System" },
                 new Permission { Name = "Archive/Restore Tenants", Description = "Archive or restore tenants", Category = "Tenants", SystemName = "tenants.archive", CreatedBy = "System" },
@@ -68,7 +68,7 @@ namespace Roovia.Security
                 new Permission { Name = "Send Payment Reminders", Description = "Send payment reminders", Category = "Tenants", SystemName = "tenants.reminders", CreatedBy = "System" },
                 new Permission { Name = "Send Demand Letters", Description = "Send letters of demand", Category = "Tenants", SystemName = "tenants.demand.letters", CreatedBy = "System" },
                 new Permission { Name = "View Arrears", Description = "View tenants in arrears", Category = "Tenants", SystemName = "tenants.arrears.view", CreatedBy = "System" },
-                
+
                 // Reports
                 new Permission { Name = "View Commission Reports", Description = "View commission reports", Category = "Reports", SystemName = "reports.commission", CreatedBy = "System" },
                 new Permission { Name = "View Transaction History", Description = "View transaction history reports", Category = "Reports", SystemName = "reports.transactions", CreatedBy = "System" },
@@ -78,7 +78,7 @@ namespace Roovia.Security
                 new Permission { Name = "View Commission QuickStats", Description = "View commission quickstats", Category = "Reports", SystemName = "reports.quickstats", CreatedBy = "System" },
                 new Permission { Name = "View Contact Details", Description = "View contact details", Category = "Reports", SystemName = "reports.contacts", CreatedBy = "System" },
                 new Permission { Name = "View Management Reports", Description = "View management reports", Category = "Reports", SystemName = "reports.management", CreatedBy = "System" },
-                
+
                 // Bank Statements & Payments
                 new Permission { Name = "Reject Beneficiary Payments", Description = "Reject beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.reject", CreatedBy = "System" },
                 new Permission { Name = "View Direct Deposits", Description = "View direct deposits", Category = "Bank Statements & Payments", SystemName = "payments.deposits.view", CreatedBy = "System" },
@@ -86,7 +86,7 @@ namespace Roovia.Security
                 new Permission { Name = "Request Early Clearance", Description = "Request early cheque clearance", Category = "Bank Statements & Payments", SystemName = "payments.clearance.request", CreatedBy = "System" },
                 new Permission { Name = "Approve Payments", Description = "Approve beneficiary payments", Category = "Bank Statements & Payments", SystemName = "payments.approve", CreatedBy = "System" },
                 new Permission { Name = "Send Payment Proofs", Description = "Send proof of payment requests", Category = "Bank Statements & Payments", SystemName = "payments.proofs", CreatedBy = "System" },
-                
+
                 // System Settings
                 new Permission { Name = "Manage Users", Description = "Create or update users", Category = "System Settings", SystemName = "settings.users", CreatedBy = "System" },
                 new Permission { Name = "Update Profile", Description = "Update profile settings", Category = "System Settings", SystemName = "settings.profile", CreatedBy = "System" },

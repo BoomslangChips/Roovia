@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Roovia.Models.UserCompanyModels;
-using Roovia.Security;
 
 namespace Roovia.Authentication
 {
@@ -9,7 +8,8 @@ namespace Roovia.Authentication
         public const string GlobalAdminPolicy = "GlobalAdminOnly";
     }
 
-    public class GlobalAdminRequirement : IAuthorizationRequirement { }
+    public class GlobalAdminRequirement : IAuthorizationRequirement
+    { }
 
     public class GlobalAdminHandler : AuthorizationHandler<GlobalAdminRequirement>
     {

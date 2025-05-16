@@ -972,7 +972,6 @@
         }
 
     .detail-section {
-
     }
 
     .detail-label, .detail-value {
@@ -987,6 +986,7 @@
         font-size: var(--font-size-sm);
     }
 }
+
 .roovia-tabs-boxed {
     justify-content: center !important;
 }
@@ -997,7 +997,6 @@
 /* Mobile optimizations */
 @media (max-width: 767px) {
     .detail-section {
-
     }
 
     .user-details-footer {
@@ -1119,4 +1118,3 @@
         font-size: 10px;
     }
 }
-

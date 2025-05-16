@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Roovia.Models.BusinessHelperModels;
-using Roovia.Models.UserCompanyModels;
-using Roovia.Models.BusinessModels;
 using Roovia.Models.BusinessMappingModels;
-using Roovia.Models.UserCompanyMappingModels;
+using Roovia.Models.BusinessModels;
 using Roovia.Models.ProjectCdnConfigModels;
+using Roovia.Models.ReportingModels;
+using Roovia.Models.UserCompanyMappingModels;
+using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Data
 {
@@ -17,7 +18,7 @@ namespace Roovia.Data
         public DbSet<Branch> Branches { get; set; }
         // ApplicationUser is handled by Identity Framework as AspNetUsers
 
-        #endregion
+        #endregion Company Organization Structure
 
         #region Custom Authorization System
 
@@ -27,7 +28,7 @@ namespace Roovia.Data
         public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
         public DbSet<UserPermissionOverride> UserPermissionOverrides { get; set; }
 
-        #endregion
+        #endregion Custom Authorization System
 
         #region Property Management Core
 
@@ -36,7 +37,7 @@ namespace Roovia.Data
         public DbSet<PropertyTenant> PropertyTenants { get; set; }
         public DbSet<PropertyBeneficiary> PropertyBeneficiaries { get; set; }
 
-        #endregion
+        #endregion Property Management Core
 
         #region Inspection & Maintenance
 
@@ -47,7 +48,7 @@ namespace Roovia.Data
         public DbSet<MaintenanceExpense> MaintenanceExpenses { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
 
-        #endregion
+        #endregion Inspection & Maintenance
 
         #region Financial & Payments
 
@@ -57,7 +58,7 @@ namespace Roovia.Data
         public DbSet<PaymentSchedule> PaymentSchedules { get; set; }
         public DbSet<PaymentRule> PaymentRules { get; set; }
 
-        #endregion
+        #endregion Financial & Payments
 
         #region Communication & Contact (Helper Models)
 
@@ -71,7 +72,7 @@ namespace Roovia.Data
         public DbSet<NotificationPreference> NotificationPreferences { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
-        #endregion
+        #endregion Communication & Contact (Helper Models)
 
         #region General Mapping Models
 
@@ -80,7 +81,7 @@ namespace Roovia.Data
         public DbSet<MediaType> MediaTypes { get; set; }
         public DbSet<EntityType> EntityTypes { get; set; }
 
-        #endregion
+        #endregion General Mapping Models
 
         #region Document Mapping Models
 
@@ -91,7 +92,7 @@ namespace Roovia.Data
         public DbSet<DocumentRequirementType> DocumentRequirementTypes { get; set; }
         public DbSet<EntityDocumentRequirement> EntityDocumentRequirements { get; set; }
 
-        #endregion
+        #endregion Document Mapping Models
 
         #region Property Mapping Models
 
@@ -102,7 +103,7 @@ namespace Roovia.Data
         public DbSet<CommissionType> CommissionTypes { get; set; }
         public DbSet<PropertyImageType> PropertyImageTypes { get; set; }
 
-        #endregion
+        #endregion Property Mapping Models
 
         #region Tenant & Beneficiary Mapping Models
 
@@ -111,7 +112,7 @@ namespace Roovia.Data
         public DbSet<TenantStatusType> TenantStatusTypes { get; set; }
         public DbSet<TenantType> TenantTypes { get; set; }
 
-        #endregion
+        #endregion Tenant & Beneficiary Mapping Models
 
         #region Inspection Mapping Models
 
@@ -120,7 +121,7 @@ namespace Roovia.Data
         public DbSet<InspectionArea> InspectionAreas { get; set; }
         public DbSet<ConditionLevel> ConditionLevels { get; set; }
 
-        #endregion
+        #endregion Inspection Mapping Models
 
         #region Maintenance Mapping Models
 
@@ -130,7 +131,7 @@ namespace Roovia.Data
         public DbSet<MaintenanceImageType> MaintenanceImageTypes { get; set; }
         public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
 
-        #endregion
+        #endregion Maintenance Mapping Models
 
         #region Payment Mapping Models
 
@@ -142,7 +143,7 @@ namespace Roovia.Data
         public DbSet<PaymentFrequency> PaymentFrequencies { get; set; }
         public DbSet<PaymentRuleType> PaymentRuleTypes { get; set; }
 
-        #endregion
+        #endregion Payment Mapping Models
 
         #region Communication & Notification Mapping Models
 
@@ -155,7 +156,7 @@ namespace Roovia.Data
         public DbSet<ReminderStatus> ReminderStatuses { get; set; }
         public DbSet<RecurrenceFrequency> RecurrenceFrequencies { get; set; }
 
-        #endregion
+        #endregion Communication & Notification Mapping Models
 
         #region User & Company Mapping Models
 
@@ -170,7 +171,7 @@ namespace Roovia.Data
         public DbSet<NotificationChannel> NotificationChannels { get; set; }
         public DbSet<ThemeType> ThemeTypes { get; set; }
 
-        #endregion
+        #endregion User & Company Mapping Models
 
         #region CDN & File Management
 
@@ -181,6 +182,18 @@ namespace Roovia.Data
         public DbSet<CdnBase64Storage> CdnBase64Storage { get; set; }
         public DbSet<CdnUsageStatistic> CdnUsageStatistics { get; set; }
         public DbSet<CdnAccessLog> CdnAccessLogs { get; set; }
+
+        #endregion CDN & File Management
+
+
+        #region Reporting
+
+        public DbSet<CustomReport> CustomReports { get; set; }
+        public DbSet<ReportSchedule> ReportSchedules { get; set; }
+        public DbSet<ReportFrequencyType> ReportFrequencyTypes { get; set; }
+        public DbSet<ReportExecutionLog> ReportExecutionLogs { get; set; }
+        public DbSet<ReportDashboard> ReportDashboards { get; set; }
+        public DbSet<ReportDashboardWidget> ReportDashboardWidgets { get; set; }
 
         #endregion
 
@@ -250,7 +263,7 @@ namespace Roovia.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            #endregion
+            #endregion Company Organization Structure Configuration
 
             #region Custom Authorization System Configuration
 
@@ -314,7 +327,7 @@ namespace Roovia.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            #endregion
+            #endregion Custom Authorization System Configuration
 
             #region Property Management Core Configuration
 
@@ -419,7 +432,7 @@ namespace Roovia.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            #endregion
+            #endregion Property Management Core Configuration
 
             #region Inspection & Maintenance Configuration
 
@@ -531,7 +544,7 @@ namespace Roovia.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            #endregion
+            #endregion Inspection & Maintenance Configuration
 
             #region Financial & Payments Configuration
 
@@ -620,7 +633,7 @@ namespace Roovia.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            #endregion
+            #endregion Financial & Payments Configuration
 
             #region Communication & Contact Configuration
 
@@ -784,7 +797,7 @@ namespace Roovia.Data
                 entity.ToTable("Contact_Notifications");
             });
 
-            #endregion
+            #endregion Communication & Contact Configuration
 
             #region General Mapping Models Configuration
 
@@ -817,7 +830,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.SystemName).IsUnique();
             });
 
-            #endregion
+            #endregion General Mapping Models Configuration
 
             #region Document Mapping Models Configuration
 
@@ -864,7 +877,7 @@ namespace Roovia.Data
                     .IsUnique();
             });
 
-            #endregion
+            #endregion Document Mapping Models Configuration
 
             #region Property Mapping Models Configuration
 
@@ -910,7 +923,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Property Mapping Models Configuration
 
             #region Tenant & Beneficiary Mapping Models Configuration
 
@@ -942,7 +955,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Tenant & Beneficiary Mapping Models Configuration
 
             #region Inspection Mapping Models Configuration
 
@@ -974,7 +987,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Inspection Mapping Models Configuration
 
             #region Maintenance Mapping Models Configuration
 
@@ -1013,7 +1026,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Maintenance Mapping Models Configuration
 
             #region Payment Mapping Models Configuration
 
@@ -1066,7 +1079,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Payment Mapping Models Configuration
 
             #region Communication & Notification Mapping Models Configuration
 
@@ -1126,7 +1139,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion Communication & Notification Mapping Models Configuration
 
             #region User & Company Mapping Models Configuration
 
@@ -1200,7 +1213,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            #endregion
+            #endregion User & Company Mapping Models Configuration
 
             #region CDN & File Management Configuration
 
@@ -1302,7 +1315,7 @@ namespace Roovia.Data
                 entity.HasIndex(e => e.ActionType);
             });
 
-            #endregion
+            #endregion CDN & File Management Configuration
 
             #region Decimal Precision Configuration
 
@@ -1439,7 +1452,7 @@ namespace Roovia.Data
                     .HasPrecision(18, 2);
             });
 
-            #endregion
+            #endregion Decimal Precision Configuration
         }
     }
 }

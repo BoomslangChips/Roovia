@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -61,6 +59,7 @@ namespace Roovia.Models.ProjectCdnConfigModels
 
         // Add navigation properties
         public virtual ICollection<CdnFileMetadata> Files { get; set; } = new List<CdnFileMetadata>();
+
         public virtual ICollection<CdnFolder> Folders { get; set; } = new List<CdnFolder>();
     }
 
@@ -95,6 +94,7 @@ namespace Roovia.Models.ProjectCdnConfigModels
 
         // Add navigation properties
         public virtual ICollection<CdnFolder> Children { get; set; } = new List<CdnFolder>();
+
         public virtual ICollection<CdnFileMetadata> Files { get; set; } = new List<CdnFileMetadata>();
     }
 

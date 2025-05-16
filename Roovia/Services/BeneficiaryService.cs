@@ -1,17 +1,10 @@
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
 using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
-using Roovia.Services.General;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Transactions;
 
 namespace Roovia.Services
@@ -1275,6 +1268,6 @@ namespace Roovia.Services
                 .ToList();
         }
 
-        #endregion
+        #endregion Private Helper Methods
     }
 }
