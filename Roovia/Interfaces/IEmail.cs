@@ -1,5 +1,6 @@
 ﻿using Roovia.Models.BusinessModels;
 using Roovia.Models.UserCompanyModels;
+using System.Threading.Tasks;
 
 namespace Roovia.Interfaces
 {
@@ -16,6 +17,7 @@ namespace Roovia.Interfaces
         Task SendAccountRejectionNotificationAsync(ApplicationUser user, string reason);
         Task SendAccountCreationEmailAsync(ApplicationUser user, string passwordResetToken);
         Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink);
+        Task SendPasswordResetNotificationAsync(ApplicationUser user, string newPassword);
         Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink);
 
         // Property Management emails
@@ -29,6 +31,8 @@ namespace Roovia.Interfaces
         Task SendMaintenanceTicketUpdatedAsync(MaintenanceTicket ticket, string updateMessage);
         Task SendMaintenanceCompletedAsync(MaintenanceTicket ticket, PropertyTenant tenant = null);
         Task SendVendorAssignmentAsync(MaintenanceTicket ticket, Vendor vendor);
+        Task SendVendorWelcomeEmailAsync(Vendor vendor);
+        Task SendVendorInsuranceUpdateAsync(Vendor vendor);
 
         // Payment emails
         Task SendPaymentReceivedAsync(PropertyPayment payment, PropertyTenant tenant);

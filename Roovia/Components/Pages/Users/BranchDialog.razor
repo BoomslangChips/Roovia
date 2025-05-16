@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
+﻿@* @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
 @using Roovia.Components
 @using Roovia.Components.Elements.Forms
@@ -914,7 +914,7 @@ Size="lg">
     </ChildContent>
 </RVModal>
 
-@* Logo Upload Modal *@
+
 @if (showLogoUploadDialog)
 {
     <RVModal IsVisible="true"
@@ -1544,4 +1544,4 @@ Size="lg">
             ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
         }
     }
-}
+} *@

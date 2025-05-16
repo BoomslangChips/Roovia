@@ -12,8 +12,6 @@ using Roovia.Interfaces;
 
 namespace Roovia.Services.General
 {
-
-
     public class EmailService : IEmailService
     {
         private readonly SmtpClient _smtpClient;
@@ -143,7 +141,7 @@ namespace Roovia.Services.General
                 var subject = $"New Property Added: {property.PropertyName}";
                 var body = GetEmailTemplate("PropertyCreated", new
                 {
-                    OwnerName = owner.FullName,
+                    OwnerName = owner.DisplayName,
                     PropertyName = property.PropertyName,
                     PropertyCode = property.PropertyCode,
                     Address = $"{property.Address.Street}, {property.Address.City}, {property.Address.PostalCode}",
@@ -170,7 +168,7 @@ namespace Roovia.Services.General
                 var subject = $"Welcome to {property.PropertyName}";
                 var body = GetEmailTemplate("TenantWelcome", new
                 {
-                    TenantName = tenant.FullName,
+                    TenantName = tenant.DisplayName,
                     PropertyName = property.PropertyName,
                     Address = $"{property.Address.Street}, {property.Address.City}, {property.Address.PostalCode}",
                     LeaseStartDate = tenant.LeaseStartDate.ToString("d"),
@@ -198,7 +196,7 @@ namespace Roovia.Services.General
                 var subject = $"Lease Expiry Reminder - {property.PropertyName}";
                 var body = GetEmailTemplate("LeaseExpiryReminder", new
                 {
-                    TenantName = tenant.FullName,
+                    TenantName = tenant.DisplayName,
                     PropertyName = property.PropertyName,
                     DaysUntilExpiry = daysUntilExpiry,
                     LeaseEndDate = tenant.LeaseEndDate.ToString("d"),
@@ -224,7 +222,7 @@ namespace Roovia.Services.General
                 var subject = $"Rent Payment Due - {property.PropertyName}";
                 var body = GetEmailTemplate("RentDueReminder", new
                 {
-                    TenantName = tenant.FullName,
+                    TenantName = tenant.DisplayName,
                     PropertyName = property.PropertyName,
                     Amount = $"R {payment.Amount:N2}",
                     DueDate = payment.DueDate.ToString("d"),
@@ -411,7 +409,7 @@ namespace Roovia.Services.General
                 var subject = $"Payment Received - {payment.Property?.PropertyName}";
                 var body = GetEmailTemplate("PaymentReceived", new
                 {
-                    TenantName = tenant.FullName,
+                    TenantName = tenant.DisplayName,
                     PropertyName = payment.Property?.PropertyName,
                     PaymentReference = payment.PaymentReference,
                     Amount = $"R {payment.Amount:N2}",
@@ -432,9 +430,9 @@ namespace Roovia.Services.General
                 {
                     var ownerBody = GetEmailTemplate("PaymentReceivedOwner", new
                     {
-                        OwnerName = payment.Property.Owner.FullName,
+                        OwnerName = payment.Property.Owner.DisplayName,
                         PropertyName = payment.Property.PropertyName,
-                        TenantName = tenant.FullName,
+                        TenantName = tenant.DisplayName,
                         PaymentReference = payment.PaymentReference,
                         Amount = $"R {payment.Amount:N2}",
                         PaymentDate = payment.PaymentDate?.ToString("d")
@@ -456,12 +454,12 @@ namespace Roovia.Services.General
                 var subject = $"Payment Reminder - {property.PropertyName}";
                 var body = GetEmailTemplate("PaymentReminder", new
                 {
-                    TenantName = tenant.FullName,
+                    TenantName = tenant.DisplayName,
                     PropertyName = property.PropertyName,
                     AmountDue = $"R {amountDue:N2}",
                     DebitDay = tenant.DebitDayOfMonth,
                     BankDetails = property.Owner?.BankAccount != null ?
-                        $"{property.Owner.BankAccount.BankName} - {property.Owner.BankAccount.AccountNumber}" : "Contact office for bank details"
+                        $"{property.Owner.BankAccount.AccountType} - {property.Owner.BankAccount.AccountNumber}" : "Contact office for bank details"
                 });
 
                 var tenantEmail = tenant.EmailAddresses.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
@@ -490,7 +488,7 @@ namespace Roovia.Services.General
                     PropertyName = beneficiary.Property?.PropertyName,
                     TransactionReference = payment.TransactionReference,
                     BankAccount = beneficiary.BankAccount != null ?
-                        $"{beneficiary.BankAccount.BankName} - {beneficiary.BankAccount.AccountNumber}" : "Not specified"
+                        $"{beneficiary.BankAccount.AccountType} - {beneficiary.BankAccount.AccountNumber}" : "Not specified"
                 });
 
                 var beneficiaryEmail = beneficiary.EmailAddresses.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
@@ -553,7 +551,7 @@ namespace Roovia.Services.General
                 var subject = $"Inspection Completed - {inspection.Property?.PropertyName}";
                 var body = GetEmailTemplate("InspectionCompleted", new
                 {
-                    OwnerName = owner.FullName,
+                    OwnerName = owner.DisplayName,
                     PropertyName = inspection.Property?.PropertyName,
                     InspectionType = inspection.InspectionType?.Name,
                     InspectionDate = inspection.ActualDate?.ToString("d") ?? inspection.ScheduledDate.ToString("d"),
@@ -652,491 +650,191 @@ namespace Roovia.Services.General
             }
         }
 
-        // Template helpers
-        private string GetEmailTemplate(string templateName, object model)
+        // Adding missing methods referenced by other services
+        public async Task SendPasswordResetNotificationAsync(ApplicationUser user, string newPassword)
         {
-            // In a production environment, this would load templates from files or database
-            // For now, using inline templates
-            return templateName switch
+            try
             {
-                "PropertyCreated" => GetPropertyCreatedTemplate(model),
-                "TenantWelcome" => GetTenantWelcomeTemplate(model),
-                "LeaseExpiryReminder" => GetLeaseExpiryReminderTemplate(model),
-                "RentDueReminder" => GetRentDueReminderTemplate(model),
-                "MaintenanceTicketCreated" => GetMaintenanceTicketCreatedTemplate(model),
-                "MaintenanceCompleted" => GetMaintenanceCompletedTemplate(model),
-                "MaintenanceTicketUpdated" => GetMaintenanceTicketUpdatedTemplate(model),
-                "VendorAssignment" => GetVendorAssignmentTemplate(model),
-                "PaymentReceived" => GetPaymentReceivedTemplate(model),
-                "PaymentReceivedOwner" => GetPaymentReceivedOwnerTemplate(model),
-                "PaymentReminder" => GetPaymentReminderTemplate(model),
-                "BeneficiaryPayment" => GetBeneficiaryPaymentTemplate(model),
-                "InspectionScheduled" => GetInspectionScheduledTemplate(model),
-                "InspectionCompleted" => GetInspectionCompletedTemplate(model),
-                "InspectionReport" => GetInspectionReportTemplate(model),
-                _ => GetDefaultTemplate(model)
-            };
-        }
-
-        // Individual template methods (implement these based on your design requirements)
-        private string GetPropertyCreatedTemplate(dynamic model)
-        {
-            return $@"
+                var subject = "Your Roovia Password Has Been Reset";
+                var body = @$"
 <!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <style type='text/css'>
-        /* Your existing styles */
-        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
-        .responsive-table {{ width: 100% !important; }}
-    </style>
-</head>
-<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
-    <center>
-        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
-            <tr>
-                <td style='padding: 40px;'>
-                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>New Property Added</h1>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.OwnerName},</p>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>
-                        Your property has been successfully added to our system.
-                    </p>
-                    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
-                        <h3 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Property Details</h3>
-                        <p><strong>Name:</strong> {model.PropertyName}</p>
-                        <p><strong>Code:</strong> {model.PropertyCode}</p>
-                        <p><strong>Address:</strong> {model.Address}</p>
-                        <p><strong>Rental Amount:</strong> {model.RentalAmount}</p>
-                        <p><strong>Status:</strong> {model.Status}</p>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </center>
-</body>
-</html>";
-        }
-
-        private string GetTenantWelcomeTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <style type='text/css'>
-        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
-        .responsive-table {{ width: 100% !important; }}
-    </style>
-</head>
-<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
-    <center>
-        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
-            <tr>
-                <td style='padding: 40px;'>
-                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Welcome to Your New Home!</h1>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.TenantName},</p>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>
-                        Welcome to {model.PropertyName}! We're excited to have you as our tenant.
-                    </p>
-                    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
-                        <h3 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Lease Information</h3>
-                        <p><strong>Property:</strong> {model.PropertyName}</p>
-                        <p><strong>Address:</strong> {model.Address}</p>
-                        <p><strong>Lease Start:</strong> {model.LeaseStartDate}</p>
-                        <p><strong>Lease End:</strong> {model.LeaseEndDate}</p>
-                        <p><strong>Monthly Rent:</strong> {model.RentAmount}</p>
-                        <p><strong>Debit Day:</strong> {model.DebitDay}th of each month</p>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </center>
-</body>
-</html>";
-        }
-
-        private string GetLeaseExpiryReminderTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <style type='text/css'>
-        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
-        .responsive-table {{ width: 100% !important; }}
-    </style>
-</head>
-<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
-    <center>
-        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
-            <tr>
-                <td style='padding: 40px;'>
-                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Lease Expiry Reminder</h1>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.TenantName},</p>
-                    <p style='font-family: Arial, sans-serif; color: #666666;'>
-                        This is a friendly reminder that your lease for {model.PropertyName} will expire in {model.DaysUntilExpiry} days.
-                    </p>
-                    <div style='background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;'>
-                        <p><strong>Lease End Date:</strong> {model.LeaseEndDate}</p>
-                        <p>Please contact us at {model.ContactEmail} to discuss renewal options.</p>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </center>
-</body>
-</html>";
-        }
-
-        private string GetRentDueReminderTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <style type='text/css'>
         body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+        .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        .header {{ background-color: #3B5BA9; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -40px -40px 20px; }}
+        .password-container {{ background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0; }}
+        .btn {{ display: inline-block; background-color: #3B5BA9; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 20px; }}
     </style>
 </head>
 <body>
-    <h2>Rent Payment Due</h2>
-    <p>Dear {model.TenantName},</p>
-    <p>This is a reminder that your rent payment for {model.PropertyName} is due.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Amount Due:</strong></td><td>{model.Amount}</td></tr>
-        <tr><td><strong>Due Date:</strong></td><td>{model.DueDate}</td></tr>
-        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
-    </table>
-    <p>Please ensure payment is made on time to avoid late fees.</p>
-</body>
-</html>";
-        }
-
-        private string GetMaintenanceTicketCreatedTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <style type='text/css'>
-        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
-        .priority-high {{ color: #d32f2f; }}
-        .priority-medium {{ color: #f57c00; }}
-        .priority-low {{ color: #388e3c; }}
-    </style>
-</head>
-<body>
-    <h2>Maintenance Ticket Created</h2>
-    <p>A new maintenance ticket has been created for {model.PropertyName}.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px; width: 100%;'>
-        <tr><td><strong>Ticket Number:</strong></td><td>{model.TicketNumber}</td></tr>
-        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
-        <tr><td><strong>Description:</strong></td><td>{model.Description}</td></tr>
-        <tr><td><strong>Priority:</strong></td><td class='priority-{model.Priority?.ToLower()}'>{model.Priority}</td></tr>
-        <tr><td><strong>Category:</strong></td><td>{model.Category}</td></tr>
-        <tr><td><strong>Scheduled Date:</strong></td><td>{model.ScheduledDate ?? "To be scheduled"}</td></tr>
-    </table>
-    <p>We will keep you updated on the progress of this maintenance request.</p>
-</body>
-</html>";
-        }
-
-        private string GetMaintenanceCompletedTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <style type='text/css'>
-        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
-    </style>
-</head>
-<body>
-    <h2>Maintenance Completed</h2>
-    <p>The maintenance work for ticket {model.TicketNumber} has been completed.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
-        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
-        <tr><td><strong>Completed Date:</strong></td><td>{model.CompletedDate}</td></tr>
-        <tr><td><strong>Issue Resolved:</strong></td><td>{model.IssueResolved}</td></tr>
-        <tr><td><strong>Completion Notes:</strong></td><td>{model.CompletionNotes}</td></tr>
-        <tr><td><strong>Cost:</strong></td><td>{model.ActualCost}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetMaintenanceTicketUpdatedTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Maintenance Ticket Updated</h2>
-    <p>Ticket {model.TicketNumber} has been updated.</p>
-    <div style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <p><strong>Update:</strong> {model.UpdateMessage}</p>
-        <p><strong>Status:</strong> {model.Status}</p>
-        <p><strong>Updated:</strong> {model.UpdatedDate}</p>
+    <div class='container'>
+        <div class='header'>
+            <h1>Password Reset</h1>
+        </div>
+        <h2>Your Password Has Been Reset</h2>
+        <p>Dear {user.FirstName} {user.LastName},</p>
+        <p>As requested, your password for Roovia Estate Management has been reset.</p>
+        <div class='password-container'>
+            <p><strong>Your temporary password is:</strong> {newPassword}</p>
+            <p>Please use this password to log in. You will be prompted to change your password upon first login.</p>
+        </div>
+        <p>For security reasons, please change this password immediately after logging in.</p>
+        <a href='https://roovia.co.za/login' class='btn'>Login to Roovia</a>
+        <p style='margin-top: 30px; font-size: 12px; color: #666;'>If you did not request this password reset, please contact support immediately.</p>
     </div>
 </body>
 </html>";
+
+                var userEmail = user.EmailAddresses.FirstOrDefault(e => e.IsPrimary)?.EmailAddress ?? user.Email;
+                if (!string.IsNullOrEmpty(userEmail))
+                {
+                    await SendEmailAsync(userEmail, subject, body);
+                    _logger.LogInformation($"Password reset notification sent to {userEmail}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending password reset notification to user {user.Id}");
+                throw;
+            }
         }
 
-        private string GetVendorAssignmentTemplate(dynamic model)
+        public async Task SendVendorWelcomeEmailAsync(Vendor vendor)
         {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>New Maintenance Assignment</h2>
-    <p>Dear {model.VendorName},</p>
-    <p>You have been assigned a new maintenance ticket.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px; width: 100%;'>
-        <tr><td><strong>Ticket:</strong></td><td>{model.TicketNumber}</td></tr>
-        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
-        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
-        <tr><td><strong>Address:</strong></td><td>{model.PropertyAddress}</td></tr>
-        <tr><td><strong>Priority:</strong></td><td>{model.Priority}</td></tr>
-        <tr><td><strong>Scheduled:</strong></td><td>{model.ScheduledDate ?? "To be scheduled"}</td></tr>
-        <tr><td><strong>Contact:</strong></td><td>{model.ContactPerson}</td></tr>
-        <tr><td><strong>Access:</strong></td><td>{model.AccessInstructions ?? "Contact office"}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetPaymentReceivedTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Payment Received</h2>
-    <p>Dear {model.TenantName},</p>
-    <p>We have received your payment for {model.PropertyName}. Thank you!</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
-        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
-        <tr><td><strong>Balance:</strong></td><td>{model.Balance}</td></tr>
-        <tr><td><strong>Method:</strong></td><td>{model.PaymentMethod}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetPaymentReceivedOwnerTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Payment Received for Your Property</h2>
-    <p>Dear {model.OwnerName},</p>
-    <p>A payment has been received for {model.PropertyName}.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Tenant:</strong></td><td>{model.TenantName}</td></tr>
-        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
-        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetPaymentReminderTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Payment Reminder</h2>
-    <p>Dear {model.TenantName},</p>
-    <p>This is a reminder that your payment for {model.PropertyName} is due.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Amount Due:</strong></td><td>{model.AmountDue}</td></tr>
-        <tr><td><strong>Due Day:</strong></td><td>{model.DebitDay}th of the month</td></tr>
-        <tr><td><strong>Bank Details:</strong></td><td>{model.BankDetails}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetBeneficiaryPaymentTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Payment Processed</h2>
-    <p>Dear {model.BeneficiaryName},</p>
-    <p>Your payment has been processed successfully.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
-        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
-        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
-        <tr><td><strong>Transaction:</strong></td><td>{model.TransactionReference}</td></tr>
-        <tr><td><strong>Bank Account:</strong></td><td>{model.BankAccount}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetInspectionScheduledTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Inspection Scheduled</h2>
-    <p>An inspection has been scheduled for {model.PropertyName}.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.ScheduledDate}</td></tr>
-        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
-        <tr><td><strong>Note:</strong></td><td>{model.TenantRequired}</td></tr>
-    </table>
-</body>
-</html>";
-        }
-
-        private string GetInspectionCompletedTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Inspection Completed</h2>
-    <p>Dear {model.OwnerName},</p>
-    <p>The inspection for {model.PropertyName} has been completed.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.InspectionDate}</td></tr>
-        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
-        <tr><td><strong>Overall Rating:</strong></td><td>{model.OverallRating}</td></tr>
-        <tr><td><strong>Condition:</strong></td><td>{model.OverallCondition}</td></tr>
-        <tr><td><strong>Items Needing Maintenance:</strong></td><td>{model.ItemsRequiringMaintenance}</td></tr>
-        <tr><td><strong>Next Inspection:</strong></td><td>{model.NextInspectionDue}</td></tr>
-    </table>
-    <p><strong>Notes:</strong> {model.GeneralNotes}</p>
-</body>
-</html>";
-        }
-
-        private string GetInspectionReportTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Inspection Report Available</h2>
-    <p>The inspection report for {model.PropertyName} is now available.</p>
-    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
-        <tr><td><strong>Address:</strong></td><td>{model.PropertyAddress}</td></tr>
-        <tr><td><strong>Inspection Code:</strong></td><td>{model.InspectionCode}</td></tr>
-        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
-        <tr><td><strong>Date:</strong></td><td>{model.InspectionDate}</td></tr>
-        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
-        <tr><td><strong>Overall Rating:</strong></td><td>{model.OverallRating}</td></tr>
-        <tr><td><strong>Condition:</strong></td><td>{model.OverallCondition}</td></tr>
-    </table>
-    <p><a href='{model.ReportUrl}' style='background-color: #3B5BA9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Report</a></p>
-</body>
-</html>";
-        }
-
-        private string GetDefaultTemplate(dynamic model)
-        {
-            return $@"
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<body style='font-family: Arial, sans-serif;'>
-    <h2>Notification from Roovia Estate Management</h2>
-    <div style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
-        {Newtonsoft.Json.JsonConvert.SerializeObject(model, Newtonsoft.Json.Formatting.Indented)}
-    </div>
-</body>
-</html>";
-        }
-
-        private string GetNewsletterTemplate(string content)
-        {
-            return $@"
+            try
+            {
+                var subject = "Welcome to Roovia - Vendor Registration";
+                var body = @$"
 <!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <style type='text/css'>
-        body {{ margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; }}
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+        .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        .header {{ background-color: #3B5BA9; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -40px -40px 20px; }}
+        .details {{ background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+        .btn {{ display: inline-block; background-color: #3B5BA9; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 20px; }}
     </style>
 </head>
 <body>
-    <center>
-        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
-            <tr>
-                <td style='padding: 40px;'>
-                    <h1 style='color: #3B5BA9; text-align: center;'>Roovia Estate Management Newsletter</h1>
-                    <div style='margin: 30px 0;'>
-                        {content}
-                    </div>
-                    <hr style='border: 1px solid #eee;' />
-                    <p style='text-align: center; color: #666; font-size: 12px;'>
-                        © 2025 Roovia Estate Management. All rights reserved.<br />
-                        You received this email because you are subscribed to our newsletter.
-                    </p>
-                </td>
-            </tr>
-        </table>
-    </center>
+    <div class='container'>
+        <div class='header'>
+            <h1>Welcome to Roovia</h1>
+        </div>
+        <h2>Vendor Registration Confirmation</h2>
+        <p>Dear {vendor.Name},</p>
+        <p>Welcome to Roovia! You have been registered as a vendor in our estate management system.</p>
+        <div class='details'>
+            <h3>Your Vendor Information</h3>
+            <p><strong>Name:</strong> {vendor.Name}</p>
+            <p><strong>Contact Person:</strong> {vendor.ContactPerson}</p>
+            <p><strong>Specializations:</strong> {vendor.Specializations}</p>
+        </div>
+        <p>You will receive notifications about maintenance requests and assignments through this email address.</p>
+        <p>If you have any questions, please contact the property management office.</p>
+    </div>
 </body>
 </html>";
+
+                var vendorEmail = vendor.EmailAddresses.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
+                if (!string.IsNullOrEmpty(vendorEmail))
+                {
+                    await SendEmailAsync(vendorEmail, subject, body);
+                    _logger.LogInformation($"Vendor welcome email sent to {vendorEmail}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending welcome email to vendor {vendor.Id}");
+                throw;
+            }
         }
 
+        public async Task SendVendorInsuranceUpdateAsync(Vendor vendor)
+        {
+            try
+            {
+                bool isExpired = vendor.InsuranceExpiryDate.HasValue && vendor.InsuranceExpiryDate.Value < DateTime.Now;
+                bool isExpiringSoon = vendor.InsuranceExpiryDate.HasValue &&
+                                     vendor.InsuranceExpiryDate.Value > DateTime.Now &&
+                                     vendor.InsuranceExpiryDate.Value < DateTime.Now.AddDays(30);
 
+                string subject;
+                string statusMessage;
 
+                if (isExpired)
+                {
+                    subject = "IMPORTANT: Your Insurance Policy Has Expired";
+                    statusMessage = "Your insurance policy has <strong>expired</strong>. This may affect your ability to receive new assignments.";
+                }
+                else if (isExpiringSoon)
+                {
+                    subject = "REMINDER: Insurance Policy Expiring Soon";
+                    statusMessage = $"Your insurance policy will expire on {vendor.InsuranceExpiryDate?.ToString("d")}. Please renew it to continue receiving assignments.";
+                }
+                else
+                {
+                    subject = "Insurance Information Updated";
+                    statusMessage = $"Your insurance policy has been updated and is valid until {vendor.InsuranceExpiryDate?.ToString("d")}.";
+                }
+
+                var body = @$"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+        .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        .header {{ background-color: #3B5BA9; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -40px -40px 20px; }}
+        .alert {{ background-color: {(isExpired ? "#ffebee" : (isExpiringSoon ? "#fff3cd" : "#e8f5e9"))}; 
+                 padding: 15px; border-radius: 8px; 
+                 border-left: 4px solid {(isExpired ? "#f44336" : (isExpiringSoon ? "#ffc107" : "#4caf50"))}; margin: 20px 0; }}
+        .details {{ background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>Insurance Update</h1>
+        </div>
+        <h2>Insurance Policy Status</h2>
+        <p>Dear {vendor.Name},</p>
+        <div class='alert'>
+            <p>{statusMessage}</p>
+        </div>
+        <div class='details'>
+            <h3>Policy Details</h3>
+            <p><strong>Policy Number:</strong> {vendor.InsurancePolicyNumber}</p>
+            <p><strong>Expiry Date:</strong> {vendor.InsuranceExpiryDate?.ToString("d") ?? "Not specified"}</p>
+        </div>
+        <p>Please ensure your insurance remains current to maintain your active status with Roovia.</p>
+    </div>
+</body>
+</html>";
+
+                var vendorEmail = vendor.EmailAddresses.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
+                if (!string.IsNullOrEmpty(vendorEmail))
+                {
+                    await SendEmailAsync(vendorEmail, subject, body);
+                    _logger.LogInformation($"Insurance update notification sent to vendor {vendor.Id}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending insurance update notification to vendor {vendor.Id}");
+                throw;
+            }
+        }
+
+        // Registration and account emails
         public async Task SendRegistrationNotificationAsync(Company company, ApplicationUser user)
         {
             try
@@ -1220,11 +918,11 @@ namespace Roovia.Services.General
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Email:</strong></td>
-                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.EmailAddresses.First() + @"</td>
+                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.EmailAddresses.FirstOrDefault()?.EmailAddress + @"</td>
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Phone:</strong></td>
-                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.ContactNumbers.First() + @"</td>
+                                                    <td style='padding: 8px 0; color: #333333; font-family: Arial, sans-serif;'>" + company.ContactNumbers.FirstOrDefault()?.Number + @"</td>
                                                 </tr>
                                                 <tr>
                                                     <td style='padding: 8px 0; color: #666666; font-family: Arial, sans-serif;'><strong>Website:</strong></td>
@@ -2091,6 +1789,489 @@ namespace Roovia.Services.General
                 _logger.LogError(ex, $"Error sending confirmation link to {email}");
                 throw;
             }
+        }
+
+        // Template helpers
+        private string GetEmailTemplate(string templateName, object model)
+        {
+            // In a production environment, this would load templates from files or database
+            // For now, using inline templates
+            return templateName switch
+            {
+                "PropertyCreated" => GetPropertyCreatedTemplate(model),
+                "TenantWelcome" => GetTenantWelcomeTemplate(model),
+                "LeaseExpiryReminder" => GetLeaseExpiryReminderTemplate(model),
+                "RentDueReminder" => GetRentDueReminderTemplate(model),
+                "MaintenanceTicketCreated" => GetMaintenanceTicketCreatedTemplate(model),
+                "MaintenanceCompleted" => GetMaintenanceCompletedTemplate(model),
+                "MaintenanceTicketUpdated" => GetMaintenanceTicketUpdatedTemplate(model),
+                "VendorAssignment" => GetVendorAssignmentTemplate(model),
+                "PaymentReceived" => GetPaymentReceivedTemplate(model),
+                "PaymentReceivedOwner" => GetPaymentReceivedOwnerTemplate(model),
+                "PaymentReminder" => GetPaymentReminderTemplate(model),
+                "BeneficiaryPayment" => GetBeneficiaryPaymentTemplate(model),
+                "InspectionScheduled" => GetInspectionScheduledTemplate(model),
+                "InspectionCompleted" => GetInspectionCompletedTemplate(model),
+                "InspectionReport" => GetInspectionReportTemplate(model),
+                _ => GetDefaultTemplate(model)
+            };
+        }
+
+        // Individual template methods (implement these based on your design requirements)
+        private string GetPropertyCreatedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        /* Your existing styles */
+        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
+        .responsive-table {{ width: 100% !important; }}
+    </style>
+</head>
+<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
+    <center>
+        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
+            <tr>
+                <td style='padding: 40px;'>
+                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>New Property Added</h1>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.OwnerName},</p>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>
+                        Your property has been successfully added to our system.
+                    </p>
+                    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Property Details</h3>
+                        <p><strong>Name:</strong> {model.PropertyName}</p>
+                        <p><strong>Code:</strong> {model.PropertyCode}</p>
+                        <p><strong>Address:</strong> {model.Address}</p>
+                        <p><strong>Rental Amount:</strong> {model.RentalAmount}</p>
+                        <p><strong>Status:</strong> {model.Status}</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>";
+        }
+
+        private string GetTenantWelcomeTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
+        .responsive-table {{ width: 100% !important; }}
+    </style>
+</head>
+<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
+    <center>
+        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
+            <tr>
+                <td style='padding: 40px;'>
+                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Welcome to Your New Home!</h1>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.TenantName},</p>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>
+                        Welcome to {model.PropertyName}! We're excited to have you as our tenant.
+                    </p>
+                    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Lease Information</h3>
+                        <p><strong>Property:</strong> {model.PropertyName}</p>
+                        <p><strong>Address:</strong> {model.Address}</p>
+                        <p><strong>Lease Start:</strong> {model.LeaseStartDate}</p>
+                        <p><strong>Lease End:</strong> {model.LeaseEndDate}</p>
+                        <p><strong>Monthly Rent:</strong> {model.RentAmount}</p>
+                        <p><strong>Debit Day:</strong> {model.DebitDay}th of each month</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>";
+        }
+
+        private string GetLeaseExpiryReminderTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        body, #bodyTable {{ margin: 0; padding: 0; width: 100% !important; }}
+        .responsive-table {{ width: 100% !important; }}
+    </style>
+</head>
+<body style='margin: 0; padding: 0; background-color: #F5F5F5;'>
+    <center>
+        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
+            <tr>
+                <td style='padding: 40px;'>
+                    <h1 style='color: #3B5BA9; font-family: Arial, sans-serif;'>Lease Expiry Reminder</h1>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>Dear {model.TenantName},</p>
+                    <p style='font-family: Arial, sans-serif; color: #666666;'>
+                        This is a friendly reminder that your lease for {model.PropertyName} will expire in {model.DaysUntilExpiry} days.
+                    </p>
+                    <div style='background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;'>
+                        <p><strong>Lease End Date:</strong> {model.LeaseEndDate}</p>
+                        <p>Please contact us at {model.ContactEmail} to discuss renewal options.</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>";
+        }
+
+        private string GetRentDueReminderTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <style type='text/css'>
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+    </style>
+</head>
+<body>
+    <h2>Rent Payment Due</h2>
+    <p>Dear {model.TenantName},</p>
+    <p>This is a reminder that your rent payment for {model.PropertyName} is due.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Amount Due:</strong></td><td>{model.Amount}</td></tr>
+        <tr><td><strong>Due Date:</strong></td><td>{model.DueDate}</td></tr>
+        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
+    </table>
+    <p>Please ensure payment is made on time to avoid late fees.</p>
+</body>
+</html>";
+        }
+
+        private string GetMaintenanceTicketCreatedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <style type='text/css'>
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+        .priority-high {{ color: #d32f2f; }}
+        .priority-medium {{ color: #f57c00; }}
+        .priority-low {{ color: #388e3c; }}
+    </style>
+</head>
+<body>
+    <h2>Maintenance Ticket Created</h2>
+    <p>A new maintenance ticket has been created for {model.PropertyName}.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px; width: 100%;'>
+        <tr><td><strong>Ticket Number:</strong></td><td>{model.TicketNumber}</td></tr>
+        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
+        <tr><td><strong>Description:</strong></td><td>{model.Description}</td></tr>
+        <tr><td><strong>Priority:</strong></td><td class='priority-{model.Priority?.ToLower()}'>{model.Priority}</td></tr>
+        <tr><td><strong>Category:</strong></td><td>{model.Category}</td></tr>
+        <tr><td><strong>Scheduled Date:</strong></td><td>{model.ScheduledDate ?? "To be scheduled"}</td></tr>
+    </table>
+    <p>We will keep you updated on the progress of this maintenance request.</p>
+</body>
+</html>";
+        }
+
+        private string GetMaintenanceCompletedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <style type='text/css'>
+        body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; }}
+    </style>
+</head>
+<body>
+    <h2>Maintenance Completed</h2>
+    <p>The maintenance work for ticket {model.TicketNumber} has been completed.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
+        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
+        <tr><td><strong>Completed Date:</strong></td><td>{model.CompletedDate}</td></tr>
+        <tr><td><strong>Issue Resolved:</strong></td><td>{model.IssueResolved}</td></tr>
+        <tr><td><strong>Completion Notes:</strong></td><td>{model.CompletionNotes}</td></tr>
+        <tr><td><strong>Cost:</strong></td><td>{model.ActualCost}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetMaintenanceTicketUpdatedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Maintenance Ticket Updated</h2>
+    <p>Ticket {model.TicketNumber} has been updated.</p>
+    <div style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <p><strong>Update:</strong> {model.UpdateMessage}</p>
+        <p><strong>Status:</strong> {model.Status}</p>
+        <p><strong>Updated:</strong> {model.UpdatedDate}</p>
+    </div>
+</body>
+</html>";
+        }
+
+        private string GetVendorAssignmentTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>New Maintenance Assignment</h2>
+    <p>Dear {model.VendorName},</p>
+    <p>You have been assigned a new maintenance ticket.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px; width: 100%;'>
+        <tr><td><strong>Ticket:</strong></td><td>{model.TicketNumber}</td></tr>
+        <tr><td><strong>Title:</strong></td><td>{model.Title}</td></tr>
+        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
+        <tr><td><strong>Address:</strong></td><td>{model.PropertyAddress}</td></tr>
+        <tr><td><strong>Priority:</strong></td><td>{model.Priority}</td></tr>
+        <tr><td><strong>Scheduled:</strong></td><td>{model.ScheduledDate ?? "To be scheduled"}</td></tr>
+        <tr><td><strong>Contact:</strong></td><td>{model.ContactPerson}</td></tr>
+        <tr><td><strong>Access:</strong></td><td>{model.AccessInstructions ?? "Contact office"}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetPaymentReceivedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Payment Received</h2>
+    <p>Dear {model.TenantName},</p>
+    <p>We have received your payment for {model.PropertyName}. Thank you!</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
+        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
+        <tr><td><strong>Balance:</strong></td><td>{model.Balance}</td></tr>
+        <tr><td><strong>Method:</strong></td><td>{model.PaymentMethod}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetPaymentReceivedOwnerTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Payment Received for Your Property</h2>
+    <p>Dear {model.OwnerName},</p>
+    <p>A payment has been received for {model.PropertyName}.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Tenant:</strong></td><td>{model.TenantName}</td></tr>
+        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
+        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetPaymentReminderTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Payment Reminder</h2>
+    <p>Dear {model.TenantName},</p>
+    <p>This is a reminder that your payment for {model.PropertyName} is due.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Amount Due:</strong></td><td>{model.AmountDue}</td></tr>
+        <tr><td><strong>Due Day:</strong></td><td>{model.DebitDay}th of the month</td></tr>
+        <tr><td><strong>Bank Details:</strong></td><td>{model.BankDetails}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetBeneficiaryPaymentTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Payment Processed</h2>
+    <p>Dear {model.BeneficiaryName},</p>
+    <p>Your payment has been processed successfully.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Reference:</strong></td><td>{model.PaymentReference}</td></tr>
+        <tr><td><strong>Amount:</strong></td><td>{model.Amount}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.PaymentDate}</td></tr>
+        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
+        <tr><td><strong>Transaction:</strong></td><td>{model.TransactionReference}</td></tr>
+        <tr><td><strong>Bank Account:</strong></td><td>{model.BankAccount}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetInspectionScheduledTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Inspection Scheduled</h2>
+    <p>An inspection has been scheduled for {model.PropertyName}.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.ScheduledDate}</td></tr>
+        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
+        <tr><td><strong>Note:</strong></td><td>{model.TenantRequired}</td></tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string GetInspectionCompletedTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Inspection Completed</h2>
+    <p>Dear {model.OwnerName},</p>
+    <p>The inspection for {model.PropertyName} has been completed.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.InspectionDate}</td></tr>
+        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
+        <tr><td><strong>Overall Rating:</strong></td><td>{model.OverallRating}</td></tr>
+        <tr><td><strong>Condition:</strong></td><td>{model.OverallCondition}</td></tr>
+        <tr><td><strong>Items Needing Maintenance:</strong></td><td>{model.ItemsRequiringMaintenance}</td></tr>
+        <tr><td><strong>Next Inspection:</strong></td><td>{model.NextInspectionDue}</td></tr>
+    </table>
+    <p><strong>Notes:</strong> {model.GeneralNotes}</p>
+</body>
+</html>";
+        }
+
+        private string GetInspectionReportTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Inspection Report Available</h2>
+    <p>The inspection report for {model.PropertyName} is now available.</p>
+    <table style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        <tr><td><strong>Property:</strong></td><td>{model.PropertyName}</td></tr>
+        <tr><td><strong>Address:</strong></td><td>{model.PropertyAddress}</td></tr>
+        <tr><td><strong>Inspection Code:</strong></td><td>{model.InspectionCode}</td></tr>
+        <tr><td><strong>Type:</strong></td><td>{model.InspectionType}</td></tr>
+        <tr><td><strong>Date:</strong></td><td>{model.InspectionDate}</td></tr>
+        <tr><td><strong>Inspector:</strong></td><td>{model.InspectorName}</td></tr>
+        <tr><td><strong>Overall Rating:</strong></td><td>{model.OverallRating}</td></tr>
+        <tr><td><strong>Condition:</strong></td><td>{model.OverallCondition}</td></tr>
+    </table>
+    <p><a href='{model.ReportUrl}' style='background-color: #3B5BA9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Report</a></p>
+</body>
+</html>";
+        }
+
+        private string GetDefaultTemplate(dynamic model)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+</head>
+<body style='font-family: Arial, sans-serif;'>
+    <h2>Notification from Roovia Estate Management</h2>
+    <div style='background-color: #f8f9fa; padding: 15px; border-radius: 8px;'>
+        {Newtonsoft.Json.JsonConvert.SerializeObject(model, Newtonsoft.Json.Formatting.Indented)}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GetNewsletterTemplate(string content)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        body {{ margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; }}
+    </style>
+</head>
+<body>
+    <center>
+        <table width='600' style='background-color: #ffffff; margin: 20px auto; border-radius: 8px;'>
+            <tr>
+                <td style='padding: 40px;'>
+                    <h1 style='color: #3B5BA9; text-align: center;'>Roovia Estate Management Newsletter</h1>
+                    <div style='margin: 30px 0;'>
+                        {content}
+                    </div>
+                    <hr style='border: 1px solid #eee;' />
+                    <p style='text-align: center; color: #666; font-size: 12px;'>
+                        © 2025 Roovia Estate Management. All rights reserved.<br />
+                        You received this email because you are subscribed to our newsletter.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>";
         }
     }
 }
