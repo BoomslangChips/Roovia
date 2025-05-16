@@ -16,6 +16,7 @@ using Roovia.Models.UserCompanyModels;
 using Microsoft.EntityFrameworkCore.Internal;
 using Roovia.Services.General;
 using Roovia.Services;
+using Roovia;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -100,21 +101,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddDefaultTokenProviders()
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
-// Register domain services
-// Register domain services
-builder.Services.AddScoped<IUser, UserService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-
-// Register business services
-builder.Services.AddScoped<IProperty, PropertyService>();
-builder.Services.AddScoped<IPropertyOwner, PropertyOwnerService>();
-builder.Services.AddScoped<ITenant, TenantService>();
-builder.Services.AddScoped<IBeneficiary, BeneficiaryService>();
-builder.Services.AddScoped<IVendor, VendorService>();
-builder.Services.AddScoped<IInspection, InspectionService>();
-builder.Services.AddScoped<IMaintenance, MaintenanceService>();
-builder.Services.AddScoped<IPayment, PaymentService>();
-builder.Services.AddScoped<ICdnService, CdnService>();
+builder.Services.RegisterApplicationServices();
 // Register utility services
 builder.Services.AddScoped<ToastService>();
 
