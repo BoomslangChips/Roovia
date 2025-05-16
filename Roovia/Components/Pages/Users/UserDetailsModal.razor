@@ -1,7 +1,6 @@
 ﻿@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
-@using Roovia.Components.Elements.Forms
 @using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
@@ -18,912 +17,528 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
 
-<RVModal IsVisible="true"
-         Title="User Details"
-         Icon="fa-light fa-user"
-         OnClose="OnClose"
-         OnCancel="OnClose"
-         DefaultFooter="false"
-         Size="lg">
-    <ChildContent>
+<div class="ud-modal-backdrop" @onclick="OnClose"></div>
+
+<div class="ud-modal-wrapper">
+    <div class="ud-modal-header">
+        <div class="ud-modal-title">
+            <i class="fa-light fa-user"></i>
+            <span>User Details</span>
+        </div>
+        <button class="ud-close-button" @onclick="OnClose">
+            <i class="fa-light fa-times"></i>
+        </button>
+    </div>
+
+    <div class="ud-modal-body">
         @if (isLoading)
         {
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <h3 class="loading-text">Loading user details...</h3>
+            <div class="ud-loading">
+                <div class="ud-spinner"></div>
+                <span class="ud-loading-text">Loading user details...</span>
             </div>
         }
         else if (user != null)
         {
-            <div class="user-details-container">
-                <div class="user-header">
-                    <div class="user-header-flex">
-                        <div class="user-avatar-wrapper">
-                            @if (user.ProfilePictureId.HasValue && user.ProfilePicture != null)
-                            {
-                                <div class="user-avatar-large with-image">
-                                    <img src="@user.ProfilePicture.Url" alt="@GetUserDisplayName()" />
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="user-avatar-large">
-                                    @if (string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName))
-                                    {
-                                        <span>@(user.UserName?.Substring(0, 1).ToUpper() ?? "?")</span>
-                                    }
-                                    else
-                                    {
-                                        <span>@(user.FirstName?.Substring(0, 1).ToUpper() ?? "")@(user.LastName?.Substring(0, 1).ToUpper() ?? "")</span>
-                                    }
-                                </div>
-                            }
-                            <div class="status-indicator @(user.IsActive ? "active" : "inactive")"></div>
+            <div class="ud-profile">
+                <div class="ud-profile-header">
+                    <div class="ud-avatar-container">
+                        @if (user.ProfilePictureId.HasValue && user.ProfilePicture != null)
+                        {
+                            <div class="ud-avatar ud-has-image">
+                                <img src="@user.ProfilePicture.Url" alt="@GetUserDisplayName()" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ud-avatar">
+                                @if (string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName))
+                                {
+                                    @(user.UserName?.Substring(0, 1).ToUpper() ?? "?")
+                                }
+                                else
+                                {
+                                    @(user.FirstName?.Substring(0, 1).ToUpper() ?? "")
+                                    @(user.LastName?.Substring(0, 1).ToUpper() ?? "")
+                                }
+                            </div>
+                        }
+                        <div class="ud-status-indicator @(user.IsActive ? "ud-active" : "ud-inactive")"></div>
+                    </div>
+
+                    <div class="ud-user-info">
+                        <h2 class="ud-user-name">@GetUserDisplayName()</h2>
+
+                        <div class="ud-badges-container">
+                            <span class="ud-role-badge @GetRoleBadgeClass(user.Role)">
+                                <i class="@GetRoleIconClass(user.Role)"></i>
+                                @GetRoleDisplayName(user.Role)
+                            </span>
+                            <span class="ud-status-badge @(user.IsActive ? "ud-active" : "ud-inactive")">
+                                <i class="fa-light fa-@(user.IsActive ? "check-circle" : "times-circle")"></i>
+                                @(user.IsActive ? "Active" : "Inactive")
+                            </span>
                         </div>
 
-                        <div class="user-header-info">
-                            <h2>@GetUserDisplayName()</h2>
-
-                            <div class="user-meta">
-                                @if (!string.IsNullOrEmpty(user.JobTitle))
-                                {
-                                    <span class="user-meta-item"><i class="fa-light fa-briefcase"></i>@user.JobTitle</span>
-                                }
-                                @if (!string.IsNullOrEmpty(user.Email))
-                                {
-                                    <span class="user-meta-item"><i class="fa-light fa-envelope"></i>@user.Email</span>
-                                }
-                                @if (!string.IsNullOrEmpty(user.PhoneNumber))
-                                {
-                                    <span class="user-meta-item"><i class="fa-light fa-phone"></i>@user.PhoneNumber</span>
-                                }
-                                @if (user.CreatedDate.HasValue)
-                                {
-                                    <span class="user-meta-item"><i class="fa-light fa-calendar-alt"></i>Joined @user.CreatedDate?.ToString("MMM yyyy")</span>
-                                }
-                            </div>
-
-                            <div class="user-badges">
-                                <span class="role-badge @PermissionFormat.GetRoleBadgeClass(user.Role.GetValueOrDefault())">
-                                    <i class="@PermissionFormat.GetRoleIconSmall(user.Role)"></i>
-                                    @PermissionFormat.GetRoleDisplayName(user.Role.GetValueOrDefault())
-                                </span>
-                                <span class="status-badge @(user.IsActive ? "status-active" : "status-inactive")">
-                                    <i class="fa-light fa-@(user.IsActive ? "check-circle" : "times-circle")"></i>
-                                    @(user.IsActive ? "Active" : "Inactive")
-                                </span>
-                                @if (!string.IsNullOrEmpty(user.Department))
-                                {
-                                    <span class="department-badge">
-                                        <i class="fa-light fa-building-user"></i>
-                                        @user.Department
-                                    </span>
-                                }
-                            </div>
+                        <div class="ud-meta-list">
+                            @if (!string.IsNullOrEmpty(user.JobTitle))
+                            {
+                                <span class="ud-meta-item"><i class="fa-light fa-briefcase"></i>@user.JobTitle</span>
+                            }
+                            @if (!string.IsNullOrEmpty(user.Email))
+                            {
+                                <span class="ud-meta-item"><i class="fa-light fa-envelope"></i>@user.Email</span>
+                            }
+                            @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                            {
+                                <span class="ud-meta-item"><i class="fa-light fa-phone"></i>@user.PhoneNumber</span>
+                            }
                         </div>
                     </div>
 
-                    <div class="user-header-actions">
-                        <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit Profile"
-                                  OnClick="HandleEdit" />
+                    <div class="ud-user-actions">
+                        <button class="ud-button ud-button-primary" @onclick="HandleEdit">
+                            <i class="fa-light fa-edit"></i>
+                            <span>Edit</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="user-details-tabs">
-                    <RVTab Tabs="detailTabs" Size="sm" OnTabChange="SetActiveTabFromEvent">
-                        <RVTabPanel TabId="info" IsActive='activeTab == "info"'>
-                            <div class="detail-section">
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-user-circle"></i> Basic Information</h4>
+                <div class="ud-tabs-container">
+                    <div class="ud-tabs-header">
+                        @foreach (var tab in tabs)
+                        {
+                            <button class="ud-tab-button @(activeTab == tab.Id ? "ud-active" : "")"
+                                    @onclick="() => SetActiveTab(tab.Id)">
+                                <i class="@tab.Icon ud-icon"></i>
+                                <span class="ud-text">@tab.Title</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="ud-tab-content">
+                        @* Basic Info Tab *@
+                        <div class="ud-tab-pane @(activeTab == "info" ? "ud-active" : "")">
+                            <div class="ud-card-grid">
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-user-circle ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Basic Information</h3>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-user"></i> Username</div>
-                                            <div class="detail-value">@user.UserName</div>
+                                    <div class="ud-card-body">
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Username</span>
+                                            <span class="ud-info-value">@user.UserName</span>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-id-card"></i> First Name</div>
-                                            <div class="detail-value">@(string.IsNullOrEmpty(user.FirstName) ? "-" : user.FirstName)</div>
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">First Name</span>
+                                            <span class="ud-info-value">@(string.IsNullOrEmpty(user.FirstName) ? "-" : user.FirstName)</span>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-id-card"></i> Last Name</div>
-                                            <div class="detail-value">@(string.IsNullOrEmpty(user.LastName) ? "-" : user.LastName)</div>
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Last Name</span>
+                                            <span class="ud-info-value">@(string.IsNullOrEmpty(user.LastName) ? "-" : user.LastName)</span>
                                         </div>
                                         @if (!string.IsNullOrEmpty(user.IdNumber))
                                         {
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-id-badge"></i> ID Number</div>
-                                                <div class="detail-value">@user.IdNumber</div>
+                                            <div class="ud-info-group">
+                                                <span class="ud-info-label">ID Number</span>
+                                                <span class="ud-info-value">@user.IdNumber</span>
                                             </div>
                                         }
                                         @if (!string.IsNullOrEmpty(user.EmployeeNumber))
                                         {
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-hashtag"></i> Employee Number</div>
-                                                <div class="detail-value">@user.EmployeeNumber</div>
+                                            <div class="ud-info-group">
+                                                <span class="ud-info-label">Employee #</span>
+                                                <span class="ud-info-value">@user.EmployeeNumber</span>
                                             </div>
                                         }
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-fingerprint"></i> User ID</div>
-                                            <div class="detail-value">@user.Id</div>
-                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-shield-check"></i> Account Status</h4>
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-shield-check ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Account Status</h3>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-toggle-on"></i> Account Status</div>
-                                            <div class="detail-value">
-                                                <span class="status-badge @(user.IsActive ? "status-active" : "status-inactive")">
-                                                    <i class="fa-light fa-@(user.IsActive ? "check-circle" : "times-circle")"></i>
-                                                    @(user.IsActive ? "Active" : "Inactive")
-                                                </span>
-                                            </div>
+                                    <div class="ud-card-body">
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Account Status</span>
+                                            <span class="ud-status-badge @(user.IsActive ? "ud-active" : "ud-inactive")">
+                                                @(user.IsActive ? "Active" : "Inactive")
+                                            </span>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-envelope-check"></i> Email Confirmed</div>
-                                            <div class="detail-value">
-                                                <span class="status-badge @(user.EmailConfirmed ? "status-active" : "status-inactive")">
-                                                    <i class="fa-light fa-@(user.EmailConfirmed ? "check-circle" : "times-circle")"></i>
-                                                    @(user.EmailConfirmed ? "Yes" : "No")
-                                                </span>
-                                            </div>
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Email Confirmed</span>
+                                            <span class="ud-status-badge @(user.EmailConfirmed ? "ud-active" : "ud-inactive")">
+                                                @(user.EmailConfirmed ? "Yes" : "No")
+                                            </span>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-lock-keyhole"></i> Two-Factor Auth</div>
-                                            <div class="detail-value">
-                                                <span class="status-badge @(user.TwoFactorEnabled ? "status-active" : "status-inactive")">
-                                                    <i class="fa-light fa-@(user.TwoFactorEnabled ? "check-circle" : "times-circle")"></i>
-                                                    @(user.TwoFactorEnabled ? "Enabled" : "Disabled")
-                                                </span>
-                                            </div>
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Two-Factor Auth</span>
+                                            <span class="ud-status-badge @(user.TwoFactorEnabled ? "ud-active" : "ud-inactive")">
+                                                @(user.TwoFactorEnabled ? "Enabled" : "Disabled")
+                                            </span>
                                         </div>
-                                        @if (user.IsTwoFactorRequired)
-                                        {
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-mobile-screen"></i> Preferred 2FA Method</div>
-                                                <div class="detail-value">
-                                                    @if (!string.IsNullOrEmpty(user.PreferredTwoFactorMethod))
-                                                    {
-                                                        <span class="status-badge status-info">
-                                                            <i class="fa-light fa-@GetTwoFactorMethodIcon(user.PreferredTwoFactorMethod)"></i>
-                                                            @user.PreferredTwoFactorMethod
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>Not specified</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-key-skeleton"></i> Password Change Required</div>
-                                            <div class="detail-value">
-                                                <span class="status-badge @(user.RequireChangePasswordOnLogin ? "status-active" : "status-inactive")">
-                                                    <i class="fa-light fa-@(user.RequireChangePasswordOnLogin ? "check-circle" : "times-circle")"></i>
-                                                    @(user.RequireChangePasswordOnLogin ? "Yes" : "No")
-                                                </span>
-                                            </div>
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Created On</span>
+                                            <span class="ud-info-value">@(user.CreatedDate?.ToString("dd MMM yyyy") ?? "-")</span>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
-                                            <div class="detail-value">@(user.CreatedDate?.ToString("dd MMM yyyy, HH:mm") ?? "-")</div>
-                                        </div>
-                                        @if (user.UpdatedDate.HasValue)
-                                        {
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
-                                                <div class="detail-value">@user.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
-                                            </div>
-                                        }
                                         @if (user.LastLoginDate.HasValue)
                                         {
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-clock-rotate-left"></i> Last Login</div>
-                                                <div class="detail-value">
-                                                    @user.LastLoginDate?.ToString("dd MMM yyyy, HH:mm")
-                                                    @if (!string.IsNullOrEmpty(user.LastLoginIpAddress))
-                                                    {
-                                                        <span class="ip-address">(@user.LastLoginIpAddress)</span>
-                                                    }
-                                                </div>
+                                            <div class="ud-info-group">
+                                                <span class="ud-info-label">Last Login</span>
+                                                <span class="ud-info-value">@user.LastLoginDate?.ToString("dd MMM yyyy")</span>
                                             </div>
                                         }
                                     </div>
                                 </div>
                             </div>
-                        </RVTabPanel>
+                        </div>
 
-                        <RVTabPanel TabId="contact" IsActive='activeTab == "contact"'>
-                            <div class="detail-section">
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
+                        @* Contact Tab *@
+                        <div class="ud-tab-pane @(activeTab == "contact" ? "ud-active" : "")">
+                            <div class="ud-card-grid">
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-address-book ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Contact Information</h3>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-envelope"></i> Primary Email</div>
-                                            <div class="detail-value email-value">
-                                                <a href="mailto:@user.Email"><i class="fa-light fa-envelope"></i> @user.Email</a>
-                                            </div>
+                                    <div class="ud-card-body">
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Primary Email</span>
+                                            <a href="mailto:@user.Email" class="ud-info-value ud-email">
+                                                <i class="fa-light fa-envelope"></i> @user.Email
+                                            </a>
                                         </div>
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-phone"></i> Primary Phone</div>
-                                            <div class="detail-value phone-value">
-                                                @if (!string.IsNullOrEmpty(user.PhoneNumber))
-                                                {
-                                                    <a href="tel:@user.PhoneNumber"><i class="fa-light fa-phone"></i> @user.PhoneNumber</a>
-                                                }
-                                                else
-                                                {
-                                                    <span>-</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-envelope-open"></i> Additional Email Addresses</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        @if (user.EmailAddresses != null && user.EmailAddresses.Any(e => !e.IsPrimary))
-                                        {
-                                            <div class="contact-info">
-                                                @foreach (var email in user.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
-                                                {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label">
-                                                            <i class="fa-light fa-tag"></i>
-                                                            @(string.IsNullOrEmpty(email.Description) ? "Email" : email.Description)
-                                                        </div>
-                                                        <div class="detail-value email-value">
-                                                            <a href="mailto:@email.EmailAddress"><i class="fa-light fa-envelope"></i> @email.EmailAddress</a>
-                                                            @if (!email.IsActive)
-                                                            {
-                                                                <span class="status-badge status-inactive">
-                                                                    <i class="fa-light fa-times-circle"></i> Inactive
-                                                                </span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-inbox-empty"></i>
-                                                <p>No additional email addresses</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-phone-plus"></i> Additional Phone Numbers</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        @if (user.ContactNumbers != null && user.ContactNumbers.Any(c => !c.IsPrimary))
-                                        {
-                                            <div class="contact-info">
-                                                @foreach (var phone in user.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
-                                                {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label">
-                                                            <i class="fa-light fa-tag"></i>
-                                                            @if (!string.IsNullOrEmpty(phone.Description))
-                                                            {
-                                                                @phone.Description
-                                                            }
-                                                            else if (phone.ContactNumberType != null)
-                                                            {
-                                                                @phone.ContactNumberType.Name
-                                                            }
-                                                            else
-                                                            {
-                                                                <span>Phone</span>
-                                                            }
-                                                        </div>
-                                                        <div class="detail-value phone-value">
-                                                            <a href="tel:@phone.Number"><i class="fa-light fa-phone"></i> @phone.Number</a>
-                                                            @if (!phone.IsActive)
-                                                            {
-                                                                <span class="status-badge status-inactive">
-                                                                    <i class="fa-light fa-times-circle"></i> Inactive
-                                                                </span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-phone-slash"></i>
-                                                <p>No additional phone numbers</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </RVTabPanel>
-
-                        <RVTabPanel TabId="company" IsActive='activeTab == "company"'>
-                            <div class="detail-section">
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-building"></i> Company & Branch</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-building"></i> Company</div>
-                                            <div class="detail-value">
-                                                @if (user.Company != null)
-                                                {
-                                                    <div class="company-info">
-                                                        @if (user.Company.MainLogo != null)
-                                                        {
-                                                            <div class="company-logo">
-                                                                <img src="@user.Company.MainLogo.Url" alt="@user.Company.Name" />
-                                                            </div>
-                                                        }
-                                                        <span class="company-name"><i class="fa-light fa-building"></i> @user.Company.Name</span>
-                                                        @if (!user.Company.IsActive)
-                                                        {
-                                                            <span class="status-badge status-inactive">
-                                                                <i class="fa-light fa-times-circle"></i> Inactive
-                                                            </span>
-                                                        }
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <span>-</span>
-                                                }
-                                            </div>
-                                        </div>
-
-                                        <div class="detail-row">
-                                            <div class="detail-label"><i class="fa-light fa-code-branch"></i> Branch</div>
-                                            <div class="detail-value">
-                                                @if (user.Branch != null)
-                                                {
-                                                    <div class="branch-info">
-                                                        @if (user.Branch.MainLogo != null)
-                                                        {
-                                                            <div class="branch-logo">
-                                                                <img src="@user.Branch.MainLogo.Url" alt="@user.Branch.Name" />
-                                                            </div>
-                                                        }
-                                                        <span class="branch-name"><i class="fa-light fa-code-branch"></i> @user.Branch.Name</span>
-                                                        @if (!user.Branch.IsActive)
-                                                        {
-                                                            <span class="status-badge status-inactive">
-                                                                <i class="fa-light fa-times-circle"></i> Inactive
-                                                            </span>
-                                                        }
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <span>-</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                @if (user.Company != null)
-                                {
-                                    <div class="detail-card">
-                                        <div class="card-header">
-                                            <h4><i class="fa-light fa-building-user"></i> Company Details</h4>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-id-card"></i> Registration Number</div>
-                                                <div class="detail-value">@(string.IsNullOrEmpty(user.Company.RegistrationNumber) ? "-" : user.Company.RegistrationNumber)</div>
-                                            </div>
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-receipt"></i> VAT Number</div>
-                                                <div class="detail-value">@(string.IsNullOrEmpty(user.Company.VatNumber) ? "-" : user.Company.VatNumber)</div>
-                                            </div>
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-globe"></i> Website</div>
-                                                <div class="detail-value">
-                                                    @if (!string.IsNullOrEmpty(user.Company.Website))
-                                                    {
-                                                        <a href="@user.Company.Website" target="_blank">
-                                                            <i class="fa-light fa-globe"></i> @user.Company.Website
-                                                        </a>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>-</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="detail-row">
-                                                <div class="detail-label"><i class="fa-light fa-address-card"></i> Contact</div>
-                                                <div class="detail-value">
-                                                    @{
-                                                        var primaryEmail = user.Company.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
-                                                        var primaryPhone = user.Company.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
-                                                    }
-
-                                                    @if (primaryEmail != null || primaryPhone != null)
-                                                    {
-                                                        <div class="contact-info">
-                                                            @if (primaryEmail != null)
-                                                            {
-                                                                <div class="email">
-                                                                    <i class="fa-light fa-envelope"></i>
-                                                                    <a href="mailto:@primaryEmail.EmailAddress">@primaryEmail.EmailAddress</a>
-                                                                </div>
-                                                            }
-
-                                                            @if (primaryPhone != null)
-                                                            {
-                                                                <div class="phone">
-                                                                    <i class="fa-light fa-phone"></i>
-                                                                    <a href="tel:@primaryPhone.Number">@primaryPhone.Number</a>
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>-</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-
-                                @if (user.Branch != null)
-                                {
-                                    <div class="detail-card">
-                                        <div class="card-header">
-                                            <h4><i class="fa-light fa-map-marker-alt"></i> Branch Address</h4>
-                                        </div>
-                                        <div class="card-body">
-                                            @if (user.Branch.Address != null)
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Primary Phone</span>
+                                            @if (!string.IsNullOrEmpty(user.PhoneNumber))
                                             {
-                                                <div class="address-display">
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.ComplexName))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-building"></i> @user.Branch.Address.ComplexName</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.BuildingName))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-building"></i> @user.Branch.Address.BuildingName</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.UnitNumber))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-door-closed"></i> Unit @user.Branch.Address.UnitNumber</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Street))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-road"></i> @user.Branch.Address.Street</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Suburb))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-map"></i> @user.Branch.Address.Suburb</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.City))
-                                                    {
-                                                        <div class="address-line">
-                                                            <i class="fa-light fa-city"></i>
-                                                            @user.Branch.Address.City@(!string.IsNullOrEmpty(user.Branch.Address.Province) ? $", {user.Branch.Address.Province}" : "")
-                                                        </div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.PostalCode))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-mailbox"></i> @user.Branch.Address.PostalCode</div>
-                                                    }
-
-                                                    @if (!string.IsNullOrEmpty(user.Branch.Address.Country))
-                                                    {
-                                                        <div class="address-line"><i class="fa-light fa-globe"></i> @user.Branch.Address.Country</div>
-                                                    }
-                                                </div>
+                                                <a href="tel:@user.PhoneNumber" class="ud-info-value ud-phone">
+                                                    <i class="fa-light fa-phone"></i> @user.PhoneNumber
+                                                </a>
                                             }
                                             else
                                             {
-                                                <div class="empty-message">
-                                                    <i class="fa-light fa-map-marker-slash"></i>
-                                                    <p>No address information available</p>
-                                                </div>
+                                                <span class="ud-info-value">-</span>
                                             }
                                         </div>
                                     </div>
-                                }
-                            </div>
-                        </RVTabPanel>
-
-                        <RVTabPanel TabId="roles" IsActive='activeTab == "roles"'>
-                            <div class="detail-section">
-                                <div class="role-info-card">
-                                    <div class="role-detail">
-                                        <div class="role-icon">
-                                            <i class="@PermissionFormat.GetRoleIcon(user.Role)"></i>
-                                        </div>
-                                        <div class="role-info">
-                                            <div class="role-name">@PermissionFormat.GetRoleDisplayName(user.Role.GetValueOrDefault())</div>
-                                            <div class="role-description">@PermissionFormat.GetRoleDescription(user.Role)</div>
-                                        </div>
-                                    </div>
                                 </div>
 
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-user-shield"></i> Custom Roles</h4>
-                                        <div class="card-header-actions">
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-shield-check" Text="Manage Roles"
-                                                      OnClick="HandleRolesClick" />
-                                        </div>
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-envelope-open ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Additional Emails</h3>
                                     </div>
-                                    <div class="card-body">
-                                        @if (isLoadingRoles)
+                                    <div class="ud-card-body">
+                                        @if (user.EmailAddresses != null && user.EmailAddresses.Any(e => !e.IsPrimary))
                                         {
-                                            <div class="loading-indicator">
-                                                <div class="spinner-sm"></div>
-                                                <span>Loading roles...</span>
-                                            </div>
-                                        }
-                                        else if (userRoles != null && userRoles.Any())
-                                        {
-                                            <div class="roles-list">
-                                                @foreach (var roleAssignment in userRoles.OrderBy(r => r.Role?.Name))
-                                                {
-                                                    <div class="role-item">
-                                                        <div class="role-item-header">
-                                                            <div class="role-item-icon">
-                                                                @if (roleAssignment.Role?.IsPreset == true)
-                                                                {
-                                                                    <i class="fa-light fa-shield"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="fa-light fa-user-shield"></i>
-                                                                }
-                                                            </div>
-                                                            <div class="role-item-name">@roleAssignment.Role?.Name</div>
-                                                            <div class="role-item-badges">
-                                                                @if (roleAssignment.Role?.IsPreset == true)
-                                                                {
-                                                                    <span class="role-badge role-preset">
-                                                                        <i class="fa-light fa-shield"></i> System
-                                                                    </span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span class="role-badge role-custom">
-                                                                        <i class="fa-light fa-user-shield"></i> Custom
-                                                                    </span>
-                                                                }
-
-                                                                @if (roleAssignment.Role?.IsActive == false)
-                                                                {
-                                                                    <span class="status-badge status-inactive">
-                                                                        <i class="fa-light fa-times-circle"></i> Inactive
-                                                                    </span>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                        <div class="role-item-description">
-                                                            @roleAssignment.Role?.Description
-                                                        </div>
-                                                        <div class="role-item-meta">
-                                                            <span><i class="fa-light fa-calendar-check"></i> Assigned: @roleAssignment.AssignedDate.ToString("dd MMM yyyy")</span>
-                                                            @if (!string.IsNullOrEmpty(roleAssignment.AssignedBy))
-                                                            {
-                                                                <span><i class="fa-light fa-user"></i> by @roleAssignment.AssignedBy</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
+                                            foreach (var email in user.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
+                                            {
+                                                <div class="ud-info-group">
+                                                    <span class="ud-info-label">
+                                                        @(string.IsNullOrEmpty(email.Description) ? "Email" : email.Description)
+                                                    </span>
+                                                    <a href="mailto:@email.EmailAddress" class="ud-info-value ud-email">
+                                                        <i class="fa-light fa-envelope"></i> @email.EmailAddress
+                                                    </a>
+                                                </div>
+                                            }
                                         }
                                         else
                                         {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-user-slash"></i>
-                                                <p>No custom roles assigned to this user</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-key"></i> Effective Permissions</h4>
-                                        <div class="card-header-actions">
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-key" Text="Manage Permissions"
-                                                      OnClick="HandlePermissionsClick" />
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        @if (isLoadingPermissions)
-                                        {
-                                            <div class="loading-indicator">
-                                                <div class="spinner-sm"></div>
-                                                <span>Loading permissions...</span>
-                                            </div>
-                                        }
-                                        else if (userPermissions != null && userPermissions.Any())
-                                        {
-                                            <div class="permissions-header">
-                                                <div class="permissions-title">
-                                                    <i class="fa-light fa-key"></i> Permissions
-                                                </div>
-                                                <div class="permissions-count">
-                                                    @userPermissions.Count() active
-                                                </div>
-                                            </div>
-
-                                            <div class="permissions-search">
-                                                <i class="fa-light fa-search"></i>
-                                                <input type="text" placeholder="Search permissions..." @oninput="e => FilterPermissions(e.Value?.ToString())" />
-                                            </div>
-
-                                            <div class="permissions-list">
-                                                @foreach (var category in filteredPermissionsByCategory.Keys.OrderBy(c => c))
-                                                {
-                                                    <div class="permission-category">
-                                                        <div class="category-name">
-                                                            <span><i class="fa-light fa-folder"></i> @category</span>
-                                                            <span class="category-count">@filteredPermissionsByCategory[category].Count</span>
-                                                        </div>
-                                                        <div class="category-permissions">
-                                                            @foreach (var permissionSystemName in filteredPermissionsByCategory[category].OrderBy(p => GetPermissionName(p)))
-                                                            {
-                                                                <div class="permission-item" data-description="@GetPermissionDescription(permissionSystemName)">
-                                                                    <i class="fa-light fa-check-circle"></i>
-                                                                    <span>@GetPermissionName(permissionSystemName)</span>
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-
-                                            <div class="permissions-legend">
-                                                <div class="legend-item">
-                                                    <div class="legend-indicator granted"></div>
-                                                    <span>Explicitly Granted</span>
-                                                </div>
-                                                <div class="legend-item">
-                                                    <div class="legend-indicator inherited"></div>
-                                                    <span>Inherited from Role</span>
-                                                </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-lock-slash"></i>
-                                                <p>No permissions available for this user</p>
+                                            <div class="ud-empty-state">
+                                                <i class="fa-light fa-inbox-empty ud-empty-icon"></i>
+                                                <p class="ud-empty-text">No additional email addresses</p>
                                             </div>
                                         }
                                     </div>
                                 </div>
                             </div>
-                        </RVTabPanel>
+                        </div>
 
-                        <RVTabPanel TabId="activity" IsActive='activeTab == "activity"'>
-                            <div class="detail-section">
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-chart-line"></i> Login Activity</h4>
+                        @* Company Tab *@
+                        <div class="ud-tab-pane @(activeTab == "company" ? "ud-active" : "")">
+                            <div class="ud-card-grid">
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-building ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Company & Branch</h3>
                                     </div>
-                                    <div class="card-body">
-                                        @if (userLoginActivity != null && userLoginActivity.Count > 0)
-                                        {
-                                            <div class="login-activity-list">
-                                                @foreach (var activity in userLoginActivity)
+                                    <div class="ud-card-body">
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Company</span>
+                                            <div class="ud-info-value">
+                                                @if (user.Company != null)
                                                 {
-                                                    <div class="activity-item @(activity.Success ? "success" : "failure")">
-                                                        <div class="activity-icon">
-                                                            <i class="fa-light fa-@(activity.Success ? "sign-in" : "ban")"></i>
-                                                        </div>
-                                                        <div class="activity-details">
-                                                            <div class="activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</div>
-                                                            <div class="activity-message">
-                                                                @if (activity.Success)
-                                                                {
-                                                                    <span>Successful login</span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span>Failed login attempt</span>
-                                                                }
-                                                                @if (!string.IsNullOrEmpty(activity.IpAddress))
-                                                                {
-                                                                    <span class="ip-address">from @activity.IpAddress</span>
-                                                                }
+                                                    <div class="ud-company-display">
+                                                        @if (user.Company.MainLogo != null)
+                                                        {
+                                                            <div class="ud-company-logo">
+                                                                <img src="@user.Company.MainLogo.Url" alt="@user.Company.Name" />
                                                             </div>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-chart-line-down"></i>
-                                                <p>No login activity records available</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-history"></i> System Activity</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        @if (userSystemActivity != null && userSystemActivity.Count > 0)
-                                        {
-                                            <div class="system-activity-list">
-                                                @foreach (var activity in userSystemActivity)
-                                                {
-                                                    <div class="activity-item">
-                                                        <div class="activity-icon">
-                                                            <i class="fa-light fa-@GetActivityIcon(activity.Action)"></i>
-                                                        </div>
-                                                        <div class="activity-details">
-                                                            <div class="activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</div>
-                                                            <div class="activity-message">
-                                                                <strong>@activity.Action</strong> @activity.EntityType
-                                                                @if (!string.IsNullOrEmpty(activity.EntityName))
-                                                                {
-                                                                    <span>"@activity.EntityName"</span>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-history"></i>
-                                                <p>No system activity records available</p>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </RVTabPanel>
-
-                        <RVTabPanel TabId="preferences" IsActive='activeTab == "preferences"'>
-                            <div class="detail-section">
-                                <div class="detail-card">
-                                    <div class="card-header">
-                                        <h4><i class="fa-light fa-sliders"></i> User Preferences</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        @if (!string.IsNullOrEmpty(user.UserPreferences))
-                                        {
-                                            <div class="preferences-display">
-                                                @if (userPreferences != null)
-                                                {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-palette"></i> Theme</div>
-                                                        <div class="detail-value">
-                                                            @if (userPreferences.TryGetValue("theme", out var theme))
-                                                            {
-                                                                <span class="badge theme-badge">
-                                                                    <i class="fa-light fa-@GetThemeIcon(theme?.ToString())"></i>
-                                                                    @GetThemeName(theme?.ToString())
-                                                                </span>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span>System Default</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-bell"></i> Notifications</div>
-                                                        <div class="detail-value">
-                                                            <div class="notification-preferences">
-                                                                @if (userPreferences.TryGetValue("notifications", out var notificationsObj) &&
-                                                               notificationsObj is System.Text.Json.JsonElement notificationsElement)
-                                                                {
-                                                                    <div class="notification-channel">
-                                                                        <span class="channel-name">Email:</span>
-                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("email", out var email) && email.GetBoolean() ? "enabled" : "disabled")">
-                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("email", out var email2) && email2.GetBoolean() ? "check-circle" : "times-circle")"></i>
-                                                                            @(notificationsElement.TryGetProperty("email", out var email3) && email3.GetBoolean() ? "Enabled" : "Disabled")
-                                                                        </span>
-                                                                    </div>
-                                                                    <div class="notification-channel">
-                                                                        <span class="channel-name">SMS:</span>
-                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("sms", out var sms) && sms.GetBoolean() ? "enabled" : "disabled")">
-                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("sms", out var sms2) && sms2.GetBoolean() ? "check-circle" : "times-circle")"></i>
-                                                                            @(notificationsElement.TryGetProperty("sms", out var sms3) && sms3.GetBoolean() ? "Enabled" : "Disabled")
-                                                                        </span>
-                                                                    </div>
-                                                                    <div class="notification-channel">
-                                                                        <span class="channel-name">Web:</span>
-                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("web", out var web) && web.GetBoolean() ? "enabled" : "disabled")">
-                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("web", out var web2) && web2.GetBoolean() ? "check-circle" : "times-circle")"></i>
-                                                                            @(notificationsElement.TryGetProperty("web", out var web3) && web3.GetBoolean() ? "Enabled" : "Disabled")
-                                                                        </span>
-                                                                    </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span>Default settings</span>
-                                                                }
-                                                            </div>
-                                                        </div>
+                                                        }
+                                                        <span>@user.Company.Name</span>
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="preferences-raw">
-                                                        <code>@user.UserPreferences</code>
+                                                    <span>-</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="ud-info-group">
+                                            <span class="ud-info-label">Branch</span>
+                                            <div class="ud-info-value">
+                                                @if (user.Branch != null)
+                                                {
+                                                    <div class="ud-company-display">
+                                                        @if (user.Branch.MainLogo != null)
+                                                        {
+                                                            <div class="ud-branch-logo">
+                                                                <img src="@user.Branch.MainLogo.Url" alt="@user.Branch.Name" />
+                                                            </div>
+                                                        }
+                                                        <span>@user.Branch.Name</span>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (user.Branch?.Address != null)
+                                {
+                                    <div class="ud-info-card">
+                                        <div class="ud-card-header">
+                                            <i class="fa-light fa-map-marker-alt ud-card-header-icon"></i>
+                                            <h3 class="ud-card-title">Branch Address</h3>
+                                        </div>
+                                        <div class="ud-card-body">
+                                            <div class="ud-address-container">
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.ComplexName))
+                                                {
+                                                    <div class="ud-address-line"><i class="fa-light fa-building"></i> @user.Branch.Address.ComplexName</div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.Street))
+                                                {
+                                                    <div class="ud-address-line"><i class="fa-light fa-road"></i> @user.Branch.Address.Street</div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.Suburb))
+                                                {
+                                                    <div class="ud-address-line"><i class="fa-light fa-map"></i> @user.Branch.Address.Suburb</div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.City))
+                                                {
+                                                    <div class="ud-address-line">
+                                                        <i class="fa-light fa-city"></i>
+                                                        @user.Branch.Address.City@(!string.IsNullOrEmpty(user.Branch.Address.Province) ? $", {user.Branch.Address.Province}" : "")
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.PostalCode))
+                                                {
+                                                    <div class="ud-address-line"><i class="fa-light fa-mailbox"></i> @user.Branch.Address.PostalCode</div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(user.Branch.Address.Country))
+                                                {
+                                                    <div class="ud-address-line"><i class="fa-light fa-globe"></i> @user.Branch.Address.Country</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @* Roles Tab *@
+                        <div class="ud-tab-pane @(activeTab == "roles" ? "ud-active" : "")">
+                            <div class="ud-role-summary">
+                                <div class="ud-role-icon">
+                                    <i class="@GetRoleIconClass(user.Role)"></i>
+                                </div>
+                                <div class="ud-role-details">
+                                    <h3 class="ud-role-title">@GetRoleDisplayName(user.Role)</h3>
+                                    <p class="ud-role-description">@GetRoleDescription(user.Role)</p>
+                                </div>
+                            </div>
+
+                            <div class="ud-info-card">
+                                <div class="ud-card-header">
+                                    <i class="fa-light fa-user-shield ud-card-header-icon"></i>
+                                    <h3 class="ud-card-title">Custom Roles</h3>
+                                    <button class="ud-button ud-button-outline ud-button-small ud-card-header-action" @onclick="HandleRolesClick">
+                                        <i class="fa-light fa-shield-check"></i>
+                                        <span>Manage</span>
+                                    </button>
+                                </div>
+                                <div class="ud-card-body">
+                                    @if (isLoadingRoles)
+                                    {
+                                        <div class="ud-loading-inline">
+                                            <div class="ud-spinner-small"></div>
+                                            <span>Loading roles...</span>
+                                        </div>
+                                    }
+                                    else if (userRoles != null && userRoles.Any())
+                                    {
+                                        <div class="ud-roles-list">
+                                            @foreach (var roleAssignment in userRoles.OrderBy(r => r.Role?.Name))
+                                            {
+                                                <div class="ud-role-item">
+                                                    <div class="ud-role-header">
+                                                        <div class="ud-role-badge-icon">
+                                                            <i class="fa-light fa-@(roleAssignment.Role?.IsPreset == true ? "shield" : "user-shield")"></i>
+                                                        </div>
+                                                        <div class="ud-role-name">@roleAssignment.Role?.Name</div>
+                                                        <div class="ud-type-badge @(roleAssignment.Role?.IsPreset == true ? "ud-preset" : "ud-custom")">
+                                                            @(roleAssignment.Role?.IsPreset == true ? "System" : "Custom")
+                                                        </div>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(roleAssignment.Role?.Description))
+                                                    {
+                                                        <div class="ud-role-description-text">
+                                                            @roleAssignment.Role?.Description
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="ud-empty-state">
+                                            <i class="fa-light fa-user-slash ud-empty-icon"></i>
+                                            <p class="ud-empty-text">No custom roles assigned</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Activity Tab *@
+                        <div class="ud-tab-pane @(activeTab == "activity" ? "ud-active" : "")">
+                            <div class="ud-card-grid">
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-sign-in ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">Login Activity</h3>
+                                    </div>
+                                    <div class="ud-card-body">
+                                        @if (userLoginActivity != null && userLoginActivity.Count > 0)
+                                        {
+                                            <div class="ud-activity-list">
+                                                @foreach (var activity in userLoginActivity.Take(5))
+                                                {
+                                                    <div class="ud-activity-item @(activity.Success ? "ud-success" : "ud-failure")">
+                                                        <div class="ud-activity-icon">
+                                                            <i class="fa-light fa-@(activity.Success ? "sign-in" : "ban")"></i>
+                                                        </div>
+                                                        <div class="ud-activity-content">
+                                                            <div class="ud-activity-title">
+                                                                @(activity.Success ? "Successful login" : "Failed login attempt")
+                                                            </div>
+                                                            <div class="ud-activity-meta">
+                                                                <span class="ud-activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</span>
+                                                                @if (!string.IsNullOrEmpty(activity.IpAddress))
+                                                                {
+                                                                    <span class="ud-activity-ip">@activity.IpAddress</span>
+                                                                }
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 }
                                             </div>
                                         }
                                         else
                                         {
-                                            <div class="empty-message">
-                                                <i class="fa-light fa-sliders"></i>
-                                                <p>No user preferences configured</p>
+                                            <div class="ud-empty-state">
+                                                <i class="fa-light fa-chart-line-down ud-empty-icon"></i>
+                                                <p class="ud-empty-text">No login activity recorded</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="ud-info-card">
+                                    <div class="ud-card-header">
+                                        <i class="fa-light fa-history ud-card-header-icon"></i>
+                                        <h3 class="ud-card-title">System Activity</h3>
+                                    </div>
+                                    <div class="ud-card-body">
+                                        @if (userSystemActivity != null && userSystemActivity.Count > 0)
+                                        {
+                                            <div class="ud-activity-list">
+                                                @foreach (var activity in userSystemActivity.Take(5))
+                                                {
+                                                    <div class="ud-activity-item">
+                                                        <div class="ud-activity-icon">
+                                                            <i class="fa-light fa-@GetActivityIcon(activity.Action)"></i>
+                                                        </div>
+                                                        <div class="ud-activity-content">
+                                                            <div class="ud-activity-title">
+                                                                <strong>@activity.Action</strong> @activity.EntityType
+                                                                @if (!string.IsNullOrEmpty(activity.EntityName))
+                                                                {
+                                                                    <span class="ud-entity-name">@activity.EntityName</span>
+                                                                }
+                                                            </div>
+                                                            <div class="ud-activity-meta">
+                                                                <span class="ud-activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="ud-empty-state">
+                                                <i class="fa-light fa-history ud-empty-icon"></i>
+                                                <p class="ud-empty-text">No system activity recorded</p>
                                             </div>
                                         }
                                     </div>
                                 </div>
                             </div>
-                        </RVTabPanel>
-                    </RVTab>
-                </div>
-
-                <div class="user-details-footer">
-                    <RVButton ButtonType="outline" IconLeft="fa-light fa-arrow-left" Text="Back" OnClick="OnClose" />
-                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit User" OnClick="HandleEdit" />
+                        </div>
+                    </div>
                 </div>
             </div>
         }
         else
         {
-            <div class="error-state">
-                <div class="error-icon">
-                    <i class="fa-light fa-exclamation-triangle"></i>
-                </div>
-                <h3>User Not Found</h3>
-                <p>The requested user could not be found or you don't have permission to view this user.</p>
-                <div class="error-actions">
-                    <RVButton ButtonType="primary" Text="Close" OnClick="OnClose" />
-                </div>
+            <div class="ud-error-state">
+                <div class="ud-error-icon"><i class="fa-light fa-exclamation-triangle"></i></div>
+                <h3 class="ud-error-title">User Not Found</h3>
+                <p class="ud-error-message">The requested user could not be found or you don't have permission to view this user.</p>
+                <button class="ud-button ud-button-primary" @onclick="OnClose">
+                    <i class="fa-light fa-arrow-left"></i>
+                    <span>Go Back</span>
+                </button>
             </div>
         }
-    </ChildContent>
-</RVModal>
+    </div>
+
+    <div class="ud-modal-footer">
+        <button class="ud-button ud-button-outline" @onclick="OnClose">
+            <i class="fa-light fa-times"></i>
+            <span>Close</span>
+        </button>
+        @if (user != null)
+        {
+            <button class="ud-button ud-button-primary" @onclick="HandleEdit">
+                <i class="fa-light fa-edit"></i>
+                <span>Edit User</span>
+            </button>
+        }
+    </div>
+</div>
 
 @code {
     [Parameter] public string UserId { get; set; } = string.Empty;
@@ -934,10 +549,9 @@
     private bool isLoading = true;
     private string activeTab = "info";
     private string permissionSearchTerm = "";
-    private Dictionary<string, object>? userPreferences;
 
     // Tab configuration
-    private List<RVTab.RVTabItem> detailTabs = new List<RVTab.RVTabItem>();
+    private List<TabInfo> tabs = new List<TabInfo>();
 
     // Roles and permissions
     private List<UserRoleAssignment>? userRoles;
@@ -952,6 +566,13 @@
     private List<UserLoginActivity> userLoginActivity = new List<UserLoginActivity>();
     private List<UserSystemActivity> userSystemActivity = new List<UserSystemActivity>();
     private bool isLoadingActivity = false;
+
+    private class TabInfo
+    {
+        public string Id { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Icon { get; set; } = "";
+    }
 
     // Custom data models for activity
     private class UserLoginActivity
@@ -979,50 +600,13 @@
 
     private void ConfigureTabs()
     {
-        detailTabs = new List<RVTab.RVTabItem>
+        tabs = new List<TabInfo>
         {
-            new RVTab.RVTabItem
-            {
-                Id = "info",
-                Title = "User Info",
-                Icon = "fa-light fa-user",
-                IsActive = activeTab == "info"
-            },
-            new RVTab.RVTabItem
-            {
-                Id = "contact",
-                Title = "Contact",
-                Icon = "fa-light fa-address-card",
-                IsActive = activeTab == "contact"
-            },
-            new RVTab.RVTabItem
-            {
-                Id = "company",
-                Title = "Company",
-                Icon = "fa-light fa-building",
-                IsActive = activeTab == "company"
-            },
-            new RVTab.RVTabItem
-            {
-                Id = "roles",
-                Title = "Roles",
-                Icon = "fa-light fa-shield-check",
-                IsActive = activeTab == "roles"
-            },
-            new RVTab.RVTabItem
-            {
-                Id = "activity",
-                Title = "Activity",
-                Icon = "fa-light fa-chart-line",
-                IsActive = activeTab == "activity"
-            },
-            new RVTab.RVTabItem
-            {
-                Id = "preferences",
-                Title = "Preferences",
-                Icon = "fa-light fa-sliders",
-                IsActive = activeTab == "preferences"
-            }
+            new TabInfo { Id = "info", Title = "Info", Icon = "fa-light fa-user" },
+            new TabInfo { Id = "contact", Title = "Contact", Icon = "fa-light fa-address-card" },
+            new TabInfo { Id = "company", Title = "Company", Icon = "fa-light fa-building" },
+            new TabInfo { Id = "roles", Title = "Roles", Icon = "fa-light fa-shield-check" },
+            new TabInfo { Id = "activity", Title = "Activity", Icon = "fa-light fa-chart-line" }
         };
     }
 
@@ -1036,20 +620,6 @@
             if (response.ResponseInfo.Success)
             {
                 user = (ApplicationUser)response.Response;
-
-                // Parse user preferences
-                if (!string.IsNullOrEmpty(user.UserPreferences))
-                {
-                    try
-                    {
-                        userPreferences = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(user.UserPreferences);
-                    }
-                    catch
-                    {
-                        // If preferences can't be parsed, leave as null
-                        userPreferences = null;
-                    }
-                }
 
                 // Pre-load roles, permissions, and activity data
                 await Task.WhenAll(
@@ -1105,74 +675,7 @@
         try
         {
             isLoadingPermissions = true;
-
-            // Get user's permission system names
             userPermissions = await PermissionService.GetUserPermissions(UserId);
-
-            // Get all permissions to access their details
-            var permissionsResponse = await PermissionService.GetAllPermissions();
-
-            if (permissionsResponse.ResponseInfo.Success)
-            {
-                var allPermissions = (List<Permission>)permissionsResponse.Response;
-
-                // Group permissions by category using actual categories
-                userPermissionsByCategory.Clear();
-                userPermissionsDetails.Clear();
-
-                // Match user permissions with full permission details
-                foreach (var permissionName in userPermissions)
-                {
-                    var permissionDetail = allPermissions.FirstOrDefault(p => p.SystemName == permissionName);
-
-                    if (permissionDetail != null)
-                    {
-                        var category = permissionDetail.Category;
-
-                        if (!userPermissionsByCategory.ContainsKey(category))
-                        {
-                            userPermissionsByCategory[category] = new List<string>();
-                        }
-
-                        userPermissionsByCategory[category].Add(permissionName);
-                        userPermissionsDetails[permissionName] = permissionDetail;
-                    }
-                    else
-                    {
-                        // Fallback for permissions that might not be in the database
-                        var parts = permissionName.Split('.');
-                        var category = parts.Length > 1 ? parts[0] : "General";
-
-                        if (!userPermissionsByCategory.ContainsKey(category))
-                        {
-                            userPermissionsByCategory[category] = new List<string>();
-                        }
-
-                        userPermissionsByCategory[category].Add(permissionName);
-                    }
-                }
-
-                // Initialize filtered permissions
-                filteredPermissionsByCategory = new Dictionary<string, List<string>>(userPermissionsByCategory);
-            }
-            else
-            {
-                // Fallback to old method if getting all permissions fails
-                foreach (var permission in userPermissions)
-                {
-                    var parts = permission.Split('.');
-                    var category = parts.Length > 1 ? parts[0] : "General";
-
-                    if (!userPermissionsByCategory.ContainsKey(category))
-                    {
-                        userPermissionsByCategory[category] = new List<string>();
-                    }
-
-                    userPermissionsByCategory[category].Add(permission);
-                }
-
-                filteredPermissionsByCategory = new Dictionary<string, List<string>>(userPermissionsByCategory);
-            }
         }
         catch (Exception ex)
         {
@@ -1191,13 +694,10 @@
         {
             isLoadingActivity = true;
 
-            // In a real implementation, you would fetch this data from your audit service
-            // For now, we're creating mock data for demonstration purposes
-
-            // Mock login activity
+            // Mock login activity data for demonstration
             if (user != null)
             {
-                // Create some sample login activity data
+                // Create some sample login activity
                 if (user.LastLoginDate.HasValue)
                 {
                     userLoginActivity.Add(new UserLoginActivity
@@ -1259,141 +759,6 @@
         }
     }
 
-    private void FilterPermissions(string? searchTerm)
-    {
-        permissionSearchTerm = searchTerm ?? "";
-
-        if (string.IsNullOrWhiteSpace(permissionSearchTerm))
-        {
-            // If search is empty, show all permissions
-            filteredPermissionsByCategory = new Dictionary<string, List<string>>(userPermissionsByCategory);
-        }
-        else
-        {
-            // Filter permissions based on search term
-            filteredPermissionsByCategory = new Dictionary<string, List<string>>();
-
-            foreach (var category in userPermissionsByCategory.Keys)
-            {
-                var filteredPermissions = userPermissionsByCategory[category]
-                    .Where(p =>
-                        // Search in system name
-                        p.Contains(permissionSearchTerm, StringComparison.OrdinalIgnoreCase) ||
-                        // Search in display name if available
-                        (userPermissionsDetails.ContainsKey(p) &&
-                         userPermissionsDetails[p].Name?.Contains(permissionSearchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
-                        // Search in description if available
-                        (userPermissionsDetails.ContainsKey(p) &&
-                         userPermissionsDetails[p].Description?.Contains(permissionSearchTerm, StringComparison.OrdinalIgnoreCase) == true)
-                    )
-                    .ToList();
-
-                if (filteredPermissions.Any())
-                {
-                    filteredPermissionsByCategory[category] = filteredPermissions;
-                }
-            }
-        }
-
-        StateHasChanged();
-    }
-
-    private string GetPermissionName(string systemName)
-    {
-        if (userPermissionsDetails.ContainsKey(systemName) &&
-            !string.IsNullOrEmpty(userPermissionsDetails[systemName].Name))
-        {
-            return userPermissionsDetails[systemName].Name;
-        }
-
-        // Fallback to formatted system name if not found
-        return FormatSystemNameForDisplay(systemName);
-    }
-
-    private string GetPermissionDescription(string systemName)
-    {
-        if (userPermissionsDetails.ContainsKey(systemName) &&
-            !string.IsNullOrEmpty(userPermissionsDetails[systemName].Description))
-        {
-            return userPermissionsDetails[systemName].Description;
-        }
-
-        return "User has access to this permission";
-    }
-
-    private string FormatSystemNameForDisplay(string systemName)
-    {
-        // Format system name for display if no friendly name is available
-        if (string.IsNullOrEmpty(systemName))
-            return "Unknown Permission";
-
-        var parts = systemName.Split('.');
-        if (parts.Length < 2)
-            return systemName;
-
-        var action = parts[parts.Length - 1];
-
-        // Capitalize and format the action part
-        action = char.ToUpper(action[0]) + action.Substring(1);
-
-        return action;
-    }
-
-    private string GetTwoFactorMethodIcon(string? method)
-    {
-        if (string.IsNullOrEmpty(method))
-            return "mobile";
-
-        return method.ToLower() switch
-        {
-            "email" => "envelope",
-            "sms" => "mobile",
-            "authenticator" => "shield-check",
-            _ => "mobile"
-        };
-    }
-
-    private string GetActivityIcon(string action)
-    {
-        return action.ToLower() switch
-        {
-            "created" => "plus-circle",
-            "updated" => "edit",
-            "viewed" => "eye",
-            "deleted" => "trash",
-            "exported" => "file-export",
-            _ => "history"
-        };
-    }
-
-    private string GetThemeIcon(string? theme)
-    {
-        if (string.IsNullOrEmpty(theme))
-            return "palette";
-
-        return theme.ToLower() switch
-        {
-            "light" => "sun",
-            "dark" => "moon",
-            "system" => "laptop",
-            _ => "palette"
-        };
-    }
-
-    private string GetThemeName(string? theme)
-    {
-        if (string.IsNullOrEmpty(theme))
-            return "System Default";
-
-        return theme.ToLower() switch
-        {
-            "light" => "Light Mode",
-            "dark" => "Dark Mode",
-            "system" => "System Default",
-            _ => theme
-        };
-    }
-
     private string GetUserDisplayName()
     {
         if (user == null)
@@ -1415,15 +780,79 @@
         return user.UserName ?? "Unknown User";
     }
 
+    private string GetRoleBadgeClass(SystemRole? role)
+    {
+        if (!role.HasValue) return "role-user";
+
+        return role.Value.ToString().ToLowerInvariant() switch
+        {
+            "systemadministrator" => "role-admin",
+            "companyadministrator" => "role-company",
+            "branchmanager" => "role-manager",
+            _ => "role-user"
+        };
+    }
+
+    private string GetRoleIconClass(SystemRole? role)
+    {
+        if (!role.HasValue) return "fa-light fa-user";
+
+        return role.Value.ToString().ToLowerInvariant() switch
+        {
+            "systemadministrator" => "fa-light fa-user-crown",
+            "companyadministrator" => "fa-light fa-user-tie",
+            "branchmanager" => "fa-light fa-user-chart",
+            _ => "fa-light fa-user"
+        };
+    }
+
+    private string GetRoleDisplayName(SystemRole? role)
+    {
+        if (!role.HasValue) return "User";
+
+        return role.Value.ToString().ToLowerInvariant() switch
+        {
+            "systemadministrator" => "System Admin",
+            "companyadministrator" => "Company Admin",
+            "branchmanager" => "Branch Manager",
+            "propertymanager" => "Property Manager",
+            "standarduser" => "Standard User",
+            _ => role.Value.ToString()
+        };
+    }
+
+    private string GetRoleDescription(SystemRole? role)
+    {
+        if (!role.HasValue) return "Standard system user with limited access.";
+
+        return role.Value.ToString().ToLowerInvariant() switch
+        {
+            "systemadministrator" => "Full system access with complete control over all companies, branches, and users.",
+            "companyadministrator" => "Company-level access with control over company branches and users.",
+            "branchmanager" => "Branch-level access to manage users and operations within a specific branch.",
+            "propertymanager" => "Access to manage properties, tenants, and maintenance requests.",
+            "standarduser" => "Standard system user with limited access.",
+            _ => "User with custom access level."
+        };
+    }
+
+    private string GetActivityIcon(string action)
+    {
+        return action.ToLower() switch
+        {
+            "created" => "plus-circle",
+            "updated" => "edit",
+            "viewed" => "eye",
+            "deleted" => "trash",
+            "exported" => "file-export",
+            _ => "history"
+        };
+    }
+
     private void SetActiveTab(string tab)
     {
         activeTab = tab;
         StateHasChanged();
-    }
-
-    private void SetActiveTabFromEvent(string tabId)
-    {
-        activeTab = tabId;
     }
 
     private async Task HandleEdit()
@@ -1436,13 +865,7 @@
 
     private void HandleRolesClick()
     {
-        // Redirect to user edit modal with roles tab open
-        HandleEdit();
-    }
-
-    private void HandlePermissionsClick()
-    {
-        // Redirect to user edit modal with permissions tab open
+        // Redirect to roles management
         HandleEdit();
     }
 }

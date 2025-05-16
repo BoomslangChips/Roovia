@@ -1,1 +1,1100 @@
-﻿
+﻿/* UserDetailsModal.razor.css - Completely Custom Version */
+
+.ud-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+    z-index: 9000;
+    animation: ud-fade-in 0.2s ease-out;
+}
+
+.ud-modal-wrapper {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    width: 96%;
+    max-width: 950px;
+    max-height: 92vh;
+    z-index: 9100;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e5e5e5;
+    animation: ud-slide-in 0.3s ease-out;
+    overflow: hidden;
+}
+
+.ud-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e5e5;
+    background-color: #f8f9fa;
+}
+
+.ud-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+    .ud-modal-title i {
+        color: #377f80;
+    }
+
+.ud-close-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    color: #666;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .ud-close-button:hover {
+        background-color: rgba(209, 65, 65, 0.1);
+        color: #d14141;
+    }
+
+.ud-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ud-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e5e5;
+    background-color: #f8f9fa;
+}
+
+/* Loading State */
+.ud-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    text-align: center;
+}
+
+.ud-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(55, 127, 128, 0.2);
+    border-top-color: #377f80;
+    border-radius: 50%;
+    animation: ud-spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+.ud-loading-text {
+    color: #666;
+    font-size: 16px;
+}
+
+.ud-spinner-small {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(55, 127, 128, 0.2);
+    border-top-color: #377f80;
+    border-radius: 50%;
+    animation: ud-spin 1s linear infinite;
+}
+
+.ud-loading-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    color: #666;
+    font-size: 14px;
+}
+
+/* User Profile */
+.ud-profile {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.ud-profile-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "avatar info actions";
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid #e5e5e5;
+    background-color: #f8f9fa;
+    gap: 24px;
+}
+
+.ud-avatar-container {
+    position: relative;
+    grid-area: avatar;
+    align-self: flex-start;
+}
+
+.ud-avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #377f80 0%, #2d6869 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 600;
+    overflow: hidden;
+    border: 3px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+    .ud-avatar.ud-has-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+.ud-status-indicator {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid white;
+}
+
+    .ud-status-indicator.ud-active {
+        background-color: #278e63;
+        box-shadow: 0 0 0 2px rgba(39, 142, 99, 0.3);
+    }
+
+    .ud-status-indicator.ud-inactive {
+        background-color: #d14141;
+        box-shadow: 0 0 0 2px rgba(209, 65, 65, 0.3);
+    }
+
+.ud-user-info {
+    grid-area: info;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+}
+
+.ud-user-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 12px;
+    line-height: 1.2;
+}
+
+.ud-badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ud-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background-color: rgba(55, 127, 128, 0.1);
+    color: #377f80;
+    height: 22px;
+}
+
+    .ud-role-badge.ud-role-admin {
+        background-color: rgba(48, 128, 167, 0.1);
+        color: #3080a7;
+    }
+
+    .ud-role-badge.ud-role-company {
+        background-color: rgba(39, 142, 99, 0.1);
+        color: #278e63;
+    }
+
+    .ud-role-badge.ud-role-manager {
+        background-color: rgba(245, 166, 35, 0.1);
+        color: #f5a623;
+    }
+
+.ud-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    height: 22px;
+}
+
+    .ud-status-badge.ud-active {
+        background-color: rgba(39, 142, 99, 0.1);
+        color: #278e63;
+    }
+
+    .ud-status-badge.ud-inactive {
+        background-color: rgba(209, 65, 65, 0.1);
+        color: #d14141;
+    }
+
+.ud-meta-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    color: #666;
+    font-size: 14px;
+}
+
+.ud-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+    .ud-meta-item i {
+        color: #999;
+        width: 16px;
+        text-align: center;
+    }
+
+.ud-user-actions {
+    grid-area: actions;
+    align-self: flex-start;
+}
+
+/* Tabs */
+.ud-tabs-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+}
+
+.ud-tabs-header {
+    display: flex;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+    .ud-tabs-header::-webkit-scrollbar {
+        display: none;
+    }
+
+.ud-tab-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+    .ud-tab-button .ud-icon {
+        transition: all 0.2s ease;
+    }
+
+    .ud-tab-button .ud-text {
+        transition: all 0.2s ease;
+    }
+
+    .ud-tab-button:hover {
+        color: #377f80;
+        background-color: rgba(55, 127, 128, 0.05);
+    }
+
+    .ud-tab-button.ud-active {
+        color: #377f80;
+        border-bottom-color: #377f80;
+        background-color: rgba(55, 127, 128, 0.08);
+    }
+
+.ud-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background-color: #ffffff;
+}
+
+.ud-tab-pane {
+    display: none;
+}
+
+    .ud-tab-pane.ud-active {
+        display: block;
+        animation: ud-fade-in 0.2s ease-out;
+    }
+
+/* Cards */
+.ud-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.ud-info-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ud-card-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e5e5e5;
+    gap: 12px;
+    height: 56px;
+}
+
+.ud-card-header-icon {
+    color: #377f80;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.ud-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ud-card-header-action {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.ud-card-body {
+    padding: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Info Groups */
+.ud-info-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .ud-info-group:last-child {
+        border-bottom: none;
+    }
+
+.ud-info-label {
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    padding-right: 16px;
+    flex-shrink: 0;
+    width: 40%;
+}
+
+.ud-info-value {
+    color: #333;
+    font-size: 14px;
+    text-align: right;
+    width: 60%;
+    word-break: break-word;
+}
+
+    .ud-info-value.ud-email,
+    .ud-info-value.ud-phone {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #377f80;
+        text-decoration: none;
+    }
+
+        .ud-info-value.ud-email:hover,
+        .ud-info-value.ud-phone:hover {
+            text-decoration: underline;
+        }
+
+/* Company Display */
+.ud-company-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ud-company-logo,
+.ud-branch-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    border: 1px solid #e5e5e5;
+}
+
+    .ud-company-logo img,
+    .ud-branch-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+/* Address Display */
+.ud-address-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.ud-address-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #666;
+    font-size: 14px;
+}
+
+    .ud-address-line i {
+        color: #999;
+        width: 16px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+/* Role Summary */
+.ud-role-summary {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid #e5e5e5;
+}
+
+.ud-role-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #377f80 0%, #2d6869 100%);
+    color: white;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.ud-role-details {
+    flex: 1;
+}
+
+.ud-role-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px 0;
+}
+
+.ud-role-description {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Roles List */
+.ud-roles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.ud-role-item {
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ud-role-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+}
+
+.ud-role-badge-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background-color: rgba(55, 127, 128, 0.1);
+    color: #377f80;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.ud-role-name {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.ud-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+    .ud-type-badge.ud-preset {
+        background-color: rgba(48, 128, 167, 0.1);
+        color: #3080a7;
+    }
+
+    .ud-type-badge.ud-custom {
+        background-color: rgba(55, 127, 128, 0.1);
+        color: #377f80;
+    }
+
+.ud-role-description-text {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #666;
+    border-top: 1px solid #f0f0f0;
+    line-height: 1.5;
+}
+
+/* Activity List */
+.ud-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.ud-activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+    .ud-activity-item:hover {
+        background-color: rgba(55, 127, 128, 0.05);
+    }
+
+    .ud-activity-item.ud-success .ud-activity-icon {
+        background-color: rgba(39, 142, 99, 0.1);
+        color: #278e63;
+    }
+
+    .ud-activity-item.ud-failure .ud-activity-icon {
+        background-color: rgba(209, 65, 65, 0.1);
+        color: #d14141;
+    }
+
+.ud-activity-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background-color: rgba(55, 127, 128, 0.1);
+    color: #377f80;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.ud-activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ud-activity-title {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.ud-entity-name {
+    font-style: italic;
+    font-weight: 400;
+    color: #666;
+    font-size: 12px;
+}
+
+.ud-activity-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+    color: #666;
+}
+
+.ud-activity-time,
+.ud-activity-ip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Empty State */
+.ud-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    text-align: center;
+}
+
+.ud-empty-icon {
+    font-size: 32px;
+    color: #ccc;
+    margin-bottom: 12px;
+}
+
+.ud-empty-text {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Error State */
+.ud-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    text-align: center;
+}
+
+.ud-error-icon {
+    font-size: 40px;
+    color: #d14141;
+    margin-bottom: 16px;
+}
+
+.ud-error-title {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.ud-error-message {
+    color: #666;
+    margin: 0 0 24px;
+    font-size: 14px;
+    max-width: 400px;
+}
+
+/* Custom Buttons */
+.ud-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    height: 36px;
+}
+
+.ud-button-primary {
+    background: linear-gradient(135deg, #377f80 0%, #2d6869 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+    .ud-button-primary::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    .ud-button-primary:hover {
+        background: linear-gradient(135deg, #2d6869 0%, #377f80 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(55, 127, 128, 0.3);
+    }
+
+        .ud-button-primary:hover::after {
+            transform: translateX(100%);
+        }
+
+.ud-button-outline {
+    background-color: transparent;
+    border: 1px solid #e5e5e5;
+    color: #666;
+}
+
+    .ud-button-outline:hover {
+        background-color: rgba(55, 127, 128, 0.05);
+        border-color: #377f80;
+        color: #377f80;
+        transform: translateY(-2px);
+    }
+
+.ud-button-small {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    height: 28px;
+}
+
+/* Animations */
+@keyframes ud-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes ud-slide-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, calc(-50% - 20px));
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@keyframes ud-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .ud-modal-wrapper {
+        max-width: none;
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        border-radius: 0;
+        top: 0;
+        left: 0;
+        transform: none;
+        animation: ud-fade-in 0.2s ease-out;
+    }
+
+    .ud-profile-header {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "avatar"
+            "info"
+            "actions";
+        text-align: center;
+        gap: 16px;
+    }
+
+    .ud-avatar-container {
+        justify-self: center;
+    }
+
+    .ud-user-info {
+        align-items: center;
+    }
+
+    .ud-badges-container,
+    .ud-meta-list {
+        justify-content: center;
+    }
+
+    .ud-meta-list {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ud-user-actions {
+        justify-self: center;
+    }
+
+    .ud-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ud-role-summary {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+        gap: 16px;
+    }
+
+    .ud-role-icon {
+        margin: 0 auto;
+    }
+
+    .ud-tabs-header {
+        justify-content: space-between;
+    }
+
+    .ud-tab-button {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .ud-modal-header,
+    .ud-modal-footer {
+        padding: 12px 16px;
+    }
+
+    .ud-tab-button {
+        padding: 12px 8px;
+        font-size: 12px;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .ud-tab-content {
+        padding: 16px;
+    }
+
+    .ud-profile-header {
+        padding: 16px;
+    }
+
+    .ud-user-name {
+        font-size: 18px;
+    }
+
+    .ud-info-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 12px 16px;
+    }
+
+    .ud-info-label,
+    .ud-info-value {
+        width: 100%;
+        text-align: left;
+    }
+
+    .ud-role-header {
+        flex-wrap: wrap;
+    }
+
+    .ud-type-badge {
+        margin-top: 4px;
+    }
+
+    .ud-modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+        .ud-modal-footer .ud-button {
+            width: 100%;
+        }
+
+    .ud-card-header {
+        padding: 12px 16px;
+        height: auto;
+        min-height: 48px;
+    }
+
+    .ud-activity-icon {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+    .ud-badges-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ud-avatar {
+        width: 70px;
+        height: 70px;
+        font-size: 24px;
+    }
+
+    .ud-user-name {
+        font-size: 16px;
+    }
+
+    /* Show only active tab text, others only show icons */
+    .ud-tab-button {
+        padding: 10px 8px;
+    }
+
+        .ud-tab-button .ud-icon {
+            font-size: 16px;
+        }
+
+        .ud-tab-button .ud-text {
+            display: none;
+            font-size: 10px;
+        }
+
+        .ud-tab-button.ud-active .ud-text {
+            display: block;
+        }
+
+    .ud-tab-content {
+        padding: 12px;
+    }
+
+    .ud-card-title {
+        font-size: 14px;
+    }
+
+    .ud-info-group {
+        padding: 8px 12px;
+    }
+
+    .ud-activity-item {
+        padding: 8px;
+    }
+
+    .ud-roles-list,
+    .ud-activity-list,
+    .ud-address-container {
+        padding: 12px;
+    }
+
+    .ud-role-summary {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .ud-role-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    .ud-role-title {
+        font-size: 16px;
+    }
+}
+
+/* Extra small height adjustments */
+@media (max-height: 600px) {
+    .ud-profile-header {
+        padding: 12px;
+    }
+
+    .ud-avatar {
+        width: 60px;
+        height: 60px;
+    }
+
+    .ud-role-summary {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .ud-tab-content {
+        padding: 12px;
+    }
+}
