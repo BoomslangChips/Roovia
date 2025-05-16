@@ -371,11 +371,11 @@ namespace Roovia.Services
                 // Handle different ID types
                 if (entityId is int intId)
                 {
-                    query = query.Where(r => r.RelatedEntityId == intId);
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => r.RelatedEntityId == intId);
                 }
                 else if (entityId is string stringId)
                 {
-                    query = query.Where(r => r.RelatedEntityStringId == stringId);
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => r.RelatedEntityStringId == stringId);
                 }
                 
                 var reminders = await query.ToListAsync();
@@ -501,7 +501,7 @@ namespace Roovia.Services
                 // Filter by user if specified
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    query = query.Where(r => r.AssignedToUserId == userId);
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => r.AssignedToUserId == userId);
                 }
                 
                 // Filter by company if specified
@@ -528,7 +528,7 @@ namespace Roovia.Services
                         .Select(b => b.Id)
                         .ToListAsync();
                     
-                    query = query.Where(r => 
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => 
                         (r.RelatedEntityType == "Property" && propertyIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyOwner" && ownerIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyTenant" && tenantIds.Contains(r.RelatedEntityId.Value)) ||
@@ -579,7 +579,7 @@ namespace Roovia.Services
                 // Filter by user if specified
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    query = query.Where(r => r.AssignedToUserId == userId);
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => r.AssignedToUserId == userId);
                 }
                 
                 // Filter by company if specified
@@ -606,7 +606,7 @@ namespace Roovia.Services
                         .Select(b => b.Id)
                         .ToListAsync();
                     
-                    query = query.Where(r => 
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => 
                         (r.RelatedEntityType == "Property" && propertyIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyOwner" && ownerIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyTenant" && tenantIds.Contains(r.RelatedEntityId.Value)) ||
@@ -659,7 +659,7 @@ namespace Roovia.Services
                 // Filter by user if specified
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    query = query.Where(r => r.AssignedToUserId == userId);
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => r.AssignedToUserId == userId);
                 }
                 
                 // Filter by company if specified
@@ -686,7 +686,7 @@ namespace Roovia.Services
                         .Select(b => b.Id)
                         .ToListAsync();
                     
-                    query = query.Where(r => 
+                    query = (IOrderedQueryable<Reminder>)query.Where(r => 
                         (r.RelatedEntityType == "Property" && propertyIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyOwner" && ownerIds.Contains(r.RelatedEntityId.Value)) ||
                         (r.RelatedEntityType == "PropertyTenant" && tenantIds.Contains(r.RelatedEntityId.Value)) ||

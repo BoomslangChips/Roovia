@@ -99,14 +99,8 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddClaimsPrincipalFactory<CustomUserClaimsPrincipalFactory>();
 
 builder.Services.RegisterApplicationServices();
-// Register utility services
-builder.Services.AddScoped<ToastService>();
-
-// Register CDN service as singleton for better performance
 
 
-// Register the seed data service
-builder.Services.AddScoped<ISeedDataService, SeedDataService>();
 
 // Register authorization configuration
 builder.Services.AddAuthorization(options =>
