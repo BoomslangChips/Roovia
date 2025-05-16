@@ -1,7 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
-@using Roovia.Components
-@using Roovia.Components.Elements.Forms
 @using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
@@ -14,433 +12,395 @@
 @inject ToastService ToastService
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
-<RVModal IsVisible="true"
-         Title="@GetDialogTitle()"
-         Icon="@GetDialogIcon()"
-         OnClose="OnCancel"
-         OnCancel="OnCancel"
-         OnConfirm="HandleConfirmAction"
-         ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
-         CancelText="@(IsView ? "Close" : "Cancel")"
-         DefaultFooter="false"
-         Size="lg">
-    <ChildContent>
+<link rel="stylesheet" href="@Assets["css/BranchDialog.css"]" />
+<div class="bd-modal-backdrop" @onclick="OnCancel"></div>
+
+<div class="bd-modal-wrapper">
+    <div class="bd-modal-header">
+        <div class="bd-modal-title">
+            <i class="@GetDialogIcon()"></i>
+            <span>@GetDialogTitle()</span>
+        </div>
+        <button class="bd-close-button" @onclick="OnCancel">
+            <i class="fa-light fa-times"></i>
+        </button>
+    </div>
+
+    <div class="bd-modal-body">
         @if (isLoading)
         {
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <h3 class="loading-text">Loading branch details...</h3>
+            <div class="bd-loading">
+                <div class="bd-spinner"></div>
+                <span class="bd-loading-text">Loading branch details...</span>
             </div>
         }
         else
         {
-            <div class="branch-dialog">
+            <div class="bd-branch-dialog">
                 @if (IsViewMode)
                 {
-                    <div class="branch-view-container">
-                        <div class="branch-header">
-                            <div class="branch-header-flex">
-                                <div class="branch-icon-wrapper">
-                                    @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
-                                    {
-                                        <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name" class="branch-logo-large" />
-                                    }
-                                    else
-                                    {
-                                        <div class="branch-icon-large">
-                                            <i class="fa-light fa-code-branch"></i>
-                                        </div>
-                                    }
-                                    <div class="status-indicator @(BranchModel.IsActive ? "active" : "inactive")"></div>
-                                </div>
-
-                                <div class="branch-header-info">
-                                    <h2>@BranchModel.Name</h2>
-
-                                    <div class="branch-meta">
-                                        @if (Company != null)
-                                        {
-                                            <span class="branch-meta-item"><i class="fa-light fa-building"></i>@Company.Name</span>
-                                        }
-                                        @if (BranchModel.IsHeadOffice)
-                                        {
-                                            <span class="badge bg-primary"><i class="fa-light fa-star"></i> Head Office</span>
-                                        }
+                    <div class="bd-view-container">
+                        <div class="bd-branch-header">
+                            <div class="bd-avatar-container">
+                                @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
+                                {
+                                    <div class="bd-avatar bd-has-image">
+                                        <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name" />
                                     </div>
+                                }
+                                else
+                                {
+                                    <div class="bd-avatar">
+                                        <i class="fa-light fa-code-branch"></i>
+                                    </div>
+                                }
+                                <div class="bd-status-indicator @(BranchModel.IsActive ? "bd-active" : "bd-inactive")"></div>
+                            </div>
 
-                                    <div class="branch-badges">
-                                        <span class="status-badge @(BranchModel.IsActive ? "status-active" : "status-inactive")">
-                                            <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
-                                            @(BranchModel.IsActive ? "Active" : "Inactive")
+                            <div class="bd-branch-info">
+                                <h2 class="bd-branch-name">@BranchModel.Name</h2>
+
+                                <div class="bd-badges-container">
+                                    <span class="bd-status-badge @(BranchModel.IsActive ? "bd-active" : "bd-inactive")">
+                                        <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                        @(BranchModel.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                    @if (BranchModel.IsHeadOffice)
+                                    {
+                                        <span class="bd-role-badge bd-head-office">
+                                            <i class="fa-light fa-star"></i>
+                                            Head Office
                                         </span>
-                                        @if (BranchModel.Status != null)
-                                        {
-                                            <span class="status-badge">@BranchModel.Status.Name</span>
-                                        }
-                                    </div>
+                                    }
                                 </div>
+
+                                <div class="bd-meta-list">
+                                    @if (Company != null)
+                                    {
+                                        <span class="bd-meta-item"><i class="fa-light fa-building"></i>@Company.Name</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(BranchModel.Code))
+                                    {
+                                        <span class="bd-meta-item"><i class="fa-light fa-barcode"></i>@BranchModel.Code</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="bd-branch-actions">
+                                @if (CanEdit)
+                                {
+                                    <button type="button" class="bd-button bd-button-primary" @onclick="SwitchToEditMode">
+                                        <i class="fa-light fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                }
                             </div>
                         </div>
 
-                        <div class="branch-details-tabs">
-                            @{
-                                var branchTabs = new List<RVTab.RVTabItem>
-                    {
-                    new RVTab.RVTabItem
-                    {
-                    Id = "basic",
-                    Title = "Basic Info",
-                    Icon = "fa-light fa-info-circle",
-                    IsActive = activeViewTab == "basic"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "contact",
-                    Title = "Contact",
-                    Icon = "fa-light fa-address-card",
-                    IsActive = activeViewTab == "contact"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "address",
-                    Title = "Address",
-                    Icon = "fa-light fa-map-marker-alt",
-                    IsActive = activeViewTab == "address"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "banking",
-                    Title = "Banking",
-                    Icon = "fa-light fa-university",
-                    IsActive = activeViewTab == "banking"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "branding",
-                    Title = "Branding",
-                    Icon = "fa-light fa-image",
-                    IsActive = activeViewTab == "branding"
-                    }
-                    };
-                            }
+                        <div class="bd-tabs-container">
+                            <div class="bd-tabs-header">
+                                <button type="button" class="bd-tab-button @(activeViewTab == "basic" ? "bd-active" : "")" @onclick='() => SetActiveViewTab("basic")'>
+                                    <i class="fa-light fa-info-circle"></i>
+                                    <span>Basic Info</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeViewTab == "contact" ? "bd-active" : "")" @onclick='() => SetActiveViewTab("contact")'>
+                                    <i class="fa-light fa-address-card"></i>
+                                    <span>Contact</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeViewTab == "address" ? "bd-active" : "")" @onclick='() => SetActiveViewTab("address")'>
+                                    <i class="fa-light fa-map-marker-alt"></i>
+                                    <span>Address</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeViewTab == "banking" ? "bd-active" : "")" @onclick='() => SetActiveViewTab("banking")'>
+                                    <i class="fa-light fa-university"></i>
+                                    <span>Banking</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeViewTab == "branding" ? "bd-active" : "")" @onclick='() => SetActiveViewTab("branding")'>
+                                    <i class="fa-light fa-image"></i>
+                                    <span>Branding</span>
+                                </button>
+                            </div>
 
-                            <RVTab Tabs="branchTabs" Size="sm" OnTabChange="SetActiveViewTab">
-                                <RVTabPanel TabId="basic" IsActive='activeViewTab == "basic"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-info-circle"></i> Basic Information</h4>
+                            <div class="bd-tab-content">
+                                <div class="bd-tab-pane @(activeViewTab == "basic" ? "bd-active" : "")">
+                                    <div class="bd-card-grid">
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-info-circle bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Basic Information</h3>
                                             </div>
-                                            <div class="card-body">
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-tag"></i> Branch Name</div>
-                                                    <div class="detail-value">@BranchModel.Name</div>
+                                            <div class="bd-card-body">
+                                                <div class="bd-info-group">
+                                                    <span class="bd-info-label">Branch Name</span>
+                                                    <span class="bd-info-value">@BranchModel.Name</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
-                                                    <div class="detail-value">@(BranchModel.Code ?? "Not set")</div>
+                                                <div class="bd-info-group">
+                                                    <span class="bd-info-label">Branch Code</span>
+                                                    <span class="bd-info-value">@(BranchModel.Code ?? "Not set")</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-building"></i> Company</div>
-                                                    <div class="detail-value">@(Company?.Name ?? "Not assigned")</div>
+                                                <div class="bd-info-group">
+                                                    <span class="bd-info-label">Company</span>
+                                                    <span class="bd-info-value">@(Company?.Name ?? "Not assigned")</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-toggle-on"></i> Status</div>
-                                                    <div class="detail-value">
-                                                        <span class="status-badge @(BranchModel.IsActive ? "status-active" : "status-inactive")">
+                                                <div class="bd-info-group">
+                                                    <span class="bd-info-label">Status</span>
+                                                    <span class="bd-info-value">
+                                                        <span class="bd-status-badge @(BranchModel.IsActive ? "bd-active" : "bd-inactive")">
                                                             <i class="fa-light fa-@(BranchModel.IsActive ? "check-circle" : "times-circle")"></i>
                                                             @(BranchModel.IsActive ? "Active" : "Inactive")
                                                         </span>
-                                                    </div>
+                                                    </span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-star"></i> Head Office</div>
-                                                    <div class="detail-value">@(BranchModel.IsHeadOffice ? "Yes" : "No")</div>
+                                                <div class="bd-info-group">
+                                                    <span class="bd-info-label">Head Office</span>
+                                                    <span class="bd-info-value">@(BranchModel.IsHeadOffice ? "Yes" : "No")</span>
                                                 </div>
                                                 @if (BranchModel.MaxUsers.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-users"></i> Max Users</div>
-                                                        <div class="detail-value">@BranchModel.MaxUsers</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Max Users</span>
+                                                        <span class="bd-info-value">@BranchModel.MaxUsers</span>
                                                     </div>
                                                 }
                                                 @if (BranchModel.MaxProperties.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-home"></i> Max Properties</div>
-                                                        <div class="detail-value">@BranchModel.MaxProperties</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Max Properties</span>
+                                                        <span class="bd-info-value">@BranchModel.MaxProperties</span>
                                                     </div>
                                                 }
                                                 @if (BranchModel.CreatedOn != default)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
-                                                        <div class="detail-value">@BranchModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Created On</span>
+                                                        <span class="bd-info-value">@BranchModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</span>
                                                     </div>
                                                 }
                                                 @if (!string.IsNullOrEmpty(BranchModel.CreatedBy))
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-user"></i> Created By</div>
-                                                        <div class="detail-value">@BranchModel.CreatedBy</div>
-                                                    </div>
-                                                }
-                                                @if (BranchModel.UpdatedDate.HasValue)
-                                                {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
-                                                        <div class="detail-value">@BranchModel.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
-                                                    </div>
-                                                }
-                                                @if (!string.IsNullOrEmpty(BranchModel.UpdatedBy))
-                                                {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-user-edit"></i> Updated By</div>
-                                                        <div class="detail-value">@BranchModel.UpdatedBy</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Created By</span>
+                                                        <span class="bd-info-value">@BranchModel.CreatedBy</span>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="contact" IsActive='activeViewTab == "contact"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-envelope"></i> Email Addresses</h4>
+                                <div class="bd-tab-pane @(activeViewTab == "contact" ? "bd-active" : "")">
+                                    <div class="bd-card-grid">
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-envelope bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Email Addresses</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="bd-card-body">
                                                 @if (BranchModel.EmailAddresses?.Any() == true)
                                                 {
-                                                    <div class="contact-info">
-                                                        @{
-                                                            var primaryEmail = BranchModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
-                                                        }
-                                                        @if (primaryEmail != null)
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label"><i class="fa-light fa-envelope"></i> Primary Email</div>
-                                                                <div class="detail-value email-value">
-                                                                    <a href="mailto:@primaryEmail.EmailAddress"><i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress</a>
-                                                                </div>
-                                                            </div>
-                                                        }
+                                                    var primaryEmail = BranchModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                                    @if (primaryEmail != null)
+                                                    {
+                                                        <div class="bd-info-group">
+                                                            <span class="bd-info-label">Primary Email</span>
+                                                            <a href="mailto:@primaryEmail.EmailAddress" class="bd-info-value bd-email">
+                                                                <i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress
+                                                            </a>
+                                                        </div>
+                                                    }
 
-                                                        @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label">
-                                                                    <i class="fa-light fa-tag"></i>
-                                                                    @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
-                                                                </div>
-                                                                <div class="detail-value email-value">
-                                                                    <a href="mailto:@email.EmailAddress"><i class="fa-light fa-envelope"></i> @email.EmailAddress</a>
-                                                                    @if (!email.IsActive)
-                                                                    {
-                                                                        <span class="status-badge status-inactive">
-                                                                            <i class="fa-light fa-times-circle"></i> Inactive
-                                                                        </span>
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
+                                                    @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary))
+                                                    {
+                                                        <div class="bd-info-group">
+                                                            <span class="bd-info-label">
+                                                                @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                            </span>
+                                                            <a href="mailto:@email.EmailAddress" class="bd-info-value bd-email">
+                                                                <i class="fa-light fa-envelope"></i> @email.EmailAddress
+                                                            </a>
+                                                        </div>
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-envelope-open"></i>
-                                                        <p>No email addresses provided</p>
+                                                    <div class="bd-empty-state">
+                                                        <i class="fa-light fa-envelope-open bd-empty-icon"></i>
+                                                        <p class="bd-empty-text">No email addresses provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
 
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-phone"></i> Contact Numbers</h4>
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-phone bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Contact Numbers</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="bd-card-body">
                                                 @if (BranchModel.ContactNumbers?.Any() == true)
                                                 {
-                                                    <div class="contact-info">
-                                                        @{
-                                                            var primaryContact = BranchModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
-                                                        }
-                                                        @if (primaryContact != null)
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label"><i class="fa-light fa-phone"></i> Primary Contact</div>
-                                                                <div class="detail-value phone-value">
-                                                                    <a href="tel:@primaryContact.Number"><i class="fa-light fa-phone"></i> @primaryContact.Number</a>
-                                                                </div>
-                                                            </div>
-                                                        }
+                                                    var primaryContact = BranchModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                                    @if (primaryContact != null)
+                                                    {
+                                                        <div class="bd-info-group">
+                                                            <span class="bd-info-label">Primary Phone</span>
+                                                            <a href="tel:@primaryContact.Number" class="bd-info-value bd-phone">
+                                                                <i class="fa-light fa-phone"></i> @primaryContact.Number
+                                                            </a>
+                                                        </div>
+                                                    }
 
-                                                        @foreach (var phone in BranchModel.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label">
-                                                                    <i class="fa-light fa-tag"></i>
-                                                                    @if (!string.IsNullOrEmpty(phone.Description))
-                                                                    {
-                                                                        @phone.Description
-                                                                    }
-                                                                    else if (phone.ContactNumberType != null)
-                                                                    {
-                                                                        @phone.ContactNumberType.Name
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        @("Phone")
-                                                                    }
-                                                                </div>
-                                                                <div class="detail-value phone-value">
-                                                                    <a href="tel:@phone.Number"><i class="fa-light fa-phone"></i> @phone.Number</a>
-                                                                    @if (!phone.IsActive)
-                                                                    {
-                                                                        <span class="status-badge status-inactive">
-                                                                            <i class="fa-light fa-times-circle"></i> Inactive
-                                                                        </span>
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
+                                                    @foreach (var phone in BranchModel.ContactNumbers.Where(c => !c.IsPrimary))
+                                                    {
+                                                        <div class="bd-info-group">
+                                                            <span class="bd-info-label">
+                                                                @if (!string.IsNullOrEmpty(phone.Description))
+                                                                {
+                                                                    @phone.Description
+                                                                }
+                                                                else if (phone.ContactNumberType != null)
+                                                                {
+                                                                    @phone.ContactNumberType.Name
+                                                                }
+                                                                else
+                                                                {
+                                                                    @("Phone")
+                                                                }
+                                                            </span>
+                                                            <a href="tel:@phone.Number" class="bd-info-value bd-phone">
+                                                                <i class="fa-light fa-phone"></i> @phone.Number
+                                                            </a>
+                                                        </div>
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-phone-slash"></i>
-                                                        <p>No contact numbers provided</p>
+                                                    <div class="bd-empty-state">
+                                                        <i class="fa-light fa-phone-slash bd-empty-icon"></i>
+                                                        <p class="bd-empty-text">No contact numbers provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="address" IsActive='activeViewTab == "address"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-map-marker-alt"></i> Branch Address</h4>
+                                <div class="bd-tab-pane @(activeViewTab == "address" ? "bd-active" : "")">
+                                    <div class="bd-card-grid">
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-map-marker-alt bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Branch Address</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="bd-card-body">
                                                 @if (BranchModel.Address != null)
                                                 {
-                                                    <div class="address-display">
+                                                    <div class="bd-address-container">
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.ComplexName))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.ComplexName</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.ComplexName</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.BuildingName))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.BuildingName</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-building"></i> @BranchModel.Address.BuildingName</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.UnitNumber))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-door-closed"></i> Unit @BranchModel.Address.UnitNumber</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-door-closed"></i> Unit @BranchModel.Address.UnitNumber</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.Street))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-road"></i> @BranchModel.Address.Street</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-road"></i> @BranchModel.Address.Street</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.Suburb))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-map"></i> @BranchModel.Address.Suburb</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-map"></i> @BranchModel.Address.Suburb</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.City))
                                                         {
-                                                            <div class="address-line">
+                                                            <div class="bd-address-line">
                                                                 <i class="fa-light fa-city"></i>
                                                                 @BranchModel.Address.City@(!string.IsNullOrEmpty(BranchModel.Address.Province) ? $", {BranchModel.Address.Province}" : "")
                                                             </div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.PostalCode))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-mailbox"></i> @BranchModel.Address.PostalCode</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-mailbox"></i> @BranchModel.Address.PostalCode</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(BranchModel.Address.Country))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-globe"></i> @BranchModel.Address.Country</div>
+                                                            <div class="bd-address-line"><i class="fa-light fa-globe"></i> @BranchModel.Address.Country</div>
                                                         }
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-map-marker-slash"></i>
-                                                        <p>No address information provided</p>
+                                                    <div class="bd-empty-state">
+                                                        <i class="fa-light fa-map-marker-slash bd-empty-icon"></i>
+                                                        <p class="bd-empty-text">No address information provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="banking" IsActive='activeViewTab == "banking"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                <div class="bd-tab-pane @(activeViewTab == "banking" ? "bd-active" : "")">
+                                    <div class="bd-card-grid">
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-university bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Banking Details</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="bd-card-body">
                                                 @if (BranchModel.BankAccount != null && !string.IsNullOrEmpty(BranchModel.BankAccount.AccountNumber))
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-university"></i> Bank Name</div>
-                                                        <div class="detail-value">@(BranchModel.BankAccount.BankName?.Name ?? "Not set")</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Bank Name</span>
+                                                        <span class="bd-info-value">@(BranchModel.BankAccount.BankName?.Name ?? "Not set")</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-credit-card"></i> Account Type</div>
-                                                        <div class="detail-value">@(BranchModel.BankAccount.AccountType ?? "Not set")</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Account Type</span>
+                                                        <span class="bd-info-value">@(BranchModel.BankAccount.AccountType ?? "Not set")</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-hashtag"></i> Account Number</div>
-                                                        <div class="detail-value">@BranchModel.BankAccount.AccountNumber</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Account Number</span>
+                                                        <span class="bd-info-value">@BranchModel.BankAccount.AccountNumber</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
-                                                        <div class="detail-value">@BranchModel.BankAccount.BranchCode</div>
+                                                    <div class="bd-info-group">
+                                                        <span class="bd-info-label">Branch Code</span>
+                                                        <span class="bd-info-value">@BranchModel.BankAccount.BranchCode</span>
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-credit-card-blank"></i>
-                                                        <p>No banking details provided</p>
+                                                    <div class="bd-empty-state">
+                                                        <i class="fa-light fa-credit-card-blank bd-empty-icon"></i>
+                                                        <p class="bd-empty-text">No banking details provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="branding" IsActive='activeViewTab == "branding"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
+                                <div class="bd-tab-pane @(activeViewTab == "branding" ? "bd-active" : "")">
+                                    <div class="bd-card-grid">
+                                        <div class="bd-info-card">
+                                            <div class="bd-card-header">
+                                                <i class="fa-light fa-image bd-card-header-icon"></i>
+                                                <h3 class="bd-card-title">Branch Logo</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="bd-card-body">
                                                 @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
                                                 {
-                                                    <div class="logo-display">
-                                                        <div class="logo-container">
-                                                            <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name Logo" class="logo-image" />
+                                                    <div class="bd-logo-display">
+                                                        <div class="bd-logo-container">
+                                                            <img src="@BranchModel.MainLogo.Url" alt="@BranchModel.Name Logo" class="bd-logo-image" />
                                                         </div>
-                                                        <div class="logo-info">
-                                                            <div class="logo-title">@BranchModel.MainLogo.FileName</div>
-                                                            <div class="logo-meta">
+                                                        <div class="bd-logo-info">
+                                                            <div class="bd-logo-title">@BranchModel.MainLogo.FileName</div>
+                                                            <div class="bd-logo-meta">
                                                                 <span><i class="fa-light fa-file-image"></i> @BranchModel.MainLogo.ContentType</span>
                                                                 <span><i class="fa-light fa-weight"></i> @((BranchModel.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
                                                                 <span><i class="fa-light fa-calendar"></i> @BranchModel.MainLogo.UploadDate.ToString("dd MMM yyyy")</span>
@@ -450,527 +410,554 @@
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-file-image"></i>
-                                                        <p>No logo uploaded</p>
+                                                    <div class="bd-empty-state">
+                                                        <i class="fa-light fa-file-image bd-empty-icon"></i>
+                                                        <p class="bd-empty-text">No logo uploaded</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
-                            </RVTab>
-                        </div>
-
-                        <div class="branch-details-footer">
-                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Close" OnClick="OnCancel" />
-                            @if (CanEdit)
-                            {
-                                <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit Branch" OnClick="SwitchToEditMode" />
-                            }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
                 else if (IsEditMode)
                 {
-                    <EditForm Model="BranchModel" OnValidSubmit="Save" FormName="editBranch" class="branch-edit-form">
+                    <EditForm Model="BranchModel" OnValidSubmit="Save" FormName="editBranch" class="bd-edit-form">
                         <DataAnnotationsValidator />
                         <Roovia.Components.Elements.Forms.FluentValidationValidator />
 
-                        <RVTab Tabs="formTabs" Size="sm" OnTabChange="HandleTabChange">
-                            <RVTabPanel TabId="basic" IsActive='activeTab == "basic"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-code-branch"></i> Basic Information</h4>
-                                        <p>Enter the basic details for this branch</p>
-                                    </div>
+                        <div class="bd-tabs-container">
+                            <div class="bd-tabs-header">
+                                <button type="button" class="bd-tab-button @(activeTab == "basic" ? "bd-active" : "")" @onclick='() => HandleTabChange("basic")'>
+                                    <i class="fa-light fa-info-circle"></i>
+                                    <span>Basic</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeTab == "contact" ? "bd-active" : "")" @onclick='() => HandleTabChange("contact")'>
+                                    <i class="fa-light fa-address-card"></i>
+                                    <span>Contact</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeTab == "address" ? "bd-active" : "")" @onclick='() => HandleTabChange("address")'>
+                                    <i class="fa-light fa-map-marker-alt"></i>
+                                    <span>Address</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeTab == "banking" ? "bd-active" : "")" @onclick='() => HandleTabChange("banking")'>
+                                    <i class="fa-light fa-university"></i>
+                                    <span>Banking</span>
+                                </button>
+                                <button type="button" class="bd-tab-button @(activeTab == "logo" ? "bd-active" : "")" @onclick='() => HandleTabChange("logo")'>
+                                    <i class="fa-light fa-image"></i>
+                                    <span>Logo</span>
+                                </button>
+                            </div>
 
-                                    <div class="form-group">
-                                        <label for="name">Branch Name *</label>
-                                        <RVTextbox Id="name"
-                                                   Value="@BranchModel.Name"
-                                                   ValueChanged="value => BranchModel.Name = value"
-                                                   Placeholder="Enter branch name"
-                                                   IconLeft="fa-light fa-code-branch" />
-                                        <ValidationMessage For="@(() => BranchModel.Name)" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="code">Branch Code</label>
-                                        <RVTextbox Id="code"
-                                                   Value="@BranchModel.Code"
-                                                   ValueChanged="value => BranchModel.Code = value"
-                                                   Placeholder="Enter unique branch code"
-                                                   IconLeft="fa-light fa-code" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="company">Company *</label>
-                                        <RVSelect Id="company"
-                                                  Value="@BranchModel.CompanyId.ToString()"
-                                                  ValueChanged="HandleCompanyChange"
-                                                  Placeholder="Select company"
-                                                  IconLeft="fa-light fa-building"
-                                                  Disabled="@(Companies == null || !Companies.Any() || !CanEditCompany)">
-                                            @if (Companies != null)
-                                            {
-                                                @foreach (var company in Companies.OrderBy(c => c.Name))
-                                                {
-                                                    <option value="@company.Id">@company.Name</option>
-                                                }
-                                            }
-                                        </RVSelect>
-                                        <ValidationMessage For="@(() => BranchModel.CompanyId)" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="status">Status</label>
-                                        <RVSelect Id="status"
-                                                  Value="@(BranchModel.StatusId?.ToString() ?? "")"
-                                                  ValueChanged="value => BranchModel.StatusId = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                                  Placeholder="Select status"
-                                                  IconLeft="fa-light fa-toggle-on">
-                                            <option value="">-- No Status --</option>
-                                            @if (branchStatusTypes != null)
-                                            {
-                                                @foreach (var status in branchStatusTypes.OrderBy(s => s.DisplayOrder))
-                                                {
-                                                    <option value="@status.Id">@status.Name</option>
-                                                }
-                                            }
-                                        </RVSelect>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="maxUsers">Max Users</label>
-                                            <RVTextbox Id="maxUsers"
-                                                       Type="number"
-                                                       Value="@(BranchModel.MaxUsers?.ToString() ?? "")"
-                                                       ValueChanged="value => BranchModel.MaxUsers = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                                       Placeholder="Maximum users allowed"
-                                                       IconLeft="fa-light fa-users" />
+                            <div class="bd-tab-content">
+                                <div class="bd-tab-pane @(activeTab == "basic" ? "bd-active" : "")">
+                                    <div class="bd-form-section">
+                                        <div class="bd-form-group">
+                                            <label for="name">Branch Name <span class="bd-required">*</span></label>
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-code-branch bd-input-icon"></i>
+                                                <InputText @bind-Value="BranchModel.Name" id="name" class="bd-input" placeholder="Enter branch name" />
+                                            </div>
+                                            <ValidationMessage For="@(() => BranchModel.Name)" class="bd-validation-message" />
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="maxProperties">Max Properties</label>
-                                            <RVTextbox Id="maxProperties"
-                                                       Type="number"
-                                                       Value="@(BranchModel.MaxProperties?.ToString() ?? "")"
-                                                       ValueChanged="value => BranchModel.MaxProperties = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                                       Placeholder="Maximum properties allowed"
-                                                       IconLeft="fa-light fa-home" />
+                                        <div class="bd-form-group">
+                                            <label for="code">Branch Code</label>
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-code bd-input-icon"></i>
+                                                <InputText @bind-Value="BranchModel.Code" id="code" class="bd-input" placeholder="Enter unique branch code" />
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="form-group">
-                                        <RVSwitch Label="Active"
-                                                  Value="BranchModel.IsActive"
-                                                  ValueChanged="value => BranchModel.IsActive = value"
-                                                  HelperText="Inactive branches will not be accessible to users" />
-                                    </div>
+                                        <div class="bd-form-group">
+                                            <label for="company">Company <span class="bd-required">*</span></label>
+                                            <div class="bd-select-wrapper">
+                                                <i class="fa-light fa-building bd-input-icon"></i>
+                                                <InputSelect @bind-Value="companyValue" id="company" class="bd-select" disabled="@(!CanEditCompany)">
+                                                    @if (Companies != null)
+                                                    {
+                                                        @foreach (var company in Companies.OrderBy(c => c.Name))
+                                                        {
+                                                            <option value="@company.Id">@company.Name</option>
+                                                        }
+                                                    }
+                                                </InputSelect>
+                                                <i class="fa-light fa-chevron-down bd-select-arrow"></i>
+                                            </div>
+                                            <ValidationMessage For="@(() => BranchModel.CompanyId)" class="bd-validation-message" />
+                                        </div>
 
-                                    <div class="form-group">
-                                        <RVSwitch Label="Head Office"
-                                                  Value="BranchModel.IsHeadOffice"
-                                                  ValueChanged="value => BranchModel.IsHeadOffice = value"
-                                                  HelperText="Designate this branch as the head office" />
+                                        <div class="bd-form-group">
+                                            <label for="status">Status</label>
+                                            <div class="bd-select-wrapper">
+                                                <i class="fa-light fa-toggle-on bd-input-icon"></i>
+                                                <InputSelect @bind-Value="statusValue" id="status" class="bd-select">
+                                                    <option value="">-- No Status --</option>
+                                                    @if (branchStatusTypes != null)
+                                                    {
+                                                        @foreach (var status in branchStatusTypes.OrderBy(s => s.DisplayOrder))
+                                                        {
+                                                            <option value="@status.Id">@status.Name</option>
+                                                        }
+                                                    }
+                                                </InputSelect>
+                                                <i class="fa-light fa-chevron-down bd-select-arrow"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="maxUsers">Max Users</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-users bd-input-icon"></i>
+                                                    <InputNumber @bind-Value="BranchModel.MaxUsers" id="maxUsers" class="bd-input" placeholder="Maximum users allowed" />
+                                                </div>
+                                            </div>
+
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="maxProperties">Max Properties</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-home bd-input-icon"></i>
+                                                    <InputNumber @bind-Value="BranchModel.MaxProperties" id="maxProperties" class="bd-input" placeholder="Maximum properties allowed" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="bd-form-group">
+                                            <div class="bd-switch-wrapper">
+                                                <label class="bd-switch">
+                                                    <InputCheckbox @bind-Value="BranchModel.IsActive" class="bd-switch-input" />
+                                                    <span class="bd-switch-slider"></span>
+                                                </label>
+                                                <div class="bd-switch-label">
+                                                    <span>Active</span>
+                                                    <small>Inactive branches will not be accessible to users</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="bd-form-group">
+                                            <div class="bd-switch-wrapper">
+                                                <label class="bd-switch">
+                                                    <InputCheckbox @bind-Value="BranchModel.IsHeadOffice" class="bd-switch-input" />
+                                                    <span class="bd-switch-slider"></span>
+                                                </label>
+                                                <div class="bd-switch-label">
+                                                    <span>Head Office</span>
+                                                    <small>Designate this branch as the head office</small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="contact" IsActive='activeTab == "contact"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
-                                        <p>Manage the branch's contact details</p>
-                                    </div>
+                                <div class="bd-tab-pane @(activeTab == "contact" ? "bd-active" : "")">
+                                    <div class="bd-form-section">
+                                        <div class="bd-form-group">
+                                            <label for="primaryEmail">Primary Email Address</label>
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-envelope bd-input-icon"></i>
+                                                <input type="email" id="primaryEmail" class="bd-input"
+                                                       value="@GetPrimaryEmail()" @onchange="(e) => UpdatePrimaryEmail(e.Value?.ToString())"
+                                                       placeholder="Enter primary email address" />
+                                            </div>
+                                        </div>
 
-                                    <!-- Primary Email -->
-                                    <div class="form-group">
-                                        <label for="primaryEmail">Primary Email Address</label>
-                                        <RVTextbox Id="primaryEmail"
-                                                   Type="email"
-                                                   Value="@GetPrimaryEmail()"
-                                                   ValueChanged="UpdatePrimaryEmail"
-                                                   Placeholder="Enter primary email address"
-                                                   IconLeft="fa-light fa-envelope" />
-                                    </div>
+                                        <div class="bd-form-group">
+                                            <label for="primaryPhone">Primary Phone Number</label>
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-phone bd-input-icon"></i>
+                                                <input type="tel" id="primaryPhone" class="bd-input"
+                                                       value="@GetPrimaryPhone()" @onchange="(e) => UpdatePrimaryPhone(e.Value?.ToString())"
+                                                       placeholder="Enter primary phone number" />
+                                            </div>
+                                        </div>
 
-                                    <!-- Primary Phone -->
-                                    <div class="form-group">
-                                        <label for="primaryPhone">Primary Phone Number</label>
-                                        <RVTextbox Id="primaryPhone"
-                                                   Type="tel"
-                                                   Value="@GetPrimaryPhone()"
-                                                   ValueChanged="UpdatePrimaryPhone"
-                                                   Placeholder="Enter primary phone number"
-                                                   IconLeft="fa-light fa-phone" />
-                                    </div>
-
-                                    <!-- Additional Email Addresses Section -->
-                                    <div class="additional-contacts">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
-                                                      OnClick="AddEmail" CssClass="add-btn" />
+                                        <div class="bd-section-divider">
+                                            <div class="bd-section-label">
+                                                <i class="fa-light fa-envelope"></i>
+                                                <span>Additional Email Addresses</span>
+                                            </div>
+                                            <button type="button" class="bd-button-small bd-button-outline" @onclick="AddEmail">
+                                                <i class="fa-light fa-plus"></i> Add Email
+                                            </button>
                                         </div>
 
                                         @if (BranchModel.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
                                         {
-                                            <div class="email-list">
+                                            <div class="bd-contact-list">
                                                 @foreach (var email in BranchModel.EmailAddresses.Where(e => !e.IsPrimary))
                                                 {
-                                                    <div class="email-item">
-                                                        <div class="email-content">
-                                                            <RVTextbox Value="@email.EmailAddress"
-                                                                       ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                                       Placeholder="Enter email address"
-                                                                       IconLeft="fa-light fa-envelope"
-                                                                       Size="sm" />
-                                                            <RVTextbox Value="@email.Description"
-                                                                       ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                                       Placeholder="Description (e.g. Sales, Support)"
-                                                                       IconLeft="fa-light fa-tag"
-                                                                       Size="sm" />
+                                                    <div class="bd-contact-item">
+                                                        <div class="bd-contact-content">
+                                                            <div class="bd-input-wrapper bd-flex-grow">
+                                                                <i class="fa-light fa-envelope bd-input-icon"></i>
+                                                                <input type="email" class="bd-input"
+                                                                       value="@email.EmailAddress" @onchange="(e) => UpdateEmailAddress(email, e.Value?.ToString())"
+                                                                       placeholder="Enter email address" />
+                                                            </div>
+                                                            <div class="bd-input-wrapper">
+                                                                <i class="fa-light fa-tag bd-input-icon"></i>
+                                                                <input type="text" class="bd-input"
+                                                                       value="@email.Description" @onchange="(e) => UpdateEmailDescription(email, e.Value?.ToString())"
+                                                                       placeholder="Description" />
+                                                            </div>
                                                         </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                        <button type="button" class="bd-button-icon bd-button-danger" @onclick="() => RemoveEmail(email)">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
                                                     </div>
                                                 }
                                             </div>
                                         }
                                         else
                                         {
-                                            <div class="empty-list">
-                                                <i class="fa-light fa-inbox"></i>
+                                            <div class="bd-empty-list">
+                                                <i class="fa-light fa-envelope-open"></i>
                                                 <p>No additional email addresses</p>
                                             </div>
                                         }
-                                    </div>
 
-                                    <!-- Additional Phone Numbers Section -->
-                                    <div class="additional-contacts">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
-                                                      OnClick="AddPhone" CssClass="add-btn" />
+                                        <div class="bd-section-divider">
+                                            <div class="bd-section-label">
+                                                <i class="fa-light fa-phone"></i>
+                                                <span>Additional Phone Numbers</span>
+                                            </div>
+                                            <button type="button" class="bd-button-small bd-button-outline" @onclick="AddPhone">
+                                                <i class="fa-light fa-plus"></i> Add Phone
+                                            </button>
                                         </div>
 
                                         @if (BranchModel.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
                                         {
-                                            <div class="phone-list">
+                                            <div class="bd-contact-list">
                                                 @foreach (var phone in BranchModel.ContactNumbers.Where(c => !c.IsPrimary))
                                                 {
-                                                    <div class="phone-item">
-                                                        <div class="phone-content">
-                                                            <RVTextbox Value="@phone.Number"
-                                                                       ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                                       Placeholder="Enter phone number"
-                                                                       IconLeft="fa-light fa-phone"
-                                                                       Size="sm" />
-                                                            <RVSelect Value="@(phone.ContactNumberTypeId.ToString())"
-                                                                      ValueChanged="value => UpdatePhoneTypeId(phone, value)"
-                                                                      Placeholder="Select type"
-                                                                      IconLeft="fa-light fa-phone-office"
-                                                                      Size="sm">
-                                                                @if (contactNumberTypes != null)
-                                                                {
-                                                                    @foreach (var type in contactNumberTypes)
+                                                    <div class="bd-contact-item">
+                                                        <div class="bd-contact-content">
+                                                            <div class="bd-input-wrapper bd-flex-grow">
+                                                                <i class="fa-light fa-phone bd-input-icon"></i>
+                                                                <input type="tel" class="bd-input"
+                                                                       value="@phone.Number" @onchange="(e) => UpdatePhoneNumber(phone, e.Value?.ToString())"
+                                                                       placeholder="Enter phone number" />
+                                                            </div>
+                                                            <div class="bd-select-wrapper">
+                                                                <i class="fa-light fa-phone-office bd-input-icon"></i>
+                                                                <select class="bd-select"
+                                                                        value="@phone.ContactNumberTypeId" @onchange="(e) => UpdatePhoneTypeId(phone, e.Value?.ToString())">
+                                                                    @if (contactNumberTypes != null)
                                                                     {
-                                                                        <option value="@type.Id">@type.Name</option>
+                                                                        @foreach (var type in contactNumberTypes)
+                                                                        {
+                                                                            <option value="@type.Id">@type.Name</option>
+                                                                        }
                                                                     }
-                                                                }
-                                                            </RVSelect>
-                                                            <RVTextbox Value="@phone.Description"
-                                                                       ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                                       Placeholder="Description"
-                                                                       IconLeft="fa-light fa-tag"
-                                                                       Size="sm" />
+                                                                </select>
+                                                                <i class="fa-light fa-chevron-down bd-select-arrow"></i>
+                                                            </div>
                                                         </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                                  OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                        <button type="button" class="bd-button-icon bd-button-danger" @onclick="() => RemovePhone(phone)">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
                                                     </div>
                                                 }
                                             </div>
                                         }
                                         else
                                         {
-                                            <div class="empty-list">
+                                            <div class="bd-empty-list">
                                                 <i class="fa-light fa-phone-slash"></i>
                                                 <p>No additional phone numbers</p>
                                             </div>
                                         }
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="address" IsActive='activeTab == "address"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-map-marker-alt"></i> Address Information</h4>
-                                        <p>Enter the branch's address details</p>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-12">
+                                <div class="bd-tab-pane @(activeTab == "address" ? "bd-active" : "")">
+                                    <div class="bd-form-section">
+                                        <div class="bd-form-group">
                                             <label for="street">Street</label>
-                                            <RVTextbox Id="street"
-                                                       Value="@BranchModel.Address.Street"
-                                                       ValueChanged="value => BranchModel.Address.Street = value"
-                                                       Placeholder="Enter street address"
-                                                       IconLeft="fa-light fa-road" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-4">
-                                            <label for="unitNumber">Unit Number</label>
-                                            <RVTextbox Id="unitNumber"
-                                                       Value="@BranchModel.Address.UnitNumber"
-                                                       ValueChanged="value => BranchModel.Address.UnitNumber = value"
-                                                       Placeholder="Unit number"
-                                                       IconLeft="fa-light fa-door-closed" />
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-road bd-input-icon"></i>
+                                                <InputText @bind-Value="BranchModel.Address.Street" id="street" class="bd-input" placeholder="Enter street address" />
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-8">
-                                            <label for="complexName">Complex Name</label>
-                                            <RVTextbox Id="complexName"
-                                                       Value="@BranchModel.Address.ComplexName"
-                                                       ValueChanged="value => BranchModel.Address.ComplexName = value"
-                                                       Placeholder="Complex name"
-                                                       IconLeft="fa-light fa-building" />
-                                        </div>
-                                    </div>
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-4">
+                                                <label for="unitNumber">Unit Number</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-door-closed bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.UnitNumber" id="unitNumber" class="bd-input" placeholder="Unit number" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group col-12">
+                                            <div class="bd-form-group bd-col-8">
+                                                <label for="complexName">Complex Name</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-building bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.ComplexName" id="complexName" class="bd-input" placeholder="Complex name" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="bd-form-group">
                                             <label for="buildingName">Building Name</label>
-                                            <RVTextbox Id="buildingName"
-                                                       Value="@BranchModel.Address.BuildingName"
-                                                       ValueChanged="value => BranchModel.Address.BuildingName = value"
-                                                       Placeholder="Building name"
-                                                       IconLeft="fa-light fa-building" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="suburb">Suburb</label>
-                                            <RVTextbox Id="suburb"
-                                                       Value="@BranchModel.Address.Suburb"
-                                                       ValueChanged="value => BranchModel.Address.Suburb = value"
-                                                       Placeholder="Enter suburb"
-                                                       IconLeft="fa-light fa-map" />
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-building bd-input-icon"></i>
+                                                <InputText @bind-Value="BranchModel.Address.BuildingName" id="buildingName" class="bd-input" placeholder="Building name" />
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="city">City</label>
-                                            <RVTextbox Id="city"
-                                                       Value="@BranchModel.Address.City"
-                                                       ValueChanged="value => BranchModel.Address.City = value"
-                                                       Placeholder="Enter city"
-                                                       IconLeft="fa-light fa-city" />
-                                        </div>
-                                    </div>
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="suburb">Suburb</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-map bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.Suburb" id="suburb" class="bd-input" placeholder="Enter suburb" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="province">Province</label>
-                                            <RVTextbox Id="province"
-                                                       Value="@BranchModel.Address.Province"
-                                                       ValueChanged="value => BranchModel.Address.Province = value"
-                                                       Placeholder="Enter province"
-                                                       IconLeft="fa-light fa-map-marked" />
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="city">City</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-city bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.City" id="city" class="bd-input" placeholder="Enter city" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="postalCode">Postal Code</label>
-                                            <RVTextbox Id="postalCode"
-                                                       Value="@BranchModel.Address.PostalCode"
-                                                       ValueChanged="value => BranchModel.Address.PostalCode = value"
-                                                       Placeholder="Enter postal code"
-                                                       IconLeft="fa-light fa-mailbox" />
-                                        </div>
-                                    </div>
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="province">Province</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-map-marked bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.Province" id="province" class="bd-input" placeholder="Enter province" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-group">
-                                        <label for="country">Country</label>
-                                        <RVTextbox Id="country"
-                                                   Value="@BranchModel.Address.Country"
-                                                   ValueChanged="value => BranchModel.Address.Country = value"
-                                                   Placeholder="Enter country"
-                                                   IconLeft="fa-light fa-globe" />
-                                    </div>
-                                </div>
-                            </RVTabPanel>
-
-                            <!-- Banking Details Tab -->
-                            <RVTabPanel TabId="banking" IsActive='activeTab == "banking"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-university"></i> Banking Details</h4>
-                                        <p>Enter the branch's banking information for invoicing and payments</p>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="bankNameId">Bank Name</label>
-                                            <RVSelect Id="bankNameId"
-                                                      Value="@(BranchModel.BankAccount.BankNameId?.ToString() ?? "")"
-                                                      ValueChanged="value => UpdateBankNameId(value)"
-                                                      Placeholder="Select bank"
-                                                      IconLeft="fa-light fa-university">
-                                                <option value="">-- Select Bank --</option>
-                                                @if (bankNameTypes != null)
-                                                {
-                                                    @foreach (var bank in bankNameTypes.OrderBy(b => b.Name))
-                                                    {
-                                                        <option value="@bank.Id">@bank.Name</option>
-                                                    }
-                                                }
-                                            </RVSelect>
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="postalCode">Postal Code</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-mailbox bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.Address.PostalCode" id="postalCode" class="bd-input" placeholder="Enter postal code" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="accountType">Account Type</label>
-                                            <RVTextbox Id="accountType"
-                                                       Value="@BranchModel.BankAccount.AccountType"
-                                                       ValueChanged="value => BranchModel.BankAccount.AccountType = value"
-                                                       Placeholder="E.g. Current, Savings, Business"
-                                                       IconLeft="fa-light fa-credit-card" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="accountNumber">Account Number</label>
-                                            <RVTextbox Id="accountNumber"
-                                                       Value="@BranchModel.BankAccount.AccountNumber"
-                                                       ValueChanged="value => BranchModel.BankAccount.AccountNumber = value"
-                                                       Placeholder="Enter account number"
-                                                       IconLeft="fa-light fa-hashtag" />
-                                        </div>
-
-                                        <div class="form-group col-md-6">
-                                            <label for="branchCode">Branch Code</label>
-                                            <RVTextbox Id="branchCode"
-                                                       Value="@BranchModel.BankAccount.BranchCode"
-                                                       ValueChanged="value => BranchModel.BankAccount.BranchCode = value"
-                                                       Placeholder="Enter branch code"
-                                                       IconLeft="fa-light fa-code" />
+                                        <div class="bd-form-group">
+                                            <label for="country">Country</label>
+                                            <div class="bd-input-wrapper">
+                                                <i class="fa-light fa-globe bd-input-icon"></i>
+                                                <InputText @bind-Value="BranchModel.Address.Country" id="country" class="bd-input" placeholder="Enter country" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="logo" IsActive='activeTab == "logo"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-image"></i> Branch Logo</h4>
-                                        <p>Upload a logo for the branch</p>
-                                    </div>
-
-                                    <div class="logo-upload-container">
-                                        @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
-                                        {
-                                            <div class="current-logo">
-                                                <h5>Current Logo</h5>
-                                                <div class="logo-preview">
-                                                    <img src="@BranchModel.MainLogo.Url" alt="Branch Logo" class="logo-image" />
-                                                </div>
-                                                <div class="logo-actions">
-                                                    <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-trash"
-                                                              Text="Remove" OnClick="RemoveLogo" />
-                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-exchange"
-                                                              Text="Replace" OnClick="ShowUploadDialog" />
+                                <div class="bd-tab-pane @(activeTab == "banking" ? "bd-active" : "")">
+                                    <div class="bd-form-section">
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="bankNameId">Bank Name</label>
+                                                <div class="bd-select-wrapper">
+                                                    <i class="fa-light fa-university bd-input-icon"></i>
+                                                    <select id="bankNameId" class="bd-select"
+                                                            value="@(BranchModel.BankAccount.BankNameId?.ToString() ?? "")"
+                                                            @onchange="(e) => UpdateBankNameId(e.Value?.ToString())">
+                                                        <option value="">-- Select Bank --</option>
+                                                        @if (bankNameTypes != null)
+                                                        {
+                                                            @foreach (var bank in bankNameTypes.OrderBy(b => b.Name))
+                                                            {
+                                                                <option value="@bank.Id">@bank.Name</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <i class="fa-light fa-chevron-down bd-select-arrow"></i>
                                                 </div>
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-logo-upload">
-                                                <i class="fa-light fa-image fa-3x"></i>
-                                                <p>No logo uploaded</p>
-                                                <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-cloud-upload"
-                                                          Text="Upload Logo" OnClick="ShowUploadDialog" />
-                                            </div>
-                                        }
 
-                                        @if (isUploading)
-                                        {
-                                            <div class="upload-progress">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: @uploadProgress%"></div>
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="accountType">Account Type</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-credit-card bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.BankAccount.AccountType" id="accountType" class="bd-input" placeholder="E.g. Current, Savings, Business" />
                                                 </div>
-                                                <span class="progress-text">Uploading... @uploadProgress%</span>
                                             </div>
-                                        }
+                                        </div>
+
+                                        <div class="bd-form-row">
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="accountNumber">Account Number</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-hashtag bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.BankAccount.AccountNumber" id="accountNumber" class="bd-input" placeholder="Enter account number" />
+                                                </div>
+                                            </div>
+
+                                            <div class="bd-form-group bd-col-6">
+                                                <label for="branchCode">Branch Code</label>
+                                                <div class="bd-input-wrapper">
+                                                    <i class="fa-light fa-code bd-input-icon"></i>
+                                                    <InputText @bind-Value="BranchModel.BankAccount.BranchCode" id="branchCode" class="bd-input" placeholder="Enter branch code" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
-                        </RVTab>
 
-                        <div class="branch-edit-footer">
-                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Cancel" OnClick="OnCancel" />
-                            <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save Changes" Type="submit" />
+                                <div class="bd-tab-pane @(activeTab == "logo" ? "bd-active" : "")">
+                                    <div class="bd-form-section">
+                                        <div class="bd-logo-upload-container">
+                                            @if (BranchModel.MainLogoId.HasValue && BranchModel.MainLogo != null)
+                                            {
+                                                <div class="bd-current-logo">
+                                                    <h5>Current Logo</h5>
+                                                    <div class="bd-logo-preview">
+                                                        <img src="@BranchModel.MainLogo.Url" alt="Branch Logo" class="bd-logo-image" />
+                                                    </div>
+                                                    <div class="bd-logo-actions">
+                                                        <button type="button" class="bd-button bd-button-danger" @onclick="RemoveLogo">
+                                                            <i class="fa-light fa-trash"></i>
+                                                            <span>Remove</span>
+                                                        </button>
+                                                        <button type="button" class="bd-button bd-button-outline" @onclick="ShowUploadDialog">
+                                                            <i class="fa-light fa-exchange"></i>
+                                                            <span>Replace</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="bd-empty-logo-upload">
+                                                    <i class="fa-light fa-image"></i>
+                                                    <p>No logo uploaded</p>
+                                                    <button type="button" class="bd-button bd-button-primary" @onclick="ShowUploadDialog">
+                                                        <i class="fa-light fa-cloud-upload"></i>
+                                                        <span>Upload Logo</span>
+                                                    </button>
+                                                </div>
+                                            }
+
+                                            @if (isUploading)
+                                            {
+                                                <div class="bd-upload-progress">
+                                                    <div class="bd-progress-bar">
+                                                        <div class="bd-progress-fill" style="width: @uploadProgress%"></div>
+                                                    </div>
+                                                    <span class="bd-progress-text">Uploading... @uploadProgress%</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </EditForm>
                 }
             </div>
         }
-    </ChildContent>
-</RVModal>
+    </div>
 
+    <div class="bd-modal-footer">
+        <button type="button" class="bd-button bd-button-outline" @onclick="OnCancel">
+            <i class="fa-light fa-times"></i>
+            <span>Cancel</span>
+        </button>
+        @if (IsViewMode && CanEdit)
+        {
+            <button type="button" class="bd-button bd-button-primary" @onclick="SwitchToEditMode">
+                <i class="fa-light fa-edit"></i>
+                <span>Edit</span>
+            </button>
+        }
+        else if (IsEditMode)
+        {
+            <button class="bd-button bd-button-primary" @onclick="Save">
+                <i class="fa-light fa-save"></i>
+                <span>Save Changes</span>
+            </button>
+        }
+    </div>
+</div>
 
 @if (showLogoUploadDialog)
 {
-    <RVModal IsVisible="true"
-             Title="Upload Logo"
-             Icon="fa-light fa-cloud-upload"
-             OnClose="CloseUploadDialog"
-             OnCancel="CloseUploadDialog"
-             OnConfirm="UploadLogo"
-             ConfirmText="Upload"
-             CancelText="Cancel"
-             Size="md">
-        <ChildContent>
-            <div class="logo-upload-dialog">
-                <div class="upload-instructions">
-                    <h4>Upload Branch Logo</h4>
-                    <p>Please select an image file to upload as the branch logo.</p>
-                    <p>Recommended size: 512x512 pixels</p>
-                    <p>Maximum file size: 5MB</p>
-                    <p>Supported formats: JPG, PNG, GIF</p>
-                </div>
-
-                <div class="upload-area">
-                    <InputFile OnChange="OnLogoFileSelected" class="upload-input" accept="image/*" />
-                    <div class="upload-placeholder @(logoFile != null ? "d-none" : "")">
-                        <i class="fa-light fa-cloud-upload fa-3x"></i>
-                        <p>Drag and drop your logo here, or click to browse</p>
-                        <span class="file-hint">JPG, PNG or GIF format recommended</span>
+    <div class="bd-modal-backdrop"></div>
+    <div class="bd-upload-modal-wrapper">
+        <div class="bd-modal-header">
+            <div class="bd-modal-title">
+                <i class="fa-light fa-cloud-upload"></i>
+                <span>Upload Logo</span>
+            </div>
+            <button type="button" class="bd-close-button" @onclick="CloseUploadDialog">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="bd-modal-body">
+            <div class="bd-upload-instructions">
+                <h4>Upload Branch Logo</h4>
+                <p>Please select an image file to upload as the branch logo.</p>
+                <div class="bd-upload-specs">
+                    <div class="bd-spec-item">
+                        <i class="fa-light fa-image"></i>
+                        <span>Recommended size: 512x512 pixels</span>
                     </div>
-                    @if (logoFile != null)
-                    {
-                        <div class="file-selected">
-                            <i class="fa-light fa-file-image"></i>
-                            <span>@logoFile.Name</span>
-                            <span class="file-size">(@((logoFile.Size / 1024).ToString("N0")) KB)</span>
-                        </div>
-                    }
+                    <div class="bd-spec-item">
+                        <i class="fa-light fa-weight"></i>
+                        <span>Maximum file size: 5MB</span>
+                    </div>
+                    <div class="bd-spec-item">
+                        <i class="fa-light fa-file-image"></i>
+                        <span>Supported formats: JPG, PNG, GIF</span>
+                    </div>
                 </div>
+            </div>
 
-                @if (!string.IsNullOrEmpty(uploadError))
+            <div class="bd-upload-area @(logoFile != null ? "bd-has-file" : "")">
+                <InputFile OnChange="OnLogoFileSelected" class="bd-upload-input" accept="image/*" />
+                <div class="bd-upload-placeholder">
+                    <i class="fa-light fa-cloud-upload"></i>
+                    <p>Drag and drop your logo here, or click to browse</p>
+                    <span class="bd-file-hint">JPG, PNG or GIF format recommended</span>
+                </div>
+                @if (logoFile != null)
                 {
-                    <div class="upload-error">
-                        <i class="fa-light fa-exclamation-triangle"></i>
-                        <p>@uploadError</p>
+                    <div class="bd-file-selected">
+                        <i class="fa-light fa-file-image"></i>
+                        <div class="bd-file-info">
+                            <span class="bd-file-name">@logoFile.Name</span>
+                            <span class="bd-file-size">(@((logoFile.Size / 1024).ToString("N0")) KB)</span>
+                        </div>
                     </div>
                 }
             </div>
-        </ChildContent>
-    </RVModal>
+
+            @if (!string.IsNullOrEmpty(uploadError))
+            {
+                <div class="bd-upload-error">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <p>@uploadError</p>
+                </div>
+            }
+        </div>
+        <div class="bd-modal-footer">
+            <button type="button" class="bd-button bd-button-outline" @onclick="CloseUploadDialog">
+                <i class="fa-light fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="bd-button bd-button-primary" @onclick="UploadLogo" disabled="@(logoFile == null)">
+                <i class="fa-light fa-cloud-upload"></i>
+                <span>Upload</span>
+            </button>
+        </div>
+    </div>
 }
 
 @code {
@@ -994,7 +981,28 @@
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
     private Company? Company { get; set; }
+    // Add these properties to handle binding with InputSelect
+    private string companyValue
+    {
+        get => BranchModel.CompanyId.ToString();
+        set
+        {
+            if (int.TryParse(value, out var id))
+            {
+                BranchModel.CompanyId = id;
+                _ = LoadCompanyDetails(id);
+            }
+        }
+    }
 
+    private string statusValue
+    {
+        get => BranchModel.StatusId?.ToString() ?? "";
+        set
+        {
+            BranchModel.StatusId = string.IsNullOrEmpty(value) ? null : int.Parse(value);
+        }
+    }
     // Logo upload related fields
     private bool showLogoUploadDialog = false;
     private IBrowserFile? logoFile;
