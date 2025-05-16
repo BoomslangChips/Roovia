@@ -1,10 +1,22 @@
-﻿@* @using Roovia.Interfaces
+﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Components.Elements.Forms
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.ProjectCdnConfigModels
 @using Roovia.Security
 @using Roovia.Services
 @using Roovia.Services.General
 @inject IUser UserService
 @inject IPermissionService PermissionService
+@inject ICdnService CdnService
 @inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
 
 <RVModal IsVisible="true"
          Title="User Details"
@@ -27,23 +39,36 @@
                 <div class="user-header">
                     <div class="user-header-flex">
                         <div class="user-avatar-wrapper">
-                            <div class="user-avatar-large">
-                                @if (string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName))
-                                {
-                                    <span>@(user.UserName?.Substring(0, 1).ToUpper() ?? "?")</span>
-                                }
-                                else
-                                {
-                                    <span>@(user.FirstName?.Substring(0, 1).ToUpper() ?? "")@(user.LastName?.Substring(0, 1).ToUpper() ?? "")</span>
-                                }
-                            </div>
+                            @if (user.ProfilePictureId.HasValue && user.ProfilePicture != null)
+                            {
+                                <div class="user-avatar-large with-image">
+                                    <img src="@user.ProfilePicture.Url" alt="@GetUserDisplayName()" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="user-avatar-large">
+                                    @if (string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName))
+                                    {
+                                        <span>@(user.UserName?.Substring(0, 1).ToUpper() ?? "?")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@(user.FirstName?.Substring(0, 1).ToUpper() ?? "")@(user.LastName?.Substring(0, 1).ToUpper() ?? "")</span>
+                                    }
+                                </div>
+                            }
                             <div class="status-indicator @(user.IsActive ? "active" : "inactive")"></div>
                         </div>
 
                         <div class="user-header-info">
-                            <h2>@(string.IsNullOrEmpty(user.FullName) ? user.UserName : user.FullName)</h2>
+                            <h2>@GetUserDisplayName()</h2>
 
                             <div class="user-meta">
+                                @if (!string.IsNullOrEmpty(user.JobTitle))
+                                {
+                                    <span class="user-meta-item"><i class="fa-light fa-briefcase"></i>@user.JobTitle</span>
+                                }
                                 @if (!string.IsNullOrEmpty(user.Email))
                                 {
                                     <span class="user-meta-item"><i class="fa-light fa-envelope"></i>@user.Email</span>
@@ -67,6 +92,13 @@
                                     <i class="fa-light fa-@(user.IsActive ? "check-circle" : "times-circle")"></i>
                                     @(user.IsActive ? "Active" : "Inactive")
                                 </span>
+                                @if (!string.IsNullOrEmpty(user.Department))
+                                {
+                                    <span class="department-badge">
+                                        <i class="fa-light fa-building-user"></i>
+                                        @user.Department
+                                    </span>
+                                }
                             </div>
                         </div>
                     </div>
@@ -78,48 +110,7 @@
                 </div>
 
                 <div class="user-details-tabs">
-                    @{
-                        var tabs = new List<RVTab.RVTabItem>
-                {
-                new RVTab.RVTabItem
-                {
-                Id = "info",
-                Title = "User Info",
-                Icon = "fa-light fa-user",
-                IsActive = activeTab == "info"
-                },
-                new RVTab.RVTabItem
-                {
-                Id = "contact",
-                Title = "Contact",
-                Icon = "fa-light fa-address-card",
-                IsActive = activeTab == "contact"
-                },
-                new RVTab.RVTabItem
-                {
-                Id = "company",
-                Title = "Company",
-                Icon = "fa-light fa-building",
-                IsActive = activeTab == "company"
-                },
-                new RVTab.RVTabItem
-                {
-                Id = "roles",
-                Title = "Roles",
-                Icon = "fa-light fa-shield-check",
-                IsActive = activeTab == "roles"
-                },
-                new RVTab.RVTabItem
-                {
-                Id = "activity",
-                Title = "Activity",
-                Icon = "fa-light fa-chart-line",
-                IsActive = activeTab == "activity"
-                }
-                };
-                    }
-
-                    <RVTab Tabs="tabs" Size="sm" OnTabChange="SetActiveTabFromEvent">
+                    <RVTab Tabs="detailTabs" Size="sm" OnTabChange="SetActiveTabFromEvent">
                         <RVTabPanel TabId="info" IsActive='activeTab == "info"'>
                             <div class="detail-section">
                                 <div class="detail-card">
@@ -139,6 +130,20 @@
                                             <div class="detail-label"><i class="fa-light fa-id-card"></i> Last Name</div>
                                             <div class="detail-value">@(string.IsNullOrEmpty(user.LastName) ? "-" : user.LastName)</div>
                                         </div>
+                                        @if (!string.IsNullOrEmpty(user.IdNumber))
+                                        {
+                                            <div class="detail-row">
+                                                <div class="detail-label"><i class="fa-light fa-id-badge"></i> ID Number</div>
+                                                <div class="detail-value">@user.IdNumber</div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(user.EmployeeNumber))
+                                        {
+                                            <div class="detail-row">
+                                                <div class="detail-label"><i class="fa-light fa-hashtag"></i> Employee Number</div>
+                                                <div class="detail-value">@user.EmployeeNumber</div>
+                                            </div>
+                                        }
                                         <div class="detail-row">
                                             <div class="detail-label"><i class="fa-light fa-fingerprint"></i> User ID</div>
                                             <div class="detail-value">@user.Id</div>
@@ -178,6 +183,34 @@
                                                 </span>
                                             </div>
                                         </div>
+                                        @if (user.IsTwoFactorRequired)
+                                        {
+                                            <div class="detail-row">
+                                                <div class="detail-label"><i class="fa-light fa-mobile-screen"></i> Preferred 2FA Method</div>
+                                                <div class="detail-value">
+                                                    @if (!string.IsNullOrEmpty(user.PreferredTwoFactorMethod))
+                                                    {
+                                                        <span class="status-badge status-info">
+                                                            <i class="fa-light fa-@GetTwoFactorMethodIcon(user.PreferredTwoFactorMethod)"></i>
+                                                            @user.PreferredTwoFactorMethod
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Not specified</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        <div class="detail-row">
+                                            <div class="detail-label"><i class="fa-light fa-key-skeleton"></i> Password Change Required</div>
+                                            <div class="detail-value">
+                                                <span class="status-badge @(user.RequireChangePasswordOnLogin ? "status-active" : "status-inactive")">
+                                                    <i class="fa-light fa-@(user.RequireChangePasswordOnLogin ? "check-circle" : "times-circle")"></i>
+                                                    @(user.RequireChangePasswordOnLogin ? "Yes" : "No")
+                                                </span>
+                                            </div>
+                                        </div>
                                         <div class="detail-row">
                                             <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
                                             <div class="detail-value">@(user.CreatedDate?.ToString("dd MMM yyyy, HH:mm") ?? "-")</div>
@@ -187,6 +220,19 @@
                                             <div class="detail-row">
                                                 <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
                                                 <div class="detail-value">@user.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                            </div>
+                                        }
+                                        @if (user.LastLoginDate.HasValue)
+                                        {
+                                            <div class="detail-row">
+                                                <div class="detail-label"><i class="fa-light fa-clock-rotate-left"></i> Last Login</div>
+                                                <div class="detail-value">
+                                                    @user.LastLoginDate?.ToString("dd MMM yyyy, HH:mm")
+                                                    @if (!string.IsNullOrEmpty(user.LastLoginIpAddress))
+                                                    {
+                                                        <span class="ip-address">(@user.LastLoginIpAddress)</span>
+                                                    }
+                                                </div>
                                             </div>
                                         }
                                     </div>
@@ -278,9 +324,13 @@
                                                             {
                                                                 @phone.Description
                                                             }
+                                                            else if (phone.ContactNumberType != null)
+                                                            {
+                                                                @phone.ContactNumberType.Name
+                                                            }
                                                             else
                                                             {
-                                                                @phone.Type.ToString()
+                                                                <span>Phone</span>
                                                             }
                                                         </div>
                                                         <div class="detail-value phone-value">
@@ -321,6 +371,12 @@
                                                 @if (user.Company != null)
                                                 {
                                                     <div class="company-info">
+                                                        @if (user.Company.MainLogo != null)
+                                                        {
+                                                            <div class="company-logo">
+                                                                <img src="@user.Company.MainLogo.Url" alt="@user.Company.Name" />
+                                                            </div>
+                                                        }
                                                         <span class="company-name"><i class="fa-light fa-building"></i> @user.Company.Name</span>
                                                         @if (!user.Company.IsActive)
                                                         {
@@ -343,6 +399,12 @@
                                                 @if (user.Branch != null)
                                                 {
                                                     <div class="branch-info">
+                                                        @if (user.Branch.MainLogo != null)
+                                                        {
+                                                            <div class="branch-logo">
+                                                                <img src="@user.Branch.MainLogo.Url" alt="@user.Branch.Name" />
+                                                            </div>
+                                                        }
                                                         <span class="branch-name"><i class="fa-light fa-code-branch"></i> @user.Branch.Name</span>
                                                         @if (!user.Branch.IsActive)
                                                         {
@@ -593,6 +655,10 @@
                                 <div class="detail-card">
                                     <div class="card-header">
                                         <h4><i class="fa-light fa-key"></i> Effective Permissions</h4>
+                                        <div class="card-header-actions">
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-key" Text="Manage Permissions"
+                                                      OnClick="HandlePermissionsClick" />
+                                        </div>
                                     </div>
                                     <div class="card-body">
                                         @if (isLoadingPermissions)
@@ -666,18 +732,170 @@
                             <div class="detail-section">
                                 <div class="detail-card">
                                     <div class="card-header">
-                                        <h4><i class="fa-light fa-chart-line"></i> Activity Log</h4>
+                                        <h4><i class="fa-light fa-chart-line"></i> Login Activity</h4>
                                     </div>
                                     <div class="card-body">
-                                        <div class="info-message">
-                                            <i class="fa-light fa-info-circle"></i>
-                                            <span>Recent user activity will be displayed here</span>
-                                        </div>
+                                        @if (userLoginActivity != null && userLoginActivity.Count > 0)
+                                        {
+                                            <div class="login-activity-list">
+                                                @foreach (var activity in userLoginActivity)
+                                                {
+                                                    <div class="activity-item @(activity.Success ? "success" : "failure")">
+                                                        <div class="activity-icon">
+                                                            <i class="fa-light fa-@(activity.Success ? "sign-in" : "ban")"></i>
+                                                        </div>
+                                                        <div class="activity-details">
+                                                            <div class="activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</div>
+                                                            <div class="activity-message">
+                                                                @if (activity.Success)
+                                                                {
+                                                                    <span>Successful login</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>Failed login attempt</span>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(activity.IpAddress))
+                                                                {
+                                                                    <span class="ip-address">from @activity.IpAddress</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <i class="fa-light fa-chart-line-down"></i>
+                                                <p>No login activity records available</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
 
-                                        <div class="empty-message">
-                                            <i class="fa-light fa-chart-line-down"></i>
-                                            <p>No activity records available</p>
-                                        </div>
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4><i class="fa-light fa-history"></i> System Activity</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (userSystemActivity != null && userSystemActivity.Count > 0)
+                                        {
+                                            <div class="system-activity-list">
+                                                @foreach (var activity in userSystemActivity)
+                                                {
+                                                    <div class="activity-item">
+                                                        <div class="activity-icon">
+                                                            <i class="fa-light fa-@GetActivityIcon(activity.Action)"></i>
+                                                        </div>
+                                                        <div class="activity-details">
+                                                            <div class="activity-time">@activity.Timestamp.ToString("dd MMM yyyy, HH:mm")</div>
+                                                            <div class="activity-message">
+                                                                <strong>@activity.Action</strong> @activity.EntityType
+                                                                @if (!string.IsNullOrEmpty(activity.EntityName))
+                                                                {
+                                                                    <span>"@activity.EntityName"</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <i class="fa-light fa-history"></i>
+                                                <p>No system activity records available</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </RVTabPanel>
+
+                        <RVTabPanel TabId="preferences" IsActive='activeTab == "preferences"'>
+                            <div class="detail-section">
+                                <div class="detail-card">
+                                    <div class="card-header">
+                                        <h4><i class="fa-light fa-sliders"></i> User Preferences</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (!string.IsNullOrEmpty(user.UserPreferences))
+                                        {
+                                            <div class="preferences-display">
+                                                @if (userPreferences != null)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-palette"></i> Theme</div>
+                                                        <div class="detail-value">
+                                                            @if (userPreferences.TryGetValue("theme", out var theme))
+                                                            {
+                                                                <span class="badge theme-badge">
+                                                                    <i class="fa-light fa-@GetThemeIcon(theme?.ToString())"></i>
+                                                                    @GetThemeName(theme?.ToString())
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>System Default</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-bell"></i> Notifications</div>
+                                                        <div class="detail-value">
+                                                            <div class="notification-preferences">
+                                                                @if (userPreferences.TryGetValue("notifications", out var notificationsObj) &&
+                                                               notificationsObj is System.Text.Json.JsonElement notificationsElement)
+                                                                {
+                                                                    <div class="notification-channel">
+                                                                        <span class="channel-name">Email:</span>
+                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("email", out var email) && email.GetBoolean() ? "enabled" : "disabled")">
+                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("email", out var email2) && email2.GetBoolean() ? "check-circle" : "times-circle")"></i>
+                                                                            @(notificationsElement.TryGetProperty("email", out var email3) && email3.GetBoolean() ? "Enabled" : "Disabled")
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="notification-channel">
+                                                                        <span class="channel-name">SMS:</span>
+                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("sms", out var sms) && sms.GetBoolean() ? "enabled" : "disabled")">
+                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("sms", out var sms2) && sms2.GetBoolean() ? "check-circle" : "times-circle")"></i>
+                                                                            @(notificationsElement.TryGetProperty("sms", out var sms3) && sms3.GetBoolean() ? "Enabled" : "Disabled")
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="notification-channel">
+                                                                        <span class="channel-name">Web:</span>
+                                                                        <span class="channel-status @(notificationsElement.TryGetProperty("web", out var web) && web.GetBoolean() ? "enabled" : "disabled")">
+                                                                            <i class="fa-light fa-@(notificationsElement.TryGetProperty("web", out var web2) && web2.GetBoolean() ? "check-circle" : "times-circle")"></i>
+                                                                            @(notificationsElement.TryGetProperty("web", out var web3) && web3.GetBoolean() ? "Enabled" : "Disabled")
+                                                                        </span>
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>Default settings</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="preferences-raw">
+                                                        <code>@user.UserPreferences</code>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-message">
+                                                <i class="fa-light fa-sliders"></i>
+                                                <p>No user preferences configured</p>
+                                            </div>
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -707,8 +925,6 @@
     </ChildContent>
 </RVModal>
 
-
-
 @code {
     [Parameter] public string UserId { get; set; } = string.Empty;
     [Parameter] public EventCallback OnClose { get; set; }
@@ -718,6 +934,10 @@
     private bool isLoading = true;
     private string activeTab = "info";
     private string permissionSearchTerm = "";
+    private Dictionary<string, object>? userPreferences;
+
+    // Tab configuration
+    private List<RVTab.RVTabItem> detailTabs = new List<RVTab.RVTabItem>();
 
     // Roles and permissions
     private List<UserRoleAssignment>? userRoles;
@@ -728,9 +948,82 @@
     private bool isLoadingRoles = false;
     private bool isLoadingPermissions = false;
 
+    // User activity data
+    private List<UserLoginActivity> userLoginActivity = new List<UserLoginActivity>();
+    private List<UserSystemActivity> userSystemActivity = new List<UserSystemActivity>();
+    private bool isLoadingActivity = false;
+
+    // Custom data models for activity
+    private class UserLoginActivity
+    {
+        public DateTime Timestamp { get; set; }
+        public bool Success { get; set; }
+        public string? IpAddress { get; set; }
+        public string? UserAgent { get; set; }
+    }
+
+    private class UserSystemActivity
+    {
+        public DateTime Timestamp { get; set; }
+        public string Action { get; set; } = "";
+        public string EntityType { get; set; } = "";
+        public string? EntityName { get; set; }
+        public string? EntityId { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        ConfigureTabs();
         await LoadUserData();
+    }
+
+    private void ConfigureTabs()
+    {
+        detailTabs = new List<RVTab.RVTabItem>
+        {
+            new RVTab.RVTabItem
+            {
+                Id = "info",
+                Title = "User Info",
+                Icon = "fa-light fa-user",
+                IsActive = activeTab == "info"
+            },
+            new RVTab.RVTabItem
+            {
+                Id = "contact",
+                Title = "Contact",
+                Icon = "fa-light fa-address-card",
+                IsActive = activeTab == "contact"
+            },
+            new RVTab.RVTabItem
+            {
+                Id = "company",
+                Title = "Company",
+                Icon = "fa-light fa-building",
+                IsActive = activeTab == "company"
+            },
+            new RVTab.RVTabItem
+            {
+                Id = "roles",
+                Title = "Roles",
+                Icon = "fa-light fa-shield-check",
+                IsActive = activeTab == "roles"
+            },
+            new RVTab.RVTabItem
+            {
+                Id = "activity",
+                Title = "Activity",
+                Icon = "fa-light fa-chart-line",
+                IsActive = activeTab == "activity"
+            },
+            new RVTab.RVTabItem
+            {
+                Id = "preferences",
+                Title = "Preferences",
+                Icon = "fa-light fa-sliders",
+                IsActive = activeTab == "preferences"
+            }
+        };
     }
 
     private async Task LoadUserData()
@@ -739,14 +1032,31 @@
         {
             isLoading = true;
 
-            var response = await UserService.GetUserById(UserId);
+            var response = await UserService.GetUserWithDetails(UserId);
             if (response.ResponseInfo.Success)
             {
                 user = (ApplicationUser)response.Response;
 
-                // Pre-load roles and permissions
-                await LoadUserRoles();
-                await LoadUserPermissions();
+                // Parse user preferences
+                if (!string.IsNullOrEmpty(user.UserPreferences))
+                {
+                    try
+                    {
+                        userPreferences = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(user.UserPreferences);
+                    }
+                    catch
+                    {
+                        // If preferences can't be parsed, leave as null
+                        userPreferences = null;
+                    }
+                }
+
+                // Pre-load roles, permissions, and activity data
+                await Task.WhenAll(
+                    LoadUserRoles(),
+                    LoadUserPermissions(),
+                    LoadUserActivity()
+                );
             }
             else
             {
@@ -875,6 +1185,80 @@
         }
     }
 
+    private async Task LoadUserActivity()
+    {
+        try
+        {
+            isLoadingActivity = true;
+
+            // In a real implementation, you would fetch this data from your audit service
+            // For now, we're creating mock data for demonstration purposes
+
+            // Mock login activity
+            if (user != null)
+            {
+                // Create some sample login activity data
+                if (user.LastLoginDate.HasValue)
+                {
+                    userLoginActivity.Add(new UserLoginActivity
+                        {
+                            Timestamp = user.LastLoginDate.Value,
+                            Success = true,
+                            IpAddress = user.LastLoginIpAddress
+                        });
+
+                    // Add some additional mock entries
+                    var random = new Random();
+                    var date = user.LastLoginDate.Value;
+                    for (int i = 0; i < 5; i++)
+                    {
+                        date = date.AddDays(-random.Next(1, 5));
+                        userLoginActivity.Add(new UserLoginActivity
+                            {
+                                Timestamp = date,
+                                Success = random.Next(0, 5) > 0, // 80% success rate
+                                IpAddress = $"192.168.1.{random.Next(2, 254)}"
+                            });
+                    }
+
+                    // Sort by timestamp descending
+                    userLoginActivity = userLoginActivity.OrderByDescending(a => a.Timestamp).ToList();
+                }
+
+                // Create some sample system activity data
+                var actions = new[] { "Created", "Updated", "Viewed", "Deleted", "Exported" };
+                var entityTypes = new[] { "Property", "Tenant", "Payment", "Document", "Report" };
+                var names = new[] { "Test Property", "John Smith", "Invoice #1234", "Lease Agreement", "Monthly Report" };
+
+                var activityDate = DateTime.Now.AddDays(-1);
+                for (int i = 0; i < 10; i++)
+                {
+                    var random = new Random();
+                    activityDate = activityDate.AddHours(-random.Next(1, 12));
+                    userSystemActivity.Add(new UserSystemActivity
+                        {
+                            Timestamp = activityDate,
+                            Action = actions[random.Next(0, actions.Length)],
+                            EntityType = entityTypes[random.Next(0, entityTypes.Length)],
+                            EntityName = names[random.Next(0, names.Length)],
+                            EntityId = random.Next(1, 1000).ToString()
+                        });
+                }
+
+                // Sort by timestamp descending
+                userSystemActivity = userSystemActivity.OrderByDescending(a => a.Timestamp).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user activity: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoadingActivity = false;
+        }
+    }
+
     private void FilterPermissions(string? searchTerm)
     {
         permissionSearchTerm = searchTerm ?? "";
@@ -955,13 +1339,89 @@
         return action;
     }
 
+    private string GetTwoFactorMethodIcon(string? method)
+    {
+        if (string.IsNullOrEmpty(method))
+            return "mobile";
+
+        return method.ToLower() switch
+        {
+            "email" => "envelope",
+            "sms" => "mobile",
+            "authenticator" => "shield-check",
+            _ => "mobile"
+        };
+    }
+
+    private string GetActivityIcon(string action)
+    {
+        return action.ToLower() switch
+        {
+            "created" => "plus-circle",
+            "updated" => "edit",
+            "viewed" => "eye",
+            "deleted" => "trash",
+            "exported" => "file-export",
+            _ => "history"
+        };
+    }
+
+    private string GetThemeIcon(string? theme)
+    {
+        if (string.IsNullOrEmpty(theme))
+            return "palette";
+
+        return theme.ToLower() switch
+        {
+            "light" => "sun",
+            "dark" => "moon",
+            "system" => "laptop",
+            _ => "palette"
+        };
+    }
+
+    private string GetThemeName(string? theme)
+    {
+        if (string.IsNullOrEmpty(theme))
+            return "System Default";
+
+        return theme.ToLower() switch
+        {
+            "light" => "Light Mode",
+            "dark" => "Dark Mode",
+            "system" => "System Default",
+            _ => theme
+        };
+    }
+
+    private string GetUserDisplayName()
+    {
+        if (user == null)
+            return "Unknown User";
+
+        if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName))
+        {
+            return $"{user.FirstName} {user.LastName}";
+        }
+        else if (!string.IsNullOrEmpty(user.FirstName))
+        {
+            return user.FirstName;
+        }
+        else if (!string.IsNullOrEmpty(user.LastName))
+        {
+            return user.LastName;
+        }
+
+        return user.UserName ?? "Unknown User";
+    }
+
     private void SetActiveTab(string tab)
     {
         activeTab = tab;
         StateHasChanged();
     }
 
-    private async Task SetActiveTabFromEvent(string tabId)
+    private void SetActiveTabFromEvent(string tabId)
     {
         activeTab = tabId;
     }
@@ -976,10 +1436,13 @@
 
     private void HandleRolesClick()
     {
-        // Switch to roles tab
-        SetActiveTab("roles");
+        // Redirect to user edit modal with roles tab open
+        HandleEdit();
     }
 
-   
-    
-} *@
+    private void HandlePermissionsClick()
+    {
+        // Redirect to user edit modal with permissions tab open
+        HandleEdit();
+    }
+}
