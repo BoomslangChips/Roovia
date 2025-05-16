@@ -12,7 +12,7 @@ using Roovia.Data;
 namespace Roovia.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250515112750_InitialMigration")]
+    [Migration("20250516102332_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -158,6 +158,124 @@ namespace Roovia.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Communication", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AttachmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CommunicationChannelId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CommunicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CommunicationDirectionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FromEmailAddress")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("FromPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("PropertyBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityStringId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("RelatedOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedPropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RelatedVendorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ToEmailAddress")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ToPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommunicationChannelId");
+
+                    b.HasIndex("CommunicationDirectionId");
+
+                    b.HasIndex("PropertyBeneficiaryId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyOwnerId");
+
+                    b.HasIndex("PropertyTenantId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Contact_Communications", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessHelperModels.ContactNumber", b =>
                 {
                     b.Property<int>("Id")
@@ -173,6 +291,9 @@ namespace Roovia.Migrations
                         .HasColumnType("int");
 
                     b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ContactNumberTypeId")
                         .HasColumnType("int");
 
                     b.Property<string>("CreatedBy")
@@ -218,9 +339,6 @@ namespace Roovia.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -238,6 +356,8 @@ namespace Roovia.Migrations
                     b.HasIndex("BranchId");
 
                     b.HasIndex("CompanyId");
+
+                    b.HasIndex("ContactNumberTypeId");
 
                     b.HasIndex("PropertyBeneficiaryId");
 
@@ -355,6 +475,117 @@ namespace Roovia.Migrations
                     b.ToTable("Contact_Emails", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.EntityDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CdnFileMetadataId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DocumentStatusId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaintenanceTicketId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("PropertyBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyInspectionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyPaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("DocumentStatusId");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("MaintenanceTicketId");
+
+                    b.HasIndex("PropertyBeneficiaryId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyInspectionId");
+
+                    b.HasIndex("PropertyOwnerId");
+
+                    b.HasIndex("PropertyPaymentId");
+
+                    b.HasIndex("PropertyTenantId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Contact_EntityDocuments", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Media", b =>
                 {
                     b.Property<int>("Id")
@@ -378,15 +609,15 @@ namespace Roovia.Migrations
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("MediaTypeId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("RelatedEntityId")
                         .HasColumnType("int");
 
                     b.Property<string>("RelatedEntityType")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
 
                     b.Property<string>("UploadedBy")
                         .HasMaxLength(100)
@@ -397,7 +628,345 @@ namespace Roovia.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MediaTypeId");
+
                     b.ToTable("Contact_Media", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Note", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaintenanceTicketId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NoteTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyInspectionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyPaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityStringId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("MaintenanceTicketId");
+
+                    b.HasIndex("NoteTypeId");
+
+                    b.HasIndex("PropertyBeneficiaryId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyInspectionId");
+
+                    b.HasIndex("PropertyOwnerId");
+
+                    b.HasIndex("PropertyPaymentId");
+
+                    b.HasIndex("PropertyTenantId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Contact_Notes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.NotificationPreference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EmailEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NotificationEventTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("OnlyDuringBusinessHours")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PreferredTimeOfDay")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("PropertyBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PushEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityStringId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("SmsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("WebEnabled")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("NotificationEventTypeId");
+
+                    b.HasIndex("PropertyBeneficiaryId");
+
+                    b.HasIndex("PropertyOwnerId");
+
+                    b.HasIndex("PropertyTenantId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Contact_NotificationPreferences", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Reminder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AssignedToUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaintenanceTicketId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NotifyDaysBefore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyBeneficiaryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyOwnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PropertyTenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RecurrenceEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RecurrenceFrequencyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RecurrenceInterval")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityStringId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ReminderStatusId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReminderTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("SendNotification")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("MaintenanceTicketId");
+
+                    b.HasIndex("PropertyBeneficiaryId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("PropertyOwnerId");
+
+                    b.HasIndex("PropertyTenantId");
+
+                    b.HasIndex("RecurrenceFrequencyId");
+
+                    b.HasIndex("ReminderStatusId");
+
+                    b.HasIndex("ReminderTypeId");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Contact_Reminders", (string)null);
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.AllocationType", b =>
@@ -429,6 +998,41 @@ namespace Roovia.Migrations
                         .IsUnique();
 
                     b.ToTable("Lookup_AllocationTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.BankNameType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DefaultBranchCode")
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_BankNameTypes", (string)null);
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.BeneficiaryPaymentStatusType", b =>
@@ -555,6 +1159,68 @@ namespace Roovia.Migrations
                     b.ToTable("Lookup_CommissionTypes", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.CommunicationChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_CommunicationChannels", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.CommunicationDirection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_CommunicationDirections", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.ConditionLevel", b =>
                 {
                     b.Property<int>("Id")
@@ -587,6 +1253,37 @@ namespace Roovia.Migrations
                         .IsUnique();
 
                     b.ToTable("Lookup_ConditionLevels", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.ContactNumberType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_ContactNumberTypes", (string)null);
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.DocumentAccessLevel", b =>
@@ -651,6 +1348,68 @@ namespace Roovia.Migrations
                     b.ToTable("Lookup_DocumentCategories", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.DocumentRequirementType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_DocumentRequirementTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.DocumentStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_DocumentStatuses", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.DocumentType", b =>
                 {
                     b.Property<int>("Id")
@@ -680,6 +1439,90 @@ namespace Roovia.Migrations
                         .IsUnique();
 
                     b.ToTable("Lookup_DocumentTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.EntityDocumentRequirement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("DocumentRequirementTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EntityTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("DocumentRequirementTypeId");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("EntityTypeId", "DocumentTypeId", "CompanyId")
+                        .IsUnique()
+                        .HasFilter("[CompanyId] IS NOT NULL");
+
+                    b.ToTable("Lookup_EntityDocumentRequirements", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.EntityType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SystemName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("SystemName")
+                        .IsUnique()
+                        .HasFilter("[SystemName] IS NOT NULL");
+
+                    b.ToTable("Lookup_EntityTypes", (string)null);
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.ExpenseCategory", b =>
@@ -933,6 +1776,160 @@ namespace Roovia.Migrations
                     b.ToTable("Lookup_MaintenanceStatusTypes", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.MediaType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_MediaTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.NoteType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_NoteTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.NotificationEventType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemEvent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SystemName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("SystemName")
+                        .IsUnique()
+                        .HasFilter("[SystemName] IS NOT NULL");
+
+                    b.ToTable("Lookup_NotificationEventTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.NotificationTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("NotificationEventTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SmsTemplate")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationEventTypeId");
+
+                    b.ToTable("Lookup_NotificationTemplates", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.PaymentFrequency", b =>
                 {
                     b.Property<int>("Id")
@@ -1130,6 +2127,68 @@ namespace Roovia.Migrations
                     b.ToTable("Lookup_PropertyImageTypes", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.PropertyOwnerStatusType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_PropertyOwnerStatusTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.PropertyOwnerType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_PropertyOwnerTypes", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.PropertyStatusType", b =>
                 {
                     b.Property<int>("Id")
@@ -1161,6 +2220,133 @@ namespace Roovia.Migrations
                     b.ToTable("Lookup_PropertyStatusTypes", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.PropertyType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_PropertyTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.RecurrenceFrequency", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("DaysMultiplier")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_RecurrenceFrequencies", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.ReminderStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_ReminderStatuses", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.ReminderType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_ReminderTypes", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessMappingModels.TenantStatusType", b =>
                 {
                     b.Property<int>("Id")
@@ -1190,6 +2376,37 @@ namespace Roovia.Migrations
                         .IsUnique();
 
                     b.ToTable("Lookup_TenantStatusTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.TenantType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Lookup_TenantTypes", (string)null);
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.BeneficiaryPayment", b =>
@@ -1262,6 +2479,9 @@ namespace Roovia.Migrations
                     b.Property<int>("ConditionId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ImageId")
+                        .HasColumnType("int");
+
                     b.Property<int>("InspectionId")
                         .HasColumnType("int");
 
@@ -1292,6 +2512,8 @@ namespace Roovia.Migrations
                     b.HasIndex("AreaId");
 
                     b.HasIndex("ConditionId");
+
+                    b.HasIndex("ImageId");
 
                     b.HasIndex("InspectionId");
 
@@ -1535,6 +2757,75 @@ namespace Roovia.Migrations
                     b.ToTable("Maint_MaintenanceTickets", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessModels.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EmailSent")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("EmailSentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("NotificationEventTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReadDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecipientUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("SmsSent")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("SmsSentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("NotificationEventTypeId");
+
+                    b.ToTable("Contact_Notifications", (string)null);
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessModels.PaymentAllocation", b =>
                 {
                     b.Property<int>("Id")
@@ -1760,8 +3051,8 @@ namespace Roovia.Migrations
                     b.Property<DateTime?>("CurrentLeaseStartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("CurrentTenantId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("CurrentTenantId")
+                        .HasColumnType("int");
 
                     b.Property<string>("CustomerRef")
                         .HasMaxLength(50)
@@ -1805,6 +3096,9 @@ namespace Roovia.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("PropertyTypeId")
+                        .HasColumnType("int");
+
                     b.Property<string>("RemovedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1845,6 +3139,8 @@ namespace Roovia.Migrations
                     b.HasIndex("MainImageId");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("PropertyTypeId");
 
                     b.HasIndex("StatusId");
 
@@ -1906,12 +3202,6 @@ namespace Roovia.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("NotifyEmail")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("NotifySMS")
-                        .HasColumnType("bit");
 
                     b.Property<decimal>("PropertyAmount")
                         .HasPrecision(18, 2)
@@ -2051,6 +3341,14 @@ namespace Roovia.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2064,7 +3362,6 @@ namespace Roovia.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -2072,19 +3369,19 @@ namespace Roovia.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<bool>("IsEmailNotificationsEnabled")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsSmsNotificationsEnabled")
-                        .HasColumnType("bit");
-
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PropertyOwnerTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RegistrationNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("RemovedBy")
                         .HasMaxLength(100)
@@ -2092,6 +3389,9 @@ namespace Roovia.Migrations
 
                     b.Property<DateTime?>("RemovedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Tags")
                         .HasMaxLength(500)
@@ -2105,12 +3405,16 @@ namespace Roovia.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("VatNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
+
+                    b.HasIndex("PropertyOwnerTypeId");
+
+                    b.HasIndex("StatusId");
 
                     b.ToTable("Data_PropertyOwners", (string)null);
                 });
@@ -2173,10 +3477,6 @@ namespace Roovia.Migrations
                     b.Property<decimal>("NetAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime?>("PaymentDate")
                         .HasColumnType("datetime2");
@@ -2257,6 +3557,14 @@ namespace Roovia.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2297,7 +3605,6 @@ namespace Roovia.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -2305,20 +3612,13 @@ namespace Roovia.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<bool>("IsEmailNotificationsEnabled")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsRemoved")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsSmsNotificationsEnabled")
                         .HasColumnType("bit");
 
                     b.Property<DateTime?>("LastInvoiceDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -2352,6 +3652,10 @@ namespace Roovia.Migrations
                     b.Property<int>("PropertyId")
                         .HasColumnType("int");
 
+                    b.Property<string>("RegistrationNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("RemovedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -2378,12 +3682,19 @@ namespace Roovia.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int>("TenantTypeId")
+                        .HasColumnType("int");
+
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("VatNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
@@ -2396,6 +3707,8 @@ namespace Roovia.Migrations
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("StatusId");
+
+                    b.HasIndex("TenantTypeId");
 
                     b.ToTable("Data_PropertyTenants", (string)null);
                 });
@@ -2798,6 +4111,397 @@ namespace Roovia.Migrations
                     b.ToTable("CDN_UsageStatistics", (string)null);
                 });
 
+            modelBuilder.Entity("Roovia.Models.ReportingModels.CustomReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Parameters")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Query")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("CustomReports");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportDashboard", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Configuration")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LayoutColumns")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReportDashboards");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportDashboardWidget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AutoRefresh")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Configuration")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CustomReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DashboardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DataSource")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("GridColumn")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GridHeight")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GridRow")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GridWidth")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastRefreshed")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Parameters")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("RefreshInterval")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StandardReportType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("VisualizationType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("WidgetType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomReportId");
+
+                    b.HasIndex("DashboardId");
+
+                    b.ToTable("ReportDashboardWidgets");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportExecutionLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CdnFileMetadataId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("EmailSent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ExecutedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ExecutionEndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExecutionStartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSuccess")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OutputFilePath")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Parameters")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RecipientEmails")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("ReportScheduleId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReportType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("RowCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("ExecutedBy");
+
+                    b.HasIndex("ReportScheduleId");
+
+                    b.ToTable("ReportExecutionLogs");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportFrequencyType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("DaysInterval")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReportFrequencyTypes");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CustomReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("ExecutionTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("ExportFormat")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("FrequencyTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastRunDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("NextRunDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Parameters")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RecipientEmails")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("StandardReportType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("CustomReportId");
+
+                    b.HasIndex("FrequencyTypeId");
+
+                    b.ToTable("ReportSchedules");
+                });
+
             modelBuilder.Entity("Roovia.Models.UserCompanyMappingModels.BranchStatusType", b =>
                 {
                     b.Property<int>("Id")
@@ -3016,13 +4720,13 @@ namespace Roovia.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<int>("MaxBranches")
+                    b.Property<int?>("MaxBranches")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaxProperties")
+                    b.Property<int?>("MaxProperties")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaxUsers")
+                    b.Property<int?>("MaxUsers")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
@@ -3199,16 +4903,7 @@ namespace Roovia.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsEmailNotificationsEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPushNotificationsEnabled")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsRemoved")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsSmsNotificationsEnabled")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsTwoFactorRequired")
@@ -3301,8 +4996,8 @@ namespace Roovia.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("UserPreferences")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.HasKey("Id");
 
@@ -3462,8 +5157,8 @@ namespace Roovia.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Settings")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<int?>("StatusId")
                         .HasColumnType("int");
@@ -3501,6 +5196,8 @@ namespace Roovia.Migrations
                     b.HasIndex("MainLogoId");
 
                     b.HasIndex("StatusId");
+
+                    b.HasIndex("SubscriptionPlanId");
 
                     b.ToTable("AspNetCompanies", (string)null);
                 });
@@ -3790,6 +5487,45 @@ namespace Roovia.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Communication", b =>
+                {
+                    b.HasOne("Roovia.Models.BusinessMappingModels.CommunicationChannel", "CommunicationChannel")
+                        .WithMany()
+                        .HasForeignKey("CommunicationChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.CommunicationDirection", "CommunicationDirection")
+                        .WithMany()
+                        .HasForeignKey("CommunicationDirectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
+                        .WithMany("Communications")
+                        .HasForeignKey("PropertyBeneficiaryId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Property", null)
+                        .WithMany("Communications")
+                        .HasForeignKey("PropertyId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyOwner", null)
+                        .WithMany("Communications")
+                        .HasForeignKey("PropertyOwnerId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyTenant", null)
+                        .WithMany("Communications")
+                        .HasForeignKey("PropertyTenantId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Vendor", null)
+                        .WithMany("Communications")
+                        .HasForeignKey("VendorId");
+
+                    b.Navigation("CommunicationChannel");
+
+                    b.Navigation("CommunicationDirection");
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessHelperModels.ContactNumber", b =>
                 {
                     b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
@@ -3806,6 +5542,12 @@ namespace Roovia.Migrations
                         .WithMany("ContactNumbers")
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.ContactNumberType", "ContactNumberType")
+                        .WithMany()
+                        .HasForeignKey("ContactNumberTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
                         .WithMany("ContactNumbers")
@@ -3826,6 +5568,8 @@ namespace Roovia.Migrations
                         .WithMany("ContactNumbers")
                         .HasForeignKey("VendorId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("ContactNumberType");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Email", b =>
@@ -3864,6 +5608,269 @@ namespace Roovia.Migrations
                         .WithMany("EmailAddresses")
                         .HasForeignKey("VendorId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.EntityDocument", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Branch", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("CompanyId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.DocumentStatus", "DocumentStatus")
+                        .WithMany()
+                        .HasForeignKey("DocumentStatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessModels.MaintenanceTicket", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("MaintenanceTicketId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyBeneficiaryId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Property", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyInspection", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyInspectionId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyOwner", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyOwnerId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyPayment", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyPaymentId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyTenant", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PropertyTenantId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Vendor", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("VendorId");
+
+                    b.Navigation("DocumentStatus");
+
+                    b.Navigation("DocumentType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Media", b =>
+                {
+                    b.HasOne("Roovia.Models.BusinessMappingModels.MediaType", "MediaType")
+                        .WithMany()
+                        .HasForeignKey("MediaTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MediaType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Note", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Branch", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("CompanyId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.MaintenanceTicket", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("MaintenanceTicketId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.NoteType", "NoteType")
+                        .WithMany()
+                        .HasForeignKey("NoteTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyBeneficiaryId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Property", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyInspection", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyInspectionId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyOwner", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyOwnerId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyPayment", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyPaymentId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyTenant", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("PropertyTenantId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Vendor", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("VendorId");
+
+                    b.Navigation("NoteType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.NotificationPreference", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Branch", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("CompanyId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.NotificationEventType", "NotificationEventType")
+                        .WithMany()
+                        .HasForeignKey("NotificationEventTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("PropertyBeneficiaryId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyOwner", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("PropertyOwnerId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyTenant", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("PropertyTenantId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Vendor", null)
+                        .WithMany("NotificationPreferences")
+                        .HasForeignKey("VendorId");
+
+                    b.Navigation("NotificationEventType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessHelperModels.Reminder", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.MaintenanceTicket", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("MaintenanceTicketId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyBeneficiary", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("PropertyBeneficiaryId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.Property", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("PropertyId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyOwner", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("PropertyOwnerId");
+
+                    b.HasOne("Roovia.Models.BusinessModels.PropertyTenant", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("PropertyTenantId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.RecurrenceFrequency", "RecurrenceFrequency")
+                        .WithMany()
+                        .HasForeignKey("RecurrenceFrequencyId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.ReminderStatus", "ReminderStatus")
+                        .WithMany()
+                        .HasForeignKey("ReminderStatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.ReminderType", "ReminderType")
+                        .WithMany()
+                        .HasForeignKey("ReminderTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessModels.Vendor", null)
+                        .WithMany("Reminders")
+                        .HasForeignKey("VendorId");
+
+                    b.Navigation("RecurrenceFrequency");
+
+                    b.Navigation("ReminderStatus");
+
+                    b.Navigation("ReminderType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.EntityDocumentRequirement", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", null)
+                        .WithMany("DocumentRequirements")
+                        .HasForeignKey("CompanyId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.DocumentRequirementType", "DocumentRequirementType")
+                        .WithMany()
+                        .HasForeignKey("DocumentRequirementTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.EntityType", "EntityType")
+                        .WithMany()
+                        .HasForeignKey("EntityTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentRequirementType");
+
+                    b.Navigation("DocumentType");
+
+                    b.Navigation("EntityType");
+                });
+
+            modelBuilder.Entity("Roovia.Models.BusinessMappingModels.NotificationTemplate", b =>
+                {
+                    b.HasOne("Roovia.Models.BusinessMappingModels.NotificationEventType", "NotificationEventType")
+                        .WithMany()
+                        .HasForeignKey("NotificationEventTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NotificationEventType");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.BeneficiaryPayment", b =>
@@ -3906,6 +5913,11 @@ namespace Roovia.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Roovia.Models.ProjectCdnConfigModels.CdnFileMetadata", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Roovia.Models.BusinessModels.PropertyInspection", "Inspection")
                         .WithMany("InspectionItems")
                         .HasForeignKey("InspectionId")
@@ -3919,6 +5931,8 @@ namespace Roovia.Migrations
                     b.Navigation("Area");
 
                     b.Navigation("Condition");
+
+                    b.Navigation("Image");
 
                     b.Navigation("Inspection");
 
@@ -4032,6 +6046,21 @@ namespace Roovia.Migrations
                     b.Navigation("Vendor");
                 });
 
+            modelBuilder.Entity("Roovia.Models.BusinessModels.Notification", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", null)
+                        .WithMany("Notifications")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.NotificationEventType", "NotificationEventType")
+                        .WithMany()
+                        .HasForeignKey("NotificationEventTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NotificationEventType");
+                });
+
             modelBuilder.Entity("Roovia.Models.BusinessModels.PaymentAllocation", b =>
                 {
                     b.HasOne("Roovia.Models.BusinessMappingModels.AllocationType", "AllocationType")
@@ -4134,6 +6163,12 @@ namespace Roovia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Roovia.Models.BusinessMappingModels.PropertyType", "PropertyType")
+                        .WithMany()
+                        .HasForeignKey("PropertyTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Roovia.Models.BusinessMappingModels.PropertyStatusType", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
@@ -4222,6 +6257,8 @@ namespace Roovia.Migrations
                     b.Navigation("MainImage");
 
                     b.Navigation("Owner");
+
+                    b.Navigation("PropertyType");
 
                     b.Navigation("Status");
                 });
@@ -4334,26 +6371,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("PropertyBeneficiaryId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("Data_PropertyBeneficiaries");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("PropertyBeneficiaryId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -4426,6 +6471,18 @@ namespace Roovia.Migrations
                     b.HasOne("Roovia.Models.UserCompanyModels.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.PropertyOwnerType", "OwnerType")
+                        .WithMany()
+                        .HasForeignKey("PropertyOwnerTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.BusinessMappingModels.PropertyOwnerStatusType", "Status")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4505,26 +6562,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("PropertyOwnerId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("Data_PropertyOwners");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("PropertyOwnerId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -4534,6 +6599,10 @@ namespace Roovia.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
+
+                    b.Navigation("OwnerType");
+
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyPayment", b =>
@@ -4620,6 +6689,12 @@ namespace Roovia.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Roovia.Models.BusinessMappingModels.TenantType", "TenantType")
+                        .WithMany()
+                        .HasForeignKey("TenantTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.OwnsOne("Roovia.Models.BusinessHelperModels.Address", "Address", b1 =>
                         {
                             b1.Property<int>("PropertyTenantId")
@@ -4696,26 +6771,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("PropertyTenantId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("Data_PropertyTenants");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("PropertyTenantId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -4733,6 +6816,8 @@ namespace Roovia.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("Status");
+
+                    b.Navigation("TenantType");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.Vendor", b =>
@@ -4819,26 +6904,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("VendorId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("Maint_Vendors");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("VendorId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -4905,6 +6998,131 @@ namespace Roovia.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.CustomReport", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportDashboard", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportDashboardWidget", b =>
+                {
+                    b.HasOne("Roovia.Models.ReportingModels.CustomReport", "CustomReport")
+                        .WithMany()
+                        .HasForeignKey("CustomReportId");
+
+                    b.HasOne("Roovia.Models.ReportingModels.ReportDashboard", "Dashboard")
+                        .WithMany("Widgets")
+                        .HasForeignKey("DashboardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomReport");
+
+                    b.Navigation("Dashboard");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportExecutionLog", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "ExecutedByUser")
+                        .WithMany()
+                        .HasForeignKey("ExecutedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.ReportingModels.ReportSchedule", "ReportSchedule")
+                        .WithMany()
+                        .HasForeignKey("ReportScheduleId");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("ExecutedByUser");
+
+                    b.Navigation("ReportSchedule");
+                });
+
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportSchedule", b =>
+                {
+                    b.HasOne("Roovia.Models.UserCompanyModels.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.UserCompanyModels.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Roovia.Models.ReportingModels.CustomReport", "CustomReport")
+                        .WithMany()
+                        .HasForeignKey("CustomReportId");
+
+                    b.HasOne("Roovia.Models.ReportingModels.ReportFrequencyType", "FrequencyType")
+                        .WithMany()
+                        .HasForeignKey("FrequencyTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("CustomReport");
+
+                    b.Navigation("FrequencyType");
                 });
 
             modelBuilder.Entity("Roovia.Models.UserCompanyModels.ApplicationUser", b =>
@@ -5030,26 +7248,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("BranchId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("AspNetBranches");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("BranchId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -5075,6 +7301,10 @@ namespace Roovia.Migrations
                     b.HasOne("Roovia.Models.UserCompanyMappingModels.CompanyStatusType", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId");
+
+                    b.HasOne("Roovia.Models.UserCompanyMappingModels.SubscriptionPlan", "SubscriptionPlan")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionPlanId");
 
                     b.OwnsOne("Roovia.Models.BusinessHelperModels.Address", "Address", b1 =>
                         {
@@ -5152,26 +7382,34 @@ namespace Roovia.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("AccountNumber")
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("AccountType")
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
-                            b1.Property<int?>("BankName")
+                            b1.Property<int?>("BankNameId")
                                 .HasColumnType("int");
 
                             b1.Property<string>("BranchCode")
-                                .HasMaxLength(6)
-                                .HasColumnType("nvarchar(6)");
+                                .HasMaxLength(10)
+                                .HasColumnType("nvarchar(10)");
 
                             b1.HasKey("CompanyId");
 
+                            b1.HasIndex("BankNameId");
+
                             b1.ToTable("AspNetCompanies");
+
+                            b1.HasOne("Roovia.Models.BusinessMappingModels.BankNameType", "BankName")
+                                .WithMany()
+                                .HasForeignKey("BankNameId");
 
                             b1.WithOwner()
                                 .HasForeignKey("CompanyId");
+
+                            b1.Navigation("BankName");
                         });
 
                     b.Navigation("Address")
@@ -5183,6 +7421,8 @@ namespace Roovia.Migrations
                     b.Navigation("MainLogo");
 
                     b.Navigation("Status");
+
+                    b.Navigation("SubscriptionPlan");
                 });
 
             modelBuilder.Entity("Roovia.Models.UserCompanyModels.Role", b =>
@@ -5261,72 +7501,134 @@ namespace Roovia.Migrations
                 {
                     b.Navigation("Comments");
 
+                    b.Navigation("Documents");
+
                     b.Navigation("Expenses");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.Property", b =>
                 {
                     b.Navigation("Beneficiaries");
 
+                    b.Navigation("Communications");
+
+                    b.Navigation("Documents");
+
                     b.Navigation("Inspections");
 
                     b.Navigation("MaintenanceTickets");
 
+                    b.Navigation("Notes");
+
                     b.Navigation("Payments");
+
+                    b.Navigation("Reminders");
 
                     b.Navigation("Tenants");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyBeneficiary", b =>
                 {
+                    b.Navigation("Communications");
+
                     b.Navigation("ContactNumbers");
+
+                    b.Navigation("Documents");
 
                     b.Navigation("EmailAddresses");
 
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
+
                     b.Navigation("Payments");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyInspection", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("InspectionItems");
 
                     b.Navigation("MaintenanceTickets");
+
+                    b.Navigation("Notes");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyOwner", b =>
                 {
+                    b.Navigation("Communications");
+
                     b.Navigation("ContactNumbers");
+
+                    b.Navigation("Documents");
 
                     b.Navigation("EmailAddresses");
 
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
+
                     b.Navigation("Properties");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyPayment", b =>
                 {
                     b.Navigation("Allocations");
+
+                    b.Navigation("Documents");
+
+                    b.Navigation("Notes");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.PropertyTenant", b =>
                 {
+                    b.Navigation("Communications");
+
                     b.Navigation("ContactNumbers");
+
+                    b.Navigation("Documents");
 
                     b.Navigation("EmailAddresses");
 
                     b.Navigation("MaintenanceRequests");
 
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
+
                     b.Navigation("PaymentSchedules");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.BusinessModels.Vendor", b =>
                 {
+                    b.Navigation("Communications");
+
                     b.Navigation("ContactNumbers");
+
+                    b.Navigation("Documents");
 
                     b.Navigation("EmailAddresses");
 
                     b.Navigation("MaintenanceTickets");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.ProjectCdnConfigModels.CdnCategory", b =>
@@ -5348,22 +7650,43 @@ namespace Roovia.Migrations
                     b.Navigation("Files");
                 });
 
+            modelBuilder.Entity("Roovia.Models.ReportingModels.ReportDashboard", b =>
+                {
+                    b.Navigation("Widgets");
+                });
+
             modelBuilder.Entity("Roovia.Models.UserCompanyModels.ApplicationUser", b =>
                 {
                     b.Navigation("ContactNumbers");
 
                     b.Navigation("CustomRoles");
 
+                    b.Navigation("Documents");
+
                     b.Navigation("EmailAddresses");
 
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
+
+                    b.Navigation("Notifications");
+
                     b.Navigation("PermissionOverrides");
+
+                    b.Navigation("Reminders");
                 });
 
             modelBuilder.Entity("Roovia.Models.UserCompanyModels.Branch", b =>
                 {
                     b.Navigation("ContactNumbers");
 
+                    b.Navigation("Documents");
+
                     b.Navigation("EmailAddresses");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
 
                     b.Navigation("Users");
                 });
@@ -5374,7 +7697,15 @@ namespace Roovia.Migrations
 
                     b.Navigation("ContactNumbers");
 
+                    b.Navigation("DocumentRequirements");
+
+                    b.Navigation("Documents");
+
                     b.Navigation("EmailAddresses");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("NotificationPreferences");
 
                     b.Navigation("Users");
                 });

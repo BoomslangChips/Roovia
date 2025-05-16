@@ -40,11 +40,11 @@ namespace Roovia.Models.UserCompanyMappingModels
 
         public int BillingCycleDays { get; set; } // 30, 365, etc.
 
-        public int MaxUsers { get; set; }
+        public int? MaxUsers { get; set; }
 
-        public int MaxProperties { get; set; }
+        public int? MaxProperties { get; set; }
 
-        public int MaxBranches { get; set; }
+        public int? MaxBranches { get; set; }
 
         public bool HasTrialPeriod { get; set; }
 

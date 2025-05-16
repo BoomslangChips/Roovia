@@ -32,12 +32,12 @@ namespace Roovia.Models.ReportingModels
         public DateTime CreatedOn { get; set; } = DateTime.Now;
 
         [Required]
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? UpdatedBy { get; set; }
 
         // Navigation properties
@@ -96,12 +96,12 @@ namespace Roovia.Models.ReportingModels
         public DateTime CreatedOn { get; set; } = DateTime.Now;
 
         [Required]
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? UpdatedBy { get; set; }
 
         // Navigation properties
@@ -176,7 +176,7 @@ namespace Roovia.Models.ReportingModels
         public int CompanyId { get; set; }
 
         [Required]
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? ExecutedBy { get; set; }
 
         // Navigation properties
@@ -212,7 +212,7 @@ namespace Roovia.Models.ReportingModels
 
         public int CompanyId { get; set; }
 
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? UserId { get; set; } // If null, it's a company-wide dashboard
 
         public bool IsActive { get; set; } = true;
@@ -220,12 +220,12 @@ namespace Roovia.Models.ReportingModels
         public DateTime CreatedOn { get; set; } = DateTime.Now;
 
         [Required]
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? CreatedBy { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
 
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? UpdatedBy { get; set; }
 
         // Navigation properties
@@ -294,7 +294,7 @@ namespace Roovia.Models.ReportingModels
         public DateTime CreatedOn { get; set; } = DateTime.Now;
 
         [Required]
-        [StringLength(100)]
+        [StringLength(450)] // Changed from 100 to 450 to match AspNetUsers.Id
         public string? CreatedBy { get; set; }
 
         // Navigation properties

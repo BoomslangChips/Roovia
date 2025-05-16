@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -109,27 +110,6 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Contact_Media",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    FilePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    ContentType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    FileSize = table.Column<long>(type: "bigint", nullable: false),
-                    Type = table.Column<int>(type: "int", nullable: false),
-                    UploadedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UploadedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
-                    RelatedEntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Contact_Media", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Lookup_AllocationTypes",
                 columns: table => new
                 {
@@ -143,6 +123,23 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_AllocationTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_BankNameTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DefaultBranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_BankNameTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -226,6 +223,38 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Lookup_CommunicationChannels",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_CommunicationChannels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_CommunicationDirections",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_CommunicationDirections", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Lookup_CompanyStatusTypes",
                 columns: table => new
                 {
@@ -256,6 +285,22 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_ConditionLevels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ContactNumberTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ContactNumberTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -291,6 +336,38 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Lookup_DocumentRequirementTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_DocumentRequirementTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_DocumentStatuses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_DocumentStatuses", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Lookup_DocumentTypes",
                 columns: table => new
                 {
@@ -304,6 +381,23 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_DocumentTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_EntityTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    SystemName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_EntityTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -436,6 +530,38 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Lookup_MediaTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_MediaTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_NoteTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_NoteTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Lookup_NotificationChannels",
                 columns: table => new
                 {
@@ -449,6 +575,25 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_NotificationChannels", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_NotificationEventTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    SystemName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsSystemEvent = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_NotificationEventTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -585,6 +730,38 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Lookup_PropertyOwnerStatusTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PropertyOwnerStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PropertyOwnerTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PropertyOwnerTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Lookup_PropertyStatusTypes",
                 columns: table => new
                 {
@@ -598,6 +775,71 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_PropertyStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_PropertyTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_PropertyTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_RecurrenceFrequencies",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DaysMultiplier = table.Column<int>(type: "int", nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_RecurrenceFrequencies", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ReminderStatuses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ReminderStatuses", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_ReminderTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_ReminderTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -626,9 +868,9 @@ namespace Roovia.Migrations
                     Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Price = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     BillingCycleDays = table.Column<int>(type: "int", nullable: false),
-                    MaxUsers = table.Column<int>(type: "int", nullable: false),
-                    MaxProperties = table.Column<int>(type: "int", nullable: false),
-                    MaxBranches = table.Column<int>(type: "int", nullable: false),
+                    MaxUsers = table.Column<int>(type: "int", nullable: true),
+                    MaxProperties = table.Column<int>(type: "int", nullable: true),
+                    MaxBranches = table.Column<int>(type: "int", nullable: true),
                     HasTrialPeriod = table.Column<bool>(type: "bit", nullable: false),
                     TrialPeriodDays = table.Column<int>(type: "int", nullable: true),
                     DisplayOrder = table.Column<int>(type: "int", nullable: false),
@@ -653,6 +895,22 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_TenantStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_TenantTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_TenantTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -703,6 +961,23 @@ namespace Roovia.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Lookup_UserStatusTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ReportFrequencyTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DaysInterval = table.Column<int>(type: "int", nullable: true),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReportFrequencyTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -784,6 +1059,59 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Contact_Media",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    FilePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    ContentType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    FileSize = table.Column<long>(type: "bigint", nullable: false),
+                    MediaTypeId = table.Column<int>(type: "int", nullable: false),
+                    UploadedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UploadedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Media", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Media_Lookup_MediaTypes_MediaTypeId",
+                        column: x => x.MediaTypeId,
+                        principalTable: "Lookup_MediaTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Lookup_NotificationTemplates",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NotificationEventTypeId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Subject = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    BodyTemplate = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    SmsTemplate = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    IsDefault = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_NotificationTemplates", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Lookup_NotificationTemplates_Lookup_NotificationEventTypes_NotificationEventTypeId",
+                        column: x => x.NotificationEventTypeId,
+                        principalTable: "Lookup_NotificationEventTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CDN_FileMetadata",
                 columns: table => new
                 {
@@ -849,9 +1177,9 @@ namespace Roovia.Migrations
                     Address_Longitude = table.Column<double>(type: "float", nullable: true),
                     Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     StatusId = table.Column<int>(type: "int", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     SubscriptionPlanId = table.Column<int>(type: "int", nullable: true),
@@ -861,7 +1189,7 @@ namespace Roovia.Migrations
                     MaxUsers = table.Column<int>(type: "int", nullable: true),
                     MaxProperties = table.Column<int>(type: "int", nullable: true),
                     MaxBranches = table.Column<int>(type: "int", nullable: true),
-                    Settings = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    Settings = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
@@ -881,9 +1209,19 @@ namespace Roovia.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
+                        name: "FK_AspNetCompanies_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_AspNetCompanies_Lookup_CompanyStatusTypes_StatusId",
                         column: x => x.StatusId,
                         principalTable: "Lookup_CompanyStatusTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_AspNetCompanies_Lookup_SubscriptionPlans_SubscriptionPlanId",
+                        column: x => x.SubscriptionPlanId,
+                        principalTable: "Lookup_SubscriptionPlans",
                         principalColumn: "Id");
                 });
 
@@ -935,9 +1273,9 @@ namespace Roovia.Migrations
                     Address_Longitude = table.Column<double>(type: "float", nullable: true),
                     Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     StatusId = table.Column<int>(type: "int", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     IsHeadOffice = table.Column<bool>(type: "bit", nullable: false),
@@ -969,6 +1307,11 @@ namespace Roovia.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
+                        name: "FK_AspNetBranches_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_AspNetBranches_Lookup_BranchStatusTypes_StatusId",
                         column: x => x.StatusId,
                         principalTable: "Lookup_BranchStatusTypes",
@@ -982,10 +1325,15 @@ namespace Roovia.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CompanyId = table.Column<int>(type: "int", nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PropertyOwnerTypeId = table.Column<int>(type: "int", nullable: false),
+                    StatusId = table.Column<int>(type: "int", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     IdNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    VatNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    CompanyName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    RegistrationNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    VatNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    ContactPerson = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -1002,11 +1350,9 @@ namespace Roovia.Migrations
                     Address_Longitude = table.Column<double>(type: "float", nullable: true),
                     Address_DeliveryInstructions = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
-                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     CustomerRef = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -1024,6 +1370,23 @@ namespace Roovia.Migrations
                         name: "FK_Data_PropertyOwners_AspNetCompanies_CompanyId",
                         column: x => x.CompanyId,
                         principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyOwners_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyOwners_Lookup_PropertyOwnerStatusTypes_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Lookup_PropertyOwnerStatusTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyOwners_Lookup_PropertyOwnerTypes_PropertyOwnerTypeId",
+                        column: x => x.PropertyOwnerTypeId,
+                        principalTable: "Lookup_PropertyOwnerTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -1070,6 +1433,48 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Lookup_EntityDocumentRequirements",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityTypeId = table.Column<int>(type: "int", nullable: false),
+                    DocumentTypeId = table.Column<int>(type: "int", nullable: false),
+                    DocumentRequirementTypeId = table.Column<int>(type: "int", nullable: false),
+                    IsDefault = table.Column<bool>(type: "bit", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Lookup_EntityDocumentRequirements", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Lookup_EntityDocumentRequirements_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Lookup_EntityDocumentRequirements_Lookup_DocumentRequirementTypes_DocumentRequirementTypeId",
+                        column: x => x.DocumentRequirementTypeId,
+                        principalTable: "Lookup_DocumentRequirementTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Lookup_EntityDocumentRequirements_Lookup_DocumentTypes_DocumentTypeId",
+                        column: x => x.DocumentTypeId,
+                        principalTable: "Lookup_DocumentTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Lookup_EntityDocumentRequirements_Lookup_EntityTypes_EntityTypeId",
+                        column: x => x.EntityTypeId,
+                        principalTable: "Lookup_EntityTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Maint_Vendors",
                 columns: table => new
                 {
@@ -1099,9 +1504,9 @@ namespace Roovia.Migrations
                     Rating = table.Column<decimal>(type: "decimal(3,2)", precision: 3, scale: 2, nullable: true),
                     TotalJobs = table.Column<int>(type: "int", nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     HasInsurance = table.Column<bool>(type: "bit", nullable: false),
                     InsurancePolicyNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     InsuranceExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -1117,6 +1522,11 @@ namespace Roovia.Migrations
                         principalTable: "AspNetCompanies",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maint_Vendors_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1174,10 +1584,7 @@ namespace Roovia.Migrations
                     StatusId = table.Column<int>(type: "int", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     RequireChangePasswordOnLogin = table.Column<bool>(type: "bit", nullable: false),
-                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    IsPushNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    UserPreferences = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    UserPreferences = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     IsTwoFactorRequired = table.Column<bool>(type: "bit", nullable: false),
                     PreferredTwoFactorMethod = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     LastLoginDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -1242,6 +1649,7 @@ namespace Roovia.Migrations
                     OwnerId = table.Column<int>(type: "int", nullable: false),
                     CompanyId = table.Column<int>(type: "int", nullable: false),
                     BranchId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTypeId = table.Column<int>(type: "int", nullable: false),
                     PropertyName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     PropertyCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     CustomerRef = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
@@ -1253,7 +1661,7 @@ namespace Roovia.Migrations
                     LeaseOriginalStartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CurrentLeaseStartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LeaseEndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CurrentTenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CurrentTenantId = table.Column<int>(type: "int", nullable: true),
                     CommissionTypeId = table.Column<int>(type: "int", nullable: false),
                     CommissionValue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     PaymentsEnabled = table.Column<bool>(type: "bit", nullable: false),
@@ -1322,6 +1730,12 @@ namespace Roovia.Migrations
                         principalTable: "Lookup_PropertyStatusTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Data_Properties_Lookup_PropertyTypes_PropertyTypeId",
+                        column: x => x.PropertyTypeId,
+                        principalTable: "Lookup_PropertyTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1502,6 +1916,124 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Contact_Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NotificationEventTypeId = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ReadDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false),
+                    RecipientUserId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    EmailSent = table.Column<bool>(type: "bit", nullable: false),
+                    SmsSent = table.Column<bool>(type: "bit", nullable: false),
+                    EmailSentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SmsSentDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Notifications_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notifications_Lookup_NotificationEventTypes_NotificationEventTypeId",
+                        column: x => x.NotificationEventTypeId,
+                        principalTable: "Lookup_NotificationEventTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CustomReports",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Query = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Parameters = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CustomReports", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CustomReports_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CustomReports_AspNetUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CustomReports_AspNetUsers_UpdatedBy",
+                        column: x => x.UpdatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ReportDashboards",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    IsDefault = table.Column<bool>(type: "bit", nullable: false),
+                    LayoutColumns = table.Column<int>(type: "int", nullable: false),
+                    Configuration = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReportDashboards", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ReportDashboards_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportDashboards_AspNetUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportDashboards_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Data_PropertyBeneficiaries",
                 columns: table => new
                 {
@@ -1531,16 +2063,14 @@ namespace Roovia.Migrations
                     Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     PropertyAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     BenStatusId = table.Column<int>(type: "int", nullable: false),
-                    NotifyEmail = table.Column<bool>(type: "bit", nullable: false),
-                    NotifySMS = table.Column<bool>(type: "bit", nullable: false),
                     CustomerRefBeneficiary = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     CustomerRefProperty = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Agent = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -1562,6 +2092,11 @@ namespace Roovia.Migrations
                         principalTable: "Data_Properties",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyBeneficiaries_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Data_PropertyBeneficiaries_Lookup_BeneficiaryStatusTypes_BenStatusId",
                         column: x => x.BenStatusId,
@@ -1650,6 +2185,101 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ReportSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    CustomReportId = table.Column<int>(type: "int", nullable: true),
+                    StandardReportType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Parameters = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    FrequencyTypeId = table.Column<int>(type: "int", nullable: false),
+                    DayOfWeek = table.Column<int>(type: "int", nullable: true),
+                    DayOfMonth = table.Column<int>(type: "int", nullable: true),
+                    ExecutionTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    RecipientEmails = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    ExportFormat = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    LastRunDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    NextRunDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReportSchedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ReportSchedules_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportSchedules_AspNetUsers_CreatedBy",
+                        column: x => x.CreatedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportSchedules_CustomReports_CustomReportId",
+                        column: x => x.CustomReportId,
+                        principalTable: "CustomReports",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ReportSchedules_ReportFrequencyTypes_FrequencyTypeId",
+                        column: x => x.FrequencyTypeId,
+                        principalTable: "ReportFrequencyTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ReportDashboardWidgets",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DashboardId = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    WidgetType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DataSource = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CustomReportId = table.Column<int>(type: "int", nullable: true),
+                    StandardReportType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Parameters = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    VisualizationType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    GridColumn = table.Column<int>(type: "int", nullable: false),
+                    GridRow = table.Column<int>(type: "int", nullable: false),
+                    GridWidth = table.Column<int>(type: "int", nullable: false),
+                    GridHeight = table.Column<int>(type: "int", nullable: false),
+                    Configuration = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    AutoRefresh = table.Column<bool>(type: "bit", nullable: false),
+                    RefreshInterval = table.Column<int>(type: "int", nullable: true),
+                    LastRefreshed = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReportDashboardWidgets", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ReportDashboardWidgets_CustomReports_CustomReportId",
+                        column: x => x.CustomReportId,
+                        principalTable: "CustomReports",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ReportDashboardWidgets_ReportDashboards_DashboardId",
+                        column: x => x.DashboardId,
+                        principalTable: "ReportDashboards",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Data_PropertyTenants",
                 columns: table => new
                 {
@@ -1657,11 +2287,14 @@ namespace Roovia.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     PropertyId = table.Column<int>(type: "int", nullable: false),
                     CompanyId = table.Column<int>(type: "int", nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    TenantTypeId = table.Column<int>(type: "int", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     IdNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    IsEmailNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    IsSmsNotificationsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    CompanyName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    RegistrationNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    VatNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    ContactPerson = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     LeaseStartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     LeaseEndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     RentAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
@@ -1674,9 +2307,9 @@ namespace Roovia.Migrations
                     LastInvoiceDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LastReminderDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     BankAccount_AccountType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    BankAccount_BankName = table.Column<int>(type: "int", nullable: true),
-                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(6)", maxLength: 6, nullable: true),
+                    BankAccount_AccountNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    BankAccount_BankNameId = table.Column<int>(type: "int", nullable: true),
+                    BankAccount_BranchCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     Address_Street = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Address_UnitNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     Address_ComplexName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -1740,11 +2373,22 @@ namespace Roovia.Migrations
                         principalTable: "Inspect_PropertyInspections",
                         principalColumn: "Id");
                     table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_Lookup_BankNameTypes_BankAccount_BankNameId",
+                        column: x => x.BankAccount_BankNameId,
+                        principalTable: "Lookup_BankNameTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Data_PropertyTenants_Lookup_TenantStatusTypes_StatusId",
                         column: x => x.StatusId,
                         principalTable: "Lookup_TenantStatusTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Data_PropertyTenants_Lookup_TenantTypes_TenantTypeId",
+                        column: x => x.TenantTypeId,
+                        principalTable: "Lookup_TenantTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1761,11 +2405,18 @@ namespace Roovia.Migrations
                     Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     RequiresMaintenance = table.Column<bool>(type: "bit", nullable: false),
                     MaintenancePriorityId = table.Column<int>(type: "int", nullable: true),
-                    MaintenanceNotes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                    MaintenanceNotes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ImageId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Inspect_InspectionItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Inspect_InspectionItems_CDN_FileMetadata_ImageId",
+                        column: x => x.ImageId,
+                        principalTable: "CDN_FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_Inspect_InspectionItems_Inspect_PropertyInspections_InspectionId",
                         column: x => x.InspectionId,
@@ -1792,13 +2443,131 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ReportExecutionLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ReportScheduleId = table.Column<int>(type: "int", nullable: true),
+                    ReportType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Parameters = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    ExecutionStartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExecutionEndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsSuccess = table.Column<bool>(type: "bit", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    RowCount = table.Column<int>(type: "int", nullable: true),
+                    OutputFilePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    CdnFileMetadataId = table.Column<int>(type: "int", nullable: true),
+                    EmailSent = table.Column<bool>(type: "bit", nullable: false),
+                    RecipientEmails = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: false),
+                    ExecutedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReportExecutionLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ReportExecutionLogs_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportExecutionLogs_AspNetUsers_ExecutedBy",
+                        column: x => x.ExecutedBy,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ReportExecutionLogs_ReportSchedules_ReportScheduleId",
+                        column: x => x.ReportScheduleId,
+                        principalTable: "ReportSchedules",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_Communications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Subject = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    CommunicationChannelId = table.Column<int>(type: "int", nullable: false),
+                    CommunicationDirectionId = table.Column<int>(type: "int", nullable: false),
+                    FromEmailAddress = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    ToEmailAddress = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    FromPhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    ToPhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    RelatedUserId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    RelatedPropertyId = table.Column<int>(type: "int", nullable: true),
+                    RelatedOwnerId = table.Column<int>(type: "int", nullable: true),
+                    RelatedTenantId = table.Column<int>(type: "int", nullable: true),
+                    RelatedBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    RelatedVendorId = table.Column<int>(type: "int", nullable: true),
+                    AttachmentId = table.Column<int>(type: "int", nullable: true),
+                    CommunicationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    PropertyId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Communications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Lookup_CommunicationChannels_CommunicationChannelId",
+                        column: x => x.CommunicationChannelId,
+                        principalTable: "Lookup_CommunicationChannels",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Lookup_CommunicationDirections_CommunicationDirectionId",
+                        column: x => x.CommunicationDirectionId,
+                        principalTable: "Lookup_CommunicationDirections",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Communications_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Contact_ContactNumbers",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Number = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Type = table.Column<int>(type: "int", nullable: false),
+                    ContactNumberTypeId = table.Column<int>(type: "int", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     IsPrimary = table.Column<bool>(type: "bit", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
@@ -1854,6 +2623,12 @@ namespace Roovia.Migrations
                         name: "FK_Contact_ContactNumbers_Data_PropertyTenants_PropertyTenantId",
                         column: x => x.PropertyTenantId,
                         principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_ContactNumbers_Lookup_ContactNumberTypes_ContactNumberTypeId",
+                        column: x => x.ContactNumberTypeId,
+                        principalTable: "Lookup_ContactNumberTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -1937,6 +2712,80 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Contact_NotificationPreferences",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    NotificationEventTypeId = table.Column<int>(type: "int", nullable: false),
+                    EmailEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    SmsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    PushEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    WebEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    OnlyDuringBusinessHours = table.Column<bool>(type: "bit", nullable: false),
+                    PreferredTimeOfDay = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_NotificationPreferences", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_Lookup_NotificationEventTypes_NotificationEventTypeId",
+                        column: x => x.NotificationEventTypeId,
+                        principalTable: "Lookup_NotificationEventTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_NotificationPreferences_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Finance_PaymentSchedules",
                 columns: table => new
                 {
@@ -2008,7 +2857,6 @@ namespace Roovia.Migrations
                     IsAllocated = table.Column<bool>(type: "bit", nullable: false),
                     AllocationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     AllocatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     ReceiptDocumentId = table.Column<int>(type: "int", nullable: true),
                     ReceiptNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -2194,6 +3042,293 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Contact_EntityDocuments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    EntityId = table.Column<int>(type: "int", nullable: false),
+                    DocumentTypeId = table.Column<int>(type: "int", nullable: false),
+                    CdnFileMetadataId = table.Column<int>(type: "int", nullable: true),
+                    DocumentStatusId = table.Column<int>(type: "int", nullable: false),
+                    IsRequired = table.Column<bool>(type: "bit", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    MaintenanceTicketId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    PropertyId = table.Column<int>(type: "int", nullable: true),
+                    PropertyInspectionId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyPaymentId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_EntityDocuments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Finance_PropertyPayments_PropertyPaymentId",
+                        column: x => x.PropertyPaymentId,
+                        principalTable: "Finance_PropertyPayments",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Inspect_PropertyInspections_PropertyInspectionId",
+                        column: x => x.PropertyInspectionId,
+                        principalTable: "Inspect_PropertyInspections",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Lookup_DocumentStatuses_DocumentStatusId",
+                        column: x => x.DocumentStatusId,
+                        principalTable: "Lookup_DocumentStatuses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Lookup_DocumentTypes_DocumentTypeId",
+                        column: x => x.DocumentTypeId,
+                        principalTable: "Lookup_DocumentTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Maint_MaintenanceTickets_MaintenanceTicketId",
+                        column: x => x.MaintenanceTicketId,
+                        principalTable: "Maint_MaintenanceTickets",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_EntityDocuments_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_Notes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    NoteTypeId = table.Column<int>(type: "int", nullable: false),
+                    IsPrivate = table.Column<bool>(type: "bit", nullable: false),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    BranchId = table.Column<int>(type: "int", nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    MaintenanceTicketId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    PropertyId = table.Column<int>(type: "int", nullable: true),
+                    PropertyInspectionId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyPaymentId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Notes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_AspNetBranches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "AspNetBranches",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_AspNetCompanies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "AspNetCompanies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Finance_PropertyPayments_PropertyPaymentId",
+                        column: x => x.PropertyPaymentId,
+                        principalTable: "Finance_PropertyPayments",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Inspect_PropertyInspections_PropertyInspectionId",
+                        column: x => x.PropertyInspectionId,
+                        principalTable: "Inspect_PropertyInspections",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Lookup_NoteTypes_NoteTypeId",
+                        column: x => x.NoteTypeId,
+                        principalTable: "Lookup_NoteTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Maint_MaintenanceTickets_MaintenanceTicketId",
+                        column: x => x.MaintenanceTicketId,
+                        principalTable: "Maint_MaintenanceTickets",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Notes_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Contact_Reminders",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ReminderTypeId = table.Column<int>(type: "int", nullable: false),
+                    ReminderStatusId = table.Column<int>(type: "int", nullable: false),
+                    DueDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CompletedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsRecurring = table.Column<bool>(type: "bit", nullable: false),
+                    RecurrenceFrequencyId = table.Column<int>(type: "int", nullable: true),
+                    RecurrenceInterval = table.Column<int>(type: "int", nullable: true),
+                    RecurrenceEndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SendNotification = table.Column<bool>(type: "bit", nullable: false),
+                    NotifyDaysBefore = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RelatedEntityId = table.Column<int>(type: "int", nullable: true),
+                    RelatedEntityStringId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    AssignedToUserId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    MaintenanceTicketId = table.Column<int>(type: "int", nullable: true),
+                    PropertyBeneficiaryId = table.Column<int>(type: "int", nullable: true),
+                    PropertyId = table.Column<int>(type: "int", nullable: true),
+                    PropertyOwnerId = table.Column<int>(type: "int", nullable: true),
+                    PropertyTenantId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contact_Reminders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Data_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Data_Properties",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Data_PropertyBeneficiaries_PropertyBeneficiaryId",
+                        column: x => x.PropertyBeneficiaryId,
+                        principalTable: "Data_PropertyBeneficiaries",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Data_PropertyOwners_PropertyOwnerId",
+                        column: x => x.PropertyOwnerId,
+                        principalTable: "Data_PropertyOwners",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Data_PropertyTenants_PropertyTenantId",
+                        column: x => x.PropertyTenantId,
+                        principalTable: "Data_PropertyTenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Lookup_RecurrenceFrequencies_RecurrenceFrequencyId",
+                        column: x => x.RecurrenceFrequencyId,
+                        principalTable: "Lookup_RecurrenceFrequencies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Lookup_ReminderStatuses_ReminderStatusId",
+                        column: x => x.ReminderStatusId,
+                        principalTable: "Lookup_ReminderStatuses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Lookup_ReminderTypes_ReminderTypeId",
+                        column: x => x.ReminderTypeId,
+                        principalTable: "Lookup_ReminderTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Maint_MaintenanceTickets_MaintenanceTicketId",
+                        column: x => x.MaintenanceTicketId,
+                        principalTable: "Maint_MaintenanceTickets",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Contact_Reminders_Maint_Vendors_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Maint_Vendors",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Maint_MaintenanceComments",
                 columns: table => new
                 {
@@ -2303,6 +3438,11 @@ namespace Roovia.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetBranches_BankAccount_BankNameId",
+                table: "AspNetBranches",
+                column: "BankAccount_BankNameId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetBranches_CompanyId",
                 table: "AspNetBranches",
                 column: "CompanyId");
@@ -2318,6 +3458,11 @@ namespace Roovia.Migrations
                 column: "StatusId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetCompanies_BankAccount_BankNameId",
+                table: "AspNetCompanies",
+                column: "BankAccount_BankNameId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetCompanies_MainLogoId",
                 table: "AspNetCompanies",
                 column: "MainLogoId");
@@ -2326,6 +3471,11 @@ namespace Roovia.Migrations
                 name: "IX_AspNetCompanies_StatusId",
                 table: "AspNetCompanies",
                 column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetCompanies_SubscriptionPlanId",
+                table: "AspNetCompanies",
+                column: "SubscriptionPlanId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetCustomRoles_BranchId",
@@ -2490,6 +3640,41 @@ namespace Roovia.Migrations
                 columns: new[] { "Date", "CategoryId" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_CommunicationChannelId",
+                table: "Contact_Communications",
+                column: "CommunicationChannelId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_CommunicationDirectionId",
+                table: "Contact_Communications",
+                column: "CommunicationDirectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_PropertyBeneficiaryId",
+                table: "Contact_Communications",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_PropertyId",
+                table: "Contact_Communications",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_PropertyOwnerId",
+                table: "Contact_Communications",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_PropertyTenantId",
+                table: "Contact_Communications",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Communications_VendorId",
+                table: "Contact_Communications",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Contact_ContactNumbers_ApplicationUserId",
                 table: "Contact_ContactNumbers",
                 column: "ApplicationUserId");
@@ -2503,6 +3688,11 @@ namespace Roovia.Migrations
                 name: "IX_Contact_ContactNumbers_CompanyId",
                 table: "Contact_ContactNumbers",
                 column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_ContactNumbers_ContactNumberTypeId",
+                table: "Contact_ContactNumbers",
+                column: "ContactNumberTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Contact_ContactNumbers_PropertyBeneficiaryId",
@@ -2588,6 +3778,251 @@ namespace Roovia.Migrations
                 column: "VendorId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_ApplicationUserId",
+                table: "Contact_EntityDocuments",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_BranchId",
+                table: "Contact_EntityDocuments",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_CompanyId",
+                table: "Contact_EntityDocuments",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_DocumentStatusId",
+                table: "Contact_EntityDocuments",
+                column: "DocumentStatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_DocumentTypeId",
+                table: "Contact_EntityDocuments",
+                column: "DocumentTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_MaintenanceTicketId",
+                table: "Contact_EntityDocuments",
+                column: "MaintenanceTicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyBeneficiaryId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyInspectionId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyInspectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyOwnerId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyPaymentId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyPaymentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_PropertyTenantId",
+                table: "Contact_EntityDocuments",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_EntityDocuments_VendorId",
+                table: "Contact_EntityDocuments",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Media_MediaTypeId",
+                table: "Contact_Media",
+                column: "MediaTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_ApplicationUserId",
+                table: "Contact_Notes",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_BranchId",
+                table: "Contact_Notes",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_CompanyId",
+                table: "Contact_Notes",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_MaintenanceTicketId",
+                table: "Contact_Notes",
+                column: "MaintenanceTicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_NoteTypeId",
+                table: "Contact_Notes",
+                column: "NoteTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyBeneficiaryId",
+                table: "Contact_Notes",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyId",
+                table: "Contact_Notes",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyInspectionId",
+                table: "Contact_Notes",
+                column: "PropertyInspectionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyOwnerId",
+                table: "Contact_Notes",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyPaymentId",
+                table: "Contact_Notes",
+                column: "PropertyPaymentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_PropertyTenantId",
+                table: "Contact_Notes",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notes_VendorId",
+                table: "Contact_Notes",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_ApplicationUserId",
+                table: "Contact_NotificationPreferences",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_BranchId",
+                table: "Contact_NotificationPreferences",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_CompanyId",
+                table: "Contact_NotificationPreferences",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_NotificationEventTypeId",
+                table: "Contact_NotificationPreferences",
+                column: "NotificationEventTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_PropertyBeneficiaryId",
+                table: "Contact_NotificationPreferences",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_PropertyOwnerId",
+                table: "Contact_NotificationPreferences",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_PropertyTenantId",
+                table: "Contact_NotificationPreferences",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_NotificationPreferences_VendorId",
+                table: "Contact_NotificationPreferences",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notifications_ApplicationUserId",
+                table: "Contact_Notifications",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Notifications_NotificationEventTypeId",
+                table: "Contact_Notifications",
+                column: "NotificationEventTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_ApplicationUserId",
+                table: "Contact_Reminders",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_MaintenanceTicketId",
+                table: "Contact_Reminders",
+                column: "MaintenanceTicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_PropertyBeneficiaryId",
+                table: "Contact_Reminders",
+                column: "PropertyBeneficiaryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_PropertyId",
+                table: "Contact_Reminders",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_PropertyOwnerId",
+                table: "Contact_Reminders",
+                column: "PropertyOwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_PropertyTenantId",
+                table: "Contact_Reminders",
+                column: "PropertyTenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_RecurrenceFrequencyId",
+                table: "Contact_Reminders",
+                column: "RecurrenceFrequencyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_ReminderStatusId",
+                table: "Contact_Reminders",
+                column: "ReminderStatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_ReminderTypeId",
+                table: "Contact_Reminders",
+                column: "ReminderTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contact_Reminders_VendorId",
+                table: "Contact_Reminders",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomReports_CompanyId",
+                table: "CustomReports",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomReports_CreatedBy",
+                table: "CustomReports",
+                column: "CreatedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomReports_UpdatedBy",
+                table: "CustomReports",
+                column: "UpdatedBy");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Data_Properties_BranchId",
                 table: "Data_Properties",
                 column: "BranchId");
@@ -2613,9 +4048,19 @@ namespace Roovia.Migrations
                 column: "OwnerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Data_Properties_PropertyTypeId",
+                table: "Data_Properties",
+                column: "PropertyTypeId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Data_Properties_StatusId",
                 table: "Data_Properties",
                 column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyBeneficiaries_BankAccount_BankNameId",
+                table: "Data_PropertyBeneficiaries",
+                column: "BankAccount_BankNameId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Data_PropertyBeneficiaries_BenStatusId",
@@ -2643,9 +4088,29 @@ namespace Roovia.Migrations
                 column: "PropertyId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyOwners_BankAccount_BankNameId",
+                table: "Data_PropertyOwners",
+                column: "BankAccount_BankNameId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Data_PropertyOwners_CompanyId",
                 table: "Data_PropertyOwners",
                 column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyOwners_PropertyOwnerTypeId",
+                table: "Data_PropertyOwners",
+                column: "PropertyOwnerTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyOwners_StatusId",
+                table: "Data_PropertyOwners",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_BankAccount_BankNameId",
+                table: "Data_PropertyTenants",
+                column: "BankAccount_BankNameId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Data_PropertyTenants_CompanyId",
@@ -2671,6 +4136,11 @@ namespace Roovia.Migrations
                 name: "IX_Data_PropertyTenants_StatusId",
                 table: "Data_PropertyTenants",
                 column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Data_PropertyTenants_TenantTypeId",
+                table: "Data_PropertyTenants",
+                column: "TenantTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Finance_BeneficiaryPayments_BeneficiaryId",
@@ -2773,6 +4243,11 @@ namespace Roovia.Migrations
                 column: "ConditionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Inspect_InspectionItems_ImageId",
+                table: "Inspect_InspectionItems",
+                column: "ImageId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Inspect_InspectionItems_InspectionId",
                 table: "Inspect_InspectionItems",
                 column: "InspectionId");
@@ -2819,6 +4294,12 @@ namespace Roovia.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lookup_BankNameTypes_Name",
+                table: "Lookup_BankNameTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lookup_BeneficiaryPaymentStatusTypes_Name",
                 table: "Lookup_BeneficiaryPaymentStatusTypes",
                 column: "Name",
@@ -2849,6 +4330,18 @@ namespace Roovia.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lookup_CommunicationChannels_Name",
+                table: "Lookup_CommunicationChannels",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_CommunicationDirections_Name",
+                table: "Lookup_CommunicationDirections",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lookup_CompanyStatusTypes_Name",
                 table: "Lookup_CompanyStatusTypes",
                 column: "Name",
@@ -2857,6 +4350,12 @@ namespace Roovia.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Lookup_ConditionLevels_Name",
                 table: "Lookup_ConditionLevels",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ContactNumberTypes_Name",
+                table: "Lookup_ContactNumberTypes",
                 column: "Name",
                 unique: true);
 
@@ -2873,10 +4372,57 @@ namespace Roovia.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lookup_DocumentRequirementTypes_Name",
+                table: "Lookup_DocumentRequirementTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_DocumentStatuses_Name",
+                table: "Lookup_DocumentStatuses",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lookup_DocumentTypes_Name",
                 table: "Lookup_DocumentTypes",
                 column: "Name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityDocumentRequirements_CompanyId",
+                table: "Lookup_EntityDocumentRequirements",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityDocumentRequirements_DocumentRequirementTypeId",
+                table: "Lookup_EntityDocumentRequirements",
+                column: "DocumentRequirementTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityDocumentRequirements_DocumentTypeId",
+                table: "Lookup_EntityDocumentRequirements",
+                column: "DocumentTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityDocumentRequirements_EntityTypeId_DocumentTypeId_CompanyId",
+                table: "Lookup_EntityDocumentRequirements",
+                columns: new[] { "EntityTypeId", "DocumentTypeId", "CompanyId" },
+                unique: true,
+                filter: "[CompanyId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityTypes_Name",
+                table: "Lookup_EntityTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_EntityTypes_SystemName",
+                table: "Lookup_EntityTypes",
+                column: "SystemName",
+                unique: true,
+                filter: "[SystemName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Lookup_ExpenseCategories_Name",
@@ -2927,10 +4473,40 @@ namespace Roovia.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lookup_MediaTypes_Name",
+                table: "Lookup_MediaTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NoteTypes_Name",
+                table: "Lookup_NoteTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lookup_NotificationChannels_Name",
                 table: "Lookup_NotificationChannels",
                 column: "Name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NotificationEventTypes_Name",
+                table: "Lookup_NotificationEventTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NotificationEventTypes_SystemName",
+                table: "Lookup_NotificationEventTypes",
+                column: "SystemName",
+                unique: true,
+                filter: "[SystemName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_NotificationTemplates_NotificationEventTypeId",
+                table: "Lookup_NotificationTemplates",
+                column: "NotificationEventTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Lookup_NotificationTypes_Name",
@@ -2981,8 +4557,44 @@ namespace Roovia.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PropertyOwnerStatusTypes_Name",
+                table: "Lookup_PropertyOwnerStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PropertyOwnerTypes_Name",
+                table: "Lookup_PropertyOwnerTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lookup_PropertyStatusTypes_Name",
                 table: "Lookup_PropertyStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_PropertyTypes_Name",
+                table: "Lookup_PropertyTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_RecurrenceFrequencies_Name",
+                table: "Lookup_RecurrenceFrequencies",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ReminderStatuses_Name",
+                table: "Lookup_ReminderStatuses",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_ReminderTypes_Name",
+                table: "Lookup_ReminderTypes",
                 column: "Name",
                 unique: true);
 
@@ -3001,6 +4613,12 @@ namespace Roovia.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Lookup_TenantStatusTypes_Name",
                 table: "Lookup_TenantStatusTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lookup_TenantTypes_Name",
+                table: "Lookup_TenantTypes",
                 column: "Name",
                 unique: true);
 
@@ -3088,9 +4706,74 @@ namespace Roovia.Migrations
                 column: "VendorId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Maint_Vendors_BankAccount_BankNameId",
+                table: "Maint_Vendors",
+                column: "BankAccount_BankNameId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Maint_Vendors_CompanyId",
                 table: "Maint_Vendors",
                 column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportDashboards_CompanyId",
+                table: "ReportDashboards",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportDashboards_CreatedBy",
+                table: "ReportDashboards",
+                column: "CreatedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportDashboards_UserId",
+                table: "ReportDashboards",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportDashboardWidgets_CustomReportId",
+                table: "ReportDashboardWidgets",
+                column: "CustomReportId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportDashboardWidgets_DashboardId",
+                table: "ReportDashboardWidgets",
+                column: "DashboardId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportExecutionLogs_CompanyId",
+                table: "ReportExecutionLogs",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportExecutionLogs_ExecutedBy",
+                table: "ReportExecutionLogs",
+                column: "ExecutedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportExecutionLogs_ReportScheduleId",
+                table: "ReportExecutionLogs",
+                column: "ReportScheduleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportSchedules_CompanyId",
+                table: "ReportSchedules",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportSchedules_CreatedBy",
+                table: "ReportSchedules",
+                column: "CreatedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportSchedules_CustomReportId",
+                table: "ReportSchedules",
+                column: "CustomReportId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportSchedules_FrequencyTypeId",
+                table: "ReportSchedules",
+                column: "FrequencyTypeId");
         }
 
         /// <inheritdoc />
@@ -3133,13 +4816,31 @@ namespace Roovia.Migrations
                 name: "CDN_UsageStatistics");
 
             migrationBuilder.DropTable(
+                name: "Contact_Communications");
+
+            migrationBuilder.DropTable(
                 name: "Contact_ContactNumbers");
 
             migrationBuilder.DropTable(
                 name: "Contact_Emails");
 
             migrationBuilder.DropTable(
+                name: "Contact_EntityDocuments");
+
+            migrationBuilder.DropTable(
                 name: "Contact_Media");
+
+            migrationBuilder.DropTable(
+                name: "Contact_Notes");
+
+            migrationBuilder.DropTable(
+                name: "Contact_NotificationPreferences");
+
+            migrationBuilder.DropTable(
+                name: "Contact_Notifications");
+
+            migrationBuilder.DropTable(
+                name: "Contact_Reminders");
 
             migrationBuilder.DropTable(
                 name: "Finance_BeneficiaryPayments");
@@ -3160,13 +4861,16 @@ namespace Roovia.Migrations
                 name: "Lookup_DocumentCategories");
 
             migrationBuilder.DropTable(
-                name: "Lookup_DocumentTypes");
+                name: "Lookup_EntityDocumentRequirements");
 
             migrationBuilder.DropTable(
                 name: "Lookup_MaintenanceImageTypes");
 
             migrationBuilder.DropTable(
                 name: "Lookup_NotificationChannels");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_NotificationTemplates");
 
             migrationBuilder.DropTable(
                 name: "Lookup_NotificationTypes");
@@ -3181,9 +4885,6 @@ namespace Roovia.Migrations
                 name: "Lookup_RoleTypes");
 
             migrationBuilder.DropTable(
-                name: "Lookup_SubscriptionPlans");
-
-            migrationBuilder.DropTable(
                 name: "Lookup_ThemeTypes");
 
             migrationBuilder.DropTable(
@@ -3196,6 +4897,12 @@ namespace Roovia.Migrations
                 name: "Maint_MaintenanceExpenses");
 
             migrationBuilder.DropTable(
+                name: "ReportDashboardWidgets");
+
+            migrationBuilder.DropTable(
+                name: "ReportExecutionLogs");
+
+            migrationBuilder.DropTable(
                 name: "AspNetPermissions");
 
             migrationBuilder.DropTable(
@@ -3205,7 +4912,31 @@ namespace Roovia.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "Lookup_CommunicationChannels");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_CommunicationDirections");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ContactNumberTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_DocumentStatuses");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_MediaTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_NoteTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_RecurrenceFrequencies");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ReminderStatuses");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_ReminderTypes");
 
             migrationBuilder.DropTable(
                 name: "Finance_PaymentAllocations");
@@ -3223,13 +4954,28 @@ namespace Roovia.Migrations
                 name: "Lookup_InspectionAreas");
 
             migrationBuilder.DropTable(
+                name: "Lookup_DocumentRequirementTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_DocumentTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_EntityTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_NotificationEventTypes");
+
+            migrationBuilder.DropTable(
                 name: "Lookup_ExpenseCategories");
 
             migrationBuilder.DropTable(
                 name: "Maint_MaintenanceTickets");
 
             migrationBuilder.DropTable(
-                name: "Lookup_UserStatusTypes");
+                name: "ReportDashboards");
+
+            migrationBuilder.DropTable(
+                name: "ReportSchedules");
 
             migrationBuilder.DropTable(
                 name: "Data_PropertyBeneficiaries");
@@ -3253,6 +4999,12 @@ namespace Roovia.Migrations
                 name: "Maint_Vendors");
 
             migrationBuilder.DropTable(
+                name: "CustomReports");
+
+            migrationBuilder.DropTable(
+                name: "ReportFrequencyTypes");
+
+            migrationBuilder.DropTable(
                 name: "Lookup_BeneficiaryStatusTypes");
 
             migrationBuilder.DropTable(
@@ -3271,10 +5023,19 @@ namespace Roovia.Migrations
                 name: "Lookup_PaymentTypes");
 
             migrationBuilder.DropTable(
+                name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
                 name: "Inspect_PropertyInspections");
 
             migrationBuilder.DropTable(
                 name: "Lookup_TenantStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_TenantTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_UserStatusTypes");
 
             migrationBuilder.DropTable(
                 name: "Data_Properties");
@@ -3301,16 +5062,31 @@ namespace Roovia.Migrations
                 name: "Lookup_PropertyStatusTypes");
 
             migrationBuilder.DropTable(
+                name: "Lookup_PropertyTypes");
+
+            migrationBuilder.DropTable(
                 name: "Lookup_BranchStatusTypes");
 
             migrationBuilder.DropTable(
                 name: "AspNetCompanies");
 
             migrationBuilder.DropTable(
+                name: "Lookup_PropertyOwnerStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_PropertyOwnerTypes");
+
+            migrationBuilder.DropTable(
                 name: "CDN_FileMetadata");
 
             migrationBuilder.DropTable(
+                name: "Lookup_BankNameTypes");
+
+            migrationBuilder.DropTable(
                 name: "Lookup_CompanyStatusTypes");
+
+            migrationBuilder.DropTable(
+                name: "Lookup_SubscriptionPlans");
 
             migrationBuilder.DropTable(
                 name: "CDN_Folders");
