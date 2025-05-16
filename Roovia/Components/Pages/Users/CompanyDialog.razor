@@ -1,8 +1,10 @@
-﻿@* @using Microsoft.AspNetCore.Components.Forms
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Components
 @using Roovia.Components.Elements.Forms
+@using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
-@using Roovia.Models.ProjectCdnConfigModels
 @using Roovia.Models.UserCompanyMappingModels
 @using Roovia.Models.UserCompanyModels
 @using Roovia.Services
@@ -10,6 +12,7 @@
 @inject IUser UserService
 @inject ICdnService CdnService
 @inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
 <RVModal IsVisible="true"
 Title="@GetDialogTitle()"
@@ -18,7 +21,8 @@ OnClose="OnCancel"
 OnCancel="OnCancel"
 OnConfirm="HandleConfirmAction"
 ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
-CancelText="@(IsEditMode ? "Cancel" : "Close")"
+CancelText="@(IsView ? "Close" : "Cancel")"
+DefaultFooter="false"
 Size="lg">
     <ChildContent>
         @if (isLoading)
@@ -33,282 +37,593 @@ Size="lg">
             <div class="company-dialog">
                 @if (IsViewMode)
                 {
-                    <div class="view-mode">
-                        <div class="detail-header">
-                            <div class="detail-icon">
-                                @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
-                                {
-                                    <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name" class="company-logo-icon" />
-                                }
-                                else
-                                {
-                                    <i class="fa-light fa-building"></i>
-                                }
-                            </div>
-                            <div class="detail-title">
-                                <h2>@CompanyModel.Name</h2>
-                                <div class="company-status">
-                                    @if (CompanyModel.Status != null)
-                                    {
-                                        <span class="status-badge @(CompanyModel.IsActive ? "active" : "inactive")">
-                                            @CompanyModel.Status.Name
-                                        </span>
-                                    }
-                                    @if (CompanyModel.SubscriptionPlanId.HasValue && currentSubscriptionPlan != null)
-                                    {
-                                        <span class="subscription-badge">@currentSubscriptionPlan.Name</span>
-                                    }
-                                </div>
-                            </div>
-                            @if (CanEdit)
-                            {
-                                <div class="detail-actions">
-                                    <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit"
-                                    OnClick="SwitchToEditMode" CssClass="edit-btn" />
-                                </div>
-                            }
-                        </div>
-
-                        <div class="detail-sections">
-                            <div class="detail-section">
-                                <h3><i class="fa-light fa-info-circle"></i> Basic Information</h3>
-                                <div class="detail-grid">
-                                    <div class="detail-item">
-                                        <span class="detail-label">Registration Number</span>
-                                        <span class="detail-value">@CompanyModel.RegistrationNumber</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <span class="detail-label">VAT Number</span>
-                                        <span class="detail-value">@(string.IsNullOrEmpty(CompanyModel.VatNumber) ? "Not provided" : CompanyModel.VatNumber)</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <span class="detail-label">Website</span>
-                                        <span class="detail-value">
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Website))
-                                            {
-                                                <a href="@CompanyModel.Website" target="_blank">@CompanyModel.Website</a>
-                                            }
-                                            else
-                                            {
-                                                <span>Not provided</span>
-                                            }
-                                        </span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <span class="detail-label">Status</span>
-                                        <span class="detail-value">
-                                            @if (CompanyModel.Status != null)
-                                            {
-                                                @CompanyModel.Status.Name
-                                            }
-                                            else
-                                            {
-                                                <span>Not set</span>
-                                            }
-                                        </span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <span class="detail-label">Subscription Plan</span>
-                                        <span class="detail-value">
-                                            @if (currentSubscriptionPlan != null)
-                                            {
-                                                @currentSubscriptionPlan.Name
-                                            }
-                                            else
-                                            {
-                                                <span>No plan selected</span>
-                                            }
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="detail-section">
-                                <h3><i class="fa-light fa-address-card"></i> Contact Information</h3>
-                                <div class="detail-grid">
-                                    @if (CompanyModel.EmailAddresses?.Any() == true)
-                                    {
-                                        var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
-                                        <div class="detail-item">
-                                            <span class="detail-label">Primary Email</span>
-                                            <span class="detail-value">
-                                                @if (primaryEmail != null)
-                                                {
-                                                    <a href="mailto:@primaryEmail.EmailAddress">@primaryEmail.EmailAddress</a>
-                                                }
-                                                else
-                                                {
-                                                    <span>Not provided</span>
-                                                }
-                                            </span>
-                                        </div>
-                                    }
-                                    @if (CompanyModel.ContactNumbers?.Any() == true)
-                                    {
-                                        var primaryContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
-                                        <div class="detail-item">
-                                            <span class="detail-label">Primary Contact</span>
-                                            <span class="detail-value">
-                                                @if (primaryContact != null)
-                                                {
-                                                    <a href="tel:@primaryContact.Number">@primaryContact.Number</a>
-                                                }
-                                                else
-                                                {
-                                                    <span>Not provided</span>
-                                                }
-                                            </span>
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (CompanyModel.EmailAddresses?.Count > 1)
-                                {
-                                    <div class="additional-emails mt-3">
-                                        <h4>Additional Email Addresses</h4>
-                                        <div class="contact-list">
-                                            @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
-                                            {
-                                                <div class="contact-item">
-                                                    <div class="contact-type">
-                                                        @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
-                                                    </div>
-                                                    <div class="contact-value">
-                                                        <a href="mailto:@email.EmailAddress">@email.EmailAddress</a>
-                                                    </div>
-                                                    <div class="contact-status">
-                                                        @if (!email.IsActive)
-                                                        {
-                                                            <span class="status-badge status-inactive">Inactive</span>
-                                                        }
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-
-                                @if (CompanyModel.ContactNumbers?.Count > 1)
-                                {
-                                    <div class="additional-contacts mt-3">
-                                        <h4>Additional Contact Numbers</h4>
-                                        <div class="contact-list">
-                                            @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
-                                            {
-                                                <div class="contact-item">
-                                                    <div class="contact-type">
-                                                        @(!string.IsNullOrEmpty(phone.Description) ? phone.Description : phone.Type.ToString())
-                                                    </div>
-                                                    <div class="contact-value">
-                                                        <a href="tel:@phone.Number">@phone.Number</a>
-                                                    </div>
-                                                    <div class="contact-status">
-                                                        @if (!phone.IsActive)
-                                                        {
-                                                            <span class="status-badge status-inactive">Inactive</span>
-                                                        }
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="detail-section">
-                                <h3><i class="fa-light fa-map-marker-alt"></i> Address</h3>
-                                <div class="address-display">
-                                    @if (CompanyModel.Address != null)
-                                    {
-                                        <p>
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Street))
-                                            {
-                                                @CompanyModel.Address.Street
-
-                                                <br />
-                                            }
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.UnitNumber))
-                                            {
-                                                @:Unit @CompanyModel.Address.UnitNumber
-                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
-                                                {
-                                                    @:, @CompanyModel.Address.ComplexName
-                                                }
-                                                <br />
-                                            }
-                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
-                                            {
-                                                @CompanyModel.Address.ComplexName
-
-                                                <br />
-                                            }
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.BuildingName))
-                                            {
-                                                @CompanyModel.Address.BuildingName
-
-                                                <br />
-                                            }
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Suburb))
-                                            {
-                                                @CompanyModel.Address.Suburb
-                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.City))
-                                                {
-                                                    @:, @CompanyModel.Address.City
-                                                }
-                                                <br />
-                                            }
-                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.City))
-                                            {
-                                                @CompanyModel.Address.City
-
-                                                <br />
-                                            }
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Province))
-                                            {
-                                                @CompanyModel.Address.Province
-                                                @if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
-                                                {
-                                                    @:, @CompanyModel.Address.PostalCode
-                                                }
-                                                <br />
-                                            }
-                                            else if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
-                                            {
-                                                @CompanyModel.Address.PostalCode
-
-                                                <br />
-                                            }
-                                            @if (!string.IsNullOrEmpty(CompanyModel.Address.Country))
-                                            {
-                                                @CompanyModel.Address.Country
-                                            }
-                                        </p>
-                                    }
-                                    else
-                                    {
-                                        <p>No address information provided</p>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="detail-section">
-                                <h3><i class="fa-light fa-image"></i> Company Logo</h3>
-                                <div class="logo-display">
+                    <div class="company-view-container">
+                        <div class="company-header">
+                            <div class="company-header-flex">
+                                <div class="company-icon-wrapper">
                                     @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
                                     {
-                                        <div class="logo-container">
-                                            <img src="@CompanyModel.MainLogo.Url" alt="Company Logo" class="company-logo" />
-                                        </div>
+                                        <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name" class="company-logo-large" />
                                     }
                                     else
                                     {
-                                        <div class="empty-logo">
-                                            <i class="fa-light fa-building fa-4x"></i>
-                                            <p>No logo uploaded</p>
+                                        <div class="company-icon-large">
+                                            <i class="fa-light fa-building"></i>
                                         </div>
                                     }
+                                    <div class="status-indicator @(CompanyModel.IsActive ? "active" : "inactive")"></div>
                                 </div>
+
+                                <div class="company-header-info">
+                                    <h2>@CompanyModel.Name</h2>
+
+                                    <div class="company-meta">
+                                        @if (!string.IsNullOrEmpty(CompanyModel.RegistrationNumber))
+                                        {
+                                            <span class="company-meta-item"><i class="fa-light fa-id-card"></i>Reg: @CompanyModel.RegistrationNumber</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(CompanyModel.VatNumber))
+                                        {
+                                            <span class="company-meta-item"><i class="fa-light fa-receipt"></i>VAT: @CompanyModel.VatNumber</span>
+                                        }
+                                    </div>
+
+                                    <div class="company-badges">
+                                        <span class="status-badge @(CompanyModel.IsActive ? "status-active" : "status-inactive")">
+                                            <i class="fa-light fa-@(CompanyModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                            @(CompanyModel.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                        @if (CompanyModel.Status != null)
+                                        {
+                                            <span class="status-badge">@CompanyModel.Status.Name</span>
+                                        }
+                                        @if (CompanyModel.SubscriptionPlan != null)
+                                        {
+                                            <span class="subscription-badge">
+                                                <i class="fa-light fa-gem"></i> @CompanyModel.SubscriptionPlan.Name
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (CanEdit)
+                                {
+                                    <div class="company-actions">
+                                        <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit"
+                                        OnClick="SwitchToEditMode" CssClass="edit-btn" />
+                                    </div>
+                                }
                             </div>
+                        </div>
+
+                        <div class="company-details-tabs">
+                            @{
+                                var companyTabs = new List<RVTab.RVTabItem>
+                    {
+                    new RVTab.RVTabItem
+                    {
+                    Id = "basic",
+                    Title = "Basic Info",
+                    Icon = "fa-light fa-info-circle",
+                    IsActive = activeViewTab == "basic"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "contact",
+                    Title = "Contact",
+                    Icon = "fa-light fa-address-card",
+                    IsActive = activeViewTab == "contact"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "address",
+                    Title = "Address",
+                    Icon = "fa-light fa-map-marker-alt",
+                    IsActive = activeViewTab == "address"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "banking",
+                    Title = "Banking",
+                    Icon = "fa-light fa-university",
+                    IsActive = activeViewTab == "banking"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "branding",
+                    Title = "Branding",
+                    Icon = "fa-light fa-image",
+                    IsActive = activeViewTab == "branding"
+                    },
+                    new RVTab.RVTabItem
+                    {
+                    Id = "branches",
+                    Title = "Branches",
+                    Icon = "fa-light fa-network-wired",
+                    IsActive = activeViewTab == "branches",
+                    BadgeCount = CompanyModel.Branches?.Count ?? 0
+                    }
+                    };
+                            }
+
+                            <RVTab Tabs="companyTabs" Size="sm" OnTabChange="SetActiveViewTab">
+                                <RVTabPanel TabId="basic" IsActive='activeViewTab == "basic"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-info-circle"></i> Basic Information</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-building"></i> Company Name</div>
+                                                    <div class="detail-value">@CompanyModel.Name</div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-id-card"></i> Registration Number</div>
+                                                    <div class="detail-value">@CompanyModel.RegistrationNumber</div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-receipt"></i> VAT Number</div>
+                                                    <div class="detail-value">@(string.IsNullOrEmpty(CompanyModel.VatNumber) ? "Not provided" : CompanyModel.VatNumber)</div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-globe"></i> Website</div>
+                                                    <div class="detail-value">
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Website))
+                                                        {
+                                                            <a href="@CompanyModel.Website" target="_blank">@CompanyModel.Website</a>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>Not provided</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-toggle-on"></i> Status</div>
+                                                    <div class="detail-value">
+                                                        <span class="status-badge @(CompanyModel.IsActive ? "status-active" : "status-inactive")">
+                                                            <i class="fa-light fa-@(CompanyModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                                            @(CompanyModel.IsActive ? "Active" : "Inactive")
+                                                        </span>
+                                                        @if (CompanyModel.Status != null)
+                                                        {
+                                                            <span class="status-badge">@CompanyModel.Status.Name</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <div class="detail-label"><i class="fa-light fa-gem"></i> Subscription Plan</div>
+                                                    <div class="detail-value">
+                                                        @if (CompanyModel.SubscriptionPlan != null)
+                                                        {
+                                                            <span>@CompanyModel.SubscriptionPlan.Name - $@CompanyModel.SubscriptionPlan.Price/@CompanyModel.SubscriptionPlan.BillingCycleDays days</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>No subscription plan selected</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                @if (CompanyModel.MaxUsers.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-users"></i> Max Users</div>
+                                                        <div class="detail-value">@CompanyModel.MaxUsers</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.MaxProperties.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-home"></i> Max Properties</div>
+                                                        <div class="detail-value">@CompanyModel.MaxProperties</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.MaxBranches.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-network-wired"></i> Max Branches</div>
+                                                        <div class="detail-value">@CompanyModel.MaxBranches</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.SubscriptionStartDate.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-day"></i> Subscription Start</div>
+                                                        <div class="detail-value">@CompanyModel.SubscriptionStartDate?.ToString("dd MMM yyyy")</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.SubscriptionEndDate.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-times"></i> Subscription End</div>
+                                                        <div class="detail-value">@CompanyModel.SubscriptionEndDate?.ToString("dd MMM yyyy")</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.IsTrialPeriod)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-hourglass-half"></i> Trial Period</div>
+                                                        <div class="detail-value">Yes</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.CreatedOn != default)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
+                                                        <div class="detail-value">@CompanyModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(CompanyModel.CreatedBy))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-user"></i> Created By</div>
+                                                        <div class="detail-value">@CompanyModel.CreatedBy</div>
+                                                    </div>
+                                                }
+                                                @if (CompanyModel.UpdatedDate.HasValue)
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
+                                                        <div class="detail-value">@CompanyModel.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(CompanyModel.UpdatedBy))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-user-edit"></i> Updated By</div>
+                                                        <div class="detail-value">@CompanyModel.UpdatedBy</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="contact" IsActive='activeViewTab == "contact"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-envelope"></i> Email Addresses</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.EmailAddresses?.Any() == true)
+                                                {
+                                                    <div class="contact-info">
+                                                        @{
+                                                            var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                                        }
+                                                        @if (primaryEmail != null)
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label"><i class="fa-light fa-envelope"></i> Primary Email</div>
+                                                                <div class="detail-value email-value">
+                                                                    <a href="mailto:@primaryEmail.EmailAddress"><i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress</a>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label">
+                                                                    <i class="fa-light fa-tag"></i>
+                                                                    @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                                </div>
+                                                                <div class="detail-value email-value">
+                                                                    <a href="mailto:@email.EmailAddress"><i class="fa-light fa-envelope"></i> @email.EmailAddress</a>
+                                                                    @if (!email.IsActive)
+                                                                    {
+                                                                        <span class="status-badge status-inactive">
+                                                                            <i class="fa-light fa-times-circle"></i> Inactive
+                                                                        </span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-envelope-open"></i>
+                                                        <p>No email addresses provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-phone"></i> Contact Numbers</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.ContactNumbers?.Any() == true)
+                                                {
+                                                    <div class="contact-info">
+                                                        @{
+                                                            var primaryContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                                        }
+                                                        @if (primaryContact != null)
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label"><i class="fa-light fa-phone"></i> Primary Contact</div>
+                                                                <div class="detail-value phone-value">
+                                                                    <a href="tel:@primaryContact.Number"><i class="fa-light fa-phone"></i> @primaryContact.Number</a>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
+                                                        {
+                                                            <div class="detail-row">
+                                                                <div class="detail-label">
+                                                                    <i class="fa-light fa-tag"></i>
+                                                                    @if (!string.IsNullOrEmpty(phone.Description))
+                                                                    {
+                                                                        @phone.Description
+                                                                    }
+                                                                    else if (phone.ContactNumberType != null)
+                                                                    {
+                                                                        @phone.ContactNumberType.Name
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @("Phone")
+                                                                    }
+                                                                </div>
+                                                                <div class="detail-value phone-value">
+                                                                    <a href="tel:@phone.Number"><i class="fa-light fa-phone"></i> @phone.Number</a>
+                                                                    @if (!phone.IsActive)
+                                                                    {
+                                                                        <span class="status-badge status-inactive">
+                                                                            <i class="fa-light fa-times-circle"></i> Inactive
+                                                                        </span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-phone-slash"></i>
+                                                        <p>No contact numbers provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="address" IsActive='activeViewTab == "address"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-map-marker-alt"></i> Company Address</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.Address != null)
+                                                {
+                                                    <div class="address-display">
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.ComplexName</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.BuildingName))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.BuildingName</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.UnitNumber))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-door-closed"></i> Unit @CompanyModel.Address.UnitNumber</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.Street))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-road"></i> @CompanyModel.Address.Street</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.Suburb))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-map"></i> @CompanyModel.Address.Suburb</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.City))
+                                                        {
+                                                            <div class="address-line">
+                                                                <i class="fa-light fa-city"></i>
+                                                                @CompanyModel.Address.City@(!string.IsNullOrEmpty(CompanyModel.Address.Province) ? $", {CompanyModel.Address.Province}" : "")
+                                                            </div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-mailbox"></i> @CompanyModel.Address.PostalCode</div>
+                                                        }
+
+                                                        @if (!string.IsNullOrEmpty(CompanyModel.Address.Country))
+                                                        {
+                                                            <div class="address-line"><i class="fa-light fa-globe"></i> @CompanyModel.Address.Country</div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-map-marker-slash"></i>
+                                                        <p>No address information provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="banking" IsActive='activeViewTab == "banking"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.BankAccount != null && !string.IsNullOrEmpty(CompanyModel.BankAccount.AccountNumber))
+                                                {
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-university"></i> Bank Name</div>
+                                                        <div class="detail-value">@(CompanyModel.BankAccount.BankName?.Name ?? "Not set")</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-credit-card"></i> Account Type</div>
+                                                        <div class="detail-value">@(CompanyModel.BankAccount.AccountType ?? "Not set")</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-hashtag"></i> Account Number</div>
+                                                        <div class="detail-value">@CompanyModel.BankAccount.AccountNumber</div>
+                                                    </div>
+                                                    <div class="detail-row">
+                                                        <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
+                                                        <div class="detail-value">@CompanyModel.BankAccount.BranchCode</div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-credit-card-blank"></i>
+                                                        <p>No banking details provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="branding" IsActive='activeViewTab == "branding"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header">
+                                                <h4><i class="fa-light fa-image"></i> Company Logo</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
+                                                {
+                                                    <div class="logo-display">
+                                                        <div class="logo-container">
+                                                            <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name Logo" class="logo-image" />
+                                                        </div>
+                                                        <div class="logo-info">
+                                                            <div class="logo-title">@CompanyModel.MainLogo.FileName</div>
+                                                            <div class="logo-meta">
+                                                                <span><i class="fa-light fa-file-image"></i> @CompanyModel.MainLogo.ContentType</span>
+                                                                <span><i class="fa-light fa-weight"></i> @((CompanyModel.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
+                                                                <span><i class="fa-light fa-calendar"></i> @CompanyModel.MainLogo.UploadDate.ToString("dd MMM yyyy")</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-file-image"></i>
+                                                        <p>No logo uploaded</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+
+                                <RVTabPanel TabId="branches" IsActive='activeViewTab == "branches"'>
+                                    <div class="detail-section">
+                                        <div class="detail-card">
+                                            <div class="card-header d-flex justify-content-between align-items-center">
+                                                <h4><i class="fa-light fa-network-wired"></i> Company Branches</h4>
+                                                @if (CanEdit)
+                                                {
+                                                    <RVButton ButtonType="outline-primary" Size="sm" IconLeft="fa-light fa-plus"
+                                                    Text="Add Branch" OnClick="() => OnAddBranch.InvokeAsync(CompanyModel)" />
+                                                }
+                                            </div>
+                                            <div class="card-body">
+                                                @if (CompanyModel.Branches?.Any() == true)
+                                                {
+                                                    <div class="branches-list">
+                                                        @foreach (var branch in CompanyModel.Branches.OrderBy(b => b.Name))
+                                                        {
+                                                            <div class="branch-item @(branch.IsActive ? "" : "inactive")">
+                                                                <div class="branch-icon">
+                                                                    @if (branch.MainLogoId.HasValue && branch.MainLogo != null)
+                                                                    {
+                                                                        <img src="@branch.MainLogo.Url" alt="@branch.Name" class="branch-logo-sm" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="fa-light fa-code-branch"></i>
+                                                                    }
+                                                                </div>
+                                                                <div class="branch-details">
+                                                                    <div class="branch-name">
+                                                                        @branch.Name
+                                                                        @if (branch.IsHeadOffice)
+                                                                        {
+                                                                            <span class="badge-pill bg-primary"><i class="fa-light fa-star"></i> Head Office</span>
+                                                                        }
+                                                                    </div>
+                                                                    <div class="branch-contact">
+                                                                        @if (!string.IsNullOrEmpty(branch.PrimaryEmail))
+                                                                        {
+                                                                            <a href="mailto:@branch.PrimaryEmail" class="branch-email"><i class="fa-light fa-envelope"></i> @branch.PrimaryEmail</a>
+                                                                        }
+                                                                        @if (!string.IsNullOrEmpty(branch.PrimaryContactNumber))
+                                                                        {
+                                                                            <a href="tel:@branch.PrimaryContactNumber" class="branch-phone"><i class="fa-light fa-phone"></i> @branch.PrimaryContactNumber</a>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <div class="branch-status">
+                                                                    <span class="status-indicator @(branch.IsActive ? "active" : "inactive")"></span>
+                                                                </div>
+                                                                <div class="branch-actions">
+                                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye"
+                                                                    OnClick="() => OnViewBranch.InvokeAsync(branch)" CssClass="view-branch-btn" />
+                                                                    @if (CanEdit)
+                                                                    {
+                                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit"
+                                                                        OnClick="() => OnEditBranch.InvokeAsync(branch)" CssClass="edit-branch-btn" />
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="empty-message">
+                                                        <i class="fa-light fa-network-wired"></i>
+                                                        <p>No branches added to this company</p>
+                                                        @if (CanEdit)
+                                                        {
+                                                            <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-plus"
+                                                            Text="Add Branch" OnClick="() => OnAddBranch.InvokeAsync(CompanyModel)" />
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </RVTabPanel>
+                            </RVTab>
+                        </div>
+
+                        <div class="company-details-footer">
+                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Close" OnClick="OnCancel" />
+                            @if (CanEdit)
+                            {
+                                <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit Company" OnClick="SwitchToEditMode" />
+                            }
                         </div>
                     </div>
                 }
@@ -316,7 +631,7 @@ Size="lg">
                 {
                     <EditForm Model="CompanyModel" OnValidSubmit="Save" FormName="editCompany" class="company-edit-form">
                         <DataAnnotationsValidator />
-                        <FluentValidationValidator />
+                        <Roovia.Components.Elements.Forms.FluentValidationValidator />
 
                         <RVTab Tabs="formTabs" Size="sm" OnTabChange="HandleTabChange">
                             <RVTabPanel TabId="basic" IsActive='activeTab == "basic"'>
@@ -327,7 +642,7 @@ Size="lg">
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="name">Company Name</label>
+                                        <label for="name">Company Name *</label>
                                         <RVTextbox Id="name"
                                         Value="@CompanyModel.Name"
                                         ValueChanged="value => CompanyModel.Name = value"
@@ -338,7 +653,7 @@ Size="lg">
 
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="registrationNumber">Registration Number</label>
+                                            <label for="registrationNumber">Registration Number *</label>
                                             <RVTextbox Id="registrationNumber"
                                             Value="@CompanyModel.RegistrationNumber"
                                             ValueChanged="value => CompanyModel.RegistrationNumber = value"
@@ -376,9 +691,10 @@ Size="lg">
                                             ValueChanged="value => UpdateStatus(value)"
                                             Placeholder="Select status"
                                             IconLeft="fa-light fa-toggle-on">
+                                                <option value="">-- Select Status --</option>
                                                 @if (CompanyStatusTypes != null)
                                                 {
-                                                    @foreach (var status in CompanyStatusTypes)
+                                                    @foreach (var status in CompanyStatusTypes.OrderBy(s => s.DisplayOrder))
                                                     {
                                                         <option value="@status.Id">@status.Name</option>
                                                     }
@@ -392,10 +708,11 @@ Size="lg">
                                             Value="@(CompanyModel.SubscriptionPlanId?.ToString() ?? "")"
                                             ValueChanged="value => UpdateSubscriptionPlan(value)"
                                             Placeholder="Select subscription plan"
-                                            IconLeft="fa-light fa-credit-card">
+                                            IconLeft="fa-light fa-gem">
+                                                <option value="">-- Select Plan --</option>
                                                 @if (SubscriptionPlans != null)
                                                 {
-                                                    @foreach (var plan in SubscriptionPlans)
+                                                    @foreach (var plan in SubscriptionPlans.OrderBy(p => p.Price))
                                                     {
                                                         <option value="@plan.Id">@plan.Name - $@plan.Price/@plan.BillingCycleDays days</option>
                                                     }
@@ -404,11 +721,71 @@ Size="lg">
                                         </div>
                                     </div>
 
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="maxUsers">Max Users</label>
+                                            <RVTextbox Id="maxUsers"
+                                            Type="number"
+                                            Value="@(CompanyModel.MaxUsers?.ToString() ?? "")"
+                                            ValueChanged="value => CompanyModel.MaxUsers = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                            Placeholder="Maximum users allowed"
+                                            IconLeft="fa-light fa-users" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="maxProperties">Max Properties</label>
+                                            <RVTextbox Id="maxProperties"
+                                            Type="number"
+                                            Value="@(CompanyModel.MaxProperties?.ToString() ?? "")"
+                                            ValueChanged="value => CompanyModel.MaxProperties = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                            Placeholder="Maximum properties allowed"
+                                            IconLeft="fa-light fa-home" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="maxBranches">Max Branches</label>
+                                            <RVTextbox Id="maxBranches"
+                                            Type="number"
+                                            Value="@(CompanyModel.MaxBranches?.ToString() ?? "")"
+                                            ValueChanged="value => CompanyModel.MaxBranches = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
+                                            Placeholder="Maximum branches allowed"
+                                            IconLeft="fa-light fa-network-wired" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="subscriptionStartDate">Subscription Start Date</label>
+                                            <RVDatetime Id="subscriptionStartDate"
+                                            Value="@CompanyModel.SubscriptionStartDate"
+                                            ValueChanged="value => CompanyModel.SubscriptionStartDate = value"
+                                            Placeholder="Select start date"
+                                            IconLeft="fa-light fa-calendar-day" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="subscriptionEndDate">Subscription End Date</label>
+                                            <RVDatetime Id="subscriptionEndDate"
+                                            Value="@CompanyModel.SubscriptionEndDate"
+                                            ValueChanged="value => CompanyModel.SubscriptionEndDate = value"
+                                            Placeholder="Select end date"
+                                            IconLeft="fa-light fa-calendar-times"
+                                            MinDate="@(CompanyModel.SubscriptionStartDate ?? DateTime.Now)" />
+                                        </div>
+                                    </div>
+
                                     <div class="form-group">
                                         <RVSwitch Label="Active"
                                         Value="CompanyModel.IsActive"
                                         ValueChanged="value => CompanyModel.IsActive = value"
                                         HelperText="Inactive companies will not be accessible to users" />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <RVSwitch Label="Trial Period"
+                                        Value="CompanyModel.IsTrialPeriod"
+                                        ValueChanged="value => CompanyModel.IsTrialPeriod = value"
+                                        HelperText="Mark this company as being in a trial period" />
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -464,7 +841,7 @@ Size="lg">
                                                             Size="sm" />
                                                             <RVTextbox Value="@email.Description"
                                                             ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                            Placeholder="Description (e.g. Work, Support)"
+                                                            Placeholder="Description (e.g. Sales, Support)"
                                                             IconLeft="fa-light fa-tag"
                                                             Size="sm" />
                                                         </div>
@@ -477,7 +854,7 @@ Size="lg">
                                         else
                                         {
                                             <div class="empty-list">
-                                                <i class="fa-light fa-inbox-empty"></i>
+                                                <i class="fa-light fa-inbox"></i>
                                                 <p>No additional email addresses</p>
                                             </div>
                                         }
@@ -503,14 +880,17 @@ Size="lg">
                                                             Placeholder="Enter phone number"
                                                             IconLeft="fa-light fa-phone"
                                                             Size="sm" />
-                                                            <RVSelect Value="@phone.Type.ToString()"
-                                                            ValueChanged="value => UpdatePhoneType(phone, value)"
+                                                            <RVSelect Value="@(phone.ContactNumberTypeId.ToString())"
+                                                            ValueChanged="value => UpdatePhoneTypeId(phone, value)"
                                                             Placeholder="Select type"
                                                             IconLeft="fa-light fa-phone-office"
                                                             Size="sm">
-                                                                @foreach (var type in Enum.GetValues(typeof(ContactNumberType)))
+                                                                @if (contactNumberTypes != null)
                                                                 {
-                                                                    <option value="@type">@type</option>
+                                                                    @foreach (var type in contactNumberTypes)
+                                                                    {
+                                                                        <option value="@type.Id">@type.Name</option>
+                                                                    }
                                                                 }
                                                             </RVSelect>
                                                             <RVTextbox Value="@phone.Description"
@@ -544,7 +924,7 @@ Size="lg">
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-12">
                                             <label for="street">Street</label>
                                             <RVTextbox Id="street"
                                             Value="@CompanyModel.Address.Street"
@@ -555,38 +935,38 @@ Size="lg">
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-4">
                                             <label for="unitNumber">Unit Number</label>
                                             <RVTextbox Id="unitNumber"
                                             Value="@CompanyModel.Address.UnitNumber"
                                             ValueChanged="value => CompanyModel.Address.UnitNumber = value"
-                                            Placeholder="Enter unit number (optional)"
+                                            Placeholder="Unit number"
                                             IconLeft="fa-light fa-door-closed" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-8">
                                             <label for="complexName">Complex Name</label>
                                             <RVTextbox Id="complexName"
                                             Value="@CompanyModel.Address.ComplexName"
                                             ValueChanged="value => CompanyModel.Address.ComplexName = value"
-                                            Placeholder="Enter complex name (optional)"
+                                            Placeholder="Complex name"
                                             IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-12">
                                             <label for="buildingName">Building Name</label>
                                             <RVTextbox Id="buildingName"
                                             Value="@CompanyModel.Address.BuildingName"
                                             ValueChanged="value => CompanyModel.Address.BuildingName = value"
-                                            Placeholder="Enter building name (optional)"
+                                            Placeholder="Building name"
                                             IconLeft="fa-light fa-building" />
                                         </div>
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="suburb">Suburb</label>
                                             <RVTextbox Id="suburb"
                                             Value="@CompanyModel.Address.Suburb"
@@ -595,7 +975,7 @@ Size="lg">
                                             IconLeft="fa-light fa-map" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="city">City</label>
                                             <RVTextbox Id="city"
                                             Value="@CompanyModel.Address.City"
@@ -606,7 +986,7 @@ Size="lg">
                                     </div>
 
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="province">Province</label>
                                             <RVTextbox Id="province"
                                             Value="@CompanyModel.Address.Province"
@@ -615,7 +995,7 @@ Size="lg">
                                             IconLeft="fa-light fa-map-marked" />
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group col-md-6">
                                             <label for="postalCode">Postal Code</label>
                                             <RVTextbox Id="postalCode"
                                             Value="@CompanyModel.Address.PostalCode"
@@ -632,6 +1012,65 @@ Size="lg">
                                         ValueChanged="value => CompanyModel.Address.Country = value"
                                         Placeholder="Enter country"
                                         IconLeft="fa-light fa-globe" />
+                                    </div>
+                                </div>
+                            </RVTabPanel>
+
+                            <!-- Banking Details Tab -->
+                            <RVTabPanel TabId="banking" IsActive='activeTab == "banking"'>
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                        <p>Enter the company's banking information for invoicing and payments</p>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="bankNameId">Bank Name</label>
+                                            <RVSelect Id="bankNameId"
+                                            Value="@(CompanyModel.BankAccount.BankNameId?.ToString() ?? "")"
+                                            ValueChanged="value => UpdateBankNameId(value)"
+                                            Placeholder="Select bank"
+                                            IconLeft="fa-light fa-university">
+                                                <option value="">-- Select Bank --</option>
+                                                @if (bankNameTypes != null)
+                                                {
+                                                    @foreach (var bank in bankNameTypes.OrderBy(b => b.Name))
+                                                    {
+                                                        <option value="@bank.Id">@bank.Name</option>
+                                                    }
+                                                }
+                                            </RVSelect>
+                                        </div>
+
+                                        <div class="form-group col-md-6">
+                                            <label for="accountType">Account Type</label>
+                                            <RVTextbox Id="accountType"
+                                            Value="@CompanyModel.BankAccount.AccountType"
+                                            ValueChanged="value => CompanyModel.BankAccount.AccountType = value"
+                                            Placeholder="E.g. Current, Savings, Business"
+                                            IconLeft="fa-light fa-credit-card" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="accountNumber">Account Number</label>
+                                            <RVTextbox Id="accountNumber"
+                                            Value="@CompanyModel.BankAccount.AccountNumber"
+                                            ValueChanged="value => CompanyModel.BankAccount.AccountNumber = value"
+                                            Placeholder="Enter account number"
+                                            IconLeft="fa-light fa-hashtag" />
+                                        </div>
+
+                                        <div class="form-group col-md-6">
+                                            <label for="branchCode">Branch Code</label>
+                                            <RVTextbox Id="branchCode"
+                                            Value="@CompanyModel.BankAccount.BranchCode"
+                                            ValueChanged="value => CompanyModel.BankAccount.BranchCode = value"
+                                            Placeholder="Enter branch code"
+                                            IconLeft="fa-light fa-code" />
+                                        </div>
                                     </div>
                                 </div>
                             </RVTabPanel>
@@ -697,6 +1136,11 @@ Size="lg">
                                 </div>
                             </RVTabPanel>
                         </RVTab>
+
+                        <div class="company-edit-footer">
+                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Cancel" OnClick="OnCancel" />
+                            <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save Changes" Type="submit" />
+                        </div>
                     </EditForm>
                 }
             </div>
@@ -708,18 +1152,23 @@ Size="lg">
     [Parameter] public Company CompanyModel { get; set; } = new Company();
     [Parameter] public IEnumerable<CompanyStatusType>? CompanyStatusTypes { get; set; }
     [Parameter] public IEnumerable<SubscriptionPlan>? SubscriptionPlans { get; set; }
+    [Parameter] public List<BankNameType>? bankNameTypes { get; set; }
+    [Parameter] public List<ContactNumberType>? contactNumberTypes { get; set; }
     [Parameter] public bool IsEdit { get; set; } = false;
     [Parameter] public bool IsView { get; set; } = false;
     [Parameter] public bool CanEdit { get; set; } = true;
     [Parameter] public EventCallback<Company> OnSave { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<Company> OnAddBranch { get; set; }
+    [Parameter] public EventCallback<Branch> OnViewBranch { get; set; }
+    [Parameter] public EventCallback<Branch> OnEditBranch { get; set; }
 
     private bool isLoading = false;
     private string activeTab = "basic";
+    private string activeViewTab = "basic";
     private bool IsEditMode => (IsEdit || isInEditMode) && !IsView;
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
-    private SubscriptionPlan? currentSubscriptionPlan = null;
 
     // Logo handling
     private string logoPreview = string.Empty;
@@ -731,11 +1180,21 @@ Size="lg">
     // Form tabs
     private List<RVTab.RVTabItem> formTabs = new List<RVTab.RVTabItem>
     {
-        new RVTab.RVTabItem { Id = "basic", Title = "Basic Information", Icon = "fa-light fa-building" },
+        new RVTab.RVTabItem { Id = "basic", Title = "Basic Information", Icon = "fa-light fa-building", IsActive = true },
         new RVTab.RVTabItem { Id = "contact", Title = "Contact Details", Icon = "fa-light fa-address-card" },
         new RVTab.RVTabItem { Id = "address", Title = "Address", Icon = "fa-light fa-map-marker-alt" },
+        new RVTab.RVTabItem { Id = "banking", Title = "Banking Details", Icon = "fa-light fa-university" },
         new RVTab.RVTabItem { Id = "logo", Title = "Company Logo", Icon = "fa-light fa-image" }
     };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load reference data if not provided
+        if (contactNumberTypes == null || bankNameTypes == null)
+        {
+            await LoadReferenceData();
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -760,15 +1219,36 @@ Size="lg">
                 isInEditMode = false;
             }
 
-            // Load current subscription plan
-            if (CompanyModel.SubscriptionPlanId.HasValue && SubscriptionPlans != null)
-            {
-                currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == CompanyModel.SubscriptionPlanId.Value);
-            }
-
             await InvokeAsync(() => this.StateHasChanged());
         }
+    }
 
+    private async Task LoadReferenceData()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+            
+            if (contactNumberTypes == null)
+            {
+                contactNumberTypes = await context.ContactNumberTypes
+                    .Where(t => t.IsActive)
+                    .OrderBy(t => t.DisplayOrder)
+                    .ToListAsync();
+            }
+            
+            if (bankNameTypes == null)
+            {
+                bankNameTypes = await context.BankNameTypes
+                    .Where(b => b.IsActive)
+                    .OrderBy(b => b.DisplayOrder)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading reference data: {ex.Message}", "Error");
+        }
     }
 
     private void InitializeNewCompany()
@@ -777,26 +1257,12 @@ Size="lg">
             {
                 IsActive = true,
                 Address = new Address { Country = "South Africa" },
+                BankAccount = new BankAccount(),
                 EmailAddresses = new List<Email>(),
                 ContactNumbers = new List<ContactNumber>(),
+                Branches = new List<Branch>(),
                 CreatedOn = DateTime.Now
             };
-    }
-
-    private async Task HandleConfirmAction()
-    {
-        if (IsView)
-        {
-            await OnCancel.InvokeAsync();
-        }
-        else if (IsEditMode)
-        {
-            await Save();
-        }
-        else
-        {
-            SwitchToEditMode();
-        }
     }
 
     private async Task LoadCompanyData()
@@ -810,10 +1276,40 @@ Size="lg">
             {
                 CompanyModel = (Company)response.Response;
 
-                // Load current subscription plan
+                // Initialize collections if null
+                if (CompanyModel.EmailAddresses == null)
+                    CompanyModel.EmailAddresses = new List<Email>();
+                if (CompanyModel.ContactNumbers == null)
+                    CompanyModel.ContactNumbers = new List<ContactNumber>();
+                if (CompanyModel.Branches == null)
+                    CompanyModel.Branches = new List<Branch>();
+
+                // Initialize bank account if null
+                if (CompanyModel.BankAccount == null)
+                {
+                    CompanyModel.BankAccount = new BankAccount();
+                }
+
+                // Load the logo if there's one
+                if (CompanyModel.MainLogoId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    CompanyModel.MainLogo = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == CompanyModel.MainLogoId.Value);
+                }
+
+                // Load subscription plan if there's one
                 if (CompanyModel.SubscriptionPlanId.HasValue && SubscriptionPlans != null)
                 {
-                    currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == CompanyModel.SubscriptionPlanId.Value);
+                    CompanyModel.SubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == CompanyModel.SubscriptionPlanId.Value);
+                }
+
+                // Load status if there's one
+                if (CompanyModel.StatusId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    CompanyModel.Status = await context.CompanyStatusTypes
+                        .FirstOrDefaultAsync(s => s.Id == CompanyModel.StatusId.Value);
                 }
             }
             else
@@ -866,6 +1362,8 @@ Size="lg">
     private void SwitchToEditMode()
     {
         isInEditMode = true;
+        IsView = false;
+        StateHasChanged();
     }
 
     private void HandleTabChange(string tabId)
@@ -873,28 +1371,76 @@ Size="lg">
         activeTab = tabId;
     }
 
+    private void SetActiveViewTab(string tabId)
+    {
+        activeViewTab = tabId;
+    }
+
+    private async Task HandleConfirmAction()
+    {
+        if (IsView)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else if (IsEditMode)
+        {
+            await Save();
+        }
+        else
+        {
+            SwitchToEditMode();
+        }
+    }
+
     private async Task Save()
     {
         try
         {
+            isLoading = true;
+
             if (CompanyModel.Id == 0)
             {
                 // Create new company
-                CompanyModel.CreatedBy = "CurrentUser"; // Replace with actual current user ID
+                CompanyModel.CreatedBy = "CurrentUser"; // Will be replaced with actual current user ID by the service
                 CompanyModel.CreatedOn = DateTime.Now;
             }
             else
             {
                 // Update existing company
-                CompanyModel.UpdatedBy = "CurrentUser"; // Replace with actual current user ID
+                CompanyModel.UpdatedBy = "CurrentUser"; // Will be replaced with actual current user ID by the service
                 CompanyModel.UpdatedDate = DateTime.Now;
+            }
+
+            // Ensure all emails & phone numbers have RelatedEntityType and CompanyId set
+            if (CompanyModel.EmailAddresses != null)
+            {
+                foreach (var email in CompanyModel.EmailAddresses)
+                {
+                    email.RelatedEntityType = "Company";
+                    if (CompanyModel.Id > 0)
+                    {
+                        email.SetRelatedEntity("Company", CompanyModel.Id);
+                    }
+                }
+            }
+
+            if (CompanyModel.ContactNumbers != null)
+            {
+                foreach (var phone in CompanyModel.ContactNumbers)
+                {
+                    phone.RelatedEntityType = "Company";
+                    if (CompanyModel.Id > 0)
+                    {
+                        phone.SetRelatedEntity("Company", CompanyModel.Id);
+                    }
+                }
             }
 
             await OnSave.InvokeAsync(CompanyModel);
 
-            // If we're in "switch to edit mode" state, go back to view mode after save
             if (isInEditMode)
             {
+                // If we're in "switch to edit mode" state, go back to view mode after save
                 isInEditMode = false;
             }
         }
@@ -902,11 +1448,22 @@ Size="lg">
         {
             ToastService.ShowError($"Error saving company: {ex.Message}", "Error");
         }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     // Status and Subscription Plan handlers
     private void UpdateStatus(string value)
     {
+        if (string.IsNullOrEmpty(value))
+        {
+            CompanyModel.StatusId = null;
+            CompanyModel.Status = null;
+            return;
+        }
+
         if (int.TryParse(value, out var statusId))
         {
             CompanyModel.StatusId = statusId;
@@ -920,13 +1477,78 @@ Size="lg">
 
     private void UpdateSubscriptionPlan(string value)
     {
+        if (string.IsNullOrEmpty(value))
+        {
+            CompanyModel.SubscriptionPlanId = null;
+            CompanyModel.SubscriptionPlan = null;
+            return;
+        }
+
         if (int.TryParse(value, out var planId))
         {
             CompanyModel.SubscriptionPlanId = planId;
-            // Update the current subscription plan
+            // Update the subscription plan object
             if (SubscriptionPlans != null)
             {
-                currentSubscriptionPlan = SubscriptionPlans.FirstOrDefault(p => p.Id == planId);
+                var plan = SubscriptionPlans.FirstOrDefault(p => p.Id == planId);
+                CompanyModel.SubscriptionPlan = plan;
+                
+                // Auto-populate limits from the plan if available
+                if (plan != null)
+                {
+                    if (plan.MaxUsers.HasValue && (!CompanyModel.MaxUsers.HasValue || CompanyModel.MaxUsers.Value == 0))
+                    {
+                        CompanyModel.MaxUsers = plan.MaxUsers;
+                    }
+                    
+                    if (plan.MaxProperties.HasValue && (!CompanyModel.MaxProperties.HasValue || CompanyModel.MaxProperties.Value == 0))
+                    {
+                        CompanyModel.MaxProperties = plan.MaxProperties;
+                    }
+                    
+                    if (plan.MaxBranches.HasValue && (!CompanyModel.MaxBranches.HasValue || CompanyModel.MaxBranches.Value == 0))
+                    {
+                        CompanyModel.MaxBranches = plan.MaxBranches;
+                    }
+                    
+                    // Set subscription dates if not already set
+                    if (!CompanyModel.SubscriptionStartDate.HasValue)
+                    {
+                        CompanyModel.SubscriptionStartDate = DateTime.Today;
+                    }
+                    
+                    if (!CompanyModel.SubscriptionEndDate.HasValue && plan.BillingCycleDays > 0)
+                    {
+                        CompanyModel.SubscriptionEndDate = CompanyModel.SubscriptionStartDate.Value.AddDays(plan.BillingCycleDays);
+                    }
+                    
+                    // Set trial period based on plan
+                    CompanyModel.IsTrialPeriod = plan.HasTrialPeriod;
+                }
+            }
+        }
+    }
+
+    private void UpdateBankNameId(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            CompanyModel.BankAccount.BankNameId = null;
+            return;
+        }
+
+        if (int.TryParse(value, out var bankNameId))
+        {
+            CompanyModel.BankAccount.BankNameId = bankNameId;
+            
+            // Set default branch code if available
+            if (bankNameTypes != null)
+            {
+                var bankName = bankNameTypes.FirstOrDefault(b => b.Id == bankNameId);
+                if (bankName != null && !string.IsNullOrEmpty(bankName.DefaultBranchCode))
+                {
+                    CompanyModel.BankAccount.BranchCode = bankName.DefaultBranchCode;
+                }
             }
         }
     }
@@ -960,14 +1582,21 @@ Size="lg">
         }
         else if (!string.IsNullOrEmpty(value))
         {
-            CompanyModel.EmailAddresses.Add(new Email
+            var newEmail = new Email
                 {
                     EmailAddress = value,
                     IsPrimary = true,
                     IsActive = true,
                     RelatedEntityType = "Company",
                     CreatedOn = DateTime.Now
-                });
+                };
+
+            if (CompanyModel.Id > 0)
+            {
+                newEmail.SetRelatedEntity("Company", CompanyModel.Id);
+            }
+
+            CompanyModel.EmailAddresses.Add(newEmail);
         }
     }
 
@@ -987,15 +1616,22 @@ Size="lg">
         }
         else if (!string.IsNullOrEmpty(value))
         {
-            CompanyModel.ContactNumbers.Add(new ContactNumber
+            var newPhone = new ContactNumber
                 {
                     Number = value,
-                    Type = ContactNumberType.Mobile,
+                    ContactNumberTypeId = contactNumberTypes?.FirstOrDefault()?.Id ?? 1,
                     IsPrimary = true,
                     IsActive = true,
                     RelatedEntityType = "Company",
                     CreatedOn = DateTime.Now
-                });
+                };
+
+            if (CompanyModel.Id > 0)
+            {
+                newPhone.SetRelatedEntity("Company", CompanyModel.Id);
+            }
+
+            CompanyModel.ContactNumbers.Add(newPhone);
         }
     }
 
@@ -1042,7 +1678,7 @@ Size="lg">
 
         CompanyModel.ContactNumbers.Add(new ContactNumber
             {
-                Type = ContactNumberType.Mobile,
+                ContactNumberTypeId = contactNumberTypes?.FirstOrDefault()?.Id ?? 1,
                 IsPrimary = false,
                 IsActive = true,
                 RelatedEntityType = "Company",
@@ -1063,11 +1699,11 @@ Size="lg">
         phone.Number = value;
     }
 
-    private void UpdatePhoneType(ContactNumber phone, string value)
+    private void UpdatePhoneTypeId(ContactNumber phone, string value)
     {
-        if (Enum.TryParse<ContactNumberType>(value, out var type))
+        if (int.TryParse(value, out var typeId))
         {
-            phone.Type = type;
+            phone.ContactNumberTypeId = typeId;
         }
     }
 
@@ -1101,10 +1737,10 @@ Size="lg">
             uploadProgress = 0;
 
             // Simulate upload progress
-            for (int i = 0; i <= 100; i += 10)
+            for (int i = 0; i <= 60; i += 10)
             {
                 uploadProgress = i;
-                await Task.Delay(100); // Simulated delay
+                await Task.Delay(50); // Simulated delay
                 StateHasChanged();
             }
 
@@ -1125,7 +1761,7 @@ Size="lg">
         catch (Exception ex)
         {
             isUploading = false;
-            ToastService.ShowError($"Error uploading logo: {ex.Message}", "Error");
+            ToastService.ShowError($"Error processing logo: {ex.Message}", "Error");
         }
     }
 
@@ -1139,10 +1775,15 @@ Size="lg">
     {
         try
         {
-            if (CompanyModel.MainLogoId.HasValue)
+            if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
             {
+                // Remove from CDN using the URL
+                await CdnService.DeleteFileAsync(CompanyModel.MainLogo.Url);
+
+                // Update the model
                 CompanyModel.MainLogoId = null;
                 CompanyModel.MainLogo = null;
+
                 ToastService.ShowSuccess("Logo removed successfully", "Success");
             }
         }
@@ -1151,6 +1792,7 @@ Size="lg">
             ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
         }
     }
+
     private async Task ApplyLogo()
     {
         if (logoFile == null) return;
@@ -1218,4 +1860,4 @@ Size="lg">
             StateHasChanged();
         }
     }
-} *@
+}

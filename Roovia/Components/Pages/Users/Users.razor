@@ -24,7 +24,11 @@
 @inject IJSRuntime JSRuntime
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
-<RVToastContainer></RVToastContainer>
+<div class="users-toasts">
+    <!-- Toast component but implemented with custom classes -->
+    <div class="toasts-container"></div>
+</div>
+
 <div class="users-page">
     <div class="admin-header-section">
         <div class="admin-header-content">
@@ -39,20 +43,26 @@
             </div>
             <div class="header-action-panel">
                 <PermissionAuthorizeView Permission="settings.users">
-                    <RVButton ButtonType="primary" IconLeft="fa-light fa-user-plus" Text="Create User"
-                        OnClick="() => ShowUserEditModal()" CssClass="action-btn me-2" />
+                    <button class="custom-btn custom-btn-primary custom-btn-with-icon action-btn me-2" @onclick="() => ShowUserEditModal()">
+                        <i class="fa-light fa-user-plus"></i>
+                        <span>Create User</span>
+                    </button>
                 </PermissionAuthorizeView>
 
                 <PermissionAuthorizeView Permission="settings.users"
-                    Role="@SystemRole.SystemAdministrator.ToString()">
-                    <RVButton ButtonType="primary" IconLeft="fa-light fa-building" Text="Create Company"
-                        OnClick="() => ShowCompanyEditModal()" CssClass="action-btn me-2" />
+                                         Role="@SystemRole.SystemAdministrator.ToString()">
+                    <button class="custom-btn custom-btn-primary custom-btn-with-icon action-btn me-2" @onclick="() => ShowCompanyEditModal()">
+                        <i class="fa-light fa-building"></i>
+                        <span>Create Company</span>
+                    </button>
                 </PermissionAuthorizeView>
 
                 <PermissionAuthorizeView Permission="settings.users"
-                    Role="@SystemRole.CompanyAdministrator.ToString()">
-                    <RVButton ButtonType="primary" IconLeft="fa-light fa-code-branch" Text="Create Branch"
-                        OnClick="() => ShowBranchEditModal()" CssClass="action-btn" />
+                                         Role="@SystemRole.CompanyAdministrator.ToString()">
+                    <button class="custom-btn custom-btn-primary custom-btn-with-icon action-btn" @onclick="() => ShowBranchEditModal()">
+                        <i class="fa-light fa-code-branch"></i>
+                        <span>Create Branch</span>
+                    </button>
                 </PermissionAuthorizeView>
             </div>
         </div>
@@ -68,24 +78,24 @@
         }
         else
         {
-            <CardView CssClass="management-card">
-                <HeaderActions>
+            <div class="management-card">
+                <div class="card-header-actions">
                     <UserFilterPanel Companies="@availableCompanies"
-                        SubscriptionPlans="@subscriptionPlans"
-                        OnCompanySelected="HandleCompanyChange"
-                        SelectedCompanyId="@selectedCompanyId"
-                        OnRoleFilterChanged="HandleRoleFilterChange"
-                        SelectedRoleFilter="@selectedRoleFilter"
-                        OnStatusFilterChanged="HandleStatusFilterChange"
-                        SelectedStatusFilter="@selectedStatusFilter"
-                        SearchTerm="@searchTerm"
-                        OnSearchChanged="HandleSearch"
-                        SearchType="@searchType"
-                        OnSearchTypeChanged="HandleSearchTypeChange"
-                        OnClearFilters="ClearFilters"
-                        OnRefresh="LoadUserHierarchy" />
-                </HeaderActions>
-                <ChildContent>
+                                     SubscriptionPlans="@subscriptionPlans"
+                                     OnCompanySelected="HandleCompanyChange"
+                                     SelectedCompanyId="@selectedCompanyId"
+                                     OnRoleFilterChanged="HandleRoleFilterChange"
+                                     SelectedRoleFilter="@selectedRoleFilter"
+                                     OnStatusFilterChanged="HandleStatusFilterChange"
+                                     SelectedStatusFilter="@selectedStatusFilter"
+                                     SearchTerm="@searchTerm"
+                                     OnSearchChanged="HandleSearch"
+                                     SearchType="@searchType"
+                                     OnSearchTypeChanged="HandleSearchTypeChange"
+                                     OnClearFilters="ClearFilters"
+                                     OnRefresh="LoadUserHierarchy" />
+                </div>
+                <div class="card-content">
                     @if (currentUser?.Role == SystemRole.SystemAdministrator)
                     {
                         <div class="hierarchy-view">
@@ -138,14 +148,23 @@
                                                     </div>
                                                 </div>
                                                 <div class="accordion-actions" @onclick:stopPropagation="true">
-                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
-                                                        OnClick="() => ShowCompanyEditModal(company.Id, true)" CssClass="action-btn" />
+                                                    <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                            @onclick="() => ShowCompanyEditModal(company.Id, true)">
+                                                        <i class="fa-light fa-eye"></i>
+                                                        <span>View</span>
+                                                    </button>
                                                     <PermissionAuthorizeView Permission="settings.users"
-                                                        Role="@SystemRole.SystemAdministrator.ToString()">
-                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                            OnClick="() => ShowCompanyEditModal(company.Id)" CssClass="action-btn" />
-                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-code-branch" Text="Add Branch"
-                                                            OnClick="() => ShowCreateBranchModal(company.Id)" CssClass="action-btn" />
+                                                                             Role="@SystemRole.SystemAdministrator.ToString()">
+                                                        <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                                @onclick="() => ShowCompanyEditModal(company.Id)">
+                                                            <i class="fa-light fa-edit"></i>
+                                                            <span>Edit</span>
+                                                        </button>
+                                                        <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                                @onclick="() => ShowCreateBranchModal(company.Id)">
+                                                            <i class="fa-light fa-code-branch"></i>
+                                                            <span>Add Branch</span>
+                                                        </button>
                                                     </PermissionAuthorizeView>
                                                 </div>
                                             </div>
@@ -196,13 +215,22 @@
                                                                             </div>
                                                                         </div>
                                                                         <div class="accordion-actions" @onclick:stopPropagation="true">
-                                                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye" Text="View"
-                                                                                OnClick="() => ShowBranchEditModal(branch.Id, true)" CssClass="action-btn" />
+                                                                            <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                                                    @onclick="() => ShowBranchEditModal(branch.Id, true)">
+                                                                                <i class="fa-light fa-eye"></i>
+                                                                                <span>View</span>
+                                                                            </button>
                                                                             <PermissionAuthorizeView Permission="settings.users">
-                                                                                <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                                    OnClick="() => ShowBranchEditModal(branch.Id)" CssClass="action-btn" />
-                                                                                <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                                    OnClick="() => ShowAddUserToBranchModal(branch.Id)" CssClass="action-btn" />
+                                                                                <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                                                        @onclick="() => ShowBranchEditModal(branch.Id)">
+                                                                                    <i class="fa-light fa-edit"></i>
+                                                                                    <span>Edit</span>
+                                                                                </button>
+                                                                                <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon action-btn"
+                                                                                        @onclick="() => ShowAddUserToBranchModal(branch.Id)">
+                                                                                    <i class="fa-light fa-user-plus"></i>
+                                                                                    <span>Add User</span>
+                                                                                </button>
                                                                             </PermissionAuthorizeView>
                                                                         </div>
                                                                     </div>
@@ -214,25 +242,31 @@
                                                                             @foreach (var user in branchUsers)
                                                                             {
                                                                                 <UserCard User="user"
-                                                                                    CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                                                    OnView="(id) => ShowUserDetailsModal(id)"
-                                                                                    OnEdit="HandleUserEdit"
-                                                                                    OnRoles="HandleUserRoles"
-                                                                                    OnPermissions="HandleUserPermissions"
-                                                                                    OnResetPassword="HandleUserResetPassword"
-                                                                                    OnToggleStatus="HandleUserStatusToggle"
-                                                                                    DisableActions="!CanEditUser(user)" />
+                                                                                          CustomRoles="@GetUserCustomRoles(user.Id)"
+                                                                                          OnView="(id) => ShowUserDetailsModal(id)"
+                                                                                          OnEdit="HandleUserEdit"
+                                                                                          OnRoles="HandleUserRoles"
+                                                                                          OnPermissions="HandleUserPermissions"
+                                                                                          OnResetPassword="HandleUserResetPassword"
+                                                                                          OnToggleStatus="HandleUserStatusToggle"
+                                                                                          DisableActions="!CanEditUser(user)" />
                                                                             }
                                                                         </div>
                                                                     }
                                                                     else if (expandedBranches.Contains(branch.Id) && !branchUsers.Any())
                                                                     {
                                                                         <div class="accordion-content">
-                                                                            <EmptyState Title="No users in branch"
-                                                                                Description="No users are currently assigned to this branch."
-                                                                                Icon="fa-light fa-user-xmark"
-                                                                                ActionText="Add User"
-                                                                                OnAction="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                            <div class="empty-state">
+                                                                                <div class="empty-icon">
+                                                                                    <i class="fa-light fa-user-xmark"></i>
+                                                                                </div>
+                                                                                <h3 class="empty-title">No users in branch</h3>
+                                                                                <p class="empty-description">No users are currently assigned to this branch.</p>
+                                                                                <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                                                                        @onclick="() => ShowAddUserToBranchModal(branch.Id)">
+                                                                                    <span>Add User</span>
+                                                                                </button>
+                                                                            </div>
                                                                         </div>
                                                                     }
                                                                 </div>
@@ -241,11 +275,17 @@
                                                     }
                                                     else
                                                     {
-                                                        <EmptyState Title="No branches found"
-                                                            Description="This company has no branches yet."
-                                                            Icon="fa-light fa-code-branch"
-                                                            ActionText="Create Branch"
-                                                            OnAction="() => ShowCreateBranchModal(company.Id)" />
+                                                        <div class="empty-state">
+                                                            <div class="empty-icon">
+                                                                <i class="fa-light fa-code-branch"></i>
+                                                            </div>
+                                                            <h3 class="empty-title">No branches found</h3>
+                                                            <p class="empty-description">This company has no branches yet.</p>
+                                                            <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                                                    @onclick="() => ShowCreateBranchModal(company.Id)">
+                                                                <span>Create Branch</span>
+                                                            </button>
+                                                        </div>
                                                     }
                                                 </div>
                                             }
@@ -255,11 +295,17 @@
                             }
                             else
                             {
-                                <EmptyState Title="No companies found"
-                                    Description="No companies match your current filters."
-                                    Icon="fa-light fa-building-magnifying-glass"
-                                    ActionText="Clear Filters"
-                                    OnAction="ClearFilters" />
+                                <div class="empty-state">
+                                    <div class="empty-icon">
+                                        <i class="fa-light fa-building-magnifying-glass"></i>
+                                    </div>
+                                    <h3 class="empty-title">No companies found</h3>
+                                    <p class="empty-description">No companies match your current filters.</p>
+                                    <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                            @onclick="ClearFilters">
+                                        <span>Clear Filters</span>
+                                    </button>
+                                </div>
                             }
                         </div>
                     }
@@ -328,23 +374,29 @@
                                                     @foreach (var user in GetCompanyUsers(currentUserCompany.Id))
                                                     {
                                                         <UserCard User="user"
-                                                            CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                            OnView="(id) => ShowUserDetailsModal(id)"
-                                                            OnEdit="HandleUserEdit"
-                                                            OnRoles="HandleUserRoles"
-                                                            OnPermissions="HandleUserPermissions"
-                                                            OnResetPassword="HandleUserResetPassword"
-                                                            OnToggleStatus="HandleUserStatusToggle"
-                                                            DisableActions="!CanEditUser(user)" />
+                                                                  CustomRoles="@GetUserCustomRoles(user.Id)"
+                                                                  OnView="(id) => ShowUserDetailsModal(id)"
+                                                                  OnEdit="HandleUserEdit"
+                                                                  OnRoles="HandleUserRoles"
+                                                                  OnPermissions="HandleUserPermissions"
+                                                                  OnResetPassword="HandleUserResetPassword"
+                                                                  OnToggleStatus="HandleUserStatusToggle"
+                                                                  DisableActions="!CanEditUser(user)" />
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    <EmptyState Title="No users in company"
-                                                        Description="No users are currently assigned to this company."
-                                                        Icon="fa-light fa-user-plus"
-                                                        ActionText="Add User"
-                                                        OnAction="() => ShowUserEditModal()" />
+                                                    <div class="empty-state">
+                                                        <div class="empty-icon">
+                                                            <i class="fa-light fa-user-plus"></i>
+                                                        </div>
+                                                        <h3 class="empty-title">No users in company</h3>
+                                                        <p class="empty-description">No users are currently assigned to this company.</p>
+                                                        <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                                                @onclick="() => ShowUserEditModal()">
+                                                            <span>Add User</span>
+                                                        </button>
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -387,13 +439,22 @@
                                                                     </div>
                                                                 </div>
                                                                 <div class="branch-card-actions">
-                                                                    <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-eye" Text="View Users"
-                                                                        OnClick="() => ViewBranchUsers(branch.Id)" />
+                                                                    <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon"
+                                                                            @onclick="() => ViewBranchUsers(branch.Id)">
+                                                                        <i class="fa-light fa-eye"></i>
+                                                                        <span>View Users</span>
+                                                                    </button>
                                                                     <PermissionAuthorizeView Permission="settings.users">
-                                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-edit" Text="Edit"
-                                                                            OnClick="() => ShowBranchEditModal(branch.Id)" />
-                                                                        <RVButton ButtonType="outline" Size="sm" IconLeft="fa-light fa-user-plus" Text="Add User"
-                                                                            OnClick="() => ShowAddUserToBranchModal(branch.Id)" />
+                                                                        <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon"
+                                                                                @onclick="() => ShowBranchEditModal(branch.Id)">
+                                                                            <i class="fa-light fa-edit"></i>
+                                                                            <span>Edit</span>
+                                                                        </button>
+                                                                        <button class="custom-btn custom-btn-outline custom-btn-sm custom-btn-with-icon"
+                                                                                @onclick="() => ShowAddUserToBranchModal(branch.Id)">
+                                                                            <i class="fa-light fa-user-plus"></i>
+                                                                            <span>Add User</span>
+                                                                        </button>
                                                                     </PermissionAuthorizeView>
                                                                 </div>
                                                             </div>
@@ -402,11 +463,17 @@
                                                 }
                                                 else
                                                 {
-                                                    <EmptyState Title="No branches found"
-                                                        Description="No branches are currently set up for this company."
-                                                        Icon="fa-light fa-code-branch"
-                                                        ActionText="Add Branch"
-                                                        OnAction="() => ShowCreateBranchModal(currentUserCompany.Id)" />
+                                                    <div class="empty-state">
+                                                        <div class="empty-icon">
+                                                            <i class="fa-light fa-code-branch"></i>
+                                                        </div>
+                                                        <h3 class="empty-title">No branches found</h3>
+                                                        <p class="empty-description">No branches are currently set up for this company.</p>
+                                                        <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                                                @onclick="() => ShowCreateBranchModal(currentUserCompany.Id)">
+                                                            <span>Add Branch</span>
+                                                        </button>
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -469,23 +536,29 @@
                                         @foreach (var user in GetBranchUsers(currentUserBranch.Id))
                                         {
                                             <UserCard User="user"
-                                                CustomRoles="@GetUserCustomRoles(user.Id)"
-                                                OnView="(id) => ShowUserDetailsModal(id)"
-                                                OnEdit="HandleUserEdit"
-                                                OnRoles="HandleUserRoles"
-                                                OnPermissions="HandleUserPermissions"
-                                                OnResetPassword="HandleUserResetPassword"
-                                                OnToggleStatus="HandleUserStatusToggle"
-                                                DisableActions="!CanEditUser(user)" />
+                                                      CustomRoles="@GetUserCustomRoles(user.Id)"
+                                                      OnView="(id) => ShowUserDetailsModal(id)"
+                                                      OnEdit="HandleUserEdit"
+                                                      OnRoles="HandleUserRoles"
+                                                      OnPermissions="HandleUserPermissions"
+                                                      OnResetPassword="HandleUserResetPassword"
+                                                      OnToggleStatus="HandleUserStatusToggle"
+                                                      DisableActions="!CanEditUser(user)" />
                                         }
                                     }
                                     else
                                     {
-                                        <EmptyState Title="No users in branch"
-                                            Description="No users are currently assigned to this branch."
-                                            Icon="fa-light fa-user-plus"
-                                            ActionText="Add User"
-                                            OnAction="() => ShowUserEditModal()" />
+                                        <div class="empty-state">
+                                            <div class="empty-icon">
+                                                <i class="fa-light fa-user-plus"></i>
+                                            </div>
+                                            <h3 class="empty-title">No users in branch</h3>
+                                            <p class="empty-description">No users are currently assigned to this branch.</p>
+                                            <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                                    @onclick="() => ShowUserEditModal()">
+                                                <span>Add User</span>
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                             }
@@ -493,33 +566,40 @@
                     }
                     else
                     {
-                        <EmptyState Title="No access"
-                            Description="You don't have permission to view user information."
-                            Icon="fa-light fa-lock"
-                            ActionText="Return to Dashboard"
-                            OnAction='() => NavigationManager.NavigateTo("/")' />
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fa-light fa-lock"></i>
+                            </div>
+                            <h3 class="empty-title">No access</h3>
+                            <p class="empty-description">You don't have permission to view user information.</p>
+                            <button class="custom-btn custom-btn-primary custom-btn-with-icon"
+                                    @onclick='() => NavigationManager.NavigateTo("/")'>
+                                <span>Return to Dashboard</span>
+                            </button>
+                        </div>
                     }
-                </ChildContent>
-            </CardView>
+                </div>
+            </div>
         }
     </div>
 
     @* User Status Confirmation Modal *@
     @if (showStatusConfirmation)
     {
-        <RVModal IsVisible="true"
-            Title="@(userToToggle?.IsActive == true ? "Deactivate User" : "Activate User")"
-            Icon="@(userToToggle?.IsActive == true ? "fa-light fa-user-slash" : "fa-light fa-user-check")"
-            OnClose="() => showStatusConfirmation = false"
-            OnCancel="() => showStatusConfirmation = false"
-            OnConfirm="ToggleUserStatus"
-            ConfirmText="@(userToToggle?.IsActive == true ? "Deactivate" : "Activate")"
-            CancelText="Cancel"
-            Size="sm"
-            CssClass="status-modal">
-            <ChildContent>
+        <div class="custom-modal-backdrop"></div>
+        <div class="custom-modal custom-modal-sm status-modal">
+            <div class="custom-modal-header">
+                <h2 class="custom-modal-title">
+                    <i class="@(userToToggle?.IsActive == true ? "fa-light fa-user-slash" : "fa-light fa-user-check")"></i>
+                    <span>@(userToToggle?.IsActive == true ? "Deactivate User" : "Activate User")</span>
+                </h2>
+                <button class="custom-modal-close" @onclick="() => showStatusConfirmation = false">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            </div>
+            <div class="custom-modal-body">
                 <div class="status-modal-content">
-                    <div class="alert @(userToToggle?.IsActive == true ? "alert-danger" : "alert-success")">
+                    <div class="custom-alert @(userToToggle?.IsActive == true ? "custom-alert-danger" : "custom-alert-success")">
                         <i class="@(userToToggle?.IsActive == true ? "fa-light fa-exclamation-triangle" : "fa-light fa-check-circle")"></i>
                         <div class="alert-content">
                             @if (userToToggle?.IsActive == true)
@@ -535,89 +615,98 @@
                         </div>
                     </div>
                 </div>
-            </ChildContent>
-        </RVModal>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="custom-btn custom-btn-outline" @onclick="() => showStatusConfirmation = false">Cancel</button>
+                <button class="custom-btn @(userToToggle?.IsActive == true ? "custom-btn-danger" : "custom-btn-success")" @onclick="ToggleUserStatus">
+                    @(userToToggle?.IsActive == true ? "Deactivate" : "Activate")
+                </button>
+            </div>
+        </div>
     }
 
     @* User Edit Modal *@
     @if (showUserEditModal)
     {
         <UserEditModal UserId="@selectedUserId"
-            Companies="allCompanies"
-            UserStatusTypes="@userStatusTypes"
-            SelectedBranchId="@selectedBranchForUser"
-            OnClose="() => showUserEditModal = false"
-            OnSaved="HandleUserSaved" />
+                       Companies="allCompanies"
+                       UserStatusTypes="@userStatusTypes"
+                       SelectedBranchId="@selectedBranchForUser"
+                       OnClose="() => showUserEditModal = false"
+                       OnSaved="HandleUserSaved" />
     }
 
     @* User Details Modal *@
     @if (showUserDetailsModal)
     {
         <UserDetailsModal UserId="@selectedUserId"
-            OnClose="() => showUserDetailsModal = false"
-            OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
+                          OnClose="() => showUserDetailsModal = false"
+                          OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
     }
 
     @* User Roles Modal *@
     @if (showUserRolesModal)
     {
         <UserRolesModal UserId="@selectedUserId"
-            CompanyId="@GetUserCompanyId(selectedUserId)"
-            OnClose="() => showUserRolesModal = false"
-            OnSaved="HandleRolesSaved" />
+                        CompanyId="@GetUserCompanyId(selectedUserId)"
+                        OnClose="() => showUserRolesModal = false"
+                        OnSaved="HandleRolesSaved" />
     }
 
     @* User Permissions Modal *@
     @if (showUserPermissionsModal)
     {
         <UserPermissionsModal UserId="@selectedUserId"
-            OnClose="() => showUserPermissionsModal = false"
-            OnSaved="HandlePermissionsSaved" />
+                              OnClose="() => showUserPermissionsModal = false"
+                              OnSaved="HandlePermissionsSaved" />
     }
 
     @* Company Edit Modal *@
     @if (showCompanyEditModal)
     {
         <CompanyDialog CompanyModel="@editingCompany"
-            CompanyStatusTypes="@companyStatusTypes"
-            SubscriptionPlans="@subscriptionPlans"
-            IsEdit="@(selectedCompanyId != 0)"
-            IsView="@viewModeOnly"
-            CanEdit="true"
-            OnSave="HandleCompanySaved"
-            OnCancel="() => showCompanyEditModal = false" />
+                       CompanyStatusTypes="@companyStatusTypes"
+                       SubscriptionPlans="@subscriptionPlans"
+                       IsEdit="@(selectedCompanyId != 0)"
+                       IsView="@viewModeOnly"
+                       CanEdit="true"
+                       OnSave="HandleCompanySaved"
+                       OnCancel="() => showCompanyEditModal = false" />
     }
 
     @* Branch Edit Modal *@
     @if (showBranchEditModal)
     {
         <BranchDialog BranchModel="@editingBranch"
-            branchStatusTypes="@branchStatusTypes"
-            Companies="@availableCompanies"
-            IsEdit="@(selectedBranchId != 0)"
-            IsView="@viewModeOnly"
-            CompanyId="@editingBranchCompanyId"
-            CanEdit="true"
-            CanEditCompany="currentUser?.Role == SystemRole.SystemAdministrator"
-            OnSave="HandleBranchSaved"
-            OnCancel="() => showBranchEditModal = false" />
+                      branchStatusTypes="@branchStatusTypes"
+                      Companies="@availableCompanies"
+                      IsEdit="@(selectedBranchId != 0)"
+                      IsView="@viewModeOnly"
+                      CompanyId="@editingBranchCompanyId"
+                      CanEdit="true"
+                      CanEditCompany="currentUser?.Role == SystemRole.SystemAdministrator"
+                      OnSave="HandleBranchSaved"
+                      OnCancel="() => showBranchEditModal = false" />
     }
 
     @* Reset Password Modal *@
     @if (showResetPasswordModal && userToResetPassword != null)
     {
         <ResetPasswordModal User="userToResetPassword"
-            OnClose="() => showResetPasswordModal = false"
-            OnPasswordReset="HandlePasswordReset" />
+                            OnClose="() => showResetPasswordModal = false"
+                            OnPasswordReset="HandlePasswordReset" />
     }
 </div>
+
+
+
 @code {
     // User and Role Management
     private ApplicationUser? currentUser;
     private Company? currentUserCompany;
     private Branch? currentUserBranch;
     private Dictionary<string, List<UserRoleAssignment>> userCustomRoles = new();
-    
+
     // Data Collections
     private List<ApplicationUser> users = new();
     private List<Company> allCompanies = new();
@@ -1173,7 +1262,7 @@
             // Company admin can see all branches in their company
             branches = allBranches.Where(b => b.CompanyId == companyId);
         }
-        else if (currentUser?.Role == SystemRole.BranchManager && 
+        else if (currentUser?.Role == SystemRole.BranchManager &&
                  currentUser.CompanyId == companyId &&
                  currentUser.BranchId.HasValue)
         {
@@ -1569,13 +1658,13 @@
         else
         {
             editingCompany = new Company
-            {
-                IsActive = true,
-                Address = new Address { Country = "South Africa" },
-                CreatedOn = DateTime.Now,
-                StatusId = companyStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id,
-                SubscriptionPlanId = subscriptionPlans.FirstOrDefault(p => p.Name == "Starter")?.Id
-            };
+                {
+                    IsActive = true,
+                    Address = new Address { Country = "South Africa" },
+                    CreatedOn = DateTime.Now,
+                    StatusId = companyStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id,
+                    SubscriptionPlanId = subscriptionPlans.FirstOrDefault(p => p.Name == "Starter")?.Id
+                };
             showCompanyEditModal = true;
             await InvokeAsync(() => this.StateHasChanged());
         }
@@ -1667,15 +1756,15 @@
         else
         {
             editingBranch = new Branch
-            {
-                CompanyId = currentUser?.Role == SystemRole.CompanyAdministrator && currentUser.CompanyId.HasValue
-                        ? currentUser.CompanyId.Value
-                        : 0,
-                IsActive = true,
-                Address = new Address { Country = "South Africa" },
-                CreatedOn = DateTime.Now,
-                StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
-            };
+                {
+                    CompanyId = currentUser?.Role == SystemRole.CompanyAdministrator && currentUser.CompanyId.HasValue
+                            ? currentUser.CompanyId.Value
+                            : 0,
+                    IsActive = true,
+                    Address = new Address { Country = "South Africa" },
+                    CreatedOn = DateTime.Now,
+                    StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
+                };
 
             editingBranchCompanyId = editingBranch.CompanyId;
             showBranchEditModal = true;
@@ -1697,13 +1786,13 @@
         selectedBranchId = 0;
         viewModeOnly = false;
         editingBranch = new Branch
-        {
-            CompanyId = companyId,
-            IsActive = true,
-            Address = new Address { Country = "South Africa" },
-            CreatedOn = DateTime.Now,
-            StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
-        };
+            {
+                CompanyId = companyId,
+                IsActive = true,
+                Address = new Address { Country = "South Africa" },
+                CreatedOn = DateTime.Now,
+                StatusId = branchStatusTypes.FirstOrDefault(s => s.Name == "Active")?.Id
+            };
         editingBranchCompanyId = companyId;
         showBranchEditModal = true;
         await InvokeAsync(() => this.StateHasChanged());

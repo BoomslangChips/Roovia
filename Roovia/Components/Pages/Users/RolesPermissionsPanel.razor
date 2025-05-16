@@ -1,0 +1,1092 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Services
+@using Roovia.Services.General
+@using System.Security.Claims
+@inject IPermissionService PermissionService
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="roles-permissions-panel">
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading roles and permissions...</div>
+        </div>
+    }
+    else
+    {
+        <div class="roles-permissions-container">
+            <RVTab Tabs="roleTabs" Size="sm" Style="boxed" OnTabChange="HandleTabChange">
+                <RVTabPanel TabId="roles" IsActive='activeTab == "roles"'>
+                    <div class="roles-manager">
+                        <div class="roles-header">
+                            <h4><i class="fa-light fa-user-tag"></i> Company Roles</h4>
+                            <RVButton ButtonType="primary" IconLeft="fa-light fa-plus" Text="New Role"
+                                OnClick="ShowCreateRoleModal" />
+                        </div>
+
+                        @if (companyRoles.Any())
+                        {
+                            <div class="roles-list">
+                                @foreach (var role in companyRoles.OrderBy(r => r.DisplayOrder))
+                                {
+                                    <div class="role-card @(selectedRoleId == role.Id ? "selected" : "")">
+                                        <div class="role-card-content" @onclick="() => SelectRole(role.Id)">
+                                            <div class="role-icon">
+                                                <i class="fa-light fa-user-tag"></i>
+                                            </div>
+                                            <div class="role-details">
+                                                <div class="role-name">@role.Name</div>
+                                                <div class="role-description">@role.Description</div>
+                                                <div class="role-meta">
+                                                    @if (role.IsSystemRole)
+                                                    {
+                                                        <span class="role-type system">System Role</span>
+                                                    }
+                                                    else if (role.IsPreset)
+                                                    {
+                                                        <span class="role-type preset">Preset Role</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="role-type custom">Custom Role</span>
+                                                    }
+                                                    
+                                                    <span class="user-count">
+                                                        <i class="fa-light fa-users"></i> @GetRoleUserCount(role.Id) users
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="role-actions">
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit" Text="Edit"
+                                                      OnClick="() => EditRole(role.Id)" 
+                                                      Disabled="@role.IsSystemRole" />
+                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-copy" Text="Clone"
+                                                      OnClick="() => CloneRole(role.Id)" />
+                                            <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash" Text="Delete"
+                                                      OnClick="() => DeleteRole(role.Id)" 
+                                                      Disabled="@(role.IsSystemRole || role.IsPreset || GetRoleUserCount(role.Id) > 0)" />
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <EmptyState Title="No roles found" 
+                                Description="This company does not have any custom roles yet." 
+                                Icon="fa-light fa-user-tag" 
+                                ActionText="Create Role" 
+                                OnAction="ShowCreateRoleModal" />
+                        }
+                    </div>
+                </RVTabPanel>
+
+                <RVTabPanel TabId="permissions" IsActive='activeTab == "permissions"'>
+                    <div class="permissions-manager">
+                        <div class="permissions-header">
+                            <h4><i class="fa-light fa-shield-check"></i> Role Permissions</h4>
+                        </div>
+
+                        @if (selectedRoleId != 0)
+                        {
+                            <div class="selected-role-info">
+                                <h5>
+                                    <i class="fa-light fa-user-tag"></i>
+                                    @(selectedRole?.Name ?? "Unknown Role")
+                                </h5>
+                                <p>@(selectedRole?.Description ?? "")</p>
+                            </div>
+
+                            <div class="permissions-search">
+                                <RVTextbox Value="@permissionSearchTerm"
+                                           ValueChanged="FilterPermissions"
+                                           Placeholder="Search permissions..."
+                                           IconLeft="fa-light fa-search" />
+                            </div>
+
+                            <div class="permission-categories">
+                                @foreach (var category in filteredPermissions.Select(p => p.Category).Distinct().OrderBy(c => c))
+                                {
+                                    <div class="category-section">
+                                        <div class="category-header">
+                                            <h5><i class="fa-light fa-folder"></i> @category</h5>
+                                            <div class="category-actions">
+                                                <RVButton ButtonType="outline"
+                                                          Type="button"
+                                                          Size="xs"
+                                                          Text="Select All"
+                                                          OnClick="() => SelectAllPermissionsInCategory(category, true)"
+                                                          CssClass="category-btn"
+                                                          Disabled="@IsSystemRole(selectedRoleId)" />
+                                                <RVButton ButtonType="outline-danger"
+                                                          Type="button"
+                                                          Size="xs"
+                                                          Text="Deselect All"
+                                                          OnClick="() => SelectAllPermissionsInCategory(category, false)"
+                                                          CssClass="category-btn"
+                                                          Disabled="@IsSystemRole(selectedRoleId)" />
+                                            </div>
+                                        </div>
+                                        <div class="permissions-list">
+                                            @foreach (var permission in filteredPermissions.Where(p => p.Category == category).OrderBy(p => p.Name))
+                                            {
+                                                <div class="permission-item">
+                                                    <RVSwitch Value="@IsPermissionAssignedToRole(permission.Id)"
+                                                              ValueChanged="value => ToggleRolePermission(permission.Id, value)"
+                                                              Label="@permission.Name"
+                                                              HelperText="@permission.Description"
+                                                              Disabled="@IsSystemRole(selectedRoleId)" />
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="permissions-actions">
+                                <RVButton ButtonType="primary" 
+                                          Text="Save Permissions" 
+                                          IconLeft="fa-light fa-save"
+                                          OnClick="SaveRolePermissions"
+                                          Disabled="@(!hasPermissionChanges || IsSystemRole(selectedRoleId))" />
+                                <RVButton ButtonType="secondary" 
+                                          Text="Reset Changes" 
+                                          IconLeft="fa-light fa-undo"
+                                          OnClick="ResetPermissionChanges"
+                                          Disabled="@(!hasPermissionChanges)" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="no-role-selected">
+                                <i class="fa-light fa-user-tag"></i>
+                                <h5>No Role Selected</h5>
+                                <p>Please select a role from the Roles tab to manage its permissions.</p>
+                            </div>
+                        }
+                    </div>
+                </RVTabPanel>
+
+                <RVTabPanel TabId="users" IsActive='activeTab == "users"'>
+                    <div class="role-users-manager">
+                        <div class="role-users-header">
+                            <h4><i class="fa-light fa-users"></i> Users in Roles</h4>
+                        </div>
+
+                        @if (selectedRoleId != 0)
+                        {
+                            <div class="selected-role-info">
+                                <h5>
+                                    <i class="fa-light fa-user-tag"></i>
+                                    @(selectedRole?.Name ?? "Unknown Role")
+                                </h5>
+                                
+                                <div class="user-search">
+                                    <RVTextbox Value="@userSearchTerm"
+                                                ValueChanged="FilterUsers"
+                                                Placeholder="Search users..."
+                                                IconLeft="fa-light fa-search" />
+                                </div>
+                            </div>
+
+                            @if (roleUsers.Any())
+                            {
+                                <div class="role-users-list">
+                                    @foreach (var user in filteredUsers)
+                                    {
+                                        <div class="user-card">
+                                            <div class="user-avatar">
+                                                @if (user.ProfilePicture != null)
+                                                {
+                                                    <img src="@user.ProfilePicture.Url" alt="@user.UserName" />
+                                                }
+                                                else
+                                                {
+                                                    <i class="fa-light fa-user"></i>
+                                                }
+                                            </div>
+                                            <div class="user-details">
+                                                <div class="user-name">
+                                                    @(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)
+                                                </div>
+                                                <div class="user-email">@user.Email</div>
+                                                <div class="user-meta">
+                                                    @if (user.Role.HasValue)
+                                                    {
+                                                        <span class="role-badge @PermissionFormat.GetRoleBadgeClass(user.Role.Value)">
+                                                            <i class="@PermissionFormat.GetRoleIconSmall(user.Role.Value)"></i>
+                                                            @PermissionFormat.GetRoleDisplayName(user.Role.Value)
+                                                        </span>
+                                                    }
+                                                    
+                                                    <span class="status-badge @(user.IsActive ? "active" : "inactive")">
+                                                        @(user.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="user-actions">
+                                                <RVButton ButtonType="outline-danger" 
+                                                          Size="xs" 
+                                                          IconLeft="fa-light fa-user-minus" 
+                                                          Text="Remove" 
+                                                          OnClick="() => RemoveUserFromRole(user.Id)" />
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <EmptyState Title="No users in this role" 
+                                    Description="There are no users assigned to this role yet." 
+                                    Icon="fa-light fa-user-tag" 
+                                    ActionText="Add User" 
+                                    OnAction="ShowAddUserToRoleModal" />
+                            }
+
+                            <div class="add-user-section">
+                                <RVButton ButtonType="primary" 
+                                          Text="Add User to Role" 
+                                          IconLeft="fa-light fa-user-plus"
+                                          OnClick="ShowAddUserToRoleModal" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="no-role-selected">
+                                <i class="fa-light fa-user-tag"></i>
+                                <h5>No Role Selected</h5>
+                                <p>Please select a role from the Roles tab to manage its users.</p>
+                            </div>
+                        }
+                    </div>
+                </RVTabPanel>
+            </RVTab>
+        </div>
+    }
+</div>
+
+@if (showRoleModal)
+{
+    <RVModal IsVisible="true"
+             Title="@(editingRoleId == 0 ? "Create Role" : "Edit Role")"
+             Icon="fa-light fa-user-tag"
+             OnClose="() => showRoleModal = false"
+             OnCancel="() => showRoleModal = false"
+             OnConfirm="SaveRole"
+             ConfirmText="@(editingRoleId == 0 ? "Create" : "Save")"
+             CancelText="Cancel"
+             Size="md">
+        <ChildContent>
+            <div class="role-form">
+                <div class="form-group">
+                    <label for="roleName">Role Name</label>
+                    <RVTextbox Id="roleName"
+                               Value="@editingRole.Name"
+                               ValueChanged="value => editingRole.Name = value"
+                               Placeholder="Enter role name"
+                               IconLeft="fa-light fa-user-tag" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="roleDescription">Description</label>
+                    <RVTextarea Id="roleDescription"
+                                Value="@editingRole.Description"
+                                ValueChanged="value => editingRole.Description = value"
+                                Placeholder="Enter role description"
+                                Rows="3" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="roleDisplayOrder">Display Order</label>
+                    <RVTextbox Id="roleDisplayOrder"
+                               Type="number"
+                               Value="@editingRole.DisplayOrder.ToString()"
+                               ValueChanged="value => editingRole.DisplayOrder = int.TryParse(value, out var result) ? result : 0"
+                               Placeholder="Enter display order"
+                               IconLeft="fa-light fa-sort-numeric-down" />
+                    <div class="field-info">
+                        <i class="fa-light fa-info-circle"></i>
+                        <span>Lower numbers appear first in lists</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <RVSwitch Label="Is Preset Role"
+                              Value="@editingRole.IsPreset"
+                              ValueChanged="value => editingRole.IsPreset = value"
+                              HelperText="Preset roles cannot be deleted but can be modified" />
+                </div>
+                
+                <div class="form-group">
+                    <RVSwitch Label="Is Active"
+                              Value="@editingRole.IsActive"
+                              ValueChanged="value => editingRole.IsActive = value"
+                              HelperText="Inactive roles will not be available for assignment" />
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+@if (showDeleteRoleConfirmation)
+{
+    <RVModal IsVisible="true"
+             Title="Delete Role"
+             Icon="fa-light fa-trash-alt"
+             OnClose="() => showDeleteRoleConfirmation = false"
+             OnCancel="() => showDeleteRoleConfirmation = false"
+             OnConfirm="ConfirmDeleteRole"
+             ConfirmText="Delete"
+             ConfirmColor="danger"
+             CancelText="Cancel"
+             Size="sm">
+        <ChildContent>
+            <div class="delete-confirmation">
+                <div class="alert alert-danger">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <div class="alert-content">
+                        <p>Are you sure you want to delete the role <strong>@(roleToDelete?.Name)</strong>?</p>
+                        <p>This action cannot be undone.</p>
+                    </div>
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+@if (showAddUserToRoleModal)
+{
+    <RVModal IsVisible="true"
+             Title="Add User to Role"
+             Icon="fa-light fa-user-plus"
+             OnClose="() => showAddUserToRoleModal = false"
+             OnCancel="() => showAddUserToRoleModal = false"
+             OnConfirm="ConfirmAddUserToRole"
+             ConfirmText="Add User"
+             CancelText="Cancel"
+             Size="md">
+        <ChildContent>
+            <div class="add-user-form">
+                <div class="form-group">
+                    <label for="userSelect">Select User</label>
+                    <RVSelect Id="userSelect"
+                              Value="@selectedUserToAddId"
+                              ValueChanged="value => selectedUserToAddId = value"
+                              Placeholder="Select a user">
+                        <option value="">-- Select User --</option>
+                        @foreach (var user in availableUsersForRole.OrderBy(u => u.UserName))
+                        {
+                            <option value="@user.Id">@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)</option>
+                        }
+                    </RVSelect>
+                </div>
+            </div>
+        </ChildContent>
+    </RVModal>
+}
+
+@code {
+    [Parameter] public int CompanyId { get; set; }
+
+    // State variables
+    private bool isLoading = true;
+    private string activeTab = "roles";
+    private List<Role> companyRoles = new List<Role>();
+    private List<Permission> availablePermissions = new List<Permission>();
+    private List<Permission> filteredPermissions = new List<Permission>();
+    private List<RolePermission> rolePermissions = new List<RolePermission>();
+    private List<ApplicationUser> companyUsers = new List<ApplicationUser>();
+    private List<UserRoleAssignment> userRoleAssignments = new List<UserRoleAssignment>();
+    private List<ApplicationUser> roleUsers = new List<ApplicationUser>();
+    private List<ApplicationUser> filteredUsers = new List<ApplicationUser>();
+    private List<ApplicationUser> availableUsersForRole = new List<ApplicationUser>();
+    
+    // Selection state
+    private int selectedRoleId = 0;
+    private Role selectedRole = null;
+    
+    // Search terms
+    private string permissionSearchTerm = "";
+    private string userSearchTerm = "";
+    
+    // Edit state
+    private Role editingRole = new Role();
+    private int editingRoleId = 0;
+    private Role roleToDelete = null;
+    private HashSet<int> selectedPermissionIds = new HashSet<int>();
+    private Dictionary<int, bool> permissionChanges = new Dictionary<int, bool>();
+    private bool hasPermissionChanges = false;
+    private string selectedUserToAddId = "";
+
+    // Modals
+    private bool showRoleModal = false;
+    private bool showDeleteRoleConfirmation = false;
+    private bool showAddUserToRoleModal = false;
+
+    // Tab configuration
+    private List<RVTab.RVTabItem> roleTabs = new List<RVTab.RVTabItem>
+    {
+        new RVTab.RVTabItem { Id = "roles", Title = "Roles", Icon = "fa-light fa-user-tag", IsActive = true },
+        new RVTab.RVTabItem { Id = "permissions", Title = "Permissions", Icon = "fa-light fa-shield-check", IsActive = false },
+        new RVTab.RVTabItem { Id = "users", Title = "Users", Icon = "fa-light fa-users", IsActive = false }
+    };
+
+    // Current user info
+    private string currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUser();
+        await LoadData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CompanyId > 0)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task GetCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to get current user: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        if (CompanyId <= 0) return;
+
+        try
+        {
+            isLoading = true;
+
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+
+            // Load roles for this company
+            companyRoles = await dbContext.Roles
+                .Where(r => r.CompanyId == CompanyId || (r.IsSystemRole && r.CompanyId == null))
+                .ToListAsync();
+
+            // Load all permissions
+            var permissionsResponse = await PermissionService.GetAllPermissions();
+            if (permissionsResponse.ResponseInfo.Success)
+            {
+                availablePermissions = (List<Permission>)permissionsResponse.Response;
+                filteredPermissions = availablePermissions;
+            }
+
+            // Load role permissions
+            rolePermissions = await dbContext.RolePermissions
+                .Where(rp => companyRoles.Select(r => r.Id).Contains(rp.RoleId))
+                .ToListAsync();
+
+            // Load company users with their profile pictures
+            companyUsers = await dbContext.Users
+                .Where(u => u.CompanyId == CompanyId)
+                .Include(u => u.ProfilePicture)
+                .ToListAsync();
+
+            // Load user role assignments
+            userRoleAssignments = await dbContext.UserRoleAssignments
+                .Where(ura => ura.IsActive && companyRoles.Select(r => r.Id).Contains(ura.RoleId))
+                .ToListAsync();
+
+            // If we have a selected role, reload its data
+            if (selectedRoleId > 0)
+            {
+                await LoadSelectedRoleData();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load roles and permissions: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadSelectedRoleData()
+    {
+        if (selectedRoleId <= 0) return;
+
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+
+            // Get selected role
+            selectedRole = companyRoles.FirstOrDefault(r => r.Id == selectedRoleId);
+            if (selectedRole == null) return;
+
+            // Load role permissions
+            var permissionsForRole = await dbContext.RolePermissions
+                .Where(rp => rp.RoleId == selectedRoleId)
+                .ToListAsync();
+
+            // Set selected permissions
+            selectedPermissionIds = new HashSet<int>(permissionsForRole.Select(rp => rp.PermissionId));
+            
+            // Reset permissions changes
+            permissionChanges.Clear();
+            hasPermissionChanges = false;
+
+            // Load users in this role
+            var userAssignments = await dbContext.UserRoleAssignments
+                .Where(ura => ura.RoleId == selectedRoleId && ura.IsActive)
+                .ToListAsync();
+
+            var userIds = userAssignments.Select(ura => ura.UserId).ToList();
+            
+            roleUsers = await dbContext.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Include(u => u.ProfilePicture)
+                .ToListAsync();
+                
+            filteredUsers = roleUsers;
+
+            // Load available users for role (users in company not already in this role)
+            availableUsersForRole = await dbContext.Users
+                .Where(u => u.CompanyId == CompanyId && !userIds.Contains(u.Id) && u.IsActive)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load role data: {ex.Message}", "Error");
+        }
+    }
+
+    private void HandleTabChange(string tabId)
+    {
+        activeTab = tabId;
+    }
+
+    private async Task SelectRole(int roleId)
+    {
+        // Don't reload if already selected
+        if (selectedRoleId == roleId) return;
+
+        selectedRoleId = roleId;
+        await LoadSelectedRoleData();
+        
+        // Switch to permissions tab if we're on the roles tab
+        if (activeTab == "roles")
+        {
+            activeTab = "permissions";
+        }
+
+        StateHasChanged();
+    }
+
+    private bool IsPermissionAssignedToRole(int permissionId)
+    {
+        // First check if there's a pending change
+        if (permissionChanges.TryGetValue(permissionId, out var isAssigned))
+        {
+            return isAssigned;
+        }
+
+        // Otherwise check the current assignments
+        return selectedPermissionIds.Contains(permissionId);
+    }
+
+    private void ToggleRolePermission(int permissionId, bool isAssigned)
+    {
+        // Store the change
+        permissionChanges[permissionId] = isAssigned;
+        hasPermissionChanges = true;
+
+        StateHasChanged();
+    }
+
+    private void SelectAllPermissionsInCategory(string category, bool isSelected)
+    {
+        var permissionsInCategory = availablePermissions.Where(p => p.Category == category).ToList();
+        foreach (var permission in permissionsInCategory)
+        {
+            permissionChanges[permission.Id] = isSelected;
+        }
+        
+        hasPermissionChanges = true;
+        StateHasChanged();
+    }
+
+    private async Task SaveRolePermissions()
+    {
+        if (!hasPermissionChanges || IsSystemRole(selectedRoleId)) return;
+
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Get current role permissions
+            var existingPermissions = await dbContext.RolePermissions
+                .Where(rp => rp.RoleId == selectedRoleId)
+                .ToListAsync();
+                
+            // Apply permission changes
+            foreach (var change in permissionChanges)
+            {
+                int permissionId = change.Key;
+                bool isAssigned = change.Value;
+                
+                // Check if permission is already assigned
+                var existingPermission = existingPermissions.FirstOrDefault(rp => rp.PermissionId == permissionId);
+                
+                if (isAssigned && existingPermission == null)
+                {
+                    // Add permission
+                    dbContext.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = selectedRoleId,
+                        PermissionId = permissionId,
+                        IsActive = true,
+                        CreatedOn = DateTime.Now,
+                        CreatedBy = currentUserId
+                    });
+                }
+                else if (!isAssigned && existingPermission != null)
+                {
+                    // Remove permission
+                    dbContext.RolePermissions.Remove(existingPermission);
+                }
+            }
+            
+            await dbContext.SaveChangesAsync();
+            
+            // Reload role permissions
+            rolePermissions = await dbContext.RolePermissions
+                .Where(rp => companyRoles.Select(r => r.Id).Contains(rp.RoleId))
+                .ToListAsync();
+                
+            // Update selected permissions
+            var updatedPermissions = await dbContext.RolePermissions
+                .Where(rp => rp.RoleId == selectedRoleId)
+                .ToListAsync();
+                
+            selectedPermissionIds = new HashSet<int>(updatedPermissions.Select(rp => rp.PermissionId));
+            
+            // Reset changes
+            permissionChanges.Clear();
+            hasPermissionChanges = false;
+            
+            ToastService.ShowSuccess("Role permissions saved successfully", "Success");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save role permissions: {ex.Message}", "Error");
+        }
+    }
+
+    private void ResetPermissionChanges()
+    {
+        permissionChanges.Clear();
+        hasPermissionChanges = false;
+        StateHasChanged();
+    }
+
+    private void FilterPermissions(string searchTerm)
+    {
+        permissionSearchTerm = searchTerm;
+        
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredPermissions = availablePermissions;
+        }
+        else
+        {
+            filteredPermissions = availablePermissions
+                .Where(p => 
+                    p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.SystemName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private void FilterUsers(string searchTerm)
+    {
+        userSearchTerm = searchTerm;
+        
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredUsers = roleUsers;
+        }
+        else
+        {
+            filteredUsers = roleUsers
+                .Where(u => 
+                    u.UserName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (u.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (u.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+    }
+
+    private int GetRoleUserCount(int roleId)
+    {
+        return userRoleAssignments.Count(ura => ura.RoleId == roleId);
+    }
+
+    private bool IsSystemRole(int roleId)
+    {
+        return companyRoles.FirstOrDefault(r => r.Id == roleId)?.IsSystemRole ?? false;
+    }
+
+    // Role CRUD operations
+    private void ShowCreateRoleModal()
+    {
+        editingRoleId = 0;
+        editingRole = new Role
+        {
+            CompanyId = CompanyId,
+            IsActive = true,
+            IsSystemRole = false,
+            IsPreset = false,
+            DisplayOrder = companyRoles.Count > 0 ? companyRoles.Max(r => r.DisplayOrder) + 10 : 10,
+            CreatedOn = DateTime.Now,
+            CreatedBy = currentUserId
+        };
+        
+        showRoleModal = true;
+    }
+
+    private void EditRole(int roleId)
+    {
+        var role = companyRoles.FirstOrDefault(r => r.Id == roleId);
+        if (role == null) return;
+        
+        // Don't allow editing system roles
+        if (role.IsSystemRole)
+        {
+            ToastService.ShowWarning("System roles cannot be edited", "Warning");
+            return;
+        }
+        
+        editingRoleId = roleId;
+        editingRole = new Role
+        {
+            Id = role.Id,
+            Name = role.Name,
+            Description = role.Description,
+            CompanyId = role.CompanyId,
+            BranchId = role.BranchId,
+            IsSystemRole = role.IsSystemRole,
+            IsPreset = role.IsPreset,
+            IsActive = role.IsActive,
+            DisplayOrder = role.DisplayOrder,
+            CreatedOn = role.CreatedOn,
+            CreatedBy = role.CreatedBy,
+            UpdatedDate = DateTime.Now,
+            UpdatedBy = currentUserId
+        };
+        
+        showRoleModal = true;
+    }
+
+    private async Task SaveRole()
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            if (editingRoleId == 0)
+            {
+                // Create new role
+                await dbContext.Roles.AddAsync(editingRole);
+                await dbContext.SaveChangesAsync();
+                
+                ToastService.ShowSuccess($"Role '{editingRole.Name}' created successfully", "Success");
+            }
+            else
+            {
+                // Update existing role
+                var existingRole = await dbContext.Roles.FindAsync(editingRoleId);
+                if (existingRole == null)
+                {
+                    ToastService.ShowError("Role not found", "Error");
+                    return;
+                }
+                
+                // Update properties
+                existingRole.Name = editingRole.Name;
+                existingRole.Description = editingRole.Description;
+                existingRole.IsPreset = editingRole.IsPreset;
+                existingRole.IsActive = editingRole.IsActive;
+                existingRole.DisplayOrder = editingRole.DisplayOrder;
+                existingRole.UpdatedDate = DateTime.Now;
+                existingRole.UpdatedBy = currentUserId;
+                
+                await dbContext.SaveChangesAsync();
+                
+                ToastService.ShowSuccess($"Role '{existingRole.Name}' updated successfully", "Success");
+            }
+            
+            // Reload data
+            await LoadData();
+            
+            // Close modal
+            showRoleModal = false;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save role: {ex.Message}", "Error");
+        }
+    }
+
+    private void DeleteRole(int roleId)
+    {
+        var role = companyRoles.FirstOrDefault(r => r.Id == roleId);
+        if (role == null) return;
+        
+        // Don't allow deleting system or preset roles
+        if (role.IsSystemRole)
+        {
+            ToastService.ShowWarning("System roles cannot be deleted", "Warning");
+            return;
+        }
+        
+        if (role.IsPreset)
+        {
+            ToastService.ShowWarning("Preset roles cannot be deleted", "Warning");
+            return;
+        }
+        
+        // Don't allow deleting roles with users
+        if (GetRoleUserCount(roleId) > 0)
+        {
+            ToastService.ShowWarning("Cannot delete role with assigned users", "Warning");
+            return;
+        }
+        
+        roleToDelete = role;
+        showDeleteRoleConfirmation = true;
+    }
+
+    private async Task ConfirmDeleteRole()
+    {
+        if (roleToDelete == null) return;
+        
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Delete role permissions first
+            var rolePermissionsToDelete = await dbContext.RolePermissions
+                .Where(rp => rp.RoleId == roleToDelete.Id)
+                .ToListAsync();
+                
+            if (rolePermissionsToDelete.Any())
+            {
+                dbContext.RolePermissions.RemoveRange(rolePermissionsToDelete);
+            }
+            
+            // Delete role
+            dbContext.Roles.Remove(roleToDelete);
+            await dbContext.SaveChangesAsync();
+            
+            ToastService.ShowSuccess($"Role '{roleToDelete.Name}' deleted successfully", "Success");
+            
+            // Reset selection if this was the selected role
+            if (selectedRoleId == roleToDelete.Id)
+            {
+                selectedRoleId = 0;
+                selectedRole = null;
+            }
+            
+            // Reload data
+            await LoadData();
+            
+            // Close modal
+            showDeleteRoleConfirmation = false;
+            roleToDelete = null;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to delete role: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task CloneRole(int roleId)
+    {
+        var sourceRole = companyRoles.FirstOrDefault(r => r.Id == roleId);
+        if (sourceRole == null) return;
+        
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Create new role based on source
+            var newRole = new Role
+            {
+                Name = $"{sourceRole.Name} (Copy)",
+                Description = sourceRole.Description,
+                CompanyId = sourceRole.CompanyId,
+                BranchId = sourceRole.BranchId,
+                IsSystemRole = false, // Never clone as system role
+                IsPreset = false, // Never clone as preset
+                IsActive = sourceRole.IsActive,
+                DisplayOrder = sourceRole.DisplayOrder + 1,
+                CreatedOn = DateTime.Now,
+                CreatedBy = currentUserId
+            };
+            
+            await dbContext.Roles.AddAsync(newRole);
+            await dbContext.SaveChangesAsync();
+            
+            // Clone permissions
+            var sourcePermissions = await dbContext.RolePermissions
+                .Where(rp => rp.RoleId == sourceRole.Id)
+                .ToListAsync();
+                
+            foreach (var permission in sourcePermissions)
+            {
+                await dbContext.RolePermissions.AddAsync(new RolePermission
+                {
+                    RoleId = newRole.Id,
+                    PermissionId = permission.PermissionId,
+                    IsActive = true,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = currentUserId
+                });
+            }
+            
+            await dbContext.SaveChangesAsync();
+            
+            ToastService.ShowSuccess($"Role '{sourceRole.Name}' cloned successfully", "Success");
+            
+            // Reload data
+            await LoadData();
+            
+            // Select the new role
+            selectedRoleId = newRole.Id;
+            await LoadSelectedRoleData();
+            activeTab = "permissions";
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to clone role: {ex.Message}", "Error");
+        }
+    }
+
+    private void ShowAddUserToRoleModal()
+    {
+        if (selectedRoleId == 0) return;
+        
+        selectedUserToAddId = "";
+        showAddUserToRoleModal = true;
+    }
+
+    private async Task ConfirmAddUserToRole()
+    {
+        if (string.IsNullOrEmpty(selectedUserToAddId) || selectedRoleId == 0) return;
+        
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Check if assignment already exists
+            var existingAssignment = await dbContext.UserRoleAssignments
+                .FirstOrDefaultAsync(ura => ura.UserId == selectedUserToAddId && ura.RoleId == selectedRoleId);
+                
+            if (existingAssignment != null)
+            {
+                // If it exists but is inactive, reactivate it
+                if (!existingAssignment.IsActive)
+                {
+                    existingAssignment.IsActive = true;
+                    existingAssignment.AssignedDate = DateTime.Now;
+                    existingAssignment.AssignedBy = currentUserId;
+                    
+                    await dbContext.SaveChangesAsync();
+                    
+                    ToastService.ShowSuccess("User added to role successfully", "Success");
+                }
+                else
+                {
+                    ToastService.ShowWarning("User is already assigned to this role", "Warning");
+                }
+            }
+            else
+            {
+                // Create new assignment
+                await dbContext.UserRoleAssignments.AddAsync(new UserRoleAssignment
+                {
+                    UserId = selectedUserToAddId,
+                    RoleId = selectedRoleId,
+                    AssignedDate = DateTime.Now,
+                    AssignedBy = currentUserId,
+                    IsActive = true
+                });
+                
+                await dbContext.SaveChangesAsync();
+                
+                ToastService.ShowSuccess("User added to role successfully", "Success");
+            }
+            
+            // Reload data
+            await LoadSelectedRoleData();
+            
+            // Close modal
+            showAddUserToRoleModal = false;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to add user to role: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task RemoveUserFromRole(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || selectedRoleId == 0) return;
+        
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Find the assignment
+            var assignment = await dbContext.UserRoleAssignments
+                .FirstOrDefaultAsync(ura => ura.UserId == userId && ura.RoleId == selectedRoleId && ura.IsActive);
+                
+            if (assignment == null)
+            {
+                ToastService.ShowWarning("User is not assigned to this role", "Warning");
+                return;
+            }
+            
+            // Mark as inactive instead of deleting
+            assignment.IsActive = false;
+            
+            await dbContext.SaveChangesAsync();
+            
+            ToastService.ShowSuccess("User removed from role successfully", "Success");
+            
+            // Reload data
+            await LoadSelectedRoleData();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to remove user from role: {ex.Message}", "Error");
+        }
+    }
+}
