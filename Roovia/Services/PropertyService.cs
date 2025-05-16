@@ -10,10 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Roovia.Services.General;
+using System.Transactions;
 
 namespace Roovia.Services
 {
+    /// <summary>
+    /// Service for managing properties
+    /// </summary>
     public class PropertyService : IProperty
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
@@ -25,51 +28,132 @@ namespace Roovia.Services
             ILogger<PropertyService> logger,
             ICdnService cdnService)
         {
-            _contextFactory = contextFactory;
-            _logger = logger;
-            _cdnService = cdnService;
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cdnService = cdnService ?? throw new ArgumentNullException(nameof(cdnService));
         }
 
+        /// <summary>
+        /// Creates a new property
+        /// </summary>
         public async Task<ResponseModel> CreateProperty(Property property)
         {
             ResponseModel response = new();
 
             try
             {
+                // Validate required fields
+                if (string.IsNullOrEmpty(property.PropertyName))
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property name is required.";
+                    return response;
+                }
+
+                if (property.OwnerId <= 0)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "A valid property owner is required.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Ensure dates are valid
-                property.EnsureValidDates();
+                try
+                {
+                    // Validate owner exists
+                    var owner = await context.PropertyOwners
+                        .FirstOrDefaultAsync(o => o.Id == property.OwnerId && !o.IsRemoved);
 
-                // Set creation date if not already set
-                if (property.CreatedOn == default)
-                    property.CreatedOn = DateTime.Now;
+                    if (owner == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "The specified property owner does not exist.";
+                        return response;
+                    }
 
-                // Add the property
-                await context.Properties.AddAsync(property);
-                await context.SaveChangesAsync();
+                    // Check if property code already exists
+                    if (!string.IsNullOrEmpty(property.PropertyCode))
+                    {
+                        var existingPropertyWithCode = await context.Properties
+                            .FirstOrDefaultAsync(p => p.PropertyCode == property.PropertyCode &&
+                                                    p.CompanyId == property.CompanyId &&
+                                                    !p.IsRemoved);
 
-                // Create CDN folder structure for property
-                var cdnFolderPath = $"company-{property.CompanyId}/properties/{property.Id}";
-                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "images");
-                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "documents");
-                await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "inspections");
+                        if (existingPropertyWithCode != null)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "A property with this code already exists.";
+                            return response;
+                        }
+                    }
+                    else
+                    {
+                        // Generate property code if not provided
+                        property.PropertyCode = await GenerateUniquePropertyCode(context, property.CompanyId);
+                    }
 
-                // Reload with related data
-                var createdProperty = await context.Properties
-                    .Include(p => p.Owner)
-                    .Include(p => p.Status)
-                    .Include(p => p.CommissionType)
-                    .Include(p => p.MainImage)
-                    .Include(p => p.Beneficiaries)
-                    .Include(p => p.Tenants)
-                    .FirstOrDefaultAsync(p => p.Id == property.Id);
+                    // Validate address
+                    if (property.Address != null)
+                    {
+                        var addressValidator = new AddressValidator();
+                        var validationResult = addressValidator.Validate(property.Address);
+                        if (!validationResult.IsValid)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                            return response;
+                        }
+                    }
 
-                response.Response = createdProperty;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Property created successfully.";
+                    // Ensure dates are valid
+                    property.EnsureValidDates();
 
-                _logger.LogInformation("Property created with ID: {PropertyId}", property.Id);
+                    // Set creation date if not already set
+                    if (property.CreatedOn == default)
+                        property.CreatedOn = DateTime.Now;
+
+                    // Add the property
+                    await context.Properties.AddAsync(property);
+                    await context.SaveChangesAsync();
+
+                    // Create CDN folder structure for property
+                    try
+                    {
+                        var cdnFolderPath = $"company-{property.CompanyId}/properties/{property.Id}";
+                        await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "images");
+                        await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "documents");
+                        await _cdnService.CreateFolderAsync("properties", cdnFolderPath, "inspections");
+                    }
+                    catch (Exception cdnEx)
+                    {
+                        // Log but continue with transaction
+                        _logger.LogWarning(cdnEx, "Error creating CDN folders for property {PropertyId}. Continuing with creation.", property.Id);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    // Reload with related data
+                    var createdProperty = await context.Properties
+                        .Include(p => p.Owner)
+                        .Include(p => p.Status)
+                        .Include(p => p.CommissionType)
+                        .Include(p => p.MainImage)
+                        .Include(p => p.PropertyType)
+                        .FirstOrDefaultAsync(p => p.Id == property.Id);
+
+                    response.Response = createdProperty;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property created successfully.";
+
+                    _logger.LogInformation("Property created with ID: {PropertyId}", property.Id);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -81,69 +165,100 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Uploads a main image for a property
+        /// </summary>
         public async Task<ResponseModel> UploadPropertyMainImage(int propertyId, IFormFile file, string userId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var property = await context.Properties
-                    .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved);
-
-                if (property == null)
+                if (file == null || file.Length == 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found.";
+                    response.ResponseInfo.Message = "No file was uploaded.";
                     return response;
                 }
 
-                // Delete old main image if exists
-                if (property.MainImageId.HasValue)
-                {
-                    var oldImage = await context.CdnFileMetadata
-                        .FirstOrDefaultAsync(f => f.Id == property.MainImageId.Value);
-
-                    if (oldImage != null)
-                    {
-                        await _cdnService.DeleteFileAsync(oldImage.Url);
-                    }
-                }
-
-                // Upload new image with base64 backup
-                var cdnPath = $"company-{property.CompanyId}/properties/{property.Id}/images";
-                string cdnUrl;
-
-                using (var stream = file.OpenReadStream())
-                {
-                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
-                        stream,
-                        file.FileName,
-                        file.ContentType,
-                        "properties",
-                        cdnPath
-                    );
-                }
-
-                // Get the file metadata
-                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
-                if (fileMetadata != null)
-                {
-                    property.MainImageId = fileMetadata.Id;
-                    property.UpdatedDate = DateTime.Now;
-                    property.UpdatedBy = userId;
-
-                    await context.SaveChangesAsync();
-
-                    response.Response = new { ImageUrl = cdnUrl, FileId = fileMetadata.Id };
-                    response.ResponseInfo.Success = true;
-                    response.ResponseInfo.Message = "Main image uploaded successfully.";
-                }
-                else
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Failed to save image metadata.";
+                    response.ResponseInfo.Message = "File type not allowed. Please upload a JPG, JPEG, PNG or GIF file.";
+                    return response;
+                }
+
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    var property = await context.Properties
+                        .FirstOrDefaultAsync(p => p.Id == propertyId && !p.IsRemoved);
+
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found.";
+                        return response;
+                    }
+
+                    // Delete old main image if exists
+                    if (property.MainImageId.HasValue)
+                    {
+                        var oldImage = await context.CdnFileMetadata
+                            .FirstOrDefaultAsync(f => f.Id == property.MainImageId.Value);
+
+                        if (oldImage != null)
+                        {
+                            await _cdnService.DeleteFileAsync(oldImage.Url);
+                        }
+                    }
+
+                    // Upload new image with base64 backup
+                    var cdnPath = $"company-{property.CompanyId}/properties/{property.Id}/images";
+                    string cdnUrl;
+
+                    using (var stream = file.OpenReadStream())
+                    {
+                        cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                            stream,
+                            file.FileName,
+                            file.ContentType,
+                            "properties",
+                            cdnPath
+                        );
+                    }
+
+                    // Get the file metadata
+                    var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                    if (fileMetadata != null)
+                    {
+                        property.MainImageId = fileMetadata.Id;
+                        property.UpdatedDate = DateTime.Now;
+                        property.UpdatedBy = userId;
+
+                        await context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        response.Response = new { ImageUrl = cdnUrl, FileId = fileMetadata.Id };
+                        response.ResponseInfo.Success = true;
+                        response.ResponseInfo.Message = "Main image uploaded successfully.";
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Failed to save image metadata.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
             catch (Exception ex)
@@ -156,6 +271,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets a property by ID
+        /// </summary>
         public async Task<ResponseModel> GetPropertyById(int id, int companyId)
         {
             ResponseModel response = new();
@@ -171,20 +289,23 @@ namespace Roovia.Services
                     .Include(p => p.Status)
                     .Include(p => p.CommissionType)
                     .Include(p => p.MainImage)
-                    .Include(p => p.Beneficiaries)
+                    .Include(p => p.PropertyType)
+                    .Include(p => p.Beneficiaries.Where(b => b.IsActive))
                         .ThenInclude(b => b.BenType)
                     .Include(p => p.Beneficiaries)
                         .ThenInclude(b => b.BenStatus)
-                    .Include(p => p.Tenants)
+                    .Include(p => p.Tenants.Where(t => !t.IsRemoved))
                         .ThenInclude(t => t.Status)
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.LeaseDocument)
-                    .Include(p => p.Inspections)
-                        .ThenInclude(i => i.ReportDocument)
-                    .Include(p => p.MaintenanceTickets)
-                    .Include(p => p.Payments)
-                        .ThenInclude(p => p.ReceiptDocument)
+                    .Include(p => p.Inspections.OrderByDescending(i => i.ScheduledDate).Take(5))
+                        .ThenInclude(i => i.Status)
+                    .Include(p => p.MaintenanceTickets.OrderByDescending(mt => mt.CreatedOn).Take(5))
+                        .ThenInclude(mt => mt.Status)
+                    .Include(p => p.Payments.OrderByDescending(pm => pm.DueDate).Take(5))
+                        .ThenInclude(pm => pm.Status)
                     .Where(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync();
 
                 if (property != null)
@@ -209,67 +330,135 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Updates an existing property
+        /// </summary>
         public async Task<ResponseModel> UpdateProperty(int id, Property updatedProperty, int companyId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var property = await context.Properties
-                    .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved);
-
-                if (property == null)
+                // Validate required fields
+                if (string.IsNullOrEmpty(updatedProperty.PropertyName))
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found.";
+                    response.ResponseInfo.Message = "Property name is required.";
                     return response;
                 }
 
-                // Ensure dates are valid
-                updatedProperty.EnsureValidDates();
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Update property fields
-                property.OwnerId = updatedProperty.OwnerId;
-                property.PropertyName = updatedProperty.PropertyName;
-                property.PropertyCode = updatedProperty.PropertyCode;
-                property.CustomerRef = updatedProperty.CustomerRef;
-                property.RentalAmount = updatedProperty.RentalAmount;
-                property.PropertyAccountBalance = updatedProperty.PropertyAccountBalance;
-                property.StatusId = updatedProperty.StatusId;
-                property.ServiceLevel = updatedProperty.ServiceLevel;
-                property.HasTenant = updatedProperty.HasTenant;
-                property.LeaseOriginalStartDate = updatedProperty.LeaseOriginalStartDate;
-                property.CurrentLeaseStartDate = updatedProperty.CurrentLeaseStartDate;
-                property.LeaseEndDate = updatedProperty.LeaseEndDate;
-                property.CurrentTenantId = updatedProperty.CurrentTenantId;
-                property.CommissionTypeId = updatedProperty.CommissionTypeId;
-                property.CommissionValue = updatedProperty.CommissionValue;
-                property.PaymentsEnabled = updatedProperty.PaymentsEnabled;
-                property.PaymentsVerify = updatedProperty.PaymentsVerify;
-                property.Address = updatedProperty.Address;
-                property.Tags = updatedProperty.Tags;
-                property.UpdatedDate = DateTime.Now;
-                property.UpdatedBy = updatedProperty.UpdatedBy;
+                try
+                {
+                    var property = await context.Properties
+                        .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved);
 
-                await context.SaveChangesAsync();
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found.";
+                        return response;
+                    }
 
-                // Reload with related data
-                var updatedResult = await context.Properties
-                    .Include(p => p.Owner)
-                    .Include(p => p.Status)
-                    .Include(p => p.CommissionType)
-                    .Include(p => p.MainImage)
-                    .Include(p => p.Beneficiaries)
-                    .Include(p => p.Tenants)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                    // Check if property code already exists (if changed)
+                    if (!string.IsNullOrEmpty(updatedProperty.PropertyCode) &&
+                        updatedProperty.PropertyCode != property.PropertyCode)
+                    {
+                        var existingPropertyWithCode = await context.Properties
+                            .FirstOrDefaultAsync(p => p.PropertyCode == updatedProperty.PropertyCode &&
+                                                    p.CompanyId == companyId &&
+                                                    !p.IsRemoved &&
+                                                    p.Id != id);
 
-                response.Response = updatedResult;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Property updated successfully.";
+                        if (existingPropertyWithCode != null)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "A property with this code already exists.";
+                            return response;
+                        }
+                    }
 
-                _logger.LogInformation("Property updated: {PropertyId}", id);
+                    // Validate address
+                    if (updatedProperty.Address != null)
+                    {
+                        var addressValidator = new AddressValidator();
+                        var validationResult = addressValidator.Validate(updatedProperty.Address);
+                        if (!validationResult.IsValid)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                            return response;
+                        }
+                    }
+
+                    // Ensure dates are valid
+                    updatedProperty.EnsureValidDates();
+
+                    // Update property fields
+                    property.PropertyName = updatedProperty.PropertyName;
+                    property.PropertyCode = updatedProperty.PropertyCode;
+                    property.CustomerRef = updatedProperty.CustomerRef;
+                    property.PropertyTypeId = updatedProperty.PropertyTypeId;
+                    property.RentalAmount = updatedProperty.RentalAmount;
+                    property.PropertyAccountBalance = updatedProperty.PropertyAccountBalance;
+                    property.StatusId = updatedProperty.StatusId;
+                    property.ServiceLevel = updatedProperty.ServiceLevel;
+                    property.HasTenant = updatedProperty.HasTenant;
+                    property.LeaseOriginalStartDate = updatedProperty.LeaseOriginalStartDate;
+                    property.CurrentLeaseStartDate = updatedProperty.CurrentLeaseStartDate;
+                    property.LeaseEndDate = updatedProperty.LeaseEndDate;
+                    property.CurrentTenantId = updatedProperty.CurrentTenantId;
+                    property.CommissionTypeId = updatedProperty.CommissionTypeId;
+                    property.CommissionValue = updatedProperty.CommissionValue;
+                    property.PaymentsEnabled = updatedProperty.PaymentsEnabled;
+                    property.PaymentsVerify = updatedProperty.PaymentsVerify;
+                    property.Address = updatedProperty.Address;
+                    property.Tags = updatedProperty.Tags;
+                    property.UpdatedDate = DateTime.Now;
+                    property.UpdatedBy = updatedProperty.UpdatedBy;
+
+                    // Only update OwnerId if it was changed and is valid
+                    if (updatedProperty.OwnerId > 0 && updatedProperty.OwnerId != property.OwnerId)
+                    {
+                        // Verify new owner exists
+                        var newOwner = await context.PropertyOwners
+                            .FirstOrDefaultAsync(o => o.Id == updatedProperty.OwnerId && !o.IsRemoved);
+
+                        if (newOwner == null)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "The specified new property owner does not exist.";
+                            return response;
+                        }
+
+                        property.OwnerId = updatedProperty.OwnerId;
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // Reload with related data
+                    var updatedResult = await context.Properties
+                        .Include(p => p.Owner)
+                        .Include(p => p.Status)
+                        .Include(p => p.CommissionType)
+                        .Include(p => p.MainImage)
+                        .Include(p => p.PropertyType)
+                        .FirstOrDefaultAsync(p => p.Id == id);
+
+                    response.Response = updatedResult;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property updated successfully.";
+
+                    _logger.LogInformation("Property updated: {PropertyId}", id);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -281,6 +470,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Deletes a property (soft delete)
+        /// </summary>
         public async Task<ResponseModel> DeleteProperty(int id, int companyId, ApplicationUser user)
         {
             ResponseModel response = new();
@@ -288,39 +480,55 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var property = await context.Properties
-                    .Include(p => p.Tenants)
-                    .Include(p => p.Beneficiaries)
-                    .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved);
-
-                if (property == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found.";
-                    return response;
-                }
+                    var property = await context.Properties
+                        .Include(p => p.Tenants.Where(t => !t.IsRemoved))
+                        .Include(p => p.Beneficiaries.Where(b => b.IsActive))
+                        .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved);
 
-                // Check if property has active tenants
-                if (property.Tenants.Any(t => !t.IsRemoved && t.StatusId == 1)) // Assuming 1 is Active status
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found.";
+                        return response;
+                    }
+
+                    // Check if property has active tenants
+                    if (property.Tenants.Any(t => t.StatusId == 1)) // Active tenants
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Cannot delete property with active tenants.";
+                        return response;
+                    }
+
+                    // Soft delete
+                    property.IsRemoved = true;
+                    property.RemovedDate = DateTime.Now;
+                    property.RemovedBy = user?.Id;
+
+                    // Mark beneficiaries as inactive
+                    foreach (var beneficiary in property.Beneficiaries)
+                    {
+                        beneficiary.IsActive = false;
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    response.Response = property;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property deleted successfully.";
+
+                    _logger.LogInformation("Property soft deleted: {PropertyId} by {UserId}", id, user?.Id);
+                }
+                catch (Exception ex)
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Cannot delete property with active tenants.";
-                    return response;
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Soft delete
-                property.IsRemoved = true;
-                property.RemovedDate = DateTime.Now;
-                property.RemovedBy = user?.Id;
-
-                await context.SaveChangesAsync();
-
-                response.Response = property;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Property deleted successfully.";
-
-                _logger.LogInformation("Property soft deleted: {PropertyId} by {UserId}", id, user?.Id);
             }
             catch (Exception ex)
             {
@@ -332,6 +540,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets all properties for a company
+        /// </summary>
         public async Task<ResponseModel> GetAllProperties(int companyId)
         {
             ResponseModel response = new();
@@ -345,8 +556,10 @@ namespace Roovia.Services
                     .Include(p => p.Status)
                     .Include(p => p.CommissionType)
                     .Include(p => p.MainImage)
+                    .Include(p => p.PropertyType)
                     .Where(p => p.CompanyId == companyId && !p.IsRemoved)
                     .OrderBy(p => p.PropertyCode)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 response.Response = properties;
@@ -365,6 +578,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets properties for a specific owner
+        /// </summary>
         public async Task<ResponseModel> GetPropertiesByOwner(int ownerId)
         {
             ResponseModel response = new();
@@ -377,9 +593,11 @@ namespace Roovia.Services
                     .Include(p => p.Status)
                     .Include(p => p.CommissionType)
                     .Include(p => p.MainImage)
-                    .Include(p => p.Tenants.Where(t => !t.IsRemoved))
+                    .Include(p => p.PropertyType)
+                    .Include(p => p.Tenants.Where(t => !t.IsRemoved && t.StatusId == 1))
                     .Where(p => p.OwnerId == ownerId && !p.IsRemoved)
                     .OrderBy(p => p.PropertyCode)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 response.Response = properties;
@@ -398,6 +616,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets properties for a specific branch
+        /// </summary>
         public async Task<ResponseModel> GetPropertiesByBranch(int branchId)
         {
             ResponseModel response = new();
@@ -411,8 +632,10 @@ namespace Roovia.Services
                     .Include(p => p.Status)
                     .Include(p => p.CommissionType)
                     .Include(p => p.MainImage)
+                    .Include(p => p.PropertyType)
                     .Where(p => p.BranchId == branchId && !p.IsRemoved)
                     .OrderBy(p => p.PropertyCode)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 response.Response = properties;
@@ -431,6 +654,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets properties with tenants
+        /// </summary>
         public async Task<ResponseModel> GetPropertiesWithTenants(int companyId)
         {
             ResponseModel response = new();
@@ -443,16 +669,16 @@ namespace Roovia.Services
                     .Include(p => p.Owner)
                     .Include(p => p.Status)
                     .Include(p => p.MainImage)
-                    .Include(p => p.Tenants.Where(t => !t.IsRemoved))
+                    .Include(p => p.PropertyType)
+                    .Include(p => p.Tenants.Where(t => !t.IsRemoved && t.StatusId == 1))
                         .ThenInclude(t => t.Status)
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.EmailAddresses.Where(e => e.IsActive))
                     .Include(p => p.Tenants)
                         .ThenInclude(t => t.ContactNumbers.Where(c => c.IsActive))
-                    .Include(p => p.Tenants)
-                        .ThenInclude(t => t.LeaseDocument)
                     .Where(p => p.CompanyId == companyId && !p.IsRemoved && p.HasTenant)
                     .OrderBy(p => p.PropertyCode)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 response.Response = properties;
@@ -471,6 +697,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets vacant properties
+        /// </summary>
         public async Task<ResponseModel> GetVacantProperties(int companyId)
         {
             ResponseModel response = new();
@@ -483,8 +712,10 @@ namespace Roovia.Services
                     .Include(p => p.Owner)
                     .Include(p => p.Status)
                     .Include(p => p.MainImage)
+                    .Include(p => p.PropertyType)
                     .Where(p => p.CompanyId == companyId && !p.IsRemoved && !p.HasTenant)
                     .OrderBy(p => p.PropertyCode)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 response.Response = properties;
@@ -503,6 +734,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Updates the status of a property
+        /// </summary>
         public async Task<ResponseModel> UpdatePropertyStatus(int propertyId, int statusId, string userId)
         {
             ResponseModel response = new();
@@ -518,6 +752,17 @@ namespace Roovia.Services
                 {
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "Property not found.";
+                    return response;
+                }
+
+                // Validate status exists
+                var status = await context.PropertyStatusTypes
+                    .FirstOrDefaultAsync(s => s.Id == statusId && s.IsActive);
+
+                if (status == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "The specified status does not exist or is inactive.";
                     return response;
                 }
 
@@ -542,6 +787,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets property statistics for a company
+        /// </summary>
         public async Task<ResponseModel> GetPropertyStatistics(int companyId)
         {
             ResponseModel response = new();
@@ -550,8 +798,10 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
+                // Optimize query for statistics
                 var properties = await context.Properties
                     .Where(p => p.CompanyId == companyId && !p.IsRemoved)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 var statistics = new
@@ -559,10 +809,23 @@ namespace Roovia.Services
                     TotalProperties = properties.Count,
                     OccupiedProperties = properties.Count(p => p.HasTenant),
                     VacantProperties = properties.Count(p => !p.HasTenant),
-                    TotalMonthlyRental = properties.Where(p => p.HasTenant).Sum(p => p.RentalAmount),
-                    PropertiesByStatus = properties.GroupBy(p => p.StatusId)
+                    TotalMonthlyRental = properties
+                        .Where(p => p.HasTenant)
+                        .Sum(p => p.RentalAmount),
+                    AverageRental = properties.Count > 0 ?
+                        properties
+                            .Where(p => p.HasTenant)
+                            .Average(p => p.RentalAmount) : 0,
+                    PropertiesByStatus = properties
+                        .GroupBy(p => p.StatusId)
                         .Select(g => new { StatusId = g.Key, Count = g.Count() })
-                        .ToList()
+                        .ToList(),
+                    PropertiesByType = properties
+                        .GroupBy(p => p.PropertyTypeId)
+                        .Select(g => new { TypeId = g.Key, Count = g.Count() })
+                        .ToList(),
+                    OccupancyRate = properties.Count > 0 ?
+                        Math.Round(100.0 * properties.Count(p => p.HasTenant) / properties.Count, 2) : 0
                 };
 
                 response.Response = statistics;
@@ -579,12 +842,28 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets document folders for a property
+        /// </summary>
         public async Task<ResponseModel> GetPropertyDocumentFolders(int propertyId, int companyId)
         {
             ResponseModel response = new();
 
             try
             {
+                // Verify property exists
+                using var context = await _contextFactory.CreateDbContextAsync();
+                var property = await context.Properties
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == propertyId && p.CompanyId == companyId && !p.IsRemoved);
+
+                if (property == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property not found.";
+                    return response;
+                }
+
                 var cdnPath = $"company-{companyId}/properties/{propertyId}/documents";
                 var folders = await _cdnService.GetFoldersAsync("properties", cdnPath);
 
@@ -602,12 +881,34 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets CDN files for a property
+        /// </summary>
         public async Task<ResponseModel> GetPropertyCdnFiles(int propertyId, int companyId, string category = "images")
         {
             ResponseModel response = new();
 
             try
             {
+                // Verify property exists
+                using var context = await _contextFactory.CreateDbContextAsync();
+                var property = await context.Properties
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == propertyId && p.CompanyId == companyId && !p.IsRemoved);
+
+                if (property == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Property not found.";
+                    return response;
+                }
+
+                // Validate category
+                if (!new[] { "images", "documents", "inspections" }.Contains(category))
+                {
+                    category = "images"; // Default to images if invalid category
+                }
+
                 var cdnPath = $"company-{companyId}/properties/{propertyId}/{category}";
                 var files = await _cdnService.GetFilesAsync("properties", cdnPath);
 
@@ -623,6 +924,41 @@ namespace Roovia.Services
             }
 
             return response;
+        }
+
+        // Helper methods
+        private async Task<string> GenerateUniquePropertyCode(ApplicationDbContext context, int companyId)
+        {
+            // Generate unique property code based on company prefix and sequential number
+            var company = await context.Companies
+                .FirstOrDefaultAsync(c => c.Id == companyId);
+
+            string prefix = "P";
+            if (company != null && !string.IsNullOrEmpty(company.Name))
+            {
+                // Use first letter of company name as prefix
+                prefix = company.Name.Substring(0, 1).ToUpper();
+            }
+
+            // Get highest existing code number for this prefix
+            var highestCode = await context.Properties
+                .Where(p => p.CompanyId == companyId && p.PropertyCode.StartsWith(prefix))
+                .Select(p => p.PropertyCode)
+                .OrderByDescending(p => p)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(highestCode))
+            {
+                // Extract number from highest code
+                var match = System.Text.RegularExpressions.Regex.Match(highestCode, @"\d+");
+                if (match.Success && int.TryParse(match.Value, out int highestNumber))
+                {
+                    nextNumber = highestNumber + 1;
+                }
+            }
+
+            return $"{prefix}{nextNumber:D4}";
         }
     }
 }

@@ -10,10 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Roovia.Services.General;
+using System.Transactions;
 
 namespace Roovia.Services
 {
+    /// <summary>
+    /// Service for handling maintenance-related operations
+    /// </summary>
     public class MaintenanceService : IMaintenance
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
@@ -27,12 +30,15 @@ namespace Roovia.Services
             ICdnService cdnService,
             IEmailService emailService)
         {
-            _contextFactory = contextFactory;
-            _logger = logger;
-            _cdnService = cdnService;
-            _emailService = emailService;
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cdnService = cdnService ?? throw new ArgumentNullException(nameof(cdnService));
+            _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         }
 
+        /// <summary>
+        /// Creates a new maintenance ticket for a property
+        /// </summary>
         public async Task<ResponseModel> CreateMaintenanceTicket(MaintenanceTicket ticket, int companyId)
         {
             ResponseModel response = new();
@@ -40,52 +46,79 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Verify the property exists and belongs to the company
-                var property = await context.Properties
-                    .FirstOrDefaultAsync(p => p.Id == ticket.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
-
-                if (property == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found or does not belong to the company.";
-                    return response;
+                    // Validate ticket data
+                    if (string.IsNullOrEmpty(ticket.Title))
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Ticket title is required.";
+                        return response;
+                    }
+
+                    // Verify the property exists and belongs to the company
+                    var property = await context.Properties
+                        .FirstOrDefaultAsync(p => p.Id == ticket.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
+
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found or does not belong to the company.";
+                        return response;
+                    }
+
+                    // Generate unique ticket number
+                    ticket.TicketNumber = await GenerateUniqueTicketNumber(context);
+                    ticket.CompanyId = companyId;
+                    ticket.CreatedOn = DateTime.Now;
+
+                    // Set default status if not provided
+                    if (ticket.StatusId == 0)
+                        ticket.StatusId = 1; // Open status
+
+                    // Add the ticket
+                    await context.MaintenanceTickets.AddAsync(ticket);
+                    await context.SaveChangesAsync();
+
+                    // Create CDN folder structure for ticket
+                    try
+                    {
+                        var cdnFolderPath = $"company-{companyId}/maintenance/{ticket.Id}";
+                        await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "images");
+                        await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "documents");
+                        await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "invoices");
+                    }
+                    catch (Exception cdnEx)
+                    {
+                        // Log CDN error but continue with transaction
+                        _logger.LogWarning(cdnEx, "Error creating CDN folders for maintenance ticket {TicketId}. Continuing with creation.", ticket.Id);
+                    }
+
+                    // Reload with related data
+                    var createdTicket = await GetTicketWithDetails(context, ticket.Id);
+
+                    // Send notification if tenant is affected
+                    if (ticket.RequiresTenantAccess && ticket.TenantId.HasValue)
+                    {
+                        await SendTenantNotification(createdTicket);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    response.Response = createdTicket;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Maintenance ticket created successfully.";
+
+                    _logger.LogInformation("Maintenance ticket created with ID: {TicketId} for property {PropertyId}",
+                        ticket.Id, ticket.PropertyId);
                 }
-
-                // Generate unique ticket number
-                ticket.TicketNumber = await GenerateUniqueTicketNumber(context);
-                ticket.CompanyId = companyId;
-                ticket.CreatedOn = DateTime.Now;
-
-                // Set default status if not provided
-                if (ticket.StatusId == 0)
-                    ticket.StatusId = 1; // Open status
-
-                // Add the ticket
-                await context.MaintenanceTickets.AddAsync(ticket);
-                await context.SaveChangesAsync();
-
-                // Create CDN folder structure for ticket
-                var cdnFolderPath = $"company-{companyId}/maintenance/{ticket.Id}";
-                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "images");
-                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "documents");
-                await _cdnService.CreateFolderAsync("maintenance", cdnFolderPath, "invoices");
-
-                // Reload with related data
-                var createdTicket = await GetTicketWithDetails(context, ticket.Id);
-
-                // Send notification if tenant is affected
-                if (ticket.RequiresTenantAccess && ticket.TenantId.HasValue)
+                catch (Exception ex)
                 {
-                    await SendTenantNotification(createdTicket);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                response.Response = createdTicket;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Maintenance ticket created successfully.";
-
-                _logger.LogInformation("Maintenance ticket created with ID: {TicketId} for property {PropertyId}",
-                    ticket.Id, ticket.PropertyId);
             }
             catch (Exception ex)
             {
@@ -97,69 +130,100 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Uploads a receipt for a maintenance expense
+        /// </summary>
         public async Task<ResponseModel> UploadMaintenanceExpenseReceipt(int expenseId, IFormFile file, string userId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var expense = await context.MaintenanceExpenses
-                    .Include(e => e.MaintenanceTicket)
-                    .FirstOrDefaultAsync(e => e.Id == expenseId);
-
-                if (expense == null)
+                if (file == null || file.Length == 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Expense not found.";
+                    response.ResponseInfo.Message = "No file was uploaded.";
                     return response;
                 }
 
-                // Delete old receipt if exists
-                if (expense.ReceiptDocumentId.HasValue)
-                {
-                    var oldReceipt = await context.CdnFileMetadata
-                        .FirstOrDefaultAsync(f => f.Id == expense.ReceiptDocumentId.Value);
-
-                    if (oldReceipt != null)
-                    {
-                        await _cdnService.DeleteFileAsync(oldReceipt.Url);
-                    }
-                }
-
-                // Upload new receipt with base64 backup
-                var cdnPath = $"company-{expense.MaintenanceTicket.CompanyId}/maintenance/{expense.MaintenanceTicketId}/invoices";
-                string cdnUrl;
-
-                using (var stream = file.OpenReadStream())
-                {
-                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
-                        stream,
-                        file.FileName,
-                        file.ContentType,
-                        "maintenance",
-                        cdnPath
-                    );
-                }
-
-                // Get the file metadata
-                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
-                if (fileMetadata != null)
-                {
-                    expense.ReceiptDocumentId = fileMetadata.Id;
-                    expense.IsApproved = true; // Auto-approve if receipt is uploaded
-
-                    await context.SaveChangesAsync();
-
-                    response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
-                    response.ResponseInfo.Success = true;
-                    response.ResponseInfo.Message = "Receipt uploaded successfully.";
-                }
-                else
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                    response.ResponseInfo.Message = "File type not allowed. Please upload a JPG, PNG, or PDF file.";
+                    return response;
+                }
+
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    var expense = await context.MaintenanceExpenses
+                        .Include(e => e.MaintenanceTicket)
+                        .FirstOrDefaultAsync(e => e.Id == expenseId);
+
+                    if (expense == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Expense not found.";
+                        return response;
+                    }
+
+                    // Delete old receipt if exists
+                    if (expense.ReceiptDocumentId.HasValue)
+                    {
+                        var oldReceipt = await context.CdnFileMetadata
+                            .FirstOrDefaultAsync(f => f.Id == expense.ReceiptDocumentId.Value);
+
+                        if (oldReceipt != null)
+                        {
+                            await _cdnService.DeleteFileAsync(oldReceipt.Url);
+                        }
+                    }
+
+                    // Upload new receipt with base64 backup
+                    var cdnPath = $"company-{expense.MaintenanceTicket.CompanyId}/maintenance/{expense.MaintenanceTicketId}/invoices";
+                    string cdnUrl;
+
+                    using (var stream = file.OpenReadStream())
+                    {
+                        cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                            stream,
+                            file.FileName,
+                            file.ContentType,
+                            "maintenance",
+                            cdnPath
+                        );
+                    }
+
+                    // Get the file metadata
+                    var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                    if (fileMetadata != null)
+                    {
+                        expense.ReceiptDocumentId = fileMetadata.Id;
+                        expense.IsApproved = true; // Auto-approve if receipt is uploaded
+
+                        await context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
+                        response.ResponseInfo.Success = true;
+                        response.ResponseInfo.Message = "Receipt uploaded successfully.";
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
             catch (Exception ex)
@@ -172,6 +236,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets a maintenance ticket by ID
+        /// </summary>
         public async Task<ResponseModel> GetMaintenanceTicketById(int id, int companyId)
         {
             ResponseModel response = new();
@@ -197,6 +264,7 @@ namespace Roovia.Services
                     .Include(t => t.Expenses)
                         .ThenInclude(e => e.ReceiptDocument)
                     .Where(t => t.Id == id && t.CompanyId == companyId)
+                    .AsNoTracking() // Improves read-only query performance
                     .FirstOrDefaultAsync();
 
                 if (ticket != null)
@@ -221,6 +289,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Updates an existing maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> UpdateMaintenanceTicket(int id, MaintenanceTicket updatedTicket, int companyId)
         {
             ResponseModel response = new();
@@ -228,65 +299,84 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var ticket = await context.MaintenanceTickets
-                    .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId);
-
-                if (ticket == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Maintenance ticket not found.";
-                    return response;
+                    // Validate ticket data
+                    if (string.IsNullOrEmpty(updatedTicket.Title))
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Ticket title is required.";
+                        return response;
+                    }
+
+                    var ticket = await context.MaintenanceTickets
+                        .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId);
+
+                    if (ticket == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Maintenance ticket not found.";
+                        return response;
+                    }
+
+                    // Track status changes for notifications
+                    var oldStatusId = ticket.StatusId;
+
+                    // Update ticket fields
+                    ticket.Title = updatedTicket.Title;
+                    ticket.Description = updatedTicket.Description;
+                    ticket.CategoryId = updatedTicket.CategoryId;
+                    ticket.PriorityId = updatedTicket.PriorityId;
+                    ticket.StatusId = updatedTicket.StatusId;
+                    ticket.AssignedToUserId = updatedTicket.AssignedToUserId;
+                    ticket.AssignedToName = updatedTicket.AssignedToName;
+                    ticket.VendorId = updatedTicket.VendorId;
+                    ticket.ScheduledDate = updatedTicket.ScheduledDate;
+                    ticket.CompletedDate = updatedTicket.CompletedDate;
+                    ticket.EstimatedDuration = updatedTicket.EstimatedDuration;
+                    ticket.ActualDuration = updatedTicket.ActualDuration;
+                    ticket.EstimatedCost = updatedTicket.EstimatedCost;
+                    ticket.ActualCost = updatedTicket.ActualCost;
+                    ticket.TenantResponsible = updatedTicket.TenantResponsible;
+                    ticket.RequiresApproval = updatedTicket.RequiresApproval;
+                    ticket.IsApproved = updatedTicket.IsApproved;
+                    ticket.ApprovedBy = updatedTicket.ApprovedBy;
+                    ticket.ApprovalDate = updatedTicket.ApprovalDate;
+                    ticket.RequiresTenantAccess = updatedTicket.RequiresTenantAccess;
+                    ticket.TenantNotified = updatedTicket.TenantNotified;
+                    ticket.TenantNotificationDate = updatedTicket.TenantNotificationDate;
+                    ticket.AccessInstructions = updatedTicket.AccessInstructions;
+                    ticket.CompletionNotes = updatedTicket.CompletionNotes;
+                    ticket.IssueResolved = updatedTicket.IssueResolved;
+                    ticket.UpdatedDate = DateTime.Now;
+                    ticket.UpdatedBy = updatedTicket.UpdatedBy;
+
+                    await context.SaveChangesAsync();
+
+                    // Send notifications for status changes
+                    if (oldStatusId != updatedTicket.StatusId)
+                    {
+                        await HandleStatusChangeNotifications(ticket, oldStatusId, updatedTicket.StatusId);
+                    }
+
+                    // Reload with related data
+                    var updatedResult = await GetTicketWithDetails(context, id);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = updatedResult;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Maintenance ticket updated successfully.";
+
+                    _logger.LogInformation("Maintenance ticket updated: {TicketId}", id);
                 }
-
-                // Track status changes for notifications
-                var oldStatusId = ticket.StatusId;
-
-                // Update ticket fields
-                ticket.Title = updatedTicket.Title;
-                ticket.Description = updatedTicket.Description;
-                ticket.CategoryId = updatedTicket.CategoryId;
-                ticket.PriorityId = updatedTicket.PriorityId;
-                ticket.StatusId = updatedTicket.StatusId;
-                ticket.AssignedToUserId = updatedTicket.AssignedToUserId;
-                ticket.AssignedToName = updatedTicket.AssignedToName;
-                ticket.VendorId = updatedTicket.VendorId;
-                ticket.ScheduledDate = updatedTicket.ScheduledDate;
-                ticket.CompletedDate = updatedTicket.CompletedDate;
-                ticket.EstimatedDuration = updatedTicket.EstimatedDuration;
-                ticket.ActualDuration = updatedTicket.ActualDuration;
-                ticket.EstimatedCost = updatedTicket.EstimatedCost;
-                ticket.ActualCost = updatedTicket.ActualCost;
-                ticket.TenantResponsible = updatedTicket.TenantResponsible;
-                ticket.RequiresApproval = updatedTicket.RequiresApproval;
-                ticket.IsApproved = updatedTicket.IsApproved;
-                ticket.ApprovedBy = updatedTicket.ApprovedBy;
-                ticket.ApprovalDate = updatedTicket.ApprovalDate;
-                ticket.RequiresTenantAccess = updatedTicket.RequiresTenantAccess;
-                ticket.TenantNotified = updatedTicket.TenantNotified;
-                ticket.TenantNotificationDate = updatedTicket.TenantNotificationDate;
-                ticket.AccessInstructions = updatedTicket.AccessInstructions;
-                ticket.CompletionNotes = updatedTicket.CompletionNotes;
-                ticket.IssueResolved = updatedTicket.IssueResolved;
-                ticket.UpdatedDate = DateTime.Now;
-                ticket.UpdatedBy = updatedTicket.UpdatedBy;
-
-                await context.SaveChangesAsync();
-
-                // Send notifications for status changes
-                if (oldStatusId != updatedTicket.StatusId)
+                catch (Exception ex)
                 {
-                    await HandleStatusChangeNotifications(ticket, oldStatusId, updatedTicket.StatusId);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Reload with related data
-                var updatedResult = await GetTicketWithDetails(context, id);
-
-                response.Response = updatedResult;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Maintenance ticket updated successfully.";
-
-                _logger.LogInformation("Maintenance ticket updated: {TicketId}", id);
             }
             catch (Exception ex)
             {
@@ -298,6 +388,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Deletes a maintenance ticket and its associated data
+        /// </summary>
         public async Task<ResponseModel> DeleteMaintenanceTicket(int id, int companyId, ApplicationUser user)
         {
             ResponseModel response = new();
@@ -305,37 +398,55 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var ticket = await context.MaintenanceTickets
-                    .Include(t => t.Comments)
-                    .Include(t => t.Expenses)
-                        .ThenInclude(e => e.ReceiptDocument)
-                    .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId);
-
-                if (ticket == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Maintenance ticket not found.";
-                    return response;
-                }
+                    var ticket = await context.MaintenanceTickets
+                        .Include(t => t.Comments)
+                        .Include(t => t.Expenses)
+                            .ThenInclude(e => e.ReceiptDocument)
+                        .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId);
 
-                // Delete associated documents from CDN
-                foreach (var expense in ticket.Expenses.Where(e => e.ReceiptDocument != null))
+                    if (ticket == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Maintenance ticket not found.";
+                        return response;
+                    }
+
+                    // Delete associated documents from CDN
+                    foreach (var expense in ticket.Expenses.Where(e => e.ReceiptDocument != null))
+                    {
+                        try
+                        {
+                            await _cdnService.DeleteFileAsync(expense.ReceiptDocument.Url);
+                        }
+                        catch (Exception cdnEx)
+                        {
+                            // Log but continue with deletion
+                            _logger.LogWarning(cdnEx, "Failed to delete CDN file for expense {ExpenseId}", expense.Id);
+                        }
+                    }
+
+                    // Delete related data
+                    context.MaintenanceComments.RemoveRange(ticket.Comments);
+                    context.MaintenanceExpenses.RemoveRange(ticket.Expenses);
+                    context.MaintenanceTickets.Remove(ticket);
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Maintenance ticket deleted successfully.";
+
+                    _logger.LogInformation("Maintenance ticket deleted: {TicketId} by {UserId}", id, user?.Id);
+                }
+                catch (Exception ex)
                 {
-                    await _cdnService.DeleteFileAsync(expense.ReceiptDocument.Url);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Delete related data
-                context.MaintenanceComments.RemoveRange(ticket.Comments);
-                context.MaintenanceExpenses.RemoveRange(ticket.Expenses);
-                context.MaintenanceTickets.Remove(ticket);
-
-                await context.SaveChangesAsync();
-
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Maintenance ticket deleted successfully.";
-
-                _logger.LogInformation("Maintenance ticket deleted: {TicketId} by {UserId}", id, user?.Id);
             }
             catch (Exception ex)
             {
@@ -347,6 +458,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets all maintenance tickets for a property
+        /// </summary>
         public async Task<ResponseModel> GetMaintenanceTicketsByProperty(int propertyId, int companyId)
         {
             ResponseModel response = new();
@@ -362,6 +476,7 @@ namespace Roovia.Services
                     .Include(t => t.Vendor)
                     .Where(t => t.PropertyId == propertyId && t.CompanyId == companyId)
                     .OrderByDescending(t => t.CreatedOn)
+                    .AsNoTracking() // Improves read-only query performance
                     .ToListAsync();
 
                 response.Response = tickets;
@@ -381,12 +496,22 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Adds a comment to a maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> AddComment(int ticketId, MaintenanceComment comment, string userId)
         {
             ResponseModel response = new();
 
             try
             {
+                if (string.IsNullOrEmpty(comment.Comment))
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Comment text is required.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
 
                 var ticket = await context.MaintenanceTickets
@@ -422,52 +547,81 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Adds an expense to a maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> AddExpense(int ticketId, MaintenanceExpense expense)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var ticket = await context.MaintenanceTickets
-                    .FirstOrDefaultAsync(t => t.Id == ticketId);
-
-                if (ticket == null)
+                // Validate expense data
+                if (string.IsNullOrEmpty(expense.Description))
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Maintenance ticket not found.";
+                    response.ResponseInfo.Message = "Expense description is required.";
                     return response;
                 }
 
-                expense.MaintenanceTicketId = ticketId;
-                expense.CreatedOn = DateTime.Now;
+                if (expense.Amount <= 0)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Expense amount must be greater than zero.";
+                    return response;
+                }
 
-                await context.MaintenanceExpenses.AddAsync(expense);
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Update ticket actual cost
-                var totalExpenses = await context.MaintenanceExpenses
-                    .Where(e => e.MaintenanceTicketId == ticketId)
-                    .SumAsync(e => e.Amount);
+                try
+                {
+                    var ticket = await context.MaintenanceTickets
+                        .FirstOrDefaultAsync(t => t.Id == ticketId);
 
-                ticket.ActualCost = totalExpenses + expense.Amount;
-                ticket.UpdatedDate = DateTime.Now;
+                    if (ticket == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Maintenance ticket not found.";
+                        return response;
+                    }
 
-                await context.SaveChangesAsync();
+                    expense.MaintenanceTicketId = ticketId;
+                    expense.CreatedOn = DateTime.Now;
 
-                // Load complete expense with relations
-                var createdExpense = await context.MaintenanceExpenses
-                    .Include(e => e.Category)
-                    .Include(e => e.Vendor)
-                    .Include(e => e.ReceiptDocument)
-                    .FirstOrDefaultAsync(e => e.Id == expense.Id);
+                    await context.MaintenanceExpenses.AddAsync(expense);
 
-                response.Response = createdExpense;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Expense added successfully.";
+                    // Update ticket actual cost
+                    var totalExpenses = await context.MaintenanceExpenses
+                        .Where(e => e.MaintenanceTicketId == ticketId)
+                        .SumAsync(e => e.Amount);
 
-                _logger.LogInformation("Expense added to maintenance ticket {TicketId}: Amount {Amount}",
-                    ticketId, expense.Amount);
+                    ticket.ActualCost = totalExpenses + expense.Amount;
+                    ticket.UpdatedDate = DateTime.Now;
+
+                    await context.SaveChangesAsync();
+
+                    // Load complete expense with relations
+                    var createdExpense = await context.MaintenanceExpenses
+                        .Include(e => e.Category)
+                        .Include(e => e.Vendor)
+                        .Include(e => e.ReceiptDocument)
+                        .FirstOrDefaultAsync(e => e.Id == expense.Id);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = createdExpense;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Expense added successfully.";
+
+                    _logger.LogInformation("Expense added to maintenance ticket {TicketId}: Amount {Amount}",
+                        ticketId, expense.Amount);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -479,6 +633,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Assigns a maintenance ticket to a vendor
+        /// </summary>
         public async Task<ResponseModel> AssignTicketToVendor(int ticketId, int vendorId, string userId)
         {
             ResponseModel response = new();
@@ -486,43 +643,54 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var ticket = await context.MaintenanceTickets
-                    .Include(t => t.Vendor)
-                    .FirstOrDefaultAsync(t => t.Id == ticketId);
-
-                if (ticket == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Maintenance ticket not found.";
-                    return response;
+                    var ticket = await context.MaintenanceTickets
+                        .Include(t => t.Vendor)
+                        .FirstOrDefaultAsync(t => t.Id == ticketId);
+
+                    if (ticket == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Maintenance ticket not found.";
+                        return response;
+                    }
+
+                    var vendor = await context.Vendors
+                        .FirstOrDefaultAsync(v => v.Id == vendorId && v.IsActive);
+
+                    if (vendor == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Vendor not found or inactive.";
+                        return response;
+                    }
+
+                    ticket.VendorId = vendorId;
+                    ticket.StatusId = 2; // In Progress
+                    ticket.UpdatedDate = DateTime.Now;
+                    ticket.UpdatedBy = userId;
+
+                    await context.SaveChangesAsync();
+
+                    // Send notification to vendor
+                    await SendVendorAssignmentNotification(ticket, vendor);
+
+                    await transaction.CommitAsync();
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Ticket assigned to vendor successfully.";
+
+                    _logger.LogInformation("Maintenance ticket {TicketId} assigned to vendor {VendorId} by {UserId}",
+                        ticketId, vendorId, userId);
                 }
-
-                var vendor = await context.Vendors
-                    .FirstOrDefaultAsync(v => v.Id == vendorId && v.IsActive);
-
-                if (vendor == null)
+                catch (Exception ex)
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Vendor not found or inactive.";
-                    return response;
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                ticket.VendorId = vendorId;
-                ticket.StatusId = 2; // In Progress
-                ticket.UpdatedDate = DateTime.Now;
-                ticket.UpdatedBy = userId;
-
-                await context.SaveChangesAsync();
-
-                // Send notification to vendor
-                await SendVendorAssignmentNotification(ticket, vendor);
-
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Ticket assigned to vendor successfully.";
-
-                _logger.LogInformation("Maintenance ticket {TicketId} assigned to vendor {VendorId} by {UserId}",
-                    ticketId, vendorId, userId);
             }
             catch (Exception ex)
             {
@@ -535,6 +703,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Marks a maintenance ticket as completed
+        /// </summary>
         public async Task<ResponseModel> CompleteMaintenanceTicket(int ticketId, string completionNotes, bool issueResolved, string userId)
         {
             ResponseModel response = new();
@@ -542,36 +713,47 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var ticket = await context.MaintenanceTickets
-                    .Include(t => t.Property)
-                    .Include(t => t.Tenant)
-                    .FirstOrDefaultAsync(t => t.Id == ticketId);
-
-                if (ticket == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Maintenance ticket not found.";
-                    return response;
+                    var ticket = await context.MaintenanceTickets
+                        .Include(t => t.Property)
+                        .Include(t => t.Tenant)
+                        .FirstOrDefaultAsync(t => t.Id == ticketId);
+
+                    if (ticket == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Maintenance ticket not found.";
+                        return response;
+                    }
+
+                    ticket.StatusId = 4; // Completed
+                    ticket.CompletedDate = DateTime.Now;
+                    ticket.CompletionNotes = completionNotes;
+                    ticket.IssueResolved = issueResolved;
+                    ticket.UpdatedDate = DateTime.Now;
+                    ticket.UpdatedBy = userId;
+
+                    await context.SaveChangesAsync();
+
+                    // Send completion notifications
+                    await SendCompletionNotifications(ticket);
+
+                    await transaction.CommitAsync();
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Maintenance ticket completed successfully.";
+
+                    _logger.LogInformation("Maintenance ticket {TicketId} completed by {UserId}. Issue resolved: {IssueResolved}",
+                        ticketId, userId, issueResolved);
                 }
-
-                ticket.StatusId = 4; // Completed
-                ticket.CompletedDate = DateTime.Now;
-                ticket.CompletionNotes = completionNotes;
-                ticket.IssueResolved = issueResolved;
-                ticket.UpdatedDate = DateTime.Now;
-                ticket.UpdatedBy = userId;
-
-                await context.SaveChangesAsync();
-
-                // Send completion notifications
-                await SendCompletionNotifications(ticket);
-
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Maintenance ticket completed successfully.";
-
-                _logger.LogInformation("Maintenance ticket {TicketId} completed by {UserId}. Issue resolved: {IssueResolved}",
-                    ticketId, userId, issueResolved);
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -583,6 +765,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets all open maintenance tickets for a company
+        /// </summary>
         public async Task<ResponseModel> GetOpenTicketsByCompany(int companyId)
         {
             ResponseModel response = new();
@@ -601,6 +786,7 @@ namespace Roovia.Services
                                (t.StatusId == 1 || t.StatusId == 2)) // Open or In Progress
                     .OrderBy(t => t.PriorityId)
                     .ThenBy(t => t.CreatedOn)
+                    .AsNoTracking() // Improves performance
                     .ToListAsync();
 
                 response.Response = tickets;
@@ -620,6 +806,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets maintenance statistics for a company
+        /// </summary>
         public async Task<ResponseModel> GetMaintenanceStatistics(int companyId)
         {
             ResponseModel response = new();
@@ -628,8 +817,10 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
+                // Use optimized query approach to reduce memory usage
                 var tickets = await context.MaintenanceTickets
                     .Where(t => t.CompanyId == companyId)
+                    .AsNoTracking()
                     .ToListAsync();
 
                 var statistics = new
@@ -664,6 +855,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets maintenance documents for a maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> GetMaintenanceDocuments(int ticketId, int companyId)
         {
             ResponseModel response = new();
@@ -687,12 +881,32 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Uploads an image for a maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> UploadMaintenanceImage(int ticketId, IFormFile file, string category, string userId)
         {
             ResponseModel response = new();
 
             try
             {
+                if (file == null || file.Length == 0)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "No file was uploaded.";
+                    return response;
+                }
+
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "File type not allowed. Please upload a JPG, JPEG, PNG or GIF file.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
 
                 var ticket = await context.MaintenanceTickets
@@ -734,6 +948,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Approves a maintenance ticket
+        /// </summary>
         public async Task<ResponseModel> ApproveMaintenanceTicket(int ticketId, string userId)
         {
             ResponseModel response = new();
@@ -926,6 +1143,7 @@ namespace Roovia.Services
                     CompletedTickets = g.Count(t => t.StatusId == 4),
                     ResolvedIssues = g.Count(t => t.IssueResolved == true)
                 })
+                .AsNoTracking() // Optimize performance for this aggregation query
                 .ToListAsync();
 
             return vendorStats;

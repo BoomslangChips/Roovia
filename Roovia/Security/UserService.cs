@@ -10,27 +10,36 @@ using System.Text;
 
 namespace Roovia.Security
 {
+    /// <summary>
+    /// Service responsible for managing users, companies, branches, and their related operations
+    /// </summary>
     public class UserService : IUser
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UserService> _logger;
+        private readonly IEmailService _emailService;
 
         public UserService(
             IDbContextFactory<ApplicationDbContext> contextFactory,
             AuthenticationStateProvider authStateProvider,
             UserManager<ApplicationUser> userManager,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger,
+            IEmailService emailService)
         {
             _contextFactory = contextFactory;
             _authStateProvider = authStateProvider;
             _userManager = userManager;
             _logger = logger;
+            _emailService = emailService;
         }
 
         #region User Methods
 
+        /// <summary>
+        /// Retrieves a user by their ID with associated data
+        /// </summary>
         public async Task<ResponseModel> GetUserById(string id)
         {
             ResponseModel response = new();
@@ -48,6 +57,7 @@ namespace Roovia.Security
                     .Include(u => u.ProfilePicture)
                     .Include(u => u.CustomRoles)
                         .ThenInclude(ur => ur.Role)
+                    .Include(u => u.NotificationPreferences)
                     .FirstOrDefaultAsync(u => u.Id == id);
 
                 if (user != null)
@@ -72,6 +82,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all users in the system
+        /// </summary>
         public async Task<ResponseModel> GetAllUsers()
         {
             ResponseModel response = new();
@@ -86,6 +99,11 @@ namespace Roovia.Security
                     .Include(u => u.Company)
                     .Include(u => u.Branch)
                     .Include(u => u.Status)
+                    .Include(u => u.ProfilePicture)
+                    .Where(u => !u.IsRemoved)
+                    .OrderBy(u => u.Company.Name)
+                    .ThenBy(u => u.Branch.Name)
+                    .ThenBy(u => u.LastName)
                     .ToListAsync();
 
                 response.Response = users;
@@ -102,6 +120,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all users for a specific company
+        /// </summary>
         public async Task<ResponseModel> GetUsersByCompany(int companyId)
         {
             ResponseModel response = new();
@@ -115,7 +136,13 @@ namespace Roovia.Security
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Branch)
                     .Include(u => u.Status)
-                    .Where(u => u.CompanyId == companyId)
+                    .Include(u => u.ProfilePicture)
+                    .Include(u => u.CustomRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .Where(u => u.CompanyId == companyId && !u.IsRemoved)
+                    .OrderBy(u => u.Branch.Name)
+                    .ThenBy(u => u.LastName)
+                    .ThenBy(u => u.FirstName)
                     .ToListAsync();
 
                 response.Response = users;
@@ -132,6 +159,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all users for a specific branch
+        /// </summary>
         public async Task<ResponseModel> GetUsersByBranch(int branchId)
         {
             ResponseModel response = new();
@@ -145,7 +175,12 @@ namespace Roovia.Security
                     .Include(u => u.ContactNumbers.Where(c => c.IsActive))
                     .Include(u => u.Company)
                     .Include(u => u.Status)
-                    .Where(u => u.BranchId == branchId)
+                    .Include(u => u.ProfilePicture)
+                    .Include(u => u.CustomRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .Where(u => u.BranchId == branchId && !u.IsRemoved)
+                    .OrderBy(u => u.LastName)
+                    .ThenBy(u => u.FirstName)
                     .ToListAsync();
 
                 response.Response = users;
@@ -162,6 +197,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a user's information
+        /// </summary>
         public async Task<ResponseModel> UpdateUser(string id, ApplicationUser updatedUser)
         {
             ResponseModel response = new();
@@ -192,10 +230,11 @@ namespace Roovia.Security
                 user.Role = updatedUser.Role;
                 user.StatusId = updatedUser.StatusId;
                 user.IsActive = updatedUser.IsActive;
-                user.IsEmailNotificationsEnabled = updatedUser.IsEmailNotificationsEnabled;
-                user.IsSmsNotificationsEnabled = updatedUser.IsSmsNotificationsEnabled;
-                user.IsPushNotificationsEnabled = updatedUser.IsPushNotificationsEnabled;
+                user.IsTwoFactorRequired = updatedUser.IsTwoFactorRequired;
+                user.PreferredTwoFactorMethod = updatedUser.PreferredTwoFactorMethod;
+                user.RequireChangePasswordOnLogin = updatedUser.RequireChangePasswordOnLogin;
                 user.UserPreferences = updatedUser.UserPreferences;
+                user.Tags = updatedUser.Tags;
                 user.UpdatedDate = DateTime.Now;
                 user.UpdatedBy = updatedUser.UpdatedBy;
 
@@ -214,6 +253,7 @@ namespace Roovia.Security
 
                 await context.SaveChangesAsync();
 
+                response.Response = user;
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User updated successfully.";
             }
@@ -227,6 +267,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Soft deletes a user
+        /// </summary>
         public async Task<ResponseModel> DeleteUser(string id)
         {
             ResponseModel response = new();
@@ -263,6 +306,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a user's system role
+        /// </summary>
         public async Task<ResponseModel> UpdateUserRole(string userId, SystemRole role)
         {
             ResponseModel response = new();
@@ -284,6 +330,7 @@ namespace Roovia.Security
 
                 await context.SaveChangesAsync();
 
+                response.Response = new { UserId = userId, Role = role };
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User role updated successfully.";
             }
@@ -297,6 +344,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Assigns a custom role to a user
+        /// </summary>
         public async Task<ResponseModel> AssignUserRole(string userId, SystemRole role)
         {
             ResponseModel response = new();
@@ -362,6 +412,7 @@ namespace Roovia.Security
                 await context.UserRoleAssignments.AddAsync(roleAssignment);
                 await context.SaveChangesAsync();
 
+                response.Response = roleAssignment;
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Role assigned successfully.";
             }
@@ -375,6 +426,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a user's company ID
+        /// </summary>
         public async Task<ResponseModel> UpdateUserCompanyId(string userId, int companyId)
         {
             ResponseModel response = new();
@@ -391,11 +445,21 @@ namespace Roovia.Security
                     return response;
                 }
 
+                // Check if company exists
+                var company = await context.Companies.FindAsync(companyId);
+                if (company == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Company not found.";
+                    return response;
+                }
+
                 user.CompanyId = companyId;
                 user.UpdatedDate = DateTime.Now;
 
                 await context.SaveChangesAsync();
 
+                response.Response = new { UserId = userId, CompanyId = companyId, CompanyName = company.Name };
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User's company ID updated successfully.";
             }
@@ -409,6 +473,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a user's branch ID
+        /// </summary>
         public async Task<ResponseModel> UpdateUserBranchId(string userId, int branchId)
         {
             ResponseModel response = new();
@@ -442,6 +509,15 @@ namespace Roovia.Security
 
                 await context.SaveChangesAsync();
 
+                response.Response = new
+                {
+                    UserId = userId,
+                    BranchId = branchId,
+                    BranchName = branch.Name,
+                    CompanyId = branch.CompanyId,
+                    CompanyName = branch.Company?.Name
+                };
+
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "User branch assignment updated successfully.";
             }
@@ -455,6 +531,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Gets information about the currently authenticated user
+        /// </summary>
         public async Task<ResponseModel> GetAuthenticatedUserInfo()
         {
             ResponseModel response = new();
@@ -479,10 +558,18 @@ namespace Roovia.Security
                             .Include(u => u.Branch)
                             .Include(u => u.Status)
                             .Include(u => u.ProfilePicture)
+                            .Include(u => u.CustomRoles)
+                                .ThenInclude(r => r.Role)
+                            .Include(u => u.NotificationPreferences)
                             .FirstOrDefaultAsync(u => u.Id == userId);
 
                         if (applicationUser != null)
                         {
+                            // Update last login information
+                            applicationUser.LastLoginDate = DateTime.Now;
+                            applicationUser.LastLoginIpAddress = user.FindFirst("clientIp")?.Value;
+                            await context.SaveChangesAsync();
+
                             response.Response = applicationUser;
                             response.ResponseInfo.Success = true;
                             response.ResponseInfo.Message = "Authenticated user retrieved successfully.";
@@ -515,6 +602,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Resets a user's password and optionally forces password change on next login
+        /// </summary>
         public async Task<ResponseModel> ResetUserPassword(string userId, bool requireChange = true)
         {
             ResponseModel response = new();
@@ -555,6 +645,17 @@ namespace Roovia.Security
                 user.UpdatedDate = DateTime.Now;
                 await context.SaveChangesAsync();
 
+                // Send password reset email to user
+                try
+                {
+                    await _emailService.SendPasswordResetNotificationAsync(user, newPassword);
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogWarning(emailEx, "Failed to send password reset email to user {UserId}", userId);
+                    // Continue despite email sending failure
+                }
+
                 // Return the new password
                 response.Response = newPassword;
                 response.ResponseInfo.Success = true;
@@ -570,6 +671,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a user with all related details
+        /// </summary>
         public async Task<ResponseModel> GetUserWithDetails(string userId)
         {
             ResponseModel response = new();
@@ -595,6 +699,12 @@ namespace Roovia.Security
                         .ThenInclude(ur => ur.Role)
                     .Include(u => u.PermissionOverrides)
                         .ThenInclude(po => po.Permission)
+                    .Include(u => u.NotificationPreferences)
+                        .ThenInclude(np => np.NotificationEventType)
+                    .Include(u => u.Documents)
+                        .ThenInclude(d => d.DocumentType)
+                    .Include(u => u.Notes)
+                    .Include(u => u.Reminders.Where(r => r.DueDate >= DateTime.Today))
                     .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user != null)
@@ -623,6 +733,9 @@ namespace Roovia.Security
 
         #region Company Methods
 
+        /// <summary>
+        /// Creates a new company
+        /// </summary>
         public async Task<ResponseModel> CreateCompany(Company company)
         {
             ResponseModel response = new();
@@ -631,11 +744,24 @@ namespace Roovia.Security
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
+                // Set default values
                 if (company.CreatedOn == default)
                     company.CreatedOn = DateTime.Now;
 
+                if (company.StatusId == null)
+                {
+                    // Find "Active" status (assuming ID 1 is Active)
+                    company.StatusId = await context.CompanyStatusTypes
+                        .Where(s => s.Name == "Active" || s.Id == 1)
+                        .Select(s => s.Id)
+                        .FirstOrDefaultAsync();
+                }
+
                 await context.Companies.AddAsync(company);
                 await context.SaveChangesAsync();
+
+                // Create default CDN categories for the company
+                await CreateDefaultCdnCategoriesForCompany(context, company.Id);
 
                 response.Response = company;
                 response.ResponseInfo.Success = true;
@@ -651,6 +777,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a company by ID
+        /// </summary>
         public async Task<ResponseModel> GetCompanyById(int id)
         {
             ResponseModel response = new();
@@ -662,10 +791,11 @@ namespace Roovia.Security
                 var company = await context.Companies
                     .Include(c => c.EmailAddresses.Where(e => e.IsActive))
                     .Include(c => c.ContactNumbers.Where(c => c.IsActive))
-                    .Include(c => c.Branches)
-                    .Include(c => c.Users)
+                    .Include(c => c.Branches.Where(b => b.IsActive))
+                    .Include(c => c.Users.Where(u => u.IsActive))
                     .Include(c => c.Status)
                     .Include(c => c.MainLogo)
+                    .Include(c => c.SubscriptionPlan)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
                 if (company != null)
@@ -690,6 +820,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all companies
+        /// </summary>
         public async Task<ResponseModel> GetAllCompanies()
         {
             ResponseModel response = new();
@@ -702,6 +835,10 @@ namespace Roovia.Security
                     .Include(c => c.EmailAddresses.Where(e => e.IsActive))
                     .Include(c => c.ContactNumbers.Where(c => c.IsActive))
                     .Include(c => c.Status)
+                    .Include(c => c.MainLogo)
+                    .Include(c => c.SubscriptionPlan)
+                    .Where(c => !c.IsRemoved)
+                    .OrderBy(c => c.Name)
                     .ToListAsync();
 
                 response.Response = companies;
@@ -718,6 +855,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a company's information
+        /// </summary>
         public async Task<ResponseModel> UpdateCompany(int id, Company updatedCompany)
         {
             ResponseModel response = new();
@@ -773,6 +913,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Soft deletes a company
+        /// </summary>
         public async Task<ResponseModel> DeleteCompany(int id)
         {
             ResponseModel response = new();
@@ -823,6 +966,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a company with all related details
+        /// </summary>
         public async Task<ResponseModel> GetCompanyWithDetails(int companyId)
         {
             ResponseModel response = new();
@@ -843,6 +989,10 @@ namespace Roovia.Security
                     .Include(c => c.Users)
                     .Include(c => c.Status)
                     .Include(c => c.MainLogo)
+                    .Include(c => c.SubscriptionPlan)
+                    .Include(c => c.Documents)
+                    .Include(c => c.NotificationPreferences)
+                        .ThenInclude(np => np.NotificationEventType)
                     .FirstOrDefaultAsync(c => c.Id == companyId);
 
                 if (company != null)
@@ -871,6 +1021,9 @@ namespace Roovia.Security
 
         #region Branch Methods
 
+        /// <summary>
+        /// Creates a new branch for a company
+        /// </summary>
         public async Task<ResponseModel> CreateBranch(Branch branch)
         {
             ResponseModel response = new();
@@ -888,8 +1041,32 @@ namespace Roovia.Security
                     return response;
                 }
 
+                // Check if branch limit has been reached
+                if (company.MaxBranches.HasValue)
+                {
+                    var currentBranchCount = await context.Branches
+                        .CountAsync(b => b.CompanyId == company.Id && !b.IsRemoved);
+
+                    if (currentBranchCount >= company.MaxBranches.Value)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = $"Maximum branch limit ({company.MaxBranches.Value}) reached.";
+                        return response;
+                    }
+                }
+
+                // Set default values
                 if (branch.CreatedOn == default)
                     branch.CreatedOn = DateTime.Now;
+
+                if (branch.StatusId == null)
+                {
+                    // Find "Active" status (assuming ID 1 is Active)
+                    branch.StatusId = await context.BranchStatusTypes
+                        .Where(s => s.Name == "Active" || s.Id == 1)
+                        .Select(s => s.Id)
+                        .FirstOrDefaultAsync();
+                }
 
                 await context.Branches.AddAsync(branch);
                 await context.SaveChangesAsync();
@@ -908,6 +1085,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a branch by ID
+        /// </summary>
         public async Task<ResponseModel> GetBranchById(int id)
         {
             ResponseModel response = new();
@@ -920,7 +1100,7 @@ namespace Roovia.Security
                     .Include(b => b.Company)
                     .Include(b => b.EmailAddresses.Where(e => e.IsActive))
                     .Include(b => b.ContactNumbers.Where(c => c.IsActive))
-                    .Include(b => b.Users)
+                    .Include(b => b.Users.Where(u => u.IsActive))
                     .Include(b => b.Status)
                     .Include(b => b.MainLogo)
                     .FirstOrDefaultAsync(b => b.Id == id);
@@ -947,6 +1127,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all branches for a company
+        /// </summary>
         public async Task<ResponseModel> GetBranchesByCompany(int companyId)
         {
             ResponseModel response = new();
@@ -959,7 +1142,10 @@ namespace Roovia.Security
                     .Include(b => b.EmailAddresses.Where(e => e.IsActive))
                     .Include(b => b.ContactNumbers.Where(c => c.IsActive))
                     .Include(b => b.Status)
-                    .Where(b => b.CompanyId == companyId)
+                    .Include(b => b.MainLogo)
+                    .Where(b => b.CompanyId == companyId && !b.IsRemoved)
+                    .OrderByDescending(b => b.IsHeadOffice)
+                    .ThenBy(b => b.Name)
                     .ToListAsync();
 
                 response.Response = branches;
@@ -976,6 +1162,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a branch's information
+        /// </summary>
         public async Task<ResponseModel> UpdateBranch(int id, Branch updatedBranch)
         {
             ResponseModel response = new();
@@ -1011,6 +1200,23 @@ namespace Roovia.Security
 
                 await context.SaveChangesAsync();
 
+                // If this branch is marked as head office, update other branches
+                if (updatedBranch.IsHeadOffice)
+                {
+                    var otherBranches = await context.Branches
+                        .Where(b => b.Id != id && b.CompanyId == branch.CompanyId && b.IsHeadOffice)
+                        .ToListAsync();
+
+                    foreach (var otherBranch in otherBranches)
+                    {
+                        otherBranch.IsHeadOffice = false;
+                        otherBranch.UpdatedDate = DateTime.Now;
+                        otherBranch.UpdatedBy = updatedBranch.UpdatedBy;
+                    }
+
+                    await context.SaveChangesAsync();
+                }
+
                 response.Response = branch;
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Branch updated successfully.";
@@ -1025,6 +1231,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Soft deletes a branch
+        /// </summary>
         public async Task<ResponseModel> DeleteBranch(int id)
         {
             ResponseModel response = new();
@@ -1072,6 +1281,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a branch with all related details
+        /// </summary>
         public async Task<ResponseModel> GetBranchWithDetails(int branchId)
         {
             ResponseModel response = new();
@@ -1090,6 +1302,9 @@ namespace Roovia.Security
                         .ThenInclude(u => u.ContactNumbers)
                     .Include(b => b.Status)
                     .Include(b => b.MainLogo)
+                    .Include(b => b.Documents)
+                    .Include(b => b.NotificationPreferences)
+                        .ThenInclude(np => np.NotificationEventType)
                     .FirstOrDefaultAsync(b => b.Id == branchId);
 
                 if (branch != null)
@@ -1118,6 +1333,9 @@ namespace Roovia.Security
 
         #region Contact Methods
 
+        /// <summary>
+        /// Adds an email address to an entity
+        /// </summary>
         public async Task<ResponseModel> AddEmailAddress(Email email)
         {
             ResponseModel response = new();
@@ -1162,6 +1380,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates an email address
+        /// </summary>
         public async Task<ResponseModel> UpdateEmailAddress(int id, Email updatedEmail)
         {
             ResponseModel response = new();
@@ -1209,6 +1430,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Deletes an email address
+        /// </summary>
         public async Task<ResponseModel> DeleteEmailAddress(int id)
         {
             ResponseModel response = new();
@@ -1255,6 +1479,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all email addresses for an entity
+        /// </summary>
         public async Task<ResponseModel> GetEmailAddresses(string entityType, object entityId)
         {
             ResponseModel response = new();
@@ -1290,6 +1517,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Adds a contact number to an entity
+        /// </summary>
         public async Task<ResponseModel> AddContactNumber(ContactNumber contactNumber)
         {
             ResponseModel response = new();
@@ -1334,6 +1564,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Updates a contact number
+        /// </summary>
         public async Task<ResponseModel> UpdateContactNumber(int id, ContactNumber updatedContactNumber)
         {
             ResponseModel response = new();
@@ -1359,7 +1592,7 @@ namespace Roovia.Security
 
                 // Update contact number properties
                 contactNumber.Number = updatedContactNumber.Number;
-                contactNumber.Type = updatedContactNumber.Type;
+                contactNumber.ContactNumberTypeId = updatedContactNumber.ContactNumberTypeId;
                 contactNumber.Description = updatedContactNumber.Description;
                 contactNumber.IsPrimary = updatedContactNumber.IsPrimary;
                 contactNumber.IsActive = updatedContactNumber.IsActive;
@@ -1382,6 +1615,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Deletes a contact number
+        /// </summary>
         public async Task<ResponseModel> DeleteContactNumber(int id)
         {
             ResponseModel response = new();
@@ -1428,6 +1664,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Retrieves all contact numbers for an entity
+        /// </summary>
         public async Task<ResponseModel> GetContactNumbers(string entityType, object entityId)
         {
             ResponseModel response = new();
@@ -1436,7 +1675,9 @@ namespace Roovia.Security
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                IQueryable<ContactNumber> query = context.ContactNumbers.Where(c => c.RelatedEntityType == entityType);
+                IQueryable<ContactNumber> query = context.ContactNumbers
+                    .Include(c => c.ContactNumberType)
+                    .Where(c => c.RelatedEntityType == entityType);
 
                 if (entityId is string stringId)
                 {
@@ -1467,6 +1708,9 @@ namespace Roovia.Security
 
         #region Helper Methods
 
+        /// <summary>
+        /// Generates a random password with the specified length
+        /// </summary>
         private string GenerateRandomPassword(int length)
         {
             const string upperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -1494,6 +1738,9 @@ namespace Roovia.Security
             return new string(password.ToString().OrderBy(c => random.Next()).ToArray());
         }
 
+        /// <summary>
+        /// Validates that an entity exists
+        /// </summary>
         private async Task<bool> ValidateEntityExists(ApplicationDbContext context, string entityType, int? entityId, string? entityStringId)
         {
             return entityType switch
@@ -1509,6 +1756,9 @@ namespace Roovia.Security
             };
         }
 
+        /// <summary>
+        /// Unsets primary flag on all emails except the specified one
+        /// </summary>
         private async Task UnsetPrimaryEmails(ApplicationDbContext context, string entityType, int? entityId, string? entityStringId, int? excludeId = null)
         {
             IQueryable<Email> query = context.Emails
@@ -1530,6 +1780,9 @@ namespace Roovia.Security
             }
         }
 
+        /// <summary>
+        /// Unsets primary flag on all contact numbers except the specified one
+        /// </summary>
         private async Task UnsetPrimaryContactNumbers(ApplicationDbContext context, string entityType, int? entityId, string? entityStringId, int? excludeId = null)
         {
             IQueryable<ContactNumber> query = context.ContactNumbers
@@ -1551,6 +1804,9 @@ namespace Roovia.Security
             }
         }
 
+        /// <summary>
+        /// Gets the count of primary emails for an entity
+        /// </summary>
         private async Task<int> GetPrimaryEmailCount(ApplicationDbContext context, string entityType, int? entityId, string? entityStringId)
         {
             IQueryable<Email> query = context.Emails
@@ -1564,6 +1820,9 @@ namespace Roovia.Security
             return await query.CountAsync();
         }
 
+        /// <summary>
+        /// Gets the count of primary contact numbers for an entity
+        /// </summary>
         private async Task<int> GetPrimaryContactNumberCount(ApplicationDbContext context, string entityType, int? entityId, string? entityStringId)
         {
             IQueryable<ContactNumber> query = context.ContactNumbers
@@ -1575,6 +1834,78 @@ namespace Roovia.Security
                 query = query.Where(c => c.RelatedEntityId == entityId);
 
             return await query.CountAsync();
+        }
+
+        /// <summary>
+        /// Creates default CDN categories for a company
+        /// </summary>
+        private async Task CreateDefaultCdnCategoriesForCompany(ApplicationDbContext context, int companyId)
+        {
+            try
+            {
+                // Define default categories
+                var defaultCategories = new[]
+                {
+                    new { Name = "documents", DisplayName = "Documents", AllowedFileTypes = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" },
+                    new { Name = "images", DisplayName = "Images", AllowedFileTypes = ".jpg,.jpeg,.png,.gif" },
+                    new { Name = "logos", DisplayName = "Logos", AllowedFileTypes = ".png,.jpg,.jpeg,.svg" },
+                    new { Name = "profiles", DisplayName = "Profile Pictures", AllowedFileTypes = ".jpg,.jpeg,.png" },
+                    new { Name = "inspections", DisplayName = "Inspection Reports", AllowedFileTypes = ".pdf,.doc,.docx,.jpg,.jpeg,.png" },
+                    new { Name = "leases", DisplayName = "Lease Documents", AllowedFileTypes = ".pdf,.doc,.docx" },
+                    new { Name = "maintenance", DisplayName = "Maintenance Reports", AllowedFileTypes = ".pdf,.doc,.docx,.jpg,.jpeg,.png" },
+                    new { Name = "payments", DisplayName = "Payment Receipts", AllowedFileTypes = ".pdf,.jpg,.jpeg,.png" }
+                };
+
+                // Check if we already have a CDN configuration
+                var cdnConfig = await context.CdnConfigurations.FirstOrDefaultAsync();
+                if (cdnConfig == null)
+                {
+                    // Create default configuration
+                    cdnConfig = new Models.ProjectCdnConfigModels.CdnConfiguration
+                    {
+                        BaseUrl = "https://portal.roovia.co.za/cdn",
+                        StoragePath = "/var/www/cdn",
+                        MaxFileSizeMB = 200,
+                        AllowedFileTypes = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.mp4,.mp3,.zip",
+                        EnableCaching = true,
+                        IsActive = true,
+                        CreatedDate = DateTime.Now,
+                        ModifiedDate = DateTime.Now,
+                        ModifiedBy = "System"
+                    };
+                    await context.CdnConfigurations.AddAsync(cdnConfig);
+                    await context.SaveChangesAsync();
+                }
+
+                // Create categories
+                foreach (var category in defaultCategories)
+                {
+                    // Skip if category already exists for this company
+                    if (await context.CdnCategories.AnyAsync(c => c.Name == category.Name && c.IsActive))
+                    {
+                        continue;
+                    }
+
+                    var cdnCategory = new Models.ProjectCdnConfigModels.CdnCategory
+                    {
+                        Name = category.Name,
+                        DisplayName = category.DisplayName,
+                        AllowedFileTypes = category.AllowedFileTypes,
+                        IsActive = true,
+                        CreatedDate = DateTime.Now,
+                        CreatedBy = "System"
+                    };
+
+                    await context.CdnCategories.AddAsync(cdnCategory);
+                }
+
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating default CDN categories for company {CompanyId}", companyId);
+                // Don't throw - this is a helper method
+            }
         }
 
         #endregion

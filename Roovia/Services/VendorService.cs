@@ -10,21 +10,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Roovia.Services
+namespace Roovia.Services.General
 {
+    /// <summary>
+    /// Service responsible for managing vendors and their related operations
+    /// </summary>
     public class VendorService : IVendor
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<VendorService> _logger;
+        private readonly IEmailService _emailService;
+        private readonly ICdnService _cdnService;
 
         public VendorService(
             IDbContextFactory<ApplicationDbContext> contextFactory,
-            ILogger<VendorService> logger)
+            ILogger<VendorService> logger,
+            IEmailService emailService,
+            ICdnService cdnService)
         {
             _contextFactory = contextFactory;
             _logger = logger;
+            _emailService = emailService;
+            _cdnService = cdnService;
         }
 
+        #region CRUD Operations
+
+        /// <summary>
+        /// Creates a new vendor for a company
+        /// </summary>
         public async Task<ResponseModel> CreateVendor(Vendor vendor, int companyId)
         {
             ResponseModel response = new();
@@ -55,11 +69,25 @@ namespace Roovia.Services
                 // Reload with related data
                 var createdVendor = await GetVendorWithDetails(context, vendor.Id);
 
+                // Send notification email if vendor has email address
+                if (vendor.EmailAddresses != null && vendor.EmailAddresses.Any(e => e.IsPrimary))
+                {
+                    try
+                    {
+                        await _emailService.SendVendorWelcomeEmailAsync(vendor);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogWarning(emailEx, "Failed to send welcome email to vendor {VendorId}", vendor.Id);
+                        // Continue despite email failure
+                    }
+                }
+
                 response.Response = createdVendor;
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Vendor created successfully.";
 
-                _logger.LogInformation("Vendor created with ID: {VendorId} for company {CompanyId}", 
+                _logger.LogInformation("Vendor created with ID: {VendorId} for company {CompanyId}",
                     vendor.Id, companyId);
             }
             catch (Exception ex)
@@ -72,6 +100,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Retrieves a vendor by ID for a specific company
+        /// </summary>
         public async Task<ResponseModel> GetVendorById(int id, int companyId)
         {
             ResponseModel response = new();
@@ -87,6 +118,12 @@ namespace Roovia.Services
                         .ThenInclude(mt => mt.Property)
                     .Include(v => v.MaintenanceTickets)
                         .ThenInclude(mt => mt.Status)
+                    .Include(v => v.BankAccount.BankName)
+                    .Include(v => v.Documents)
+                        .ThenInclude(d => d.DocumentType)
+                    .Include(v => v.Notes)
+                        .OrderByDescending(n => n.CreatedOn)
+                        .Take(5)
                     .Where(v => v.Id == id && v.CompanyId == companyId)
                     .FirstOrDefaultAsync();
 
@@ -112,6 +149,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Updates a vendor's information
+        /// </summary>
         public async Task<ResponseModel> UpdateVendor(int id, Vendor updatedVendor, int companyId)
         {
             ResponseModel response = new();
@@ -132,6 +172,10 @@ namespace Roovia.Services
                     return response;
                 }
 
+                bool insuranceStatusChanged = vendor.HasInsurance != updatedVendor.HasInsurance ||
+                                             (vendor.InsuranceExpiryDate != updatedVendor.InsuranceExpiryDate &&
+                                             updatedVendor.InsuranceExpiryDate.HasValue);
+
                 // Update vendor fields
                 vendor.Name = updatedVendor.Name;
                 vendor.ContactPerson = updatedVendor.ContactPerson;
@@ -145,6 +189,20 @@ namespace Roovia.Services
                 vendor.InsuranceExpiryDate = updatedVendor.InsuranceExpiryDate;
 
                 await context.SaveChangesAsync();
+
+                // Check if insurance status changed and notify if necessary
+                if (insuranceStatusChanged && updatedVendor.HasInsurance)
+                {
+                    try
+                    {
+                        await NotifyInsuranceStatusUpdate(vendor);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogWarning(emailEx, "Failed to send insurance update notification for vendor {VendorId}", vendor.Id);
+                        // Continue despite email failure
+                    }
+                }
 
                 // Reload with related data
                 var updatedResult = await GetVendorWithDetails(context, id);
@@ -165,6 +223,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Soft deletes a vendor
+        /// </summary>
         public async Task<ResponseModel> DeleteVendor(int id, int companyId, ApplicationUser user)
         {
             ResponseModel response = new();
@@ -185,7 +246,7 @@ namespace Roovia.Services
                 }
 
                 // Check if vendor has active maintenance tickets
-                if (vendor.MaintenanceTickets.Any(mt => mt.StatusId == 1 || mt.StatusId == 2))
+                if (vendor.MaintenanceTickets.Any(mt => mt.StatusId is 1 or 2))
                 {
                     response.ResponseInfo.Success = false;
                     response.ResponseInfo.Message = "Cannot delete vendor with active maintenance tickets.";
@@ -213,6 +274,13 @@ namespace Roovia.Services
             return response;
         }
 
+        #endregion
+
+        #region Vendor Listing Methods
+
+        /// <summary>
+        /// Retrieves all vendors for a company
+        /// </summary>
         public async Task<ResponseModel> GetAllVendors(int companyId)
         {
             ResponseModel response = new();
@@ -244,6 +312,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Retrieves active vendors for a company, sorted by preferred status and rating
+        /// </summary>
         public async Task<ResponseModel> GetActiveVendors(int companyId)
         {
             ResponseModel response = new();
@@ -257,7 +328,7 @@ namespace Roovia.Services
                     .Include(v => v.ContactNumbers.Where(c => c.IsActive))
                     .Where(v => v.CompanyId == companyId && v.IsActive && v.HasInsurance)
                     .OrderBy(v => v.IsPreferred ? 0 : 1)
-                    .ThenBy(v => v.Rating ?? 0)
+                    .ThenByDescending(v => v.Rating ?? 0)
                     .ThenBy(v => v.Name)
                     .ToListAsync();
 
@@ -277,6 +348,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Retrieves vendors by specialization
+        /// </summary>
         public async Task<ResponseModel> GetVendorsBySpecialization(int companyId, string specialization)
         {
             ResponseModel response = new();
@@ -288,11 +362,12 @@ namespace Roovia.Services
                 var vendors = await context.Vendors
                     .Include(v => v.EmailAddresses.Where(e => e.IsActive))
                     .Include(v => v.ContactNumbers.Where(c => c.IsActive))
-                    .Where(v => v.CompanyId == companyId && 
-                               v.IsActive && 
+                    .Where(v => v.CompanyId == companyId &&
+                               v.IsActive &&
                                v.Specializations != null &&
                                v.Specializations.ToLower().Contains(specialization.ToLower()))
-                    .OrderBy(v => v.Rating ?? 0)
+                    .OrderBy(v => v.IsPreferred ? 0 : 1)
+                    .ThenByDescending(v => v.Rating ?? 0)
                     .ThenBy(v => v.Name)
                     .ToListAsync();
 
@@ -300,7 +375,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = $"Vendors with specialization '{specialization}' retrieved successfully.";
 
-                _logger.LogInformation("Retrieved {Count} vendors with specialization {Specialization} for company {CompanyId}", 
+                _logger.LogInformation("Retrieved {Count} vendors with specialization {Specialization} for company {CompanyId}",
                     vendors.Count, specialization, companyId);
             }
             catch (Exception ex)
@@ -313,6 +388,63 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Retrieves vendors with expired insurance
+        /// </summary>
+        public async Task<ResponseModel> GetVendorsWithExpiredInsurance(int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var today = DateTime.Today;
+                var threeMonthsFromNow = today.AddMonths(3);
+
+                var vendors = await context.Vendors
+                    .Include(v => v.EmailAddresses.Where(e => e.IsActive))
+                    .Include(v => v.ContactNumbers.Where(c => c.IsActive))
+                    .Where(v => v.CompanyId == companyId &&
+                               v.IsActive &&
+                               v.HasInsurance &&
+                               v.InsuranceExpiryDate.HasValue &&
+                               (v.InsuranceExpiryDate.Value <= today || v.InsuranceExpiryDate.Value <= threeMonthsFromNow))
+                    .OrderBy(v => v.InsuranceExpiryDate)
+                    .ToListAsync();
+
+                var expiredVendors = vendors.Where(v => v.InsuranceExpiryDate <= today).ToList();
+                var expiringVendors = vendors.Where(v => v.InsuranceExpiryDate > today && v.InsuranceExpiryDate <= threeMonthsFromNow).ToList();
+
+                response.Response = new
+                {
+                    ExpiredInsurance = expiredVendors,
+                    ExpiringInsurance = expiringVendors
+                };
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Vendors with expired/expiring insurance retrieved successfully.";
+
+                _logger.LogInformation("Retrieved {ExpiredCount} vendors with expired insurance and {ExpiringCount} with expiring insurance for company {CompanyId}",
+                    expiredVendors.Count, expiringVendors.Count, companyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving vendors with expired insurance for company {CompanyId}", companyId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving vendors: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #region Contact Management
+
+        /// <summary>
+        /// Adds an email address to a vendor
+        /// </summary>
         public async Task<ResponseModel> AddEmailAddress(int vendorId, Email email)
         {
             ResponseModel response = new();
@@ -366,6 +498,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Adds a contact number to a vendor
+        /// </summary>
         public async Task<ResponseModel> AddContactNumber(int vendorId, ContactNumber contactNumber)
         {
             ResponseModel response = new();
@@ -419,6 +554,13 @@ namespace Roovia.Services
             return response;
         }
 
+        #endregion
+
+        #region Vendor Management
+
+        /// <summary>
+        /// Updates a vendor's rating
+        /// </summary>
         public async Task<ResponseModel> UpdateVendorRating(int vendorId, decimal rating, string userId)
         {
             ResponseModel response = new();
@@ -440,13 +582,12 @@ namespace Roovia.Services
 
                 // Calculate average rating based on completed tickets
                 var completedTickets = vendor.MaintenanceTickets
-                    .Where(mt => mt.StatusId == 4) // Completed
-                    .Count();
+                    .Count(mt => mt.StatusId == 4); // Completed
 
                 if (vendor.Rating.HasValue && vendor.TotalJobs.HasValue && vendor.TotalJobs > 0)
                 {
                     var totalRating = vendor.Rating.Value * vendor.TotalJobs.Value;
-                    vendor.Rating = (totalRating + rating) / (vendor.TotalJobs.Value + 1);
+                    vendor.Rating = Math.Round((totalRating + rating) / (vendor.TotalJobs.Value + 1), 2);
                     vendor.TotalJobs++;
                 }
                 else
@@ -455,13 +596,23 @@ namespace Roovia.Services
                     vendor.TotalJobs = 1;
                 }
 
+                // If rating is high (above 4.0) and vendor isn't already preferred, suggest making them preferred
+                bool suggestPreferred = rating >= 4.0m && !vendor.IsPreferred && (vendor.TotalJobs >= 5);
+
                 await context.SaveChangesAsync();
 
-                response.Response = new { VendorId = vendorId, NewRating = vendor.Rating, vendor.TotalJobs };
+                response.Response = new
+                {
+                    VendorId = vendorId,
+                    NewRating = vendor.Rating,
+                    TotalJobs = vendor.TotalJobs,
+                    SuggestPreferred = suggestPreferred
+                };
+
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = "Vendor rating updated successfully.";
 
-                _logger.LogInformation("Vendor rating updated: {VendorId} to {Rating} by {UserId}", 
+                _logger.LogInformation("Vendor rating updated: {VendorId} to {Rating} by {UserId}",
                     vendorId, vendor.Rating, userId);
             }
             catch (Exception ex)
@@ -474,6 +625,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Sets or unsets preferred status for a vendor
+        /// </summary>
         public async Task<ResponseModel> SetPreferredVendor(int vendorId, bool isPreferred, string userId)
         {
             ResponseModel response = new();
@@ -500,7 +654,7 @@ namespace Roovia.Services
                 response.ResponseInfo.Success = true;
                 response.ResponseInfo.Message = $"Vendor {(isPreferred ? "marked as" : "removed from")} preferred list.";
 
-                _logger.LogInformation("Vendor preferred status updated: {VendorId} to {IsPreferred} by {UserId}", 
+                _logger.LogInformation("Vendor preferred status updated: {VendorId} to {IsPreferred} by {UserId}",
                     vendorId, isPreferred, userId);
             }
             catch (Exception ex)
@@ -513,6 +667,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets performance statistics for a vendor
+        /// </summary>
         public async Task<ResponseModel> GetVendorPerformanceStats(int vendorId, int companyId)
         {
             ResponseModel response = new();
@@ -524,6 +681,10 @@ namespace Roovia.Services
                 var vendor = await context.Vendors
                     .Include(v => v.MaintenanceTickets)
                         .ThenInclude(mt => mt.Expenses)
+                    .Include(v => v.MaintenanceTickets)
+                        .ThenInclude(mt => mt.Status)
+                    .Include(v => v.MaintenanceTickets)
+                        .ThenInclude(mt => mt.Category)
                     .FirstOrDefaultAsync(v => v.Id == vendorId && v.CompanyId == companyId);
 
                 if (vendor == null)
@@ -534,26 +695,61 @@ namespace Roovia.Services
                 }
 
                 var tickets = vendor.MaintenanceTickets;
+                var completedTickets = tickets.Where(t => t.StatusId == 4).ToList();
+                var onTimeCompletions = completedTickets.Count(t =>
+                    t.CompletedDate.HasValue &&
+                    t.ScheduledDate.HasValue &&
+                    t.CompletedDate.Value <= t.ScheduledDate.Value.AddDays(1));
+
+                decimal onTimeRate = completedTickets.Count > 0
+                    ? Math.Round((decimal)onTimeCompletions / completedTickets.Count * 100, 1)
+                    : 0;
 
                 var statistics = new
                 {
                     VendorName = vendor.Name,
+                    VendorHasInsurance = vendor.HasInsurance,
+                    InsuranceExpiryDate = vendor.InsuranceExpiryDate,
+                    IsInsuranceExpired = vendor.InsuranceExpiryDate.HasValue && vendor.InsuranceExpiryDate.Value < DateTime.Today,
+                    IsPreferred = vendor.IsPreferred,
                     Rating = vendor.Rating ?? 0,
                     TotalJobs = vendor.TotalJobs ?? 0,
                     CompletedJobs = tickets.Count(t => t.StatusId == 4),
                     ActiveJobs = tickets.Count(t => t.StatusId == 2),
+                    PendingJobs = tickets.Count(t => t.StatusId == 1),
                     IssuesResolved = tickets.Count(t => t.IssueResolved == true),
+                    OnTimeCompletionRate = onTimeRate,
                     TotalRevenue = tickets.SelectMany(t => t.Expenses)
                         .Where(e => e.VendorId == vendorId)
                         .Sum(e => e.Amount),
-                    AverageJobCost = tickets.Any() ? 
+                    AverageJobCost = tickets.Any() ?
                         tickets.Where(t => t.ActualCost.HasValue)
                             .Average(t => t.ActualCost.Value) : 0,
                     AverageCompletionTime = CalculateAverageCompletionTime(tickets),
-                    JobsByCategory = tickets.GroupBy(t => t.CategoryId)
-                        .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                    JobsByCategory = tickets
+                        .GroupBy(t => t.CategoryId)
+                        .Select(g => new {
+                            CategoryId = g.Key,
+                            CategoryName = g.First().Category?.Name ?? "Unknown",
+                            Count = g.Count(),
+                            CompletedCount = g.Count(t => t.StatusId == 4)
+                        })
+                        .OrderByDescending(x => x.Count)
                         .ToList(),
-                    MonthlyTrend = CalculateMonthlyTrend(tickets)
+                    JobsByMonth = CalculateJobsByMonth(tickets),
+                    RecentTickets = tickets
+                        .OrderByDescending(t => t.CreatedOn)
+                        .Take(5)
+                        .Select(t => new {
+                            TicketId = t.Id,
+                            TicketNumber = t.TicketNumber,
+                            Title = t.Title,
+                            Status = t.Status?.Name,
+                            Property = t.Property?.PropertyName,
+                            CreatedDate = t.CreatedOn,
+                            CompletedDate = t.CompletedDate
+                        })
+                        .ToList()
                 };
 
                 response.Response = statistics;
@@ -570,7 +766,14 @@ namespace Roovia.Services
             return response;
         }
 
-        public async Task<ResponseModel> GetVendorsWithExpiredInsurance(int companyId)
+        #endregion
+
+        #region Documents
+
+        /// <summary>
+        /// Uploads an insurance document for a vendor
+        /// </summary>
+        public async Task<ResponseModel> UploadInsuranceDocument(int vendorId, IFormFile file, string userId)
         {
             ResponseModel response = new();
 
@@ -578,35 +781,116 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                var vendors = await context.Vendors
-                    .Include(v => v.EmailAddresses.Where(e => e.IsActive))
-                    .Include(v => v.ContactNumbers.Where(c => c.IsActive))
-                    .Where(v => v.CompanyId == companyId && 
-                               v.IsActive &&
-                               v.HasInsurance &&
-                               v.InsuranceExpiryDate.HasValue &&
-                               v.InsuranceExpiryDate.Value <= DateTime.Now)
-                    .OrderBy(v => v.InsuranceExpiryDate)
-                    .ToListAsync();
+                var vendor = await context.Vendors.FindAsync(vendorId);
+                if (vendor == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Vendor not found.";
+                    return response;
+                }
 
-                response.Response = vendors;
+                // Upload file to CDN
+                using var stream = file.OpenReadStream();
+                var cdnUrl = await _cdnService.UploadFileAsync(stream, file.FileName, file.ContentType, "documents", $"vendors/{vendorId}/insurance");
+
+                // Create document entry
+                var documentTypeId = await context.DocumentTypes
+                    .Where(dt => dt.Name == "Insurance Certificate" || dt.Name == "Insurance")
+                    .Select(dt => dt.Id)
+                    .FirstOrDefaultAsync();
+
+                if (documentTypeId == 0)
+                {
+                    // Default to 1 if not found
+                    documentTypeId = 1;
+                }
+
+                var document = new EntityDocument
+                {
+                    EntityType = "Vendor",
+                    EntityId = vendorId,
+                    DocumentTypeId = documentTypeId,
+                    DocumentStatusId = 1, // Assuming 1 is "Active"
+                    Notes = $"Insurance document uploaded on {DateTime.Now:d}",
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = userId
+                };
+
+                await context.EntityDocuments.AddAsync(document);
+
+                // Update vendor insurance info if not already set
+                vendor.HasInsurance = true;
+                if (!vendor.InsuranceExpiryDate.HasValue)
+                {
+                    // Default expiry to 1 year from now if not specified
+                    vendor.InsuranceExpiryDate = DateTime.Today.AddYears(1);
+                }
+
+                await context.SaveChangesAsync();
+
+                response.Response = new { Document = document, CdnUrl = cdnUrl };
                 response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Vendors with expired insurance retrieved successfully.";
-
-                _logger.LogInformation("Retrieved {Count} vendors with expired insurance for company {CompanyId}", 
-                    vendors.Count, companyId);
+                response.ResponseInfo.Message = "Insurance document uploaded successfully.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving vendors with expired insurance for company {CompanyId}", companyId);
+                _logger.LogError(ex, "Error uploading insurance document for vendor {VendorId}", vendorId);
                 response.ResponseInfo.Success = false;
-                response.ResponseInfo.Message = "An error occurred while retrieving vendors: " + ex.Message;
+                response.ResponseInfo.Message = "An error occurred while uploading the document: " + ex.Message;
             }
 
             return response;
         }
 
-        // Helper methods
+        /// <summary>
+        /// Gets documents for a vendor
+        /// </summary>
+        public async Task<ResponseModel> GetVendorDocuments(int vendorId, int companyId)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                var vendor = await context.Vendors
+                    .FirstOrDefaultAsync(v => v.Id == vendorId && v.CompanyId == companyId);
+
+                if (vendor == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Vendor not found.";
+                    return response;
+                }
+
+                var documents = await context.EntityDocuments
+                    .Include(d => d.DocumentType)
+                    .Include(d => d.DocumentStatus)
+                    .Where(d => d.EntityType == "Vendor" && d.EntityId == vendorId)
+                    .OrderByDescending(d => d.CreatedOn)
+                    .ToListAsync();
+
+                response.Response = documents;
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "Vendor documents retrieved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving documents for vendor {VendorId}", vendorId);
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while retrieving the documents: " + ex.Message;
+            }
+
+            return response;
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Retrieves a vendor with all details
+        /// </summary>
         private async Task<Vendor> GetVendorWithDetails(ApplicationDbContext context, int vendorId)
         {
             return await context.Vendors
@@ -616,9 +900,13 @@ namespace Roovia.Services
                     .ThenInclude(mt => mt.Property)
                 .Include(v => v.MaintenanceTickets)
                     .ThenInclude(mt => mt.Status)
+                .Include(v => v.BankAccount.BankName)
                 .FirstOrDefaultAsync(v => v.Id == vendorId);
         }
 
+        /// <summary>
+        /// Calculates the average completion time for maintenance tickets
+        /// </summary>
         private double CalculateAverageCompletionTime(ICollection<MaintenanceTicket> tickets)
         {
             var completedTickets = tickets
@@ -634,25 +922,69 @@ namespace Roovia.Services
             return Math.Round(totalDays / completedTickets.Count, 1);
         }
 
-        private object CalculateMonthlyTrend(ICollection<MaintenanceTicket> tickets)
+        /// <summary>
+        /// Gets job statistics by month
+        /// </summary>
+        private object CalculateJobsByMonth(ICollection<MaintenanceTicket> tickets)
         {
-            var monthlyData = tickets
-                .Where(t => t.CreatedOn >= DateTime.Now.AddMonths(-6))
+            var endDate = DateTime.Today;
+            var startDate = endDate.AddMonths(-11);
+
+            // Generate all months in the range to ensure complete data even for months with no jobs
+            var allMonths = Enumerable.Range(0, 12)
+                .Select(i => startDate.AddMonths(i))
+                .Select(date => new { Year = date.Year, Month = date.Month, MonthName = date.ToString("MMM") })
+                .ToList();
+
+            var ticketsByMonth = tickets
+                .Where(t => t.CreatedOn >= startDate)
                 .GroupBy(t => new { t.CreatedOn.Year, t.CreatedOn.Month })
                 .Select(g => new
                 {
-                    g.Key.Year,
-                    g.Key.Month,
+                    Year = g.Key.Year,
+                    Month = g.Key.Month,
                     TotalJobs = g.Count(),
                     CompletedJobs = g.Count(t => t.StatusId == 4),
                     TotalRevenue = g.SelectMany(t => t.Expenses)
                         .Sum(e => e.Amount)
                 })
+                .ToList();
+
+            // Join with all months to get complete data
+            var result = allMonths
+                .GroupJoin(ticketsByMonth,
+                    all => new { all.Year, all.Month },
+                    ticket => new { ticket.Year, ticket.Month },
+                    (all, ticketGroup) => new
+                    {
+                        Year = all.Year,
+                        Month = all.Month,
+                        MonthName = all.MonthName,
+                        TotalJobs = ticketGroup.Any() ? ticketGroup.Sum(t => t.TotalJobs) : 0,
+                        CompletedJobs = ticketGroup.Any() ? ticketGroup.Sum(t => t.CompletedJobs) : 0,
+                        TotalRevenue = ticketGroup.Any() ? ticketGroup.Sum(t => t.TotalRevenue) : 0
+                    })
                 .OrderBy(m => m.Year)
                 .ThenBy(m => m.Month)
                 .ToList();
 
-            return monthlyData;
+            return result;
         }
+
+        /// <summary>
+        /// Sends an email notification about insurance status update
+        /// </summary>
+        private async Task NotifyInsuranceStatusUpdate(Vendor vendor)
+        {
+            // Get vendor's primary email
+            var vendorEmail = vendor.EmailAddresses?.FirstOrDefault(e => e.IsPrimary)?.EmailAddress;
+            if (string.IsNullOrEmpty(vendorEmail))
+                return;
+
+            // Send the notification
+            await _emailService.SendVendorInsuranceUpdateAsync(vendor);
+        }
+
+        #endregion
     }
 }

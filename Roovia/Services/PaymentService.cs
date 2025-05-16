@@ -10,10 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Roovia.Services.General;
+using System.Transactions;
 
 namespace Roovia.Services
 {
+    /// <summary>
+    /// Service for handling payment-related operations
+    /// </summary>
     public class PaymentService : IPayment
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
@@ -27,74 +30,104 @@ namespace Roovia.Services
             IEmailService emailService,
             ICdnService cdnService)
         {
-            _contextFactory = contextFactory;
-            _logger = logger;
-            _emailService = emailService;
-            _cdnService = cdnService;
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+            _cdnService = cdnService ?? throw new ArgumentNullException(nameof(cdnService));
         }
 
+        /// <summary>
+        /// Creates a new property payment record
+        /// </summary>
         public async Task<ResponseModel> CreatePropertyPayment(PropertyPayment payment, int companyId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                // Verify the property exists and belongs to the company
-                var property = await context.Properties
-                    .Include(p => p.Owner)
-                    .FirstOrDefaultAsync(p => p.Id == payment.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
-
-                if (property == null)
+                // Validate payment data
+                if (payment.Amount <= 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found or does not belong to the company.";
+                    response.ResponseInfo.Message = "Payment amount must be greater than zero.";
                     return response;
                 }
 
-                // Generate unique payment reference
-                payment.PaymentReference = await GenerateUniquePaymentReference(context);
-                payment.CompanyId = companyId;
-                payment.CreatedOn = DateTime.Now;
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Calculate late fees if applicable
-                if (payment.DueDate < DateTime.Now)
+                try
                 {
-                    payment.IsLate = true;
-                    payment.DaysLate = (int)(DateTime.Now - payment.DueDate).TotalDays;
-                    payment.LateFee = await CalculateLateFee(context, companyId, payment.Amount, payment.DaysLate.Value);
-                }
+                    // Verify the property exists and belongs to the company
+                    var property = await context.Properties
+                        .Include(p => p.Owner)
+                        .FirstOrDefaultAsync(p => p.Id == payment.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
 
-                // Calculate processing fees if payment method is specified
-                if (payment.PaymentMethodId.HasValue)
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found or does not belong to the company.";
+                        return response;
+                    }
+
+                    // Generate unique payment reference
+                    payment.PaymentReference = await GenerateUniquePaymentReference(context);
+                    payment.CompanyId = companyId;
+                    payment.CreatedOn = DateTime.Now;
+
+                    // Calculate late fees if applicable
+                    if (payment.DueDate < DateTime.Now)
+                    {
+                        payment.IsLate = true;
+                        payment.DaysLate = (int)(DateTime.Now - payment.DueDate).TotalDays;
+                        payment.LateFee = await CalculateLateFee(context, companyId, payment.Amount, payment.DaysLate.Value);
+                    }
+
+                    // Calculate processing fees if payment method is specified
+                    if (payment.PaymentMethodId.HasValue)
+                    {
+                        payment.ProcessingFee = await CalculateProcessingFee(context, payment.PaymentMethodId.Value, payment.Amount);
+                    }
+
+                    // Calculate net amount
+                    payment.NetAmount = payment.Amount + (payment.LateFee ?? 0) + (payment.ProcessingFee ?? 0);
+
+                    // Add the payment
+                    await context.PropertyPayments.AddAsync(payment);
+                    await context.SaveChangesAsync();
+
+                    // Create CDN folder for payment documents
+                    try
+                    {
+                        var cdnFolderPath = $"company-{companyId}/payments/{payment.Id}";
+                        await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "receipts");
+                    }
+                    catch (Exception cdnEx)
+                    {
+                        // Log CDN error but continue with transaction
+                        _logger.LogWarning(cdnEx, "Error creating CDN folders for payment {PaymentId}. Continuing with creation.", payment.Id);
+                    }
+
+                    // Reload with related data
+                    var createdPayment = await GetPaymentWithDetails(context, payment.Id);
+
+                    // Send notifications
+                    await SendPaymentNotifications(createdPayment, property);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = createdPayment;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Property payment created successfully.";
+
+                    _logger.LogInformation("Property payment created with ID: {PaymentId} for property {PropertyId}",
+                        payment.Id, payment.PropertyId);
+                }
+                catch (Exception ex)
                 {
-                    payment.ProcessingFee = await CalculateProcessingFee(context, payment.PaymentMethodId.Value, payment.Amount);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Calculate net amount
-                payment.NetAmount = payment.Amount + (payment.LateFee ?? 0) + (payment.ProcessingFee ?? 0);
-
-                // Add the payment
-                await context.PropertyPayments.AddAsync(payment);
-                await context.SaveChangesAsync();
-
-                // Create CDN folder for payment documents
-                var cdnFolderPath = $"company-{companyId}/payments/{payment.Id}";
-                await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "receipts");
-
-                // Reload with related data
-                var createdPayment = await GetPaymentWithDetails(context, payment.Id);
-
-                // Send notifications
-                await SendPaymentNotifications(createdPayment, property);
-
-                response.Response = createdPayment;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Property payment created successfully.";
-
-                _logger.LogInformation("Property payment created with ID: {PaymentId} for property {PropertyId}",
-                    payment.Id, payment.PropertyId);
             }
             catch (Exception ex)
             {
@@ -106,70 +139,101 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Uploads a receipt for a property payment
+        /// </summary>
         public async Task<ResponseModel> UploadPaymentReceipt(int paymentId, IFormFile file, string userId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var payment = await context.PropertyPayments
-                    .FirstOrDefaultAsync(p => p.Id == paymentId);
-
-                if (payment == null)
+                if (file == null || file.Length == 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Payment not found.";
+                    response.ResponseInfo.Message = "No file was uploaded.";
                     return response;
                 }
 
-                // Delete old receipt if exists
-                if (payment.ReceiptDocumentId.HasValue)
-                {
-                    var oldReceipt = await context.CdnFileMetadata
-                        .FirstOrDefaultAsync(f => f.Id == payment.ReceiptDocumentId.Value);
-
-                    if (oldReceipt != null)
-                    {
-                        await _cdnService.DeleteFileAsync(oldReceipt.Url);
-                    }
-                }
-
-                // Upload new receipt with base64 backup
-                var cdnPath = $"company-{payment.CompanyId}/payments/{payment.Id}/receipts";
-                string cdnUrl;
-
-                using (var stream = file.OpenReadStream())
-                {
-                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
-                        stream,
-                        file.FileName,
-                        file.ContentType,
-                        "payments",
-                        cdnPath
-                    );
-                }
-
-                // Get the file metadata
-                var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
-                if (fileMetadata != null)
-                {
-                    payment.ReceiptDocumentId = fileMetadata.Id;
-                    payment.ReceiptNumber = $"RCP-{payment.PaymentReference}";
-                    payment.UpdatedDate = DateTime.Now;
-                    payment.UpdatedBy = userId;
-
-                    await context.SaveChangesAsync();
-
-                    response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
-                    response.ResponseInfo.Success = true;
-                    response.ResponseInfo.Message = "Receipt uploaded successfully.";
-                }
-                else
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                    response.ResponseInfo.Message = "File type not allowed. Please upload a JPG, PNG, or PDF file.";
+                    return response;
+                }
+
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    var payment = await context.PropertyPayments
+                        .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+                    if (payment == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Payment not found.";
+                        return response;
+                    }
+
+                    // Delete old receipt if exists
+                    if (payment.ReceiptDocumentId.HasValue)
+                    {
+                        var oldReceipt = await context.CdnFileMetadata
+                            .FirstOrDefaultAsync(f => f.Id == payment.ReceiptDocumentId.Value);
+
+                        if (oldReceipt != null)
+                        {
+                            await _cdnService.DeleteFileAsync(oldReceipt.Url);
+                        }
+                    }
+
+                    // Upload new receipt with base64 backup
+                    var cdnPath = $"company-{payment.CompanyId}/payments/{payment.Id}/receipts";
+                    string cdnUrl;
+
+                    using (var stream = file.OpenReadStream())
+                    {
+                        cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                            stream,
+                            file.FileName,
+                            file.ContentType,
+                            "payments",
+                            cdnPath
+                        );
+                    }
+
+                    // Get the file metadata
+                    var fileMetadata = await _cdnService.GetFileMetadataAsync(cdnUrl);
+                    if (fileMetadata != null)
+                    {
+                        payment.ReceiptDocumentId = fileMetadata.Id;
+                        payment.ReceiptNumber = $"RCP-{payment.PaymentReference}";
+                        payment.UpdatedDate = DateTime.Now;
+                        payment.UpdatedBy = userId;
+
+                        await context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        response.Response = new { ReceiptUrl = cdnUrl, FileId = fileMetadata.Id };
+                        response.ResponseInfo.Success = true;
+                        response.ResponseInfo.Message = "Receipt uploaded successfully.";
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Failed to save receipt metadata.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
             catch (Exception ex)
@@ -182,6 +246,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets a property payment by ID
+        /// </summary>
         public async Task<ResponseModel> GetPropertyPaymentById(int id, int companyId)
         {
             ResponseModel response = new();
@@ -203,6 +270,7 @@ namespace Roovia.Services
                     .Include(p => p.Allocations)
                         .ThenInclude(a => a.AllocationType)
                     .Where(p => p.Id == id && p.CompanyId == companyId)
+                    .AsNoTracking() // Improves read-only query performance
                     .FirstOrDefaultAsync();
 
                 if (payment != null)
@@ -227,6 +295,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Updates the status of a property payment
+        /// </summary>
         public async Task<ResponseModel> UpdatePropertyPaymentStatus(int paymentId, int statusId, string userId)
         {
             ResponseModel response = new();
@@ -234,41 +305,57 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var payment = await context.PropertyPayments
-                    .FirstOrDefaultAsync(p => p.Id == paymentId);
-
-                if (payment == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property payment not found.";
-                    return response;
+                    var payment = await context.PropertyPayments
+                        .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+                    if (payment == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property payment not found.";
+                        return response;
+                    }
+
+                    var oldStatusId = payment.StatusId;
+                    payment.StatusId = statusId;
+                    payment.UpdatedDate = DateTime.Now;
+                    payment.UpdatedBy = userId;
+
+                    // If payment is confirmed, set payment date
+                    if (statusId == 2) // Assuming 2 is Paid/Confirmed status
+                    {
+                        payment.PaymentDate = DateTime.Now;
+                    }
+
+                    await context.SaveChangesAsync();
+
+                    // If payment is confirmed, create allocations
+                    if (statusId == 2 && oldStatusId != 2)
+                    {
+                        var allocationResult = await AllocatePayment(payment.Id);
+                        if (!allocationResult.ResponseInfo.Success)
+                        {
+                            await transaction.RollbackAsync();
+                            return allocationResult;
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Payment status updated successfully.";
+
+                    _logger.LogInformation("Payment status updated: {PaymentId} to status {StatusId} by {UserId}",
+                        paymentId, statusId, userId);
                 }
-
-                var oldStatusId = payment.StatusId;
-                payment.StatusId = statusId;
-                payment.UpdatedDate = DateTime.Now;
-                payment.UpdatedBy = userId;
-
-                // If payment is confirmed, set payment date
-                if (statusId == 2) // Assuming 2 is Paid/Confirmed status
+                catch (Exception ex)
                 {
-                    payment.PaymentDate = DateTime.Now;
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                await context.SaveChangesAsync();
-
-                // If payment is confirmed, create allocations
-                if (statusId == 2 && oldStatusId != 2)
-                {
-                    await AllocatePayment(payment.Id);
-                }
-
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Payment status updated successfully.";
-
-                _logger.LogInformation("Payment status updated: {PaymentId} to status {StatusId} by {UserId}",
-                    paymentId, statusId, userId);
             }
             catch (Exception ex)
             {
@@ -280,6 +367,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Allocates a payment to beneficiaries based on defined rules
+        /// </summary>
         public async Task<ResponseModel> AllocatePayment(int paymentId)
         {
             ResponseModel response = new();
@@ -287,101 +377,118 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var payment = await context.PropertyPayments
-                    .Include(p => p.Property)
-                        .ThenInclude(pr => pr.Beneficiaries.Where(b => b.IsActive))
-                    .Include(p => p.Property)
-                        .ThenInclude(pr => pr.Owner)
-                    .Include(p => p.Allocations)
-                    .FirstOrDefaultAsync(p => p.Id == paymentId);
-
-                if (payment == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property payment not found.";
-                    return response;
-                }
+                    var payment = await context.PropertyPayments
+                        .Include(p => p.Property)
+                            .ThenInclude(pr => pr.Beneficiaries.Where(b => b.IsActive))
+                        .Include(p => p.Property)
+                            .ThenInclude(pr => pr.Owner)
+                        .Include(p => p.Allocations)
+                        .FirstOrDefaultAsync(p => p.Id == paymentId);
 
-                if (payment.IsAllocated)
-                {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Payment is already allocated.";
-                    return response;
-                }
-
-                // Get allocation rules
-                var rules = await GetPaymentRules(context, payment.CompanyId);
-
-                // Calculate allocations based on beneficiaries
-                var allocations = new List<PaymentAllocation>();
-                var remainingAmount = payment.Amount;
-
-                foreach (var beneficiary in payment.Property.Beneficiaries.Where(b => b.BenStatusId == 1)) // Active beneficiaries
-                {
-                    decimal allocationAmount = 0;
-
-                    if (beneficiary.CommissionTypeId == 1) // Percentage
+                    if (payment == null)
                     {
-                        allocationAmount = payment.Amount * (beneficiary.CommissionValue / 100);
-                    }
-                    else if (beneficiary.CommissionTypeId == 2) // Fixed amount
-                    {
-                        allocationAmount = beneficiary.CommissionValue;
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property payment not found.";
+                        return response;
                     }
 
-                    var allocation = new PaymentAllocation
+                    if (payment.IsAllocated)
                     {
-                        PaymentId = paymentId,
-                        BeneficiaryId = beneficiary.Id,
-                        Amount = Math.Round(allocationAmount, 2),
-                        Percentage = beneficiary.CommissionTypeId == 1 ? beneficiary.CommissionValue : 0,
-                        Description = $"Payment allocation for {beneficiary.Name}",
-                        AllocationDate = DateTime.Now,
-                        AllocatedBy = payment.UpdatedBy,
-                        AllocationTypeId = 1 // Standard allocation
-                    };
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Payment is already allocated.";
+                        return response;
+                    }
 
-                    allocations.Add(allocation);
-                    remainingAmount -= allocation.Amount;
+                    // Get allocation rules
+                    var rules = await GetPaymentRules(context, payment.CompanyId);
+
+                    // Calculate allocations based on beneficiaries
+                    var allocations = new List<PaymentAllocation>();
+                    var remainingAmount = payment.Amount;
+                    decimal allocatedTotal = 0;
+
+                    foreach (var beneficiary in payment.Property.Beneficiaries.Where(b => b.BenStatusId == 1)) // Active beneficiaries
+                    {
+                        decimal allocationAmount = 0;
+
+                        if (beneficiary.CommissionTypeId == 1) // Percentage
+                        {
+                            allocationAmount = payment.Amount * (beneficiary.CommissionValue / 100);
+                        }
+                        else if (beneficiary.CommissionTypeId == 2) // Fixed amount
+                        {
+                            allocationAmount = beneficiary.CommissionValue;
+                        }
+
+                        // Round to 2 decimal places
+                        allocationAmount = Math.Round(allocationAmount, 2);
+                        allocatedTotal += allocationAmount;
+
+                        var allocation = new PaymentAllocation
+                        {
+                            PaymentId = paymentId,
+                            BeneficiaryId = beneficiary.Id,
+                            Amount = allocationAmount,
+                            Percentage = beneficiary.CommissionTypeId == 1 ? beneficiary.CommissionValue :
+                                (payment.Amount > 0 ? (allocationAmount / payment.Amount) * 100 : 0),
+                            Description = $"Payment allocation for {beneficiary.Name}",
+                            AllocationDate = DateTime.Now,
+                            AllocatedBy = payment.UpdatedBy,
+                            AllocationTypeId = 1 // Standard allocation
+                        };
+
+                        allocations.Add(allocation);
+                    }
+
+                    // Allocate remaining amount to property owner if any
+                    remainingAmount = payment.Amount - allocatedTotal;
+                    if (remainingAmount > 0)
+                    {
+                        var ownerAllocation = new PaymentAllocation
+                        {
+                            PaymentId = paymentId,
+                            Amount = remainingAmount,
+                            Percentage = payment.Amount > 0 ? (remainingAmount / payment.Amount) * 100 : 0,
+                            Description = $"Remaining payment to property owner",
+                            AllocationDate = DateTime.Now,
+                            AllocatedBy = payment.UpdatedBy,
+                            AllocationTypeId = 2 // Owner allocation
+                        };
+
+                        allocations.Add(ownerAllocation);
+                    }
+
+                    // Save allocations
+                    await context.PaymentAllocations.AddRangeAsync(allocations);
+
+                    // Mark payment as allocated
+                    payment.IsAllocated = true;
+                    payment.AllocationDate = DateTime.Now;
+                    payment.AllocatedBy = payment.UpdatedBy;
+
+                    await context.SaveChangesAsync();
+
+                    // Create beneficiary payment records
+                    await CreateBeneficiaryPayments(allocations, payment);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = allocations;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Payment allocated successfully.";
+
+                    _logger.LogInformation("Payment allocated: {PaymentId} with {Count} allocations",
+                        paymentId, allocations.Count);
                 }
-
-                // Allocate remaining amount to property owner if any
-                if (remainingAmount > 0)
+                catch (Exception ex)
                 {
-                    var ownerAllocation = new PaymentAllocation
-                    {
-                        PaymentId = paymentId,
-                        Amount = remainingAmount,
-                        Percentage = 0,
-                        Description = $"Remaining payment to property owner",
-                        AllocationDate = DateTime.Now,
-                        AllocatedBy = payment.UpdatedBy,
-                        AllocationTypeId = 2 // Owner allocation
-                    };
-
-                    allocations.Add(ownerAllocation);
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Save allocations
-                await context.PaymentAllocations.AddRangeAsync(allocations);
-
-                // Mark payment as allocated
-                payment.IsAllocated = true;
-                payment.AllocationDate = DateTime.Now;
-                payment.AllocatedBy = payment.UpdatedBy;
-
-                await context.SaveChangesAsync();
-
-                // Create beneficiary payment records
-                await CreateBeneficiaryPayments(allocations, payment);
-
-                response.Response = allocations;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Payment allocated successfully.";
-
-                _logger.LogInformation("Payment allocated: {PaymentId} with {Count} allocations",
-                    paymentId, allocations.Count);
             }
             catch (Exception ex)
             {
@@ -393,50 +500,79 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Creates a beneficiary payment record
+        /// </summary>
         public async Task<ResponseModel> CreateBeneficiaryPayment(BeneficiaryPayment payment)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                // Verify the beneficiary exists
-                var beneficiary = await context.PropertyBeneficiaries
-                    .FirstOrDefaultAsync(b => b.Id == payment.BeneficiaryId && b.IsActive);
-
-                if (beneficiary == null)
+                if (payment.Amount <= 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Beneficiary not found.";
+                    response.ResponseInfo.Message = "Payment amount must be greater than zero.";
                     return response;
                 }
 
-                // Generate unique payment reference
-                payment.PaymentReference = await GenerateUniqueBeneficiaryPaymentReference(context);
-                payment.CreatedOn = DateTime.Now;
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Add the payment
-                await context.BeneficiaryPayments.AddAsync(payment);
-                await context.SaveChangesAsync();
+                try
+                {
+                    // Verify the beneficiary exists
+                    var beneficiary = await context.PropertyBeneficiaries
+                        .FirstOrDefaultAsync(b => b.Id == payment.BeneficiaryId && b.IsActive);
 
-                // Create CDN folder for beneficiary payment documents
-                var cdnFolderPath = $"company-{beneficiary.CompanyId}/beneficiary-payments/{payment.Id}";
-                await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "documents");
+                    if (beneficiary == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Beneficiary not found.";
+                        return response;
+                    }
 
-                // Reload with related data
-                var createdPayment = await context.BeneficiaryPayments
-                    .Include(bp => bp.Beneficiary)
-                    .Include(bp => bp.PaymentAllocation)
-                    .Include(bp => bp.Status)
-                    .FirstOrDefaultAsync(bp => bp.Id == payment.Id);
+                    // Generate unique payment reference
+                    payment.PaymentReference = await GenerateUniqueBeneficiaryPaymentReference(context);
+                    payment.CreatedOn = DateTime.Now;
 
-                response.Response = createdPayment;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Beneficiary payment created successfully.";
+                    // Add the payment
+                    await context.BeneficiaryPayments.AddAsync(payment);
+                    await context.SaveChangesAsync();
 
-                _logger.LogInformation("Beneficiary payment created with ID: {PaymentId} for beneficiary {BeneficiaryId}",
-                    payment.Id, payment.BeneficiaryId);
+                    // Create CDN folder for beneficiary payment documents
+                    try
+                    {
+                        var cdnFolderPath = $"company-{beneficiary.CompanyId}/beneficiary-payments/{payment.Id}";
+                        await _cdnService.CreateFolderAsync("payments", cdnFolderPath, "documents");
+                    }
+                    catch (Exception cdnEx)
+                    {
+                        // Log CDN error but continue with transaction
+                        _logger.LogWarning(cdnEx, "Error creating CDN folders for beneficiary payment {PaymentId}. Continuing with creation.", payment.Id);
+                    }
+
+                    // Reload with related data
+                    var createdPayment = await context.BeneficiaryPayments
+                        .Include(bp => bp.Beneficiary)
+                        .Include(bp => bp.PaymentAllocation)
+                        .Include(bp => bp.Status)
+                        .FirstOrDefaultAsync(bp => bp.Id == payment.Id);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = createdPayment;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Beneficiary payment created successfully.";
+
+                    _logger.LogInformation("Beneficiary payment created with ID: {PaymentId} for beneficiary {BeneficiaryId}",
+                        payment.Id, payment.BeneficiaryId);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -448,6 +584,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Processes a beneficiary payment by recording the transaction details
+        /// </summary>
         public async Task<ResponseModel> ProcessBeneficiaryPayment(int paymentId, string transactionReference, string userId)
         {
             ResponseModel response = new();
@@ -455,31 +594,42 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var payment = await context.BeneficiaryPayments
-                    .Include(bp => bp.Beneficiary)
-                    .FirstOrDefaultAsync(bp => bp.Id == paymentId);
-
-                if (payment == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Beneficiary payment not found.";
-                    return response;
+                    var payment = await context.BeneficiaryPayments
+                        .Include(bp => bp.Beneficiary)
+                        .FirstOrDefaultAsync(bp => bp.Id == paymentId);
+
+                    if (payment == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Beneficiary payment not found.";
+                        return response;
+                    }
+
+                    payment.StatusId = 2; // Paid
+                    payment.PaymentDate = DateTime.Now;
+                    payment.TransactionReference = transactionReference;
+
+                    await context.SaveChangesAsync();
+
+                    // Send payment notification
+                    await SendBeneficiaryPaymentNotification(payment);
+
+                    await transaction.CommitAsync();
+
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Beneficiary payment processed successfully.";
+
+                    _logger.LogInformation("Beneficiary payment processed: {PaymentId} by {UserId}", paymentId, userId);
                 }
-
-                payment.StatusId = 2; // Paid
-                payment.PaymentDate = DateTime.Now;
-                payment.TransactionReference = transactionReference;
-
-                await context.SaveChangesAsync();
-
-                // Send payment notification
-                await SendBeneficiaryPaymentNotification(payment);
-
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Beneficiary payment processed successfully.";
-
-                _logger.LogInformation("Beneficiary payment processed: {PaymentId} by {UserId}", paymentId, userId);
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -491,56 +641,77 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Creates a payment schedule for recurring payments
+        /// </summary>
         public async Task<ResponseModel> CreatePaymentSchedule(PaymentSchedule schedule, int companyId)
         {
             ResponseModel response = new();
 
             try
             {
+                if (schedule.Amount <= 0)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Schedule amount must be greater than zero.";
+                    return response;
+                }
+
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                // Verify the property and tenant exist
-                var property = await context.Properties
-                    .FirstOrDefaultAsync(p => p.Id == schedule.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
-
-                if (property == null)
+                try
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Property not found.";
-                    return response;
+                    // Verify the property and tenant exist
+                    var property = await context.Properties
+                        .FirstOrDefaultAsync(p => p.Id == schedule.PropertyId && p.CompanyId == companyId && !p.IsRemoved);
+
+                    if (property == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Property not found.";
+                        return response;
+                    }
+
+                    var tenant = await context.PropertyTenants
+                        .FirstOrDefaultAsync(t => t.Id == schedule.TenantId && t.PropertyId == schedule.PropertyId && !t.IsRemoved);
+
+                    if (tenant == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Tenant not found or not associated with the property.";
+                        return response;
+                    }
+
+                    // Calculate next due date
+                    schedule.NextDueDate = CalculateNextDueDate(schedule.StartDate, schedule.FrequencyId, schedule.DayOfMonth);
+                    schedule.CreatedOn = DateTime.Now;
+
+                    // Add the schedule
+                    await context.PaymentSchedules.AddAsync(schedule);
+                    await context.SaveChangesAsync();
+
+                    // Reload with related data
+                    var createdSchedule = await context.PaymentSchedules
+                        .Include(s => s.Property)
+                        .Include(s => s.Tenant)
+                        .Include(s => s.Frequency)
+                        .FirstOrDefaultAsync(s => s.Id == schedule.Id);
+
+                    await transaction.CommitAsync();
+
+                    response.Response = createdSchedule;
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Payment schedule created successfully.";
+
+                    _logger.LogInformation("Payment schedule created with ID: {ScheduleId} for property {PropertyId}",
+                        schedule.Id, schedule.PropertyId);
                 }
-
-                var tenant = await context.PropertyTenants
-                    .FirstOrDefaultAsync(t => t.Id == schedule.TenantId && t.PropertyId == schedule.PropertyId && !t.IsRemoved);
-
-                if (tenant == null)
+                catch (Exception ex)
                 {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Tenant not found or not associated with the property.";
-                    return response;
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Calculate next due date
-                schedule.NextDueDate = CalculateNextDueDate(schedule.StartDate, schedule.FrequencyId, schedule.DayOfMonth);
-                schedule.CreatedOn = DateTime.Now;
-
-                // Add the schedule
-                await context.PaymentSchedules.AddAsync(schedule);
-                await context.SaveChangesAsync();
-
-                // Reload with related data
-                var createdSchedule = await context.PaymentSchedules
-                    .Include(s => s.Property)
-                    .Include(s => s.Tenant)
-                    .Include(s => s.Frequency)
-                    .FirstOrDefaultAsync(s => s.Id == schedule.Id);
-
-                response.Response = createdSchedule;
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Payment schedule created successfully.";
-
-                _logger.LogInformation("Payment schedule created with ID: {ScheduleId} for property {PropertyId}",
-                    schedule.Id, schedule.PropertyId);
             }
             catch (Exception ex)
             {
@@ -552,6 +723,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Generates scheduled payments for all eligible payment schedules
+        /// </summary>
         public async Task<ResponseModel> GenerateScheduledPayments(int companyId)
         {
             ResponseModel response = new();
@@ -559,65 +733,75 @@ namespace Roovia.Services
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
-                var schedules = await context.PaymentSchedules
-                    .Include(s => s.Property)
-                    .Include(s => s.Tenant)
-                    .Include(s => s.Frequency)
-                    .Where(s => s.Property.CompanyId == companyId &&
-                               s.IsActive &&
-                               s.AutoGenerate &&
-                               s.NextDueDate.HasValue &&
-                               s.NextDueDate.Value.AddDays(-s.DaysBeforeDue) <= DateTime.Today)
-                    .ToListAsync();
-
-                var paymentsGenerated = 0;
-
-                foreach (var schedule in schedules)
+                try
                 {
-                    // Check if payment already exists for this period
-                    var existingPayment = await context.PropertyPayments
-                        .AnyAsync(p => p.PropertyId == schedule.PropertyId &&
-                                      p.TenantId == schedule.TenantId &&
-                                      p.DueDate == schedule.NextDueDate.Value);
+                    var schedules = await context.PaymentSchedules
+                        .Include(s => s.Property)
+                        .Include(s => s.Tenant)
+                        .Include(s => s.Frequency)
+                        .Where(s => s.Property.CompanyId == companyId &&
+                                   s.IsActive &&
+                                   s.AutoGenerate &&
+                                   s.NextDueDate.HasValue &&
+                                   s.NextDueDate.Value.AddDays(-s.DaysBeforeDue) <= DateTime.Today)
+                        .ToListAsync();
 
-                    if (existingPayment)
-                        continue;
+                    var paymentsGenerated = 0;
 
-                    // Create the payment
-                    var payment = new PropertyPayment
+                    foreach (var schedule in schedules)
                     {
-                        PropertyId = schedule.PropertyId,
-                        CompanyId = companyId,
-                        TenantId = schedule.TenantId,
-                        PaymentReference = await GenerateUniquePaymentReference(context),
-                        PaymentTypeId = 1, // Rent payment
-                        Amount = schedule.Amount,
-                        Currency = "ZAR",
-                        StatusId = 1, // Pending
-                        DueDate = schedule.NextDueDate.Value,
-                        CreatedOn = DateTime.Now,
-                        CreatedBy = "System"
-                    };
+                        // Check if payment already exists for this period
+                        var existingPayment = await context.PropertyPayments
+                            .AnyAsync(p => p.PropertyId == schedule.PropertyId &&
+                                          p.TenantId == schedule.TenantId &&
+                                          p.DueDate == schedule.NextDueDate.Value);
 
-                    await context.PropertyPayments.AddAsync(payment);
+                        if (existingPayment)
+                            continue;
 
-                    // Update schedule
-                    schedule.LastGeneratedDate = DateTime.Now;
-                    schedule.NextDueDate = CalculateNextDueDate(schedule.NextDueDate.Value,
-                        schedule.FrequencyId, schedule.DayOfMonth);
+                        // Create the payment
+                        var payment = new PropertyPayment
+                        {
+                            PropertyId = schedule.PropertyId,
+                            CompanyId = companyId,
+                            TenantId = schedule.TenantId,
+                            PaymentReference = await GenerateUniquePaymentReference(context),
+                            PaymentTypeId = 1, // Rent payment
+                            Amount = schedule.Amount,
+                            Currency = "ZAR",
+                            StatusId = 1, // Pending
+                            DueDate = schedule.NextDueDate.Value,
+                            CreatedOn = DateTime.Now,
+                            CreatedBy = "System"
+                        };
 
-                    paymentsGenerated++;
+                        await context.PropertyPayments.AddAsync(payment);
+
+                        // Update schedule
+                        schedule.LastGeneratedDate = DateTime.Now;
+                        schedule.NextDueDate = CalculateNextDueDate(schedule.NextDueDate.Value,
+                            schedule.FrequencyId, schedule.DayOfMonth);
+
+                        paymentsGenerated++;
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    response.Response = new { PaymentsGenerated = paymentsGenerated };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = $"{paymentsGenerated} scheduled payments generated successfully.";
+
+                    _logger.LogInformation("Generated {Count} scheduled payments for company {CompanyId}",
+                        paymentsGenerated, companyId);
                 }
-
-                await context.SaveChangesAsync();
-
-                response.Response = new { PaymentsGenerated = paymentsGenerated };
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = $"{paymentsGenerated} scheduled payments generated successfully.";
-
-                _logger.LogInformation("Generated {Count} scheduled payments for company {CompanyId}",
-                    paymentsGenerated, companyId);
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -629,6 +813,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Creates a payment rule for automating payment processing
+        /// </summary>
         public async Task<ResponseModel> CreatePaymentRule(PaymentRule rule, int companyId)
         {
             ResponseModel response = new();
@@ -665,6 +852,9 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets payment statistics for a company
+        /// </summary>
         public async Task<ResponseModel> GetPaymentStatistics(int companyId)
         {
             ResponseModel response = new();
@@ -673,8 +863,10 @@ namespace Roovia.Services
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
+                // Use optimized query approach
                 var payments = await context.PropertyPayments
                     .Where(p => p.CompanyId == companyId)
+                    .AsNoTracking() // Improves performance
                     .ToListAsync();
 
                 var statistics = new
@@ -712,12 +904,27 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets payment documents for a specific payment
+        /// </summary>
         public async Task<ResponseModel> GetPaymentDocuments(int paymentId, int companyId)
         {
             ResponseModel response = new();
 
             try
             {
+                // Verify the payment exists
+                using var context = await _contextFactory.CreateDbContextAsync();
+                var payment = await context.PropertyPayments
+                    .FirstOrDefaultAsync(p => p.Id == paymentId && p.CompanyId == companyId);
+
+                if (payment == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "Payment not found or does not belong to the company.";
+                    return response;
+                }
+
                 var cdnPath = $"company-{companyId}/payments/{paymentId}/receipts";
                 var files = await _cdnService.GetFilesAsync("payments", cdnPath);
 
@@ -735,51 +942,81 @@ namespace Roovia.Services
             return response;
         }
 
+        /// <summary>
+        /// Uploads proof of payment for a beneficiary payment
+        /// </summary>
         public async Task<ResponseModel> UploadBeneficiaryPaymentProof(int beneficiaryPaymentId, IFormFile file, string userId)
         {
             ResponseModel response = new();
 
             try
             {
-                using var context = await _contextFactory.CreateDbContextAsync();
-
-                var payment = await context.BeneficiaryPayments
-                    .Include(bp => bp.Beneficiary)
-                    .FirstOrDefaultAsync(bp => bp.Id == beneficiaryPaymentId);
-
-                if (payment == null)
+                if (file == null || file.Length == 0)
                 {
                     response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "Beneficiary payment not found.";
+                    response.ResponseInfo.Message = "No file was uploaded.";
                     return response;
                 }
 
-                // Upload proof of payment
-                var cdnPath = $"company-{payment.Beneficiary.CompanyId}/beneficiary-payments/{payment.Id}/documents";
-                string cdnUrl;
-
-                using (var stream = file.OpenReadStream())
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
                 {
-                    cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
-                        stream,
-                        file.FileName,
-                        file.ContentType,
-                        "payments",
-                        cdnPath
-                    );
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "File type not allowed. Please upload a JPG, PNG, or PDF file.";
+                    return response;
                 }
 
-                // Update payment status if proof is uploaded
-                if (payment.StatusId == 1) // Pending
+                using var context = await _contextFactory.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
+
+                try
                 {
-                    payment.StatusId = 3; // Awaiting Confirmation
+                    var payment = await context.BeneficiaryPayments
+                        .Include(bp => bp.Beneficiary)
+                        .FirstOrDefaultAsync(bp => bp.Id == beneficiaryPaymentId);
+
+                    if (payment == null)
+                    {
+                        response.ResponseInfo.Success = false;
+                        response.ResponseInfo.Message = "Beneficiary payment not found.";
+                        return response;
+                    }
+
+                    // Upload proof of payment
+                    var cdnPath = $"company-{payment.Beneficiary.CompanyId}/beneficiary-payments/{payment.Id}/documents";
+                    string cdnUrl;
+
+                    using (var stream = file.OpenReadStream())
+                    {
+                        cdnUrl = await _cdnService.UploadFileWithBase64BackupAsync(
+                            stream,
+                            file.FileName,
+                            file.ContentType,
+                            "payments",
+                            cdnPath
+                        );
+                    }
+
+                    // Update payment status if proof is uploaded
+                    if (payment.StatusId == 1) // Pending
+                    {
+                        payment.StatusId = 3; // Awaiting Confirmation
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    response.Response = new { ProofUrl = cdnUrl };
+                    response.ResponseInfo.Success = true;
+                    response.ResponseInfo.Message = "Payment proof uploaded successfully.";
                 }
-
-                await context.SaveChangesAsync();
-
-                response.Response = new { ProofUrl = cdnUrl };
-                response.ResponseInfo.Success = true;
-                response.ResponseInfo.Message = "Payment proof uploaded successfully.";
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -843,7 +1080,7 @@ namespace Roovia.Services
             if (rule == null)
                 return 0;
 
-            if (daysLate < rule.GracePeriodDays)
+            if (daysLate < (rule.GracePeriodDays ?? 0))
                 return 0;
 
             decimal lateFee = 0;
@@ -878,15 +1115,32 @@ namespace Roovia.Services
 
         private DateTime CalculateNextDueDate(DateTime currentDate, int frequencyId, int dayOfMonth)
         {
-            // This is a simplified calculation - should be enhanced based on frequency type
+            // Get first day of next month
+            var nextMonth = currentDate.AddMonths(1);
+            var firstDayNextMonth = new DateTime(nextMonth.Year, nextMonth.Month, 1);
+
             return frequencyId switch
             {
-                1 => currentDate.AddMonths(1), // Monthly
-                2 => currentDate.AddDays(14), // Bi-weekly
-                3 => currentDate.AddDays(7), // Weekly
-                4 => currentDate.AddMonths(3), // Quarterly
-                5 => currentDate.AddYears(1), // Annually
-                _ => currentDate.AddMonths(1)
+                1 => // Monthly
+                    new DateTime(
+                        firstDayNextMonth.Year,
+                        firstDayNextMonth.Month,
+                        Math.Min(dayOfMonth, DateTime.DaysInMonth(firstDayNextMonth.Year, firstDayNextMonth.Month))
+                    ),
+                2 => // Bi-weekly
+                    currentDate.AddDays(14),
+                3 => // Weekly
+                    currentDate.AddDays(7),
+                4 => // Quarterly
+                    currentDate.AddMonths(3),
+                5 => // Annually
+                    currentDate.AddYears(1),
+                _ => // Default to monthly
+                    new DateTime(
+                        firstDayNextMonth.Year,
+                        firstDayNextMonth.Month,
+                        Math.Min(dayOfMonth, DateTime.DaysInMonth(firstDayNextMonth.Year, firstDayNextMonth.Month))
+                    )
             };
         }
 
@@ -894,6 +1148,7 @@ namespace Roovia.Services
         {
             return await context.PaymentRules
                 .Where(r => r.CompanyId == companyId && r.IsActive)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -951,7 +1206,7 @@ namespace Roovia.Services
                         $"A new payment has been received for your property.\n\n" +
                         $"Reference: {payment.PaymentReference}\n" +
                         $"Amount: {payment.Currency} {payment.Amount:F2}\n" +
-                        $"Tenant: {payment.Tenant?.FullName}\n" +
+                        $"Tenant: {payment.Tenant?.DisplayName}\n" +
                         $"Date: {payment.CreatedOn:dd/MM/yyyy}"
                     );
                 }
@@ -988,22 +1243,44 @@ namespace Roovia.Services
 
         private object GenerateMonthlyPaymentStats(List<PropertyPayment> payments)
         {
-            return payments
-                .Where(p => p.CreatedOn >= DateTime.Now.AddMonths(-12))
-                .GroupBy(p => new { p.CreatedOn.Year, p.CreatedOn.Month })
-                .Select(g => new
+            // Get the last 12 months including the current month
+            var today = DateTime.Today;
+            var lastYear = today.AddMonths(-11);
+            var firstDayOfStartMonth = new DateTime(lastYear.Year, lastYear.Month, 1);
+
+            // Create a array representing all months in the range
+            var monthsInfo = Enumerable.Range(0, 12)
+                .Select(offset => firstDayOfStartMonth.AddMonths(offset))
+                .Select(date => new
                 {
-                    g.Key.Year,
-                    g.Key.Month,
-                    TotalPayments = g.Count(),
-                    CompletedPayments = g.Count(p => p.StatusId == 2),
-                    TotalAmount = g.Sum(p => p.Amount),
-                    CollectedAmount = g.Where(p => p.StatusId == 2).Sum(p => p.Amount),
-                    LateFees = g.Sum(p => p.LateFee ?? 0)
+                    Year = date.Year,
+                    Month = date.Month,
+                    MonthName = date.ToString("MMM yyyy")
                 })
+                .ToList();
+
+            // Join with actual payment data (or default to zero)
+            var result = monthsInfo
+                .GroupJoin(
+                    payments.Where(p => p.CreatedOn >= firstDayOfStartMonth),
+                    month => new { month.Year, month.Month },
+                    payment => new { Year = payment.CreatedOn.Year, Month = payment.CreatedOn.Month },
+                    (month, paymentsInMonth) => new
+                    {
+                        month.Year,
+                        month.Month,
+                        month.MonthName,
+                        TotalPayments = paymentsInMonth.Count(),
+                        CompletedPayments = paymentsInMonth.Count(p => p.StatusId == 2),
+                        TotalAmount = paymentsInMonth.Sum(p => p.Amount),
+                        CollectedAmount = paymentsInMonth.Where(p => p.StatusId == 2).Sum(p => p.Amount),
+                        LateFees = paymentsInMonth.Sum(p => p.LateFee ?? 0)
+                    })
                 .OrderBy(m => m.Year)
                 .ThenBy(m => m.Month)
                 .ToList();
+
+            return result;
         }
     }
 }
