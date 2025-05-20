@@ -1,0 +1,1393 @@
+﻿@page "/support"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Services
+@using Roovia.Services.General
+@using System.Security.Claims
+@inject IUser UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@rendermode InteractiveServer
+
+<div class="pm-page">
+    <div class="admin-header-section">
+        <div class="admin-header-content">
+            <div class="header-text-content">
+                <div class="header-icon">
+                    <i class="fa-light fa-headset"></i>
+                </div>
+                <div class="header-title-group">
+                    <h1 class="header-title">Support Center</h1>
+                    <p class="header-subtitle">Get help, submit tickets, and find answers to common questions</p>
+                </div>
+            </div>
+            <div class="header-action-panel">
+                <!-- Optionally add header actions here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="pm-main-container">
+        <!-- Search Bar -->
+        <div class="pm-support-search">
+            <div class="pm-search-container">
+                <i class="fa-light fa-magnifying-glass pm-search-icon"></i>
+                <input type="text"
+                       class="pm-search-input"
+                       placeholder="Search FAQs, documentation and knowledge base..."
+                       @bind-value="searchText"
+                       @bind-value:event="oninput"
+                       @onkeyup="SearchFaqs" style="    border-radius: 16px;    width: 26em;   padding: 7px;    border: 1px solid #e5eeee;" />
+                @if (!string.IsNullOrEmpty(searchText))
+                {
+                    <button class="pm-search-clear" @onclick="ClearSearch">
+                        <i class="fa-light fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+
+
+        <!-- Quick Actions -->
+        <div class="pm-support-section">
+            <div class="pm-section-header">
+                <h2><i class="fa-light fa-bolt"></i> Quick Actions</h2>
+            </div>
+            <div class="pm-quick-actions">
+                <div class="pm-action-card" @onclick="CreateNewTicket">
+                    <div class="pm-action-icon">
+                        <i class="fa-light fa-ticket-simple"></i>
+                    </div>
+                    <div class="pm-action-text">Submit a Ticket</div>
+                </div>
+                <div class="pm-action-card" @onclick="ViewAllTickets">
+                    <div class="pm-action-icon">
+                        <i class="fa-light fa-clipboard-list"></i>
+                    </div>
+                    <div class="pm-action-text">My Tickets</div>
+                </div>
+                <div class="pm-action-card" @onclick="ViewKnowledgeBase">
+                    <div class="pm-action-icon">
+                        <i class="fa-light fa-book"></i>
+                    </div>
+                    <div class="pm-action-text">Knowledge Base</div>
+                </div>
+                <div class="pm-action-card" @onclick="() => NavigateToDocumentation()">
+                    <div class="pm-action-icon">
+                        <i class="fa-light fa-file-lines"></i>
+                    </div>
+                    <div class="pm-action-text">Documentation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQs Accordion -->
+        <div class="pm-support-section">
+            <div class="pm-section-header">
+                <h2><i class="fa-light fa-circle-question"></i> Frequently Asked Questions</h2>
+                @if (!string.IsNullOrEmpty(selectedCategory) && selectedCategory != "all")
+                {
+                    <div class="pm-selected-category">
+                        <span>Category: @GetCategoryName(selectedCategory)</span>
+                        <button class="pm-category-clear">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    </div>
+                }
+                <div class="pm-category-tabs">
+                    <button class="@(selectedCategory == "all" ? "active" : "")">All</button>
+                    <button class="@(selectedCategory == "account" ? "active" : "")">Account</button>
+                    <button class="@(selectedCategory == "properties" ? "active" : "")">Properties</button>
+                    <button class="@(selectedCategory == "tenants" ? "active" : "")">Tenants</button>
+                    <button class="@(selectedCategory == "financials" ? "active" : "")">Financials</button>
+                    <button class="@(selectedCategory == "technical" ? "active" : "")">Technical</button>
+                </div>
+            </div>
+
+            @if (!filteredFaqs.Any())
+            {
+                <div class="pm-empty-state">
+                    <div class="pm-empty-icon">
+                        <i class="fa-light fa-circle-question"></i>
+                    </div>
+                    <h3 class="pm-empty-title">No FAQs Found</h3>
+                    <p class="pm-empty-description">No FAQs match your current search criteria.</p>
+                    <button class="pm-custom-btn pm-custom-btn-primary" @onclick="ClearSearch">
+                        <i class="fa-light fa-filter-circle-xmark pm-me-2"></i> Clear Search
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="pm-faq-container">
+                    @foreach (var faq in filteredFaqs)
+                    {
+                        <div class="pm-faq-item @(expandedFaqId == faq.Id ? "expanded" : "")">
+                            <div class="pm-faq-question" @onclick="() => ToggleFaq(faq.Id)">
+                                <span>@faq.Question</span>
+                                <i class="fa-light @(expandedFaqId == faq.Id ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                            </div>
+                            <div class="pm-faq-answer">
+                                <p>@((MarkupString)faq.Answer)</p>
+                                @if (!string.IsNullOrEmpty(faq.RelatedLink))
+                                {
+                                    <a href="@faq.RelatedLink" class="pm-faq-link" target="_blank">
+                                        Learn more <i class="fa-light fa-external-link"></i>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+    </div>
+</div>
+
+@if (showNewTicketModal)
+{
+    <div class="pm-modal-backdrop" @onclick="() => showNewTicketModal = false"></div>
+    <div class="pm-ticket-modal">
+        <div class="pm-modal-header">
+            <h3><i class="fa-light fa-ticket"></i> Create New Support Ticket</h3>
+            <button class="pm-modal-close-btn" @onclick="() => showNewTicketModal = false">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="pm-modal-body">
+            <div class="pm-form-group">
+                <label for="ticket-subject">Subject</label>
+                <input type="text" id="ticket-subject" class="pm-form-input" @bind="newTicket.Subject" placeholder="Briefly describe your issue" />
+            </div>
+            <div class="pm-form-group">
+                <label for="ticket-category">Category</label>
+                <select id="ticket-category" class="pm-form-select" @bind="newTicket.Category">
+                    <option value="">Select a category</option>
+                    <option value="account">Account & Billing</option>
+                    <option value="properties">Property Management</option>
+                    <option value="tenants">Tenant Management</option>
+                    <option value="financials">Financials & Payments</option>
+                    <option value="technical">Technical Issues</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="pm-form-group">
+                <label for="ticket-priority">Priority</label>
+                <select id="ticket-priority" class="pm-form-select" @bind="newTicket.Priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                </select>
+            </div>
+            <div class="pm-form-group">
+                <label for="ticket-description">Description</label>
+                <textarea id="ticket-description" class="pm-form-textarea" rows="5" @bind="newTicket.Description" placeholder="Please provide details about your issue..."></textarea>
+            </div>
+            <div class="pm-form-group">
+                <label>Attachments</label>
+                <div class="pm-file-upload">
+                    <label for="ticket-file" class="pm-file-upload-label">
+                        <i class="fa-light fa-cloud-arrow-up"></i>
+                        <span>Click to upload files</span>
+                        <input type="file" id="ticket-file" hidden multiple />
+                    </label>
+                </div>
+                @if (uploadedFiles.Any())
+                {
+                    <div class="pm-file-list">
+                        @foreach (var file in uploadedFiles)
+                        {
+                            <div class="pm-file-item">
+                                <i class="fa-light fa-file-lines"></i>
+                                <span>@file.Name</span>
+                                <button class="pm-file-remove" @onclick="() => RemoveFile(file)">
+                                    <i class="fa-light fa-times"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="pm-modal-footer">
+            <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => showNewTicketModal = false">Cancel</button>
+            <button class="pm-custom-btn pm-custom-btn-primary" @onclick="SubmitTicket">
+                <i class="fa-light fa-paper-plane pm-me-2"></i> Submit Ticket
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    // User and Authentication
+    private ApplicationUser currentUser;
+    private int currentUserCompanyId;
+
+    // UI State
+    private bool isLoading = true;
+    private bool showOptionsMenu = false;
+    private string searchText = "";
+    private string selectedCategory = "all";
+    private int? expandedFaqId = null;
+    private bool showNewTicketModal = false;
+
+    // Tickets
+    private List<SupportTicket> allTickets = new();
+    private int activeTickets = 3;
+    private int supportHistory = 12;
+    private int knowledgeBaseArticles = 42;
+
+    // New Ticket
+    private SupportTicket newTicket = new();
+    private List<UploadedFile> uploadedFiles = new();
+
+    // FAQs
+    private List<FaqItem> faqItems = new();
+    private List<FaqItem> filteredFaqs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadSupportData();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier)?.FirstOrDefault()?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var userResult = await UserService.GetUserById(userId);
+                if (userResult.ResponseInfo.Success)
+                {
+                    currentUser = userResult.Response as ApplicationUser;
+                    currentUserCompanyId = currentUser?.CompanyId ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadSupportData()
+    {
+        isLoading = true;
+
+        try
+        {
+            // In a real implementation, you would load this data from services
+            // This is mock data for demonstration purposes
+
+            // Load FAQs
+            faqItems = new List<FaqItem>
+            {
+                new FaqItem {
+                    Id = 1,
+                    Question = "How do I add a new property to the system?",
+                    Answer = "To add a new property, navigate to the <strong>Properties</strong> page and click on the <strong>Add Property</strong> button in the top right corner. Fill in the required details and click Save.",
+                    Category = "properties",
+                    RelatedLink = "/kb/properties/add-new-property"
+                },
+                new FaqItem {
+                    Id = 2,
+                    Question = "How do I create a new tenant account?",
+                    Answer = "To create a new tenant, go to the <strong>Tenants</strong> page and click on <strong>Add Tenant</strong>. Fill in the tenant's personal details, contact information, and assign them to a property.",
+                    Category = "tenants",
+                    RelatedLink = "/kb/tenants/add-new-tenant"
+                },
+                new FaqItem {
+                    Id = 3,
+                    Question = "How can I generate financial reports?",
+                    Answer = "Navigate to the <strong>Reports</strong> section and select <strong>Financial Reports</strong>. From there, you can choose the type of report, date range, and properties to include.",
+                    Category = "financials",
+                    RelatedLink = "/kb/financial/generate-reports"
+                },
+                new FaqItem {
+                    Id = 4,
+                    Question = "How do I reset my password?",
+                    Answer = "Click on the <strong>Forgot Password</strong> link on the login page. Enter your email address and follow the instructions sent to your email to reset your password.",
+                    Category = "account",
+                    RelatedLink = "/kb/account/reset-password"
+                },
+                new FaqItem {
+                    Id = 5,
+                    Question = "Can I customize the dashboard?",
+                    Answer = "Yes, you can customize your dashboard by clicking on the <strong>Customize</strong> button in the top-right corner of the dashboard. You can add, remove, or rearrange widgets based on your preferences.",
+                    Category = "account",
+                    RelatedLink = "/kb/account/customize-dashboard"
+                },
+                new FaqItem {
+                    Id = 6,
+                    Question = "How do I process rent payments?",
+                    Answer = "Go to the <strong>Payments</strong> section, select the property and tenant, then click on <strong>Record Payment</strong>. Enter the payment details, method, and date, then save the transaction.",
+                    Category = "financials",
+                    RelatedLink = "/kb/financial/process-payments"
+                },
+                new FaqItem {
+                    Id = 7,
+                    Question = "What browser is best for using this system?",
+                    Answer = "Our system works best with modern browsers such as Chrome, Firefox, Edge, and Safari. For optimal performance, we recommend keeping your browser updated to the latest version.",
+                    Category = "technical",
+                    RelatedLink = "/kb/technical/supported-browsers"
+                },
+                new FaqItem {
+                    Id = 8,
+                    Question = "How do I archive a property?",
+                    Answer = "To archive a property, go to the property details page and click the menu (three dots) in the top-right corner. Select <strong>Archive Property</strong> from the dropdown menu and confirm your action.",
+                    Category = "properties",
+                    RelatedLink = "/kb/properties/archive-property"
+                }
+            };
+
+            FilterFaqs();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load support data: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterFaqs()
+    {
+        var result = faqItems;
+
+        // Filter by category
+        if (!string.IsNullOrEmpty(selectedCategory) && selectedCategory != "all")
+        {
+            result = result.Where(f => f.Category == selectedCategory).ToList();
+        }
+
+        // Filter by search text
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            string search = searchText.ToLower();
+            result = result.Where(f =>
+                f.Question.ToLower().Contains(search) ||
+                f.Answer.ToLower().Contains(search)
+            ).ToList();
+        }
+
+        filteredFaqs = result;
+    }
+
+    private void ToggleOptionsMenu()
+    {
+        showOptionsMenu = !showOptionsMenu;
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category;
+        FilterFaqs();
+    }
+
+    private void ToggleFaq(int id)
+    {
+        if (expandedFaqId == id)
+        {
+            expandedFaqId = null;
+        }
+        else
+        {
+            expandedFaqId = id;
+        }
+    }
+
+    private void SearchFaqs()
+    {
+        FilterFaqs();
+    }
+
+    private void ClearSearch()
+    {
+        searchText = "";
+        FilterFaqs();
+    }
+
+    private void CreateNewTicket()
+    {
+        newTicket = new SupportTicket
+            {
+                Status = "New",
+                CreatedDate = DateTime.Now,
+                Priority = "Medium"
+            };
+        uploadedFiles.Clear();
+        showNewTicketModal = true;
+    }
+
+    private void HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(10))
+        {
+            uploadedFiles.Add(new UploadedFile
+                {
+                    Name = file.Name,
+                    Size = file.Size,
+                    ContentType = file.ContentType,
+                    File = file
+                });
+        }
+    }
+
+    private void RemoveFile(UploadedFile file)
+    {
+        uploadedFiles.Remove(file);
+    }
+
+    private void SubmitTicket()
+    {
+        // In a real implementation, you would send the ticket to the server
+        // For demo purposes, we'll just show a success message and close the modal
+
+        if (string.IsNullOrWhiteSpace(newTicket.Subject))
+        {
+            ToastService.ShowError("Please enter a subject for your ticket", "Validation Error");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newTicket.Category))
+        {
+            ToastService.ShowError("Please select a category for your ticket", "Validation Error");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newTicket.Description))
+        {
+            ToastService.ShowError("Please provide a description of your issue", "Validation Error");
+            return;
+        }
+
+        // Success case
+        ToastService.ShowSuccess("Support ticket submitted successfully. Our team will respond shortly.", "Ticket Created");
+        showNewTicketModal = false;
+    }
+
+    private void ViewAllTickets()
+    {
+        NavigationManager.NavigateTo("/support/tickets");
+    }
+
+    private void ViewActiveTickets()
+    {
+        NavigationManager.NavigateTo("/support/tickets?status=active");
+    }
+
+    private void ViewSupportHistory()
+    {
+        NavigationManager.NavigateTo("/support/history");
+    }
+
+    private void NavigateToDocumentation()
+    {
+        NavigationManager.NavigateTo("/documentation");
+    }
+
+    private void ContactSupport()
+    {
+        // Open contact support form or redirect to contact page
+        NavigationManager.NavigateTo("/support/contact");
+    }
+
+    private void StartLiveChat()
+    {
+        // In a real implementation, this would initialize a live chat widget
+        JSRuntime.InvokeVoidAsync("alert", "Live chat feature will be available soon.");
+    }
+
+    private void ViewKnowledgeBase()
+    {
+        NavigationManager.NavigateTo("/knowledge-base");
+    }
+
+    private void NavigateToKbArticle(string slug)
+    {
+        NavigationManager.NavigateTo($"/knowledge-base/{slug}");
+    }
+
+    private string GetCategoryName(string category)
+    {
+        return category switch
+        {
+            "account" => "Account & Billing",
+            "properties" => "Property Management",
+            "tenants" => "Tenant Management",
+            "financials" => "Financials & Payments",
+            "technical" => "Technical Issues",
+            _ => "All Categories"
+        };
+    }
+
+    // Model classes
+    public class SupportTicket
+    {
+        public int Id { get; set; }
+        public string TicketNumber { get; set; }
+        public string Subject { get; set; }
+        public string Description { get; set; }
+        public string Category { get; set; }
+        public string Status { get; set; }
+        public string Priority { get; set; }
+        public DateTime CreatedDate { get; set; }
+    }
+
+    public class FaqItem
+    {
+        public int Id { get; set; }
+        public string Question { get; set; }
+        public string Answer { get; set; }
+        public string Category { get; set; }
+        public string RelatedLink { get; set; }
+    }
+
+    public class UploadedFile
+    {
+        public string Name { get; set; }
+        public long Size { get; set; }
+        public string ContentType { get; set; }
+        public IBrowserFile File { get; set; }
+    }
+}
+
+<style>
+    /* ====== Support Page Styles ====== */
+
+    /* Support Layout */
+    .pm-support-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Category Tabs */
+    .pm-category-tabs {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+
+        .pm-category-tabs button {
+            background: none;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+            .pm-category-tabs button:hover {
+                background-color: var(--primary-lighter);
+                color: var(--primary);
+            }
+
+            .pm-category-tabs button.active {
+                background-color: var(--primary);
+                color: white;
+                font-weight: 500;
+            }
+
+    /* Support Section */
+    .pm-support-section {
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+
+        .pm-support-section:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+    .pm-section-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        background-color: var(--subtle-bg);
+    }
+
+        .pm-section-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+            .pm-section-header h2 i {
+                color: var(--primary);
+            }
+
+    .pm-selected-category {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+        border-radius: 20px;
+        font-size: 0.813rem;
+        font-weight: 500;
+        margin-right: auto;
+    }
+
+    .pm-category-clear {
+        background: none;
+        border: none;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+        font-size: 0.75rem;
+    }
+
+        .pm-category-clear:hover {
+            background-color: var(--primary-light);
+            border-radius: 50%;
+        }
+
+    /* Support Search */
+    .pm-support-search {
+        background-color: var(--content-bg);
+        padding: 1.25rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Quick Actions */
+    .pm-quick-actions {
+        display: flex;
+        gap: 1rem;
+        padding: 1.25rem;
+        justify-content: space-around;
+    }
+
+    .pm-action-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 1rem;
+        background-color: var(--subtle-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        width: 20rem;
+    }
+
+        .pm-action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            background-color: var(--primary-lighter);
+        }
+
+    .pm-action-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .pm-action-card:hover .pm-action-icon {
+        transform: scale(1.1);
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .pm-action-text {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.938rem;
+        transition: color 0.2s ease;
+    }
+
+    .pm-action-card:hover .pm-action-text {
+        color: var(--primary);
+    }
+
+    /* FAQ Accordion */
+    .pm-faq-container {
+        padding: 1.25rem;
+    }
+
+    .pm-faq-item {
+        border: 1px solid var(--border-light);
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
+    }
+
+        .pm-faq-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .pm-faq-item.expanded {
+            box-shadow: var(--shadow-md);
+        }
+
+    .pm-faq-question {
+        padding: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        background-color: var(--subtle-bg);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background-color 0.2s ease;
+    }
+
+        .pm-faq-question:hover {
+            background-color: var(--primary-lighter);
+            color: var(--primary);
+        }
+
+        .pm-faq-question i {
+            color: var(--text-muted);
+            transition: transform 0.3s ease;
+        }
+
+    .pm-faq-item.expanded .pm-faq-question i {
+        transform: rotate(180deg);
+        color: var(--primary);
+    }
+
+    .pm-faq-answer {
+        padding: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .pm-faq-item.expanded .pm-faq-answer {
+        padding: 1.25rem;
+        max-height: 1000px;
+    }
+
+    .pm-faq-answer p {
+        margin: 0 0 1rem;
+        color: var(--text-secondary);
+        font-size: 0.938rem;
+        line-height: 1.6;
+    }
+
+        .pm-faq-answer p:last-child {
+            margin-bottom: 0;
+        }
+
+    .pm-faq-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        margin-top: 0.75rem;
+    }
+
+        .pm-faq-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+    /* Knowledge Base Grid */
+    .pm-kb-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1.25rem;
+        padding: 1.25rem;
+    }
+
+    .pm-kb-card {
+        padding: 1.5rem;
+        border-radius: 10px;
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-light);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+        text-align: center;
+    }
+
+        .pm-kb-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            background-color: var(--primary-lighter);
+        }
+
+    .pm-kb-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .pm-kb-card:hover .pm-kb-icon {
+        background-color: var(--primary-light);
+        transform: scale(1.1);
+    }
+
+    .pm-kb-card h4 {
+        margin: 0 0 0.75rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: color 0.2s ease;
+    }
+
+    .pm-kb-card:hover h4 {
+        color: var(--primary);
+    }
+
+    .pm-kb-card p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    /* Contact Options */
+    .pm-contact-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.25rem;
+        padding: 1.25rem;
+    }
+
+    .pm-contact-card {
+        padding: 1.5rem;
+        border-radius: 10px;
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-light);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        text-align: center;
+    }
+
+        .pm-contact-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            background-color: var(--primary-lighter);
+        }
+
+    .pm-contact-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background-color: var(--primary-lighter);
+        color: var(--primary);
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .pm-contact-card:hover .pm-contact-icon {
+        background-color: var(--primary-light);
+        transform: scale(1.1);
+    }
+
+    .pm-contact-card h4 {
+        margin: 0 0 0.75rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: color 0.2s ease;
+    }
+
+    .pm-contact-card:hover h4 {
+        color: var(--primary);
+    }
+
+    .pm-contact-card p {
+        margin: 0 0 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .pm-contact-card .pm-text-muted {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .pm-contact-card .pm-custom-btn {
+        margin-top: 0.75rem;
+    }
+
+    /* New Ticket Modal */
+    .pm-ticket-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 600px;
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow-xl);
+        z-index: 200;
+        overflow: hidden;
+        animation: pm-scale-in 0.3s ease;
+    }
+
+    .pm-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        background-color: var(--subtle-bg);
+        border-bottom: 1px solid var(--border-divider);
+    }
+
+        .pm-modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+            .pm-modal-header h3 i {
+                color: var(--primary);
+            }
+
+    .pm-modal-body {
+        padding: 1.5rem;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+
+    .pm-modal-footer {
+        padding: 1.25rem 1.5rem;
+        background-color: var(--subtle-bg);
+        border-top: 1px solid var(--border-divider);
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    /* Form Styles */
+    .pm-form-group {
+        margin-bottom: 1.25rem;
+    }
+
+        .pm-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .pm-form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+    .pm-form-input,
+    .pm-form-select,
+    .pm-form-textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.938rem;
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+        font-family: var(--font-sans);
+    }
+
+        .pm-form-input:focus,
+        .pm-form-select:focus,
+        .pm-form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+        }
+
+    .pm-form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' stroke='currentColor' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round' class='css-i6dzq1'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        padding-right: 2.5rem;
+    }
+
+    .pm-form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    /* File Upload */
+    .pm-file-upload {
+        margin-bottom: 1rem;
+    }
+
+    .pm-file-upload-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background-color: var(--input-bg);
+    }
+
+        .pm-file-upload-label:hover {
+            border-color: var(--primary);
+            background-color: var(--primary-lighter);
+        }
+
+        .pm-file-upload-label i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .pm-file-upload-label span {
+            font-size: 0.938rem;
+            color: var(--text-secondary);
+        }
+
+    .pm-file-list {
+        margin-top: 1rem;
+    }
+
+    .pm-file-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background-color: var(--subtle-bg);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+    }
+
+        .pm-file-item i {
+            color: var(--primary);
+        }
+
+    .pm-file-remove {
+        margin-left: auto;
+        background: none;
+        border: none;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: var(--danger);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+    }
+
+        .pm-file-remove:hover {
+            background-color: var(--danger-light);
+        }
+
+    /* Responsive Styles */
+    @@media (max-width: 991px) {
+        .pm-kb-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+
+        .pm-contact-options {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .pm-quick-actions {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        }
+
+        .pm-header-content {
+            flex-direction: column;
+            gap: 1.25rem;
+            text-align: center;
+            padding: 1.5rem 1rem;
+        }
+
+        .pm-header-text-content {
+            flex-direction: column;
+        }
+
+        .pm-header-action-panel {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .pm-quick-actions {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .pm-kb-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .pm-contact-options {
+            grid-template-columns: 1fr;
+        }
+
+        .pm-header-action-panel {
+            flex-direction: column;
+            width: 100%;
+            gap: 0.75rem;
+        }
+
+            .pm-header-action-panel .pm-custom-btn {
+                width: 100%;
+            }
+    }
+
+    /* ====== Enhanced Header Section ====== */
+    .admin-header-section {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+        color: white;
+        padding: 1.25rem 0;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        border-bottom-left-radius: 15px;
+        border-bottom-right-radius: 15px;
+    }
+
+        /* Header top accent bar */
+        .admin-header-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, var(#3fd5b3), var(#57e795));
+            z-index: 1;
+        }
+
+        /* Header pattern background */
+        .admin-header-section::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255, 255, 255, 0.08)35px, rgba(255, 255, 255, 0.08) 70px), repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255, 255, 255, 0.08) 35px, rgba(255, 255, 255, 0.08) 70px);
+            opacity: 0.5;
+            animation: header-pattern-slide 60s linear infinite;
+            z-index: 0;
+        }
+
+    @@keyframes header-pattern-slide {
+        0%
+
+    {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 70px 70px;
+    }
+
+    }
+
+    .admin-header-content {
+        position: relative;
+        z-index: 1;
+        max-width: var(--content-max-width);
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-text-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--users-header-icon-bg);
+        backdrop-filter: blur(8px);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--users-header-icon-border);
+        transition: transform 0.3s ease;
+        animation: icon-float 3.5s ease-in-out infinite;
+        position: relative;
+        z-index: 2;
+    }
+
+    @@keyframes icon-float {
+        0%, 100%
+
+    {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+
+    }
+
+    .header-icon:hover {
+        transform: scale(1.08);
+    }
+
+    .header-title-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        color: white;
+    }
+
+    .header-subtitle {
+        margin: 0.25rem 0 0;
+        opacity: 0.85;
+        font-size: 0.875rem;
+        font-weight: 400;
+        color: whitesmoke;
+    }
+
+    .header-action-panel {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .pm-custom-btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+        color: white;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .pm-custom-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.125rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        white-space: nowrap;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: visible;
+        z-index: 1;
+    }
+
+    .pm-modal-close-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .pm-modal-close-btn:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+        }
+</style>
