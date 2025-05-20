@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Roovia.Models.UserCompanyModels;
 
-namespace Roovia.Authentication
+namespace Roovia.Security
 {
     public static class AuthorizationPolicies
     {
-        public const string GlobalAdminPolicy = "GlobalAdminOnly";
+        public const string GlobalAdminPolicy = "GlobalAdminPolicy";
     }
 
     public class GlobalAdminRequirement : IAuthorizationRequirement
@@ -29,9 +29,7 @@ namespace Roovia.Authentication
             try
             {
                 _isCheckingPermission.Value = true;
-
                 var userRole = context.User.FindFirst("Role")?.Value;
-
                 if (userRole == SystemRole.SystemAdministrator.ToString())
                 {
                     context.Succeed(requirement);

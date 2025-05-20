@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Roovia;
-using Roovia.Authentication;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
@@ -102,17 +101,17 @@ builder.Services.AddAuthorization(options =>
 {
     // Register pre-defined policies
     options.AddPolicy(AuthorizationPolicies.GlobalAdminPolicy, policy =>
-        policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" && c.Value == SystemRole.SystemAdministrator.ToString())));
+         policy.AddRequirements(new GlobalAdminRequirement()));
+
 
     // Add AdminAccess policy
     options.AddPolicy("AdminAccess", policy =>
-        policy.RequireAssertion(context =>
-            context.User.HasClaim(c => c.Type == "Role" &&
-                (c.Value == SystemRole.SystemAdministrator.ToString() ||
-                 c.Value == SystemRole.CompanyAdministrator.ToString() ||
-                 c.Value == SystemRole.BranchManager.ToString())) ||
-            context.User.HasClaim(c => c.Type == "Permission" && c.Value == "settings.users")));
+           policy.RequireAssertion(context =>
+               context.User.HasClaim(c => c.Type == "Role" &&
+                   (c.Value == SystemRole.SystemAdministrator.ToString() ||
+                    c.Value == SystemRole.CompanyAdministrator.ToString() ||
+                    c.Value == SystemRole.BranchManager.ToString())) ||
+               context.User.HasClaim(c => c.Type == "Permission" && c.Value == "settings.users")));
 
     // Add functional area policies
     options.AddPolicy("PropertiesAccess", policy =>
@@ -259,34 +258,34 @@ else
 }
 
 // Initialize database and seed data
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
 
-    try
-    {
-        // First, ensure the database exists and is migrated
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        await context.Database.MigrateAsync();
+//    try
+//    {
+//        // First, ensure the database exists and is migrated
+//        var context = services.GetRequiredService<ApplicationDbContext>();
+//        await context.Database.MigrateAsync();
 
-        // Seed all lookup tables
-        var seedDataService = services.GetRequiredService<ISeedDataService>();
-        await seedDataService.InitializeAsync();
+//        // Seed all lookup tables
+//        var seedDataService = services.GetRequiredService<ISeedDataService>();
+//        await seedDataService.InitializeAsync();
 
-        // Seed permissions and roles
-        await PermissionSeeder.SeedPermissionsAndRoles(services);
+//        // Seed permissions and roles
+//        await PermissionSeeder.SeedPermissionsAndRoles(services);
 
-        logger.LogInformation("Database initialization and seeding completed successfully");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while initializing the database");
-        // In production, you might want to handle this differently
-        if (app.Environment.IsDevelopment())
-        {
-            throw;
-        }
-    }
-}
+//        logger.LogInformation("Database initialization and seeding completed successfully");
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "An error occurred while initializing the database");
+//        // In production, you might want to handle this differently
+//        if (app.Environment.IsDevelopment())
+//        {
+//            throw;
+//        }
+//    }
+//}
 
 app.Run();
