@@ -849,6 +849,9 @@ namespace Roovia.Security
 
         #region User-Role Operations
 
+        /// <summary>
+        /// Assigns a role to a user
+        /// </summary>
         public async Task<ResponseModel> AssignRoleToUser(string userId, int roleId)
         {
             ResponseModel response = new();
@@ -881,6 +884,26 @@ namespace Roovia.Security
 
                 if (existingUserRole != null)
                 {
+                    // If the role assignment exists but is inactive, reactivate it
+                    if (!existingUserRole.IsActive)
+                    {
+                        existingUserRole.IsActive = true;
+                        existingUserRole.AssignedDate = DateTime.Now;
+                        existingUserRole.ExpiryDate = null; // Reset expiry date if it was set
+
+                        // Get current user's ID for the AssignedBy field
+                        var currentUserIdClaim = await GetCurrentUserId();
+                        existingUserRole.AssignedBy = currentUserIdClaim ?? "System";
+
+                        await context.SaveChangesAsync();
+
+                        response.Response = existingUserRole;
+                        response.ResponseInfo.Success = true;
+                        response.ResponseInfo.Message = "User role reactivated successfully.";
+                        return response;
+                    }
+
+                    // If already active, nothing to do
                     response.Response = existingUserRole;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "User already has this role.";
@@ -892,8 +915,13 @@ namespace Roovia.Security
                 {
                     UserId = userId,
                     RoleId = roleId,
-                    AssignedDate = DateTime.Now
+                    AssignedDate = DateTime.Now,
+                    IsActive = true
                 };
+
+                // Get current user's ID for the AssignedBy field
+                var currentUserId = await GetCurrentUserId();
+                userRole.AssignedBy = currentUserId ?? "System";
 
                 await context.UserRoleAssignments.AddAsync(userRole);
                 await context.SaveChangesAsync();
@@ -911,6 +939,9 @@ namespace Roovia.Security
             return response;
         }
 
+        /// <summary>
+        /// Removes a role from a user
+        /// </summary>
         public async Task<ResponseModel> RemoveRoleFromUser(string userId, int roleId)
         {
             ResponseModel response = new();
@@ -930,8 +961,20 @@ namespace Roovia.Security
                     return response;
                 }
 
-                // Remove the relationship
-                context.UserRoleAssignments.Remove(userRole);
+                // Instead of hard deleting, set IsActive to false if you want to keep the history
+                // context.UserRoleAssignments.Remove(userRole);
+
+                userRole.IsActive = false;
+                userRole.ExpiryDate = DateTime.Now;
+
+                // Get current user's ID for tracking who removed the role
+                var currentUserId = await GetCurrentUserId();
+                if (!string.IsNullOrEmpty(currentUserId))
+                {
+                    // You could add an UpdatedBy field to UserRoleAssignment if needed
+                    // userRole.UpdatedBy = currentUserId;
+                }
+
                 await context.SaveChangesAsync();
 
                 response.ResponseInfo.Success = true;
@@ -945,6 +988,116 @@ namespace Roovia.Security
 
             return response;
         }
+        private async Task<string> GetCurrentUserId()
+        {
+            try
+            {
+                // If using HttpContext, you could get the user from there
+                // If this service has access to AuthenticationStateProvider, use that instead
+                return null; // Default implementation returns null
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        /// <summary>
+        /// Update all role assignments for a user
+        /// </summary>
+        public async Task<ResponseModel> UpdateUserRoles(string userId, List<int> roleIds)
+        {
+            ResponseModel response = new();
+
+            try
+            {
+                using var context = await _contextFactory.CreateDbContextAsync();
+
+                // Check if user exists
+                var user = await context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    response.ResponseInfo.Success = false;
+                    response.ResponseInfo.Message = "User not found.";
+                    return response;
+                }
+
+                // Get current role assignments
+                var currentRoleAssignments = await context.UserRoleAssignments
+                    .Where(ur => ur.UserId == userId)
+                    .ToListAsync();
+
+                // Get current user ID for tracking
+                var currentUserId = await GetCurrentUserId();
+                var assignedBy = currentUserId ?? "System";
+                var now = DateTime.Now;
+
+                // Deactivate roles that should be removed
+                foreach (var assignment in currentRoleAssignments)
+                {
+                    if (!roleIds.Contains(assignment.RoleId))
+                    {
+                        if (assignment.IsActive)
+                        {
+                            assignment.IsActive = false;
+                            assignment.ExpiryDate = now;
+                            // assignment.UpdatedBy = assignedBy; // If you have this field
+                        }
+                    }
+                }
+
+                // Add or reactivate roles
+                foreach (var roleId in roleIds)
+                {
+                    // Check if role exists
+                    if (!await context.Roles.AnyAsync(r => r.Id == roleId))
+                    {
+                        continue; // Skip non-existent roles
+                    }
+
+                    var existingAssignment = currentRoleAssignments
+                        .FirstOrDefault(ur => ur.RoleId == roleId);
+
+                    if (existingAssignment != null)
+                    {
+                        // Reactivate if inactive
+                        if (!existingAssignment.IsActive)
+                        {
+                            existingAssignment.IsActive = true;
+                            existingAssignment.ExpiryDate = null;
+                            existingAssignment.AssignedDate = now;
+                            existingAssignment.AssignedBy = assignedBy;
+                        }
+                    }
+                    else
+                    {
+                        // Create new assignment
+                        var newAssignment = new UserRoleAssignment
+                        {
+                            UserId = userId,
+                            RoleId = roleId,
+                            AssignedDate = now,
+                            AssignedBy = assignedBy,
+                            IsActive = true
+                        };
+
+                        await context.UserRoleAssignments.AddAsync(newAssignment);
+                    }
+                }
+
+                await context.SaveChangesAsync();
+
+                response.ResponseInfo.Success = true;
+                response.ResponseInfo.Message = "User roles updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.ResponseInfo.Success = false;
+                response.ResponseInfo.Message = "An error occurred while updating user roles: " + ex.Message;
+            }
+
+            return response;
+        }
+
 
         public async Task<ResponseModel> GetUserRoles(string userId)
         {

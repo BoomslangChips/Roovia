@@ -1,7 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
-@using Roovia.Components
-@using Roovia.Components.Elements.Forms
 @using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessHelperModels
@@ -9,192 +7,183 @@
 @using Roovia.Models.UserCompanyModels
 @using Roovia.Services
 @using Roovia.Services.General
+@using Syncfusion.Blazor.Inputs
 @inject IUser UserService
 @inject ICdnService CdnService
 @inject ToastService ToastService
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
-<RVModal IsVisible="true"
-Title="@GetDialogTitle()"
-Icon="@GetDialogIcon()"
-OnClose="OnCancel"
-OnCancel="OnCancel"
-OnConfirm="HandleConfirmAction"
-ConfirmText="@(IsView ? "Close" : (IsEditMode ? "Save" : "Edit"))"
-CancelText="@(IsView ? "Close" : "Cancel")"
-DefaultFooter="false"
-Size="lg">
-    <ChildContent>
+<link rel="stylesheet" href="@Assets["css/CompanyDialog.css"]" />
+<div class="cd-modal-backdrop" @onclick="OnCancel"></div>
+
+<div class="cd-modal-wrapper">
+    <div class="cd-modal-header">
+        <div class="cd-modal-title">
+            <i class="@GetDialogIcon()"></i>
+            <span>@GetDialogTitle()</span>
+        </div>
+        <button class="cd-close-button" @onclick="OnCancel">
+            <i class="fa-light fa-times"></i>
+        </button>
+    </div>
+
+    <div class="cd-modal-body">
         @if (isLoading)
         {
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <h3 class="loading-text">Loading company details...</h3>
+            <div class="cd-loading">
+                <div class="cd-spinner"></div>
+                <span class="cd-loading-text">Loading company details...</span>
             </div>
         }
         else
         {
-            <div class="company-dialog">
+            <div class="cd-company-dialog">
                 @if (IsViewMode)
                 {
-                    <div class="company-view-container">
-                        <div class="company-header">
-                            <div class="company-header-flex">
-                                <div class="company-icon-wrapper">
-                                    @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
-                                    {
-                                        <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name" class="company-logo-large" />
-                                    }
-                                    else
-                                    {
-                                        <div class="company-icon-large">
-                                            <i class="fa-light fa-building"></i>
-                                        </div>
-                                    }
-                                    <div class="status-indicator @(CompanyModel.IsActive ? "active" : "inactive")"></div>
-                                </div>
-
-                                <div class="company-header-info">
-                                    <h2>@CompanyModel.Name</h2>
-
-                                    <div class="company-meta">
-                                        @if (!string.IsNullOrEmpty(CompanyModel.RegistrationNumber))
-                                        {
-                                            <span class="company-meta-item"><i class="fa-light fa-id-card"></i>Reg: @CompanyModel.RegistrationNumber</span>
-                                        }
-                                        @if (!string.IsNullOrEmpty(CompanyModel.VatNumber))
-                                        {
-                                            <span class="company-meta-item"><i class="fa-light fa-receipt"></i>VAT: @CompanyModel.VatNumber</span>
-                                        }
+                    <div class="cd-view-container">
+                        <div class="cd-company-header">
+                            <div class="cd-avatar-container">
+                                @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
+                                {
+                                    <div class="cd-avatar cd-has-image">
+                                        <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name" />
                                     </div>
+                                }
+                                else
+                                {
+                                    <div class="cd-avatar">
+                                        <i class="fa-light fa-building"></i>
+                                    </div>
+                                }
+                                <div class="cd-status-indicator @(CompanyModel.IsActive ? "cd-active" : "cd-inactive")"></div>
+                            </div>
 
-                                    <div class="company-badges">
-                                        <span class="status-badge @(CompanyModel.IsActive ? "status-active" : "status-inactive")">
-                                            <i class="fa-light fa-@(CompanyModel.IsActive ? "check-circle" : "times-circle")"></i>
-                                            @(CompanyModel.IsActive ? "Active" : "Inactive")
+                            <div class="cd-company-info">
+                                <h2 class="cd-company-name">@CompanyModel.Name</h2>
+
+                                <div class="cd-badges-container">
+                                    <span class="cd-status-badge @(CompanyModel.IsActive ? "cd-active" : "cd-inactive")">
+                                        <i class="fa-light fa-@(CompanyModel.IsActive ? "check-circle" : "times-circle")"></i>
+                                        @(CompanyModel.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                    @if (CompanyModel.Status != null)
+                                    {
+                                        <span class="cd-status-badge">@CompanyModel.Status.Name</span>
+                                    }
+                                    @if (CompanyModel.SubscriptionPlan != null)
+                                    {
+                                        <span class="cd-badge cd-subscription">
+                                            <i class="fa-light fa-gem"></i>
+                                            @CompanyModel.SubscriptionPlan.Name
                                         </span>
-                                        @if (CompanyModel.Status != null)
-                                        {
-                                            <span class="status-badge">@CompanyModel.Status.Name</span>
-                                        }
-                                        @if (CompanyModel.SubscriptionPlan != null)
-                                        {
-                                            <span class="subscription-badge">
-                                                <i class="fa-light fa-gem"></i> @CompanyModel.SubscriptionPlan.Name
-                                            </span>
-                                        }
-                                    </div>
+                                    }
                                 </div>
 
+                                <div class="cd-meta-list">
+                                    @if (!string.IsNullOrEmpty(CompanyModel.RegistrationNumber))
+                                    {
+                                        <span class="cd-meta-item"><i class="fa-light fa-id-card"></i>Reg: @CompanyModel.RegistrationNumber</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(CompanyModel.VatNumber))
+                                    {
+                                        <span class="cd-meta-item"><i class="fa-light fa-receipt"></i>VAT: @CompanyModel.VatNumber</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="cd-company-actions">
                                 @if (CanEdit)
                                 {
-                                    <div class="company-actions">
-                                        <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit"
-                                        OnClick="SwitchToEditMode" CssClass="edit-btn" />
-                                    </div>
+                                    <button type="button" class="cd-button cd-button-primary" @onclick="SwitchToEditMode">
+                                        <i class="fa-light fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
                                 }
                             </div>
                         </div>
 
-                        <div class="company-details-tabs">
-                            @{
-                                var companyTabs = new List<RVTab.RVTabItem>
-                    {
-                    new RVTab.RVTabItem
-                    {
-                    Id = "basic",
-                    Title = "Basic Info",
-                    Icon = "fa-light fa-info-circle",
-                    IsActive = activeViewTab == "basic"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "contact",
-                    Title = "Contact",
-                    Icon = "fa-light fa-address-card",
-                    IsActive = activeViewTab == "contact"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "address",
-                    Title = "Address",
-                    Icon = "fa-light fa-map-marker-alt",
-                    IsActive = activeViewTab == "address"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "banking",
-                    Title = "Banking",
-                    Icon = "fa-light fa-university",
-                    IsActive = activeViewTab == "banking"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "branding",
-                    Title = "Branding",
-                    Icon = "fa-light fa-image",
-                    IsActive = activeViewTab == "branding"
-                    },
-                    new RVTab.RVTabItem
-                    {
-                    Id = "branches",
-                    Title = "Branches",
-                    Icon = "fa-light fa-network-wired",
-                    IsActive = activeViewTab == "branches",
-                    BadgeCount = CompanyModel.Branches?.Count ?? 0
-                    }
-                    };
-                            }
+                        <div class="cd-tabs-container">
+                            <div class="cd-tabs-header">
+                                <button type="button" class="cd-tab-button @(activeViewTab == "basic" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("basic")'>
+                                    <i class="fa-light fa-info-circle"></i>
+                                    <span>Basic Info</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeViewTab == "contact" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("contact")'>
+                                    <i class="fa-light fa-address-card"></i>
+                                    <span>Contact</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeViewTab == "address" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("address")'>
+                                    <i class="fa-light fa-map-marker-alt"></i>
+                                    <span>Address</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeViewTab == "banking" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("banking")'>
+                                    <i class="fa-light fa-university"></i>
+                                    <span>Banking</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeViewTab == "branding" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("branding")'>
+                                    <i class="fa-light fa-image"></i>
+                                    <span>Branding</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeViewTab == "branches" ? "cd-active" : "")" @onclick='() => SetActiveViewTab("branches")'>
+                                    <i class="fa-light fa-network-wired"></i>
+                                    <span>Branches</span>
+                                    @if (CompanyModel.Branches?.Any() == true)
+                                    {
+                                        <span class="cd-badge cd-badge-count">@CompanyModel.Branches.Count</span>
+                                    }
+                                </button>
+                            </div>
 
-                            <RVTab Tabs="companyTabs" Size="sm" OnTabChange="SetActiveViewTab">
-                                <RVTabPanel TabId="basic" IsActive='activeViewTab == "basic"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-info-circle"></i> Basic Information</h4>
+                            <div class="cd-tab-content">
+                                <div class="cd-tab-pane @(activeViewTab == "basic" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-info-circle cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Basic Information</h3>
                                             </div>
-                                            <div class="card-body">
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-building"></i> Company Name</div>
-                                                    <div class="detail-value">@CompanyModel.Name</div>
+                                            <div class="cd-card-body">
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">Company Name</span>
+                                                    <span class="cd-info-value">@CompanyModel.Name</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-id-card"></i> Registration Number</div>
-                                                    <div class="detail-value">@CompanyModel.RegistrationNumber</div>
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">Registration Number</span>
+                                                    <span class="cd-info-value">@CompanyModel.RegistrationNumber</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-receipt"></i> VAT Number</div>
-                                                    <div class="detail-value">@(string.IsNullOrEmpty(CompanyModel.VatNumber) ? "Not provided" : CompanyModel.VatNumber)</div>
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">VAT Number</span>
+                                                    <span class="cd-info-value">@(string.IsNullOrEmpty(CompanyModel.VatNumber) ? "Not provided" : CompanyModel.VatNumber)</span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-globe"></i> Website</div>
-                                                    <div class="detail-value">
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">Website</span>
+                                                    <span class="cd-info-value">
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Website))
                                                         {
-                                                            <a href="@CompanyModel.Website" target="_blank">@CompanyModel.Website</a>
+                                                            <a href="@CompanyModel.Website" target="_blank" class="cd-link">@CompanyModel.Website</a>
                                                         }
                                                         else
                                                         {
                                                             <span>Not provided</span>
                                                         }
-                                                    </div>
+                                                    </span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-toggle-on"></i> Status</div>
-                                                    <div class="detail-value">
-                                                        <span class="status-badge @(CompanyModel.IsActive ? "status-active" : "status-inactive")">
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">Status</span>
+                                                    <span class="cd-info-value">
+                                                        <span class="cd-status-badge @(CompanyModel.IsActive ? "cd-active" : "cd-inactive")">
                                                             <i class="fa-light fa-@(CompanyModel.IsActive ? "check-circle" : "times-circle")"></i>
                                                             @(CompanyModel.IsActive ? "Active" : "Inactive")
                                                         </span>
                                                         @if (CompanyModel.Status != null)
                                                         {
-                                                            <span class="status-badge">@CompanyModel.Status.Name</span>
+                                                            <span class="cd-status-badge">@CompanyModel.Status.Name</span>
                                                         }
-                                                    </div>
+                                                    </span>
                                                 </div>
-                                                <div class="detail-row">
-                                                    <div class="detail-label"><i class="fa-light fa-gem"></i> Subscription Plan</div>
-                                                    <div class="detail-value">
+                                                <div class="cd-info-group">
+                                                    <span class="cd-info-label">Subscription Plan</span>
+                                                    <span class="cd-info-value">
                                                         @if (CompanyModel.SubscriptionPlan != null)
                                                         {
                                                             <span>@CompanyModel.SubscriptionPlan.Name - $@CompanyModel.SubscriptionPlan.Price/@CompanyModel.SubscriptionPlan.BillingCycleDays days</span>
@@ -203,320 +192,296 @@ Size="lg">
                                                         {
                                                             <span>No subscription plan selected</span>
                                                         }
-                                                    </div>
+                                                    </span>
                                                 </div>
                                                 @if (CompanyModel.MaxUsers.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-users"></i> Max Users</div>
-                                                        <div class="detail-value">@CompanyModel.MaxUsers</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Max Users</span>
+                                                        <span class="cd-info-value">@CompanyModel.MaxUsers</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.MaxProperties.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-home"></i> Max Properties</div>
-                                                        <div class="detail-value">@CompanyModel.MaxProperties</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Max Properties</span>
+                                                        <span class="cd-info-value">@CompanyModel.MaxProperties</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.MaxBranches.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-network-wired"></i> Max Branches</div>
-                                                        <div class="detail-value">@CompanyModel.MaxBranches</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Max Branches</span>
+                                                        <span class="cd-info-value">@CompanyModel.MaxBranches</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.SubscriptionStartDate.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-day"></i> Subscription Start</div>
-                                                        <div class="detail-value">@CompanyModel.SubscriptionStartDate?.ToString("dd MMM yyyy")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Subscription Start</span>
+                                                        <span class="cd-info-value">@CompanyModel.SubscriptionStartDate?.ToString("dd MMM yyyy")</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.SubscriptionEndDate.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-times"></i> Subscription End</div>
-                                                        <div class="detail-value">@CompanyModel.SubscriptionEndDate?.ToString("dd MMM yyyy")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Subscription End</span>
+                                                        <span class="cd-info-value">@CompanyModel.SubscriptionEndDate?.ToString("dd MMM yyyy")</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.IsTrialPeriod)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-hourglass-half"></i> Trial Period</div>
-                                                        <div class="detail-value">Yes</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Trial Period</span>
+                                                        <span class="cd-info-value">Yes</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.CreatedOn != default)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-plus"></i> Created On</div>
-                                                        <div class="detail-value">@CompanyModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Created On</span>
+                                                        <span class="cd-info-value">@CompanyModel.CreatedOn.ToString("dd MMM yyyy, HH:mm")</span>
                                                     </div>
                                                 }
                                                 @if (!string.IsNullOrEmpty(CompanyModel.CreatedBy))
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-user"></i> Created By</div>
-                                                        <div class="detail-value">@CompanyModel.CreatedBy</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Created By</span>
+                                                        <span class="cd-info-value">@CompanyModel.CreatedBy</span>
                                                     </div>
                                                 }
                                                 @if (CompanyModel.UpdatedDate.HasValue)
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-calendar-edit"></i> Last Updated</div>
-                                                        <div class="detail-value">@CompanyModel.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Last Updated</span>
+                                                        <span class="cd-info-value">@CompanyModel.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</span>
                                                     </div>
                                                 }
                                                 @if (!string.IsNullOrEmpty(CompanyModel.UpdatedBy))
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-user-edit"></i> Updated By</div>
-                                                        <div class="detail-value">@CompanyModel.UpdatedBy</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Updated By</span>
+                                                        <span class="cd-info-value">@CompanyModel.UpdatedBy</span>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="contact" IsActive='activeViewTab == "contact"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-envelope"></i> Email Addresses</h4>
+                                <div class="cd-tab-pane @(activeViewTab == "contact" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-envelope cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Email Addresses</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.EmailAddresses?.Any() == true)
                                                 {
-                                                    <div class="contact-info">
-                                                        @{
-                                                            var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
-                                                        }
-                                                        @if (primaryEmail != null)
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label"><i class="fa-light fa-envelope"></i> Primary Email</div>
-                                                                <div class="detail-value email-value">
-                                                                    <a href="mailto:@primaryEmail.EmailAddress"><i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress</a>
-                                                                </div>
-                                                            </div>
-                                                        }
+                                                    var primaryEmail = CompanyModel.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                                    @if (primaryEmail != null)
+                                                    {
+                                                        <div class="cd-info-group">
+                                                            <span class="cd-info-label">Primary Email</span>
+                                                            <a href="mailto:@primaryEmail.EmailAddress" class="cd-info-value cd-email">
+                                                                <i class="fa-light fa-envelope"></i> @primaryEmail.EmailAddress
+                                                            </a>
+                                                        </div>
+                                                    }
 
-                                                        @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary).OrderBy(e => e.Description))
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label">
-                                                                    <i class="fa-light fa-tag"></i>
-                                                                    @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
-                                                                </div>
-                                                                <div class="detail-value email-value">
-                                                                    <a href="mailto:@email.EmailAddress"><i class="fa-light fa-envelope"></i> @email.EmailAddress</a>
-                                                                    @if (!email.IsActive)
-                                                                    {
-                                                                        <span class="status-badge status-inactive">
-                                                                            <i class="fa-light fa-times-circle"></i> Inactive
-                                                                        </span>
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
+                                                    @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
+                                                    {
+                                                        <div class="cd-info-group">
+                                                            <span class="cd-info-label">
+                                                                @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                            </span>
+                                                            <a href="mailto:@email.EmailAddress" class="cd-info-value cd-email">
+                                                                <i class="fa-light fa-envelope"></i> @email.EmailAddress
+                                                            </a>
+                                                        </div>
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-envelope-open"></i>
-                                                        <p>No email addresses provided</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-envelope-open cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No email addresses provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
 
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-phone"></i> Contact Numbers</h4>
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-phone cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Contact Numbers</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.ContactNumbers?.Any() == true)
                                                 {
-                                                    <div class="contact-info">
-                                                        @{
-                                                            var primaryContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
-                                                        }
-                                                        @if (primaryContact != null)
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label"><i class="fa-light fa-phone"></i> Primary Contact</div>
-                                                                <div class="detail-value phone-value">
-                                                                    <a href="tel:@primaryContact.Number"><i class="fa-light fa-phone"></i> @primaryContact.Number</a>
-                                                                </div>
-                                                            </div>
-                                                        }
+                                                    var primaryContact = CompanyModel.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                                    @if (primaryContact != null)
+                                                    {
+                                                        <div class="cd-info-group">
+                                                            <span class="cd-info-label">Primary Phone</span>
+                                                            <a href="tel:@primaryContact.Number" class="cd-info-value cd-phone">
+                                                                <i class="fa-light fa-phone"></i> @primaryContact.Number
+                                                            </a>
+                                                        </div>
+                                                    }
 
-                                                        @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary).OrderBy(c => c.Description))
-                                                        {
-                                                            <div class="detail-row">
-                                                                <div class="detail-label">
-                                                                    <i class="fa-light fa-tag"></i>
-                                                                    @if (!string.IsNullOrEmpty(phone.Description))
-                                                                    {
-                                                                        @phone.Description
-                                                                    }
-                                                                    else if (phone.ContactNumberType != null)
-                                                                    {
-                                                                        @phone.ContactNumberType.Name
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        @("Phone")
-                                                                    }
-                                                                </div>
-                                                                <div class="detail-value phone-value">
-                                                                    <a href="tel:@phone.Number"><i class="fa-light fa-phone"></i> @phone.Number</a>
-                                                                    @if (!phone.IsActive)
-                                                                    {
-                                                                        <span class="status-badge status-inactive">
-                                                                            <i class="fa-light fa-times-circle"></i> Inactive
-                                                                        </span>
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    </div>
+                                                    @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
+                                                    {
+                                                        <div class="cd-info-group">
+                                                            <span class="cd-info-label">
+                                                                @if (!string.IsNullOrEmpty(phone.Description))
+                                                                {
+                                                                    @phone.Description
+                                                                }
+                                                                else if (phone.ContactNumberType != null)
+                                                                {
+                                                                    @phone.ContactNumberType.Name
+                                                                }
+                                                                else
+                                                                {
+                                                                    @("Phone")
+                                                                }
+                                                            </span>
+                                                            <a href="tel:@phone.Number" class="cd-info-value cd-phone">
+                                                                <i class="fa-light fa-phone"></i> @phone.Number
+                                                            </a>
+                                                        </div>
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-phone-slash"></i>
-                                                        <p>No contact numbers provided</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-phone-slash cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No contact numbers provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="address" IsActive='activeViewTab == "address"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-map-marker-alt"></i> Company Address</h4>
+                                <div class="cd-tab-pane @(activeViewTab == "address" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-map-marker-alt cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Company Address</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.Address != null)
                                                 {
-                                                    <div class="address-display">
+                                                    <div class="cd-address-container">
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.ComplexName))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.ComplexName</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.ComplexName</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.BuildingName))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.BuildingName</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-building"></i> @CompanyModel.Address.BuildingName</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.UnitNumber))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-door-closed"></i> Unit @CompanyModel.Address.UnitNumber</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-door-closed"></i> Unit @CompanyModel.Address.UnitNumber</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.Street))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-road"></i> @CompanyModel.Address.Street</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-road"></i> @CompanyModel.Address.Street</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.Suburb))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-map"></i> @CompanyModel.Address.Suburb</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-map"></i> @CompanyModel.Address.Suburb</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.City))
                                                         {
-                                                            <div class="address-line">
+                                                            <div class="cd-address-line">
                                                                 <i class="fa-light fa-city"></i>
                                                                 @CompanyModel.Address.City@(!string.IsNullOrEmpty(CompanyModel.Address.Province) ? $", {CompanyModel.Address.Province}" : "")
                                                             </div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.PostalCode))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-mailbox"></i> @CompanyModel.Address.PostalCode</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-mailbox"></i> @CompanyModel.Address.PostalCode</div>
                                                         }
-
                                                         @if (!string.IsNullOrEmpty(CompanyModel.Address.Country))
                                                         {
-                                                            <div class="address-line"><i class="fa-light fa-globe"></i> @CompanyModel.Address.Country</div>
+                                                            <div class="cd-address-line"><i class="fa-light fa-globe"></i> @CompanyModel.Address.Country</div>
                                                         }
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-map-marker-slash"></i>
-                                                        <p>No address information provided</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-map-marker-slash cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No address information provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="banking" IsActive='activeViewTab == "banking"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-university"></i> Banking Details</h4>
+                                <div class="cd-tab-pane @(activeViewTab == "banking" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-university cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Banking Details</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.BankAccount != null && !string.IsNullOrEmpty(CompanyModel.BankAccount.AccountNumber))
                                                 {
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-university"></i> Bank Name</div>
-                                                        <div class="detail-value">@(CompanyModel.BankAccount.BankName?.Name ?? "Not set")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Bank Name</span>
+                                                        <span class="cd-info-value">@(CompanyModel.BankAccount.BankName?.Name ?? "Not set")</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-credit-card"></i> Account Type</div>
-                                                        <div class="detail-value">@(CompanyModel.BankAccount.AccountType ?? "Not set")</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Account Type</span>
+                                                        <span class="cd-info-value">@(CompanyModel.BankAccount.AccountType ?? "Not set")</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-hashtag"></i> Account Number</div>
-                                                        <div class="detail-value">@CompanyModel.BankAccount.AccountNumber</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Account Number</span>
+                                                        <span class="cd-info-value">@CompanyModel.BankAccount.AccountNumber</span>
                                                     </div>
-                                                    <div class="detail-row">
-                                                        <div class="detail-label"><i class="fa-light fa-code"></i> Branch Code</div>
-                                                        <div class="detail-value">@CompanyModel.BankAccount.BranchCode</div>
+                                                    <div class="cd-info-group">
+                                                        <span class="cd-info-label">Branch Code</span>
+                                                        <span class="cd-info-value">@CompanyModel.BankAccount.BranchCode</span>
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-credit-card-blank"></i>
-                                                        <p>No banking details provided</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-credit-card-blank cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No banking details provided</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="branding" IsActive='activeViewTab == "branding"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header">
-                                                <h4><i class="fa-light fa-image"></i> Company Logo</h4>
+                                <div class="cd-tab-pane @(activeViewTab == "branding" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <i class="fa-light fa-image cd-card-header-icon"></i>
+                                                <h3 class="cd-card-title">Company Logo</h3>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
                                                 {
-                                                    <div class="logo-display">
-                                                        <div class="logo-container">
-                                                            <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name Logo" class="logo-image" />
+                                                    <div class="cd-logo-display">
+                                                        <div class="cd-logo-container">
+                                                            <img src="@CompanyModel.MainLogo.Url" alt="@CompanyModel.Name Logo" class="cd-logo-image" />
                                                         </div>
-                                                        <div class="logo-info">
-                                                            <div class="logo-title">@CompanyModel.MainLogo.FileName</div>
-                                                            <div class="logo-meta">
+                                                        <div class="cd-logo-info">
+                                                            <div class="cd-logo-title">@CompanyModel.MainLogo.FileName</div>
+                                                            <div class="cd-logo-meta">
                                                                 <span><i class="fa-light fa-file-image"></i> @CompanyModel.MainLogo.ContentType</span>
                                                                 <span><i class="fa-light fa-weight"></i> @((CompanyModel.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
                                                                 <span><i class="fa-light fa-calendar"></i> @CompanyModel.MainLogo.UploadDate.ToString("dd MMM yyyy")</span>
@@ -526,73 +491,79 @@ Size="lg">
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-file-image"></i>
-                                                        <p>No logo uploaded</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-file-image cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No logo uploaded</p>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
+                                </div>
 
-                                <RVTabPanel TabId="branches" IsActive='activeViewTab == "branches"'>
-                                    <div class="detail-section">
-                                        <div class="detail-card">
-                                            <div class="card-header d-flex justify-content-between align-items-center">
-                                                <h4><i class="fa-light fa-network-wired"></i> Company Branches</h4>
-                                                @if (CanEdit)
-                                                {
-                                                    <RVButton ButtonType="outline-primary" Size="sm" IconLeft="fa-light fa-plus"
-                                                    Text="Add Branch" OnClick="() => OnAddBranch.InvokeAsync(CompanyModel)" />
-                                                }
+                                <div class="cd-tab-pane @(activeViewTab == "branches" ? "cd-active" : "")">
+                                    <div class="cd-card-grid">
+                                        <div class="cd-info-card">
+                                            <div class="cd-card-header">
+                                                <div class="cd-header-with-actions">
+                                                    <h3 class="cd-card-title"><i class="fa-light fa-network-wired"></i> Company Branches</h3>
+                                                    @if (CanEdit)
+                                                    {
+                                                        <button type="button" class="cd-button cd-button-outline cd-button-sm" @onclick="() => OnAddBranch.InvokeAsync(CompanyModel)">
+                                                            <i class="fa-light fa-plus"></i>
+                                                            <span>Add Branch</span>
+                                                        </button>
+                                                    }
+                                                </div>
                                             </div>
-                                            <div class="card-body">
+                                            <div class="cd-card-body">
                                                 @if (CompanyModel.Branches?.Any() == true)
                                                 {
-                                                    <div class="branches-list">
+                                                    <div class="cd-branches-list">
                                                         @foreach (var branch in CompanyModel.Branches.OrderBy(b => b.Name))
                                                         {
-                                                            <div class="branch-item @(branch.IsActive ? "" : "inactive")">
-                                                                <div class="branch-icon">
+                                                            <div class="cd-branch-item @(branch.IsActive ? "" : "cd-inactive")">
+                                                                <div class="cd-branch-icon">
                                                                     @if (branch.MainLogoId.HasValue && branch.MainLogo != null)
                                                                     {
-                                                                        <img src="@branch.MainLogo.Url" alt="@branch.Name" class="branch-logo-sm" />
+                                                                        <img src="@branch.MainLogo.Url" alt="@branch.Name" class="cd-branch-logo" />
                                                                     }
                                                                     else
                                                                     {
                                                                         <i class="fa-light fa-code-branch"></i>
                                                                     }
                                                                 </div>
-                                                                <div class="branch-details">
-                                                                    <div class="branch-name">
+                                                                <div class="cd-branch-details">
+                                                                    <div class="cd-branch-name">
                                                                         @branch.Name
                                                                         @if (branch.IsHeadOffice)
                                                                         {
-                                                                            <span class="badge-pill bg-primary"><i class="fa-light fa-star"></i> Head Office</span>
+                                                                            <span class="cd-badge cd-head-office"><i class="fa-light fa-star"></i> Head Office</span>
                                                                         }
                                                                     </div>
-                                                                    <div class="branch-contact">
+                                                                    <div class="cd-branch-contact">
                                                                         @if (!string.IsNullOrEmpty(branch.PrimaryEmail))
                                                                         {
-                                                                            <a href="mailto:@branch.PrimaryEmail" class="branch-email"><i class="fa-light fa-envelope"></i> @branch.PrimaryEmail</a>
+                                                                            <a href="mailto:@branch.PrimaryEmail" class="cd-branch-email"><i class="fa-light fa-envelope"></i> @branch.PrimaryEmail</a>
                                                                         }
                                                                         @if (!string.IsNullOrEmpty(branch.PrimaryContactNumber))
                                                                         {
-                                                                            <a href="tel:@branch.PrimaryContactNumber" class="branch-phone"><i class="fa-light fa-phone"></i> @branch.PrimaryContactNumber</a>
+                                                                            <a href="tel:@branch.PrimaryContactNumber" class="cd-branch-phone"><i class="fa-light fa-phone"></i> @branch.PrimaryContactNumber</a>
                                                                         }
                                                                     </div>
                                                                 </div>
-                                                                <div class="branch-status">
-                                                                    <span class="status-indicator @(branch.IsActive ? "active" : "inactive")"></span>
+                                                                <div class="cd-branch-status">
+                                                                    <span class="cd-status-indicator @(branch.IsActive ? "cd-active" : "cd-inactive")"></span>
                                                                 </div>
-                                                                <div class="branch-actions">
-                                                                    <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-eye"
-                                                                    OnClick="() => OnViewBranch.InvokeAsync(branch)" CssClass="view-branch-btn" />
+                                                                <div class="cd-branch-actions">
+                                                                    <button type="button" class="cd-button cd-button-icon cd-button-sm" @onclick="() => OnViewBranch.InvokeAsync(branch)">
+                                                                        <i class="fa-light fa-eye"></i>
+                                                                    </button>
                                                                     @if (CanEdit)
                                                                     {
-                                                                        <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-edit"
-                                                                        OnClick="() => OnEditBranch.InvokeAsync(branch)" CssClass="edit-branch-btn" />
+                                                                        <button type="button" class="cd-button cd-button-icon cd-button-sm" @onclick="() => OnEditBranch.InvokeAsync(branch)">
+                                                                            <i class="fa-light fa-edit"></i>
+                                                                        </button>
                                                                     }
                                                                 </div>
                                                             </div>
@@ -601,552 +572,611 @@ Size="lg">
                                                 }
                                                 else
                                                 {
-                                                    <div class="empty-message">
-                                                        <i class="fa-light fa-network-wired"></i>
-                                                        <p>No branches added to this company</p>
+                                                    <div class="cd-empty-state">
+                                                        <i class="fa-light fa-network-wired cd-empty-icon"></i>
+                                                        <p class="cd-empty-text">No branches added to this company</p>
                                                         @if (CanEdit)
                                                         {
-                                                            <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-plus"
-                                                            Text="Add Branch" OnClick="() => OnAddBranch.InvokeAsync(CompanyModel)" />
+                                                            <button type="button" class="cd-button cd-button-primary cd-button-sm" @onclick="() => OnAddBranch.InvokeAsync(CompanyModel)">
+                                                                <i class="fa-light fa-plus"></i>
+                                                                <span>Add Branch</span>
+                                                            </button>
                                                         }
                                                     </div>
                                                 }
                                             </div>
                                         </div>
                                     </div>
-                                </RVTabPanel>
-                            </RVTab>
-                        </div>
-
-                        <div class="company-details-footer">
-                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Close" OnClick="OnCancel" />
-                            @if (CanEdit)
-                            {
-                                <RVButton ButtonType="primary" IconLeft="fa-light fa-edit" Text="Edit Company" OnClick="SwitchToEditMode" />
-                            }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
                 else if (IsEditMode)
                 {
-                    <EditForm Model="CompanyModel" OnValidSubmit="Save" FormName="editCompany" class="company-edit-form">
+                    <EditForm Model="CompanyModel" OnValidSubmit="Save" FormName="editCompany" class="cd-edit-form">
                         <DataAnnotationsValidator />
                         <Roovia.Components.Elements.Forms.FluentValidationValidator />
 
-                        <RVTab Tabs="formTabs" Size="sm" OnTabChange="HandleTabChange">
-                            <RVTabPanel TabId="basic" IsActive='activeTab == "basic"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-building"></i> Basic Information</h4>
-                                        <p>Enter the basic details for this company</p>
-                                    </div>
+                        <div class="cd-tabs-container">
+                            <div class="cd-tabs-header">
+                                <button type="button" class="cd-tab-button @(activeTab == "basic" ? "cd-active" : "")" @onclick='() => HandleTabChange("basic")'>
+                                    <i class="fa-light fa-info-circle"></i>
+                                    <span>Basic</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeTab == "contact" ? "cd-active" : "")" @onclick='() => HandleTabChange("contact")'>
+                                    <i class="fa-light fa-address-card"></i>
+                                    <span>Contact</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeTab == "address" ? "cd-active" : "")" @onclick='() => HandleTabChange("address")'>
+                                    <i class="fa-light fa-map-marker-alt"></i>
+                                    <span>Address</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeTab == "banking" ? "cd-active" : "")" @onclick='() => HandleTabChange("banking")'>
+                                    <i class="fa-light fa-university"></i>
+                                    <span>Banking</span>
+                                </button>
+                                <button type="button" class="cd-tab-button @(activeTab == "logo" ? "cd-active" : "")" @onclick='() => HandleTabChange("logo")'>
+                                    <i class="fa-light fa-image"></i>
+                                    <span>Logo</span>
+                                </button>
+                            </div>
 
-                                    <div class="form-group">
-                                        <label for="name">Company Name *</label>
-                                        <RVTextbox Id="name"
-                                        Value="@CompanyModel.Name"
-                                        ValueChanged="value => CompanyModel.Name = value"
-                                        Placeholder="Enter company name"
-                                        IconLeft="fa-light fa-building" />
-                                        <ValidationMessage For="@(() => CompanyModel.Name)" />
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="registrationNumber">Registration Number *</label>
-                                            <RVTextbox Id="registrationNumber"
-                                            Value="@CompanyModel.RegistrationNumber"
-                                            ValueChanged="value => CompanyModel.RegistrationNumber = value"
-                                            Placeholder="Enter registration number"
-                                            IconLeft="fa-light fa-id-card" />
-                                            <ValidationMessage For="@(() => CompanyModel.RegistrationNumber)" />
+                            <div class="cd-tab-content">
+                                <div class="cd-tab-pane @(activeTab == "basic" ? "cd-active" : "")">
+                                    <div class="cd-form-section">
+                                        <div class="cd-form-group">
+                                            <label for="name">Company Name <span class="cd-required">*</span></label>
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-building cd-input-icon"></i>
+                                                <InputText @bind-Value="CompanyModel.Name" id="name" class="cd-input" placeholder="Enter company name" />
+                                            </div>
+                                            <ValidationMessage For="@(() => CompanyModel.Name)" class="cd-validation-message" />
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="vatNumber">VAT Number</label>
-                                            <RVTextbox Id="vatNumber"
-                                            Value="@CompanyModel.VatNumber"
-                                            ValueChanged="value => CompanyModel.VatNumber = value"
-                                            Placeholder="Enter VAT number (optional)"
-                                            IconLeft="fa-light fa-receipt" />
-                                            <ValidationMessage For="@(() => CompanyModel.VatNumber)" />
-                                        </div>
-                                    </div>
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="registrationNumber">Registration Number <span class="cd-required">*</span></label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-id-card cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.RegistrationNumber" id="registrationNumber" class="cd-input" placeholder="Enter registration number" />
+                                                </div>
+                                                <ValidationMessage For="@(() => CompanyModel.RegistrationNumber)" class="cd-validation-message" />
+                                            </div>
 
-                                    <div class="form-group">
-                                        <label for="website">Website</label>
-                                        <RVTextbox Id="website"
-                                        Value="@CompanyModel.Website"
-                                        ValueChanged="value => CompanyModel.Website = value"
-                                        Placeholder="Enter website URL (optional)"
-                                        IconLeft="fa-light fa-globe" />
-                                        <ValidationMessage For="@(() => CompanyModel.Website)" />
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="status">Status</label>
-                                            <RVSelect Id="status"
-                                            Value="@(CompanyModel.StatusId?.ToString() ?? "")"
-                                            ValueChanged="value => UpdateStatus(value)"
-                                            Placeholder="Select status"
-                                            IconLeft="fa-light fa-toggle-on">
-                                                <option value="">-- Select Status --</option>
-                                                @if (CompanyStatusTypes != null)
-                                                {
-                                                    @foreach (var status in CompanyStatusTypes.OrderBy(s => s.DisplayOrder))
-                                                    {
-                                                        <option value="@status.Id">@status.Name</option>
-                                                    }
-                                                }
-                                            </RVSelect>
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="vatNumber">VAT Number</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-receipt cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.VatNumber" id="vatNumber" class="cd-input" placeholder="Enter VAT number (optional)" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="subscription">Subscription Plan</label>
-                                            <RVSelect Id="subscription"
-                                            Value="@(CompanyModel.SubscriptionPlanId?.ToString() ?? "")"
-                                            ValueChanged="value => UpdateSubscriptionPlan(value)"
-                                            Placeholder="Select subscription plan"
-                                            IconLeft="fa-light fa-gem">
-                                                <option value="">-- Select Plan --</option>
-                                                @if (SubscriptionPlans != null)
-                                                {
-                                                    @foreach (var plan in SubscriptionPlans.OrderBy(p => p.Price))
-                                                    {
-                                                        <option value="@plan.Id">@plan.Name - $@plan.Price/@plan.BillingCycleDays days</option>
-                                                    }
-                                                }
-                                            </RVSelect>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="maxUsers">Max Users</label>
-                                            <RVTextbox Id="maxUsers"
-                                            Type="number"
-                                            Value="@(CompanyModel.MaxUsers?.ToString() ?? "")"
-                                            ValueChanged="value => CompanyModel.MaxUsers = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                            Placeholder="Maximum users allowed"
-                                            IconLeft="fa-light fa-users" />
+                                        <div class="cd-form-group">
+                                            <label for="website">Website</label>
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-globe cd-input-icon"></i>
+                                                <InputText @bind-Value="CompanyModel.Website" id="website" class="cd-input" placeholder="Enter website URL (optional)" />
+                                            </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="maxProperties">Max Properties</label>
-                                            <RVTextbox Id="maxProperties"
-                                            Type="number"
-                                            Value="@(CompanyModel.MaxProperties?.ToString() ?? "")"
-                                            ValueChanged="value => CompanyModel.MaxProperties = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                            Placeholder="Maximum properties allowed"
-                                            IconLeft="fa-light fa-home" />
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="status">Status</label>
+                                                <div class="cd-select-wrapper">
+                                                    <i class="fa-light fa-toggle-on cd-input-icon"></i>
+                                                    <InputSelect @bind-Value="statusValue" id="status" class="cd-select">
+                                                        <option value="">-- Select Status --</option>
+                                                        @if (CompanyStatusTypes != null)
+                                                        {
+                                                            @foreach (var status in CompanyStatusTypes.OrderBy(s => s.DisplayOrder))
+                                                            {
+                                                                <option value="@status.Id">@status.Name</option>
+                                                            }
+                                                        }
+                                                    </InputSelect>
+                                                    <i class="fa-light fa-chevron-down cd-select-arrow"></i>
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="subscription">Subscription Plan</label>
+                                                <div class="cd-select-wrapper">
+                                                    <i class="fa-light fa-gem cd-input-icon"></i>
+                                                    <InputSelect @bind-Value="subscriptionValue" id="subscription" class="cd-select">
+                                                        <option value="">-- Select Plan --</option>
+                                                        @if (SubscriptionPlans != null)
+                                                        {
+                                                            @foreach (var plan in SubscriptionPlans.OrderBy(p => p.Price))
+                                                            {
+                                                                <option value="@plan.Id">@plan.Name - $@plan.Price/@plan.BillingCycleDays days</option>
+                                                            }
+                                                        }
+                                                    </InputSelect>
+                                                    <i class="fa-light fa-chevron-down cd-select-arrow"></i>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="maxBranches">Max Branches</label>
-                                            <RVTextbox Id="maxBranches"
-                                            Type="number"
-                                            Value="@(CompanyModel.MaxBranches?.ToString() ?? "")"
-                                            ValueChanged="value => CompanyModel.MaxBranches = string.IsNullOrEmpty(value) ? null : int.Parse(value)"
-                                            Placeholder="Maximum branches allowed"
-                                            IconLeft="fa-light fa-network-wired" />
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-4">
+                                                <label for="maxUsers">Max Users</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-users cd-input-icon"></i>
+                                                    <InputNumber @bind-Value="CompanyModel.MaxUsers" id="maxUsers" class="cd-input" placeholder="Maximum users allowed" />
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-4">
+                                                <label for="maxProperties">Max Properties</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-home cd-input-icon"></i>
+                                                    <InputNumber @bind-Value="CompanyModel.MaxProperties" id="maxProperties" class="cd-input" placeholder="Maximum properties allowed" />
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-4">
+                                                <label for="maxBranches">Max Branches</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-network-wired cd-input-icon"></i>
+                                                    <InputNumber @bind-Value="CompanyModel.MaxBranches" id="maxBranches" class="cd-input" placeholder="Maximum branches allowed" />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="subscriptionStartDate">Subscription Start Date</label>
-                                            <RVDatetime Id="subscriptionStartDate"
-                                            Value="@CompanyModel.SubscriptionStartDate"
-                                            ValueChanged="value => CompanyModel.SubscriptionStartDate = value"
-                                            Placeholder="Select start date"
-                                            IconLeft="fa-light fa-calendar-day" />
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="subscriptionStartDate">Subscription Start Date</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-calendar-day cd-input-icon"></i>
+                                                    <InputDate @bind-Value="CompanyModel.SubscriptionStartDate" id="subscriptionStartDate" class="cd-input" />
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="subscriptionEndDate">Subscription End Date</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-calendar-times cd-input-icon"></i>
+                                                    <InputDate @bind-Value="CompanyModel.SubscriptionEndDate" id="subscriptionEndDate" class="cd-input" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label for="subscriptionEndDate">Subscription End Date</label>
-                                            <RVDatetime Id="subscriptionEndDate"
-                                            Value="@CompanyModel.SubscriptionEndDate"
-                                            ValueChanged="value => CompanyModel.SubscriptionEndDate = value"
-                                            Placeholder="Select end date"
-                                            IconLeft="fa-light fa-calendar-times"
-                                            MinDate="@(CompanyModel.SubscriptionStartDate ?? DateTime.Now)" />
+                                        <div class="cd-form-group">
+                                            <div class="cd-switch-wrapper">
+                                                <label class="cd-switch">
+                                                    <InputCheckbox @bind-Value="CompanyModel.IsActive" class="cd-switch-input" />
+                                                    <span class="cd-switch-slider"></span>
+                                                </label>
+                                                <div class="cd-switch-label">
+                                                    <span>Active</span>
+                                                    <small>Inactive companies will not be accessible to users</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="form-group">
-                                        <RVSwitch Label="Active"
-                                        Value="CompanyModel.IsActive"
-                                        ValueChanged="value => CompanyModel.IsActive = value"
-                                        HelperText="Inactive companies will not be accessible to users" />
-                                    </div>
-
-                                    <div class="form-group">
-                                        <RVSwitch Label="Trial Period"
-                                        Value="CompanyModel.IsTrialPeriod"
-                                        ValueChanged="value => CompanyModel.IsTrialPeriod = value"
-                                        HelperText="Mark this company as being in a trial period" />
+                                        <div class="cd-form-group">
+                                            <div class="cd-switch-wrapper">
+                                                <label class="cd-switch">
+                                                    <InputCheckbox @bind-Value="CompanyModel.IsTrialPeriod" class="cd-switch-input" />
+                                                    <span class="cd-switch-slider"></span>
+                                                </label>
+                                                <div class="cd-switch-label">
+                                                    <span>Trial Period</span>
+                                                    <small>Mark this company as being in a trial period</small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="contact" IsActive='activeTab == "contact"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-address-book"></i> Contact Information</h4>
-                                        <p>Manage the company's contact details</p>
-                                    </div>
+                                <div class="cd-tab-pane @(activeTab == "contact" ? "cd-active" : "")">
+                                    <div class="cd-form-section">
+                                        <div class="cd-form-group">
+                                            <label for="primaryEmail">Primary Email Address</label>
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-envelope cd-input-icon"></i>
+                                                <input type="email" id="primaryEmail" class="cd-input"
+                                                       value="@GetPrimaryEmail()" @onchange="(e) => UpdatePrimaryEmail(e.Value?.ToString())"
+                                                       placeholder="Enter primary email address" />
+                                            </div>
+                                        </div>
 
-                                    <!-- Primary Email -->
-                                    <div class="form-group">
-                                        <label for="primaryEmail">Primary Email Address</label>
-                                        <RVTextbox Id="primaryEmail"
-                                        Type="email"
-                                        Value="@GetPrimaryEmail()"
-                                        ValueChanged="UpdatePrimaryEmail"
-                                        Placeholder="Enter primary email address"
-                                        IconLeft="fa-light fa-envelope" />
-                                    </div>
+                                        <div class="cd-form-group">
+                                            <label for="primaryPhone">Primary Phone Number</label>
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-phone cd-input-icon"></i>
+                                                <input type="tel" id="primaryPhone" class="cd-input"
+                                                       value="@GetPrimaryPhone()" @onchange="(e) => UpdatePrimaryPhone(e.Value?.ToString())"
+                                                       placeholder="Enter primary phone number" />
+                                            </div>
+                                        </div>
 
-                                    <!-- Primary Phone -->
-                                    <div class="form-group">
-                                        <label for="primaryPhone">Primary Phone Number</label>
-                                        <RVTextbox Id="primaryPhone"
-                                        Type="tel"
-                                        Value="@GetPrimaryPhone()"
-                                        ValueChanged="UpdatePrimaryPhone"
-                                        Placeholder="Enter primary phone number"
-                                        IconLeft="fa-light fa-phone" />
-                                    </div>
-
-                                    <!-- Additional Email Addresses Section -->
-                                    <div class="additional-contacts">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-envelope"></i> Additional Email Addresses</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Email"
-                                            OnClick="AddEmail" CssClass="add-btn" />
+                                        <div class="cd-section-divider">
+                                            <div class="cd-section-label">
+                                                <i class="fa-light fa-envelope"></i>
+                                                <span>Additional Email Addresses</span>
+                                            </div>
+                                            <button type="button" class="cd-button-small cd-button-outline" @onclick="AddEmail">
+                                                <i class="fa-light fa-plus"></i> Add Email
+                                            </button>
                                         </div>
 
                                         @if (CompanyModel.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
                                         {
-                                            <div class="email-list">
+                                            <div class="cd-contact-list">
                                                 @foreach (var email in CompanyModel.EmailAddresses.Where(e => !e.IsPrimary))
                                                 {
-                                                    <div class="email-item">
-                                                        <div class="email-content">
-                                                            <RVTextbox Value="@email.EmailAddress"
-                                                            ValueChanged="value => UpdateEmailAddress(email, value)"
-                                                            Placeholder="Enter email address"
-                                                            IconLeft="fa-light fa-envelope"
-                                                            Size="sm" />
-                                                            <RVTextbox Value="@email.Description"
-                                                            ValueChanged="value => UpdateEmailDescription(email, value)"
-                                                            Placeholder="Description (e.g. Sales, Support)"
-                                                            IconLeft="fa-light fa-tag"
-                                                            Size="sm" />
+                                                    <div class="cd-contact-item">
+                                                        <div class="cd-contact-content">
+                                                            <div class="cd-input-wrapper cd-flex-grow">
+                                                                <i class="fa-light fa-envelope cd-input-icon"></i>
+                                                                <input type="email" class="cd-input"
+                                                                       value="@email.EmailAddress" @onchange="(e) => UpdateEmailAddress(email, e.Value?.ToString())"
+                                                                       placeholder="Enter email address" />
+                                                            </div>
+                                                            <div class="cd-input-wrapper">
+                                                                <i class="fa-light fa-tag cd-input-icon"></i>
+                                                                <input type="text" class="cd-input"
+                                                                       value="@email.Description" @onchange="(e) => UpdateEmailDescription(email, e.Value?.ToString())"
+                                                                       placeholder="Description" />
+                                                            </div>
                                                         </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                        OnClick="() => RemoveEmail(email)" CssClass="remove-btn" />
+                                                        <button type="button" class="cd-button-icon cd-button-danger" @onclick="() => RemoveEmail(email)">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
                                                     </div>
                                                 }
                                             </div>
                                         }
                                         else
                                         {
-                                            <div class="empty-list">
-                                                <i class="fa-light fa-inbox"></i>
+                                            <div class="cd-empty-list">
+                                                <i class="fa-light fa-envelope-open"></i>
                                                 <p>No additional email addresses</p>
                                             </div>
                                         }
-                                    </div>
 
-                                    <!-- Additional Phone Numbers Section -->
-                                    <div class="additional-contacts">
-                                        <div class="section-subtitle">
-                                            <h5><i class="fa-light fa-phone"></i> Additional Phone Numbers</h5>
-                                            <RVButton ButtonType="outline" Size="xs" IconLeft="fa-light fa-plus" Text="Add Phone"
-                                            OnClick="AddPhone" CssClass="add-btn" />
+                                        <div class="cd-section-divider">
+                                            <div class="cd-section-label">
+                                                <i class="fa-light fa-phone"></i>
+                                                <span>Additional Phone Numbers</span>
+                                            </div>
+                                            <button type="button" class="cd-button-small cd-button-outline" @onclick="AddPhone">
+                                                <i class="fa-light fa-plus"></i> Add Phone
+                                            </button>
                                         </div>
 
                                         @if (CompanyModel.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
                                         {
-                                            <div class="phone-list">
+                                            <div class="cd-contact-list">
                                                 @foreach (var phone in CompanyModel.ContactNumbers.Where(c => !c.IsPrimary))
                                                 {
-                                                    <div class="phone-item">
-                                                        <div class="phone-content">
-                                                            <RVTextbox Value="@phone.Number"
-                                                            ValueChanged="value => UpdatePhoneNumber(phone, value)"
-                                                            Placeholder="Enter phone number"
-                                                            IconLeft="fa-light fa-phone"
-                                                            Size="sm" />
-                                                            <RVSelect Value="@(phone.ContactNumberTypeId.ToString())"
-                                                            ValueChanged="value => UpdatePhoneTypeId(phone, value)"
-                                                            Placeholder="Select type"
-                                                            IconLeft="fa-light fa-phone-office"
-                                                            Size="sm">
-                                                                @if (contactNumberTypes != null)
-                                                                {
-                                                                    @foreach (var type in contactNumberTypes)
+                                                    <div class="cd-contact-item">
+                                                        <div class="cd-contact-content">
+                                                            <div class="cd-input-wrapper cd-flex-grow">
+                                                                <i class="fa-light fa-phone cd-input-icon"></i>
+                                                                <input type="tel" class="cd-input"
+                                                                       value="@phone.Number" @onchange="(e) => UpdatePhoneNumber(phone, e.Value?.ToString())"
+                                                                       placeholder="Enter phone number" />
+                                                            </div>
+                                                            <div class="cd-select-wrapper">
+                                                                <i class="fa-light fa-phone-office cd-input-icon"></i>
+                                                                <select class="cd-select"
+                                                                        value="@phone.ContactNumberTypeId" @onchange="(e) => UpdatePhoneTypeId(phone, e.Value?.ToString())">
+                                                                    @if (contactNumberTypes != null)
                                                                     {
-                                                                        <option value="@type.Id">@type.Name</option>
+                                                                        @foreach (var type in contactNumberTypes)
+                                                                        {
+                                                                            <option value="@type.Id">@type.Name</option>
+                                                                        }
                                                                     }
-                                                                }
-                                                            </RVSelect>
-                                                            <RVTextbox Value="@phone.Description"
-                                                            ValueChanged="value => UpdatePhoneDescription(phone, value)"
-                                                            Placeholder="Description"
-                                                            IconLeft="fa-light fa-tag"
-                                                            Size="sm" />
+                                                                </select>
+                                                                <i class="fa-light fa-chevron-down cd-select-arrow"></i>
+                                                            </div>
                                                         </div>
-                                                        <RVButton ButtonType="outline-danger" Size="xs" IconLeft="fa-light fa-trash"
-                                                        OnClick="() => RemovePhone(phone)" CssClass="remove-btn" />
+                                                        <button type="button" class="cd-button-icon cd-button-danger" @onclick="() => RemovePhone(phone)">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
                                                     </div>
                                                 }
                                             </div>
                                         }
                                         else
                                         {
-                                            <div class="empty-list">
+                                            <div class="cd-empty-list">
                                                 <i class="fa-light fa-phone-slash"></i>
                                                 <p>No additional phone numbers</p>
                                             </div>
                                         }
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="address" IsActive='activeTab == "address"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-map-marker-alt"></i> Address Information</h4>
-                                        <p>Enter the company's address details</p>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-12">
+                                <div class="cd-tab-pane @(activeTab == "address" ? "cd-active" : "")">
+                                    <div class="cd-form-section">
+                                        <div class="cd-form-group">
                                             <label for="street">Street</label>
-                                            <RVTextbox Id="street"
-                                            Value="@CompanyModel.Address.Street"
-                                            ValueChanged="value => CompanyModel.Address.Street = value"
-                                            Placeholder="Enter street address"
-                                            IconLeft="fa-light fa-road" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-4">
-                                            <label for="unitNumber">Unit Number</label>
-                                            <RVTextbox Id="unitNumber"
-                                            Value="@CompanyModel.Address.UnitNumber"
-                                            ValueChanged="value => CompanyModel.Address.UnitNumber = value"
-                                            Placeholder="Unit number"
-                                            IconLeft="fa-light fa-door-closed" />
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-road cd-input-icon"></i>
+                                                <InputText @bind-Value="CompanyModel.Address.Street" id="street" class="cd-input" placeholder="Enter street address" />
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-8">
-                                            <label for="complexName">Complex Name</label>
-                                            <RVTextbox Id="complexName"
-                                            Value="@CompanyModel.Address.ComplexName"
-                                            ValueChanged="value => CompanyModel.Address.ComplexName = value"
-                                            Placeholder="Complex name"
-                                            IconLeft="fa-light fa-building" />
-                                        </div>
-                                    </div>
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-4">
+                                                <label for="unitNumber">Unit Number</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-door-closed cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.UnitNumber" id="unitNumber" class="cd-input" placeholder="Unit number" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group col-12">
+                                            <div class="cd-form-group cd-col-8">
+                                                <label for="complexName">Complex Name</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-building cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.ComplexName" id="complexName" class="cd-input" placeholder="Complex name" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cd-form-group">
                                             <label for="buildingName">Building Name</label>
-                                            <RVTextbox Id="buildingName"
-                                            Value="@CompanyModel.Address.BuildingName"
-                                            ValueChanged="value => CompanyModel.Address.BuildingName = value"
-                                            Placeholder="Building name"
-                                            IconLeft="fa-light fa-building" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="suburb">Suburb</label>
-                                            <RVTextbox Id="suburb"
-                                            Value="@CompanyModel.Address.Suburb"
-                                            ValueChanged="value => CompanyModel.Address.Suburb = value"
-                                            Placeholder="Enter suburb"
-                                            IconLeft="fa-light fa-map" />
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-building cd-input-icon"></i>
+                                                <InputText @bind-Value="CompanyModel.Address.BuildingName" id="buildingName" class="cd-input" placeholder="Building name" />
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="city">City</label>
-                                            <RVTextbox Id="city"
-                                            Value="@CompanyModel.Address.City"
-                                            ValueChanged="value => CompanyModel.Address.City = value"
-                                            Placeholder="Enter city"
-                                            IconLeft="fa-light fa-city" />
-                                        </div>
-                                    </div>
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="suburb">Suburb</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-map cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.Suburb" id="suburb" class="cd-input" placeholder="Enter suburb" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="province">Province</label>
-                                            <RVTextbox Id="province"
-                                            Value="@CompanyModel.Address.Province"
-                                            ValueChanged="value => CompanyModel.Address.Province = value"
-                                            Placeholder="Enter province"
-                                            IconLeft="fa-light fa-map-marked" />
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="city">City</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-city cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.City" id="city" class="cd-input" placeholder="Enter city" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="postalCode">Postal Code</label>
-                                            <RVTextbox Id="postalCode"
-                                            Value="@CompanyModel.Address.PostalCode"
-                                            ValueChanged="value => CompanyModel.Address.PostalCode = value"
-                                            Placeholder="Enter postal code"
-                                            IconLeft="fa-light fa-mailbox" />
-                                        </div>
-                                    </div>
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="province">Province</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-map-marked cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.Province" id="province" class="cd-input" placeholder="Enter province" />
+                                                </div>
+                                            </div>
 
-                                    <div class="form-group">
-                                        <label for="country">Country</label>
-                                        <RVTextbox Id="country"
-                                        Value="@CompanyModel.Address.Country"
-                                        ValueChanged="value => CompanyModel.Address.Country = value"
-                                        Placeholder="Enter country"
-                                        IconLeft="fa-light fa-globe" />
-                                    </div>
-                                </div>
-                            </RVTabPanel>
-
-                            <!-- Banking Details Tab -->
-                            <RVTabPanel TabId="banking" IsActive='activeTab == "banking"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-university"></i> Banking Details</h4>
-                                        <p>Enter the company's banking information for invoicing and payments</p>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="bankNameId">Bank Name</label>
-                                            <RVSelect Id="bankNameId"
-                                            Value="@(CompanyModel.BankAccount.BankNameId?.ToString() ?? "")"
-                                            ValueChanged="value => UpdateBankNameId(value)"
-                                            Placeholder="Select bank"
-                                            IconLeft="fa-light fa-university">
-                                                <option value="">-- Select Bank --</option>
-                                                @if (bankNameTypes != null)
-                                                {
-                                                    @foreach (var bank in bankNameTypes.OrderBy(b => b.Name))
-                                                    {
-                                                        <option value="@bank.Id">@bank.Name</option>
-                                                    }
-                                                }
-                                            </RVSelect>
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="postalCode">Postal Code</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-mailbox cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.Address.PostalCode" id="postalCode" class="cd-input" placeholder="Enter postal code" />
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="form-group col-md-6">
-                                            <label for="accountType">Account Type</label>
-                                            <RVTextbox Id="accountType"
-                                            Value="@CompanyModel.BankAccount.AccountType"
-                                            ValueChanged="value => CompanyModel.BankAccount.AccountType = value"
-                                            Placeholder="E.g. Current, Savings, Business"
-                                            IconLeft="fa-light fa-credit-card" />
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="accountNumber">Account Number</label>
-                                            <RVTextbox Id="accountNumber"
-                                            Value="@CompanyModel.BankAccount.AccountNumber"
-                                            ValueChanged="value => CompanyModel.BankAccount.AccountNumber = value"
-                                            Placeholder="Enter account number"
-                                            IconLeft="fa-light fa-hashtag" />
-                                        </div>
-
-                                        <div class="form-group col-md-6">
-                                            <label for="branchCode">Branch Code</label>
-                                            <RVTextbox Id="branchCode"
-                                            Value="@CompanyModel.BankAccount.BranchCode"
-                                            ValueChanged="value => CompanyModel.BankAccount.BranchCode = value"
-                                            Placeholder="Enter branch code"
-                                            IconLeft="fa-light fa-code" />
+                                        <div class="cd-form-group">
+                                            <label for="country">Country</label>
+                                            <div class="cd-input-wrapper">
+                                                <i class="fa-light fa-globe cd-input-icon"></i>
+                                                <InputText @bind-Value="CompanyModel.Address.Country" id="country" class="cd-input" placeholder="Enter country" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
 
-                            <RVTabPanel TabId="logo" IsActive='activeTab == "logo"'>
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <h4><i class="fa-light fa-image"></i> Company Logo</h4>
-                                        <p>Upload your company logo</p>
+                                <div class="cd-tab-pane @(activeTab == "banking" ? "cd-active" : "")">
+                                    <div class="cd-form-section">
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="bankNameId">Bank Name</label>
+                                                <div class="cd-select-wrapper">
+                                                    <i class="fa-light fa-university cd-input-icon"></i>
+                                                    <select id="bankNameId" class="cd-select"
+                                                            value="@(CompanyModel.BankAccount.BankNameId?.ToString() ?? "")"
+                                                            @onchange="(e) => UpdateBankNameId(e.Value?.ToString())">
+                                                        <option value="">-- Select Bank --</option>
+                                                        @if (bankNameTypes != null)
+                                                        {
+                                                            @foreach (var bank in bankNameTypes.OrderBy(b => b.Name))
+                                                            {
+                                                                <option value="@bank.Id">@bank.Name</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <i class="fa-light fa-chevron-down cd-select-arrow"></i>
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="accountType">Account Type</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-credit-card cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.BankAccount.AccountType" id="accountType" class="cd-input" placeholder="E.g. Current, Savings, Business" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cd-form-row">
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="accountNumber">Account Number</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-hashtag cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.BankAccount.AccountNumber" id="accountNumber" class="cd-input" placeholder="Enter account number" />
+                                                </div>
+                                            </div>
+
+                                            <div class="cd-form-group cd-col-6">
+                                                <label for="branchCode">Branch Code</label>
+                                                <div class="cd-input-wrapper">
+                                                    <i class="fa-light fa-code cd-input-icon"></i>
+                                                    <InputText @bind-Value="CompanyModel.BankAccount.BranchCode" id="branchCode" class="cd-input" placeholder="Enter branch code" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
+                                </div>
 
-                                    <div class="logo-upload-section">
-                                        <div class="current-logo">
-                                            <h5>Current Logo</h5>
+                                <div class="cd-tab-pane @(activeTab == "logo" ? "cd-active" : "")">
+                                    <div class="cd-form-section">
+                                        <div class="cd-logo-upload-container">
                                             @if (CompanyModel.MainLogoId.HasValue && CompanyModel.MainLogo != null)
                                             {
-                                                <div class="logo-preview">
-                                                    <img src="@CompanyModel.MainLogo.Url" alt="Company Logo" class="logo-image" />
-                                                </div>
-                                                <div class="logo-actions mt-2">
-                                                    <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-trash"
-                                                    Text="Remove Logo" OnClick="RemoveLogo" />
+                                                <div class="cd-current-logo">
+                                                    <h5>Current Logo</h5>
+                                                    <div class="cd-logo-preview">
+                                                        <img src="@CompanyModel.MainLogo.Url" alt="Company Logo" class="cd-logo-image" />
+                                                    </div>
+                                                    <div class="cd-logo-actions">
+                                                        <button type="button" class="cd-button cd-button-danger" @onclick="RemoveLogo">
+                                                            <i class="fa-light fa-trash"></i>
+                                                            <span>Remove</span>
+                                                        </button>
+                                                        <button type="button" class="cd-button cd-button-outline" @onclick="ShowUploadDialog">
+                                                            <i class="fa-light fa-exchange"></i>
+                                                            <span>Replace</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             }
                                             else
                                             {
-                                                <div class="empty-logo">
-                                                    <i class="fa-light fa-image fa-3x"></i>
-                                                    <p>No logo uploaded yet</p>
+                                                <div class="cd-empty-logo-upload">
+                                                    <i class="fa-light fa-image"></i>
+                                                    <p>No logo uploaded</p>
+                                                    <button type="button" class="cd-button cd-button-primary" @onclick="ShowUploadDialog">
+                                                        <i class="fa-light fa-cloud-upload"></i>
+                                                        <span>Upload Logo</span>
+                                                    </button>
                                                 </div>
                                             }
-                                        </div>
 
-                                        <div class="upload-area">
-                                            <h5>Upload New Logo</h5>
-                                            <InputFile OnChange="OnLogoInputChange" class="upload-input" accept="image/*" />
-                                            <div class="upload-placeholder @(isUploading ? "d-none" : "")">
-                                                <i class="fa-light fa-cloud-upload fa-2x"></i>
-                                                <p>Drag and drop your logo here, or click to browse</p>
-                                                <span class="file-hint">Recommended size: 512x512px, JPG or PNG format</span>
-                                            </div>
                                             @if (isUploading)
                                             {
-                                                <div class="upload-progress">
-                                                    <div class="loading-spinner sm"></div>
-                                                    <span>Uploading logo... @uploadProgress%</span>
-                                                </div>
-                                            }
-                                            @if (!string.IsNullOrEmpty(logoPreview))
-                                            {
-                                                <div class="logo-preview-new">
-                                                    <img src="@logoPreview" alt="New Logo Preview" class="preview-image" />
-                                                    <div class="preview-actions">
-                                                        <RVButton ButtonType="outline-danger" Size="sm" IconLeft="fa-light fa-times"
-                                                        Text="Remove" OnClick="CancelLogoUpload" />
-                                                        <RVButton ButtonType="primary" Size="sm" IconLeft="fa-light fa-check"
-                                                        Text="Use This Logo" OnClick="ApplyLogo" />
+                                                <div class="cd-upload-progress">
+                                                    <div class="cd-progress-bar">
+                                                        <div class="cd-progress-fill" style="width: @uploadProgress%"></div>
                                                     </div>
+                                                    <span class="cd-progress-text">Uploading... @uploadProgress%</span>
                                                 </div>
                                             }
                                         </div>
                                     </div>
                                 </div>
-                            </RVTabPanel>
-                        </RVTab>
-
-                        <div class="company-edit-footer">
-                            <RVButton ButtonType="outline" IconLeft="fa-light fa-times" Text="Cancel" OnClick="OnCancel" />
-                            <RVButton ButtonType="primary" IconLeft="fa-light fa-save" Text="Save Changes" Type="submit" />
+                            </div>
                         </div>
                     </EditForm>
                 }
             </div>
         }
-    </ChildContent>
-</RVModal>
+    </div>
+
+    <div class="cd-modal-footer">
+        <button type="button" class="cd-button cd-button-outline" @onclick="OnCancel">
+            <i class="fa-light fa-times"></i>
+            <span>Cancel</span>
+        </button>
+        @if (IsViewMode && CanEdit)
+        {
+            <button type="button" class="cd-button cd-button-primary" @onclick="SwitchToEditMode">
+                <i class="fa-light fa-edit"></i>
+                <span>Edit</span>
+            </button>
+        }
+        else if (IsEditMode)
+        {
+            <button class="cd-button cd-button-primary" @onclick="Save">
+                <i class="fa-light fa-save"></i>
+                <span>Save Changes</span>
+            </button>
+        }
+    </div>
+</div>
+
+@if (showLogoUploadDialog)
+{
+    <div class="cd-modal-backdrop"></div>
+    <div class="cd-upload-modal-wrapper">
+        <div class="cd-modal-header">
+            <div class="cd-modal-title">
+                <i class="fa-light fa-cloud-upload"></i>
+                <span>Upload Logo</span>
+            </div>
+            <button type="button" class="cd-close-button" @onclick="CloseUploadDialog">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="cd-modal-body">
+            <div class="cd-upload-instructions">
+                <h4>Upload Company Logo</h4>
+                <p>Please select an image file to upload as the company logo.</p>
+                <div class="cd-upload-specs">
+                    <div class="cd-spec-item">
+                        <i class="fa-light fa-image"></i>
+                        <span>Recommended size: 512x512 pixels</span>
+                    </div>
+                    <div class="cd-spec-item">
+                        <i class="fa-light fa-weight"></i>
+                        <span>Maximum file size: 5MB</span>
+                    </div>
+                    <div class="cd-spec-item">
+                        <i class="fa-light fa-file-image"></i>
+                        <span>Supported formats: JPG, PNG, GIF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cd-upload-area @(logoFile != null ? "cd-has-file" : "")">
+                <SfUploader ID="LogoUploader"
+                            AllowedExtensions=".jpg, .jpeg, .png, .gif"
+                            MaxFileSize="5242880"
+                            AllowMultiple="false"
+                            ShowFileList="true"
+                            AutoUpload="false">
+                    <UploaderEvents ValueChange="OnLogoFileSelected"></UploaderEvents>
+                </SfUploader>
+
+                @if (previewImageData != null)
+                {
+                    <div class="cd-image-preview">
+                        <h5>Preview</h5>
+                        <div class="cd-preview-container">
+                            <img src="@previewImageData" alt="Logo Preview" class="cd-logo-preview-image" />
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(uploadError))
+            {
+                <div class="cd-upload-error">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <p>@uploadError</p>
+                </div>
+            }
+        </div>
+        <div class="cd-modal-footer">
+            <button type="button" class="cd-button cd-button-outline" @onclick="CloseUploadDialog">
+                <i class="fa-light fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="cd-button cd-button-primary" @onclick="UploadLogo" disabled="@(logoFile == null)">
+                <i class="fa-light fa-cloud-upload"></i>
+                <span>Upload</span>
+            </button>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public Company CompanyModel { get; set; } = new Company();
@@ -1170,22 +1200,88 @@ Size="lg">
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
 
-    // Logo handling
-    private string logoPreview = string.Empty;
+    // Add these properties to handle binding with InputSelect
+    private string statusValue
+    {
+        get => CompanyModel.StatusId?.ToString() ?? "";
+        set
+        {
+            CompanyModel.StatusId = string.IsNullOrEmpty(value) ? null : int.Parse(value);
+        }
+    }
+
+    private string subscriptionValue
+    {
+        get => CompanyModel.SubscriptionPlanId?.ToString() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                CompanyModel.SubscriptionPlanId = null;
+                CompanyModel.SubscriptionPlan = null;
+                return;
+            }
+
+            if (int.TryParse(value, out var planId))
+            {
+                CompanyModel.SubscriptionPlanId = planId;
+                // Update the subscription plan object
+                if (SubscriptionPlans != null)
+                {
+                    var plan = SubscriptionPlans.FirstOrDefault(p => p.Id == planId);
+                    CompanyModel.SubscriptionPlan = plan;
+
+                    // Auto-populate limits from the plan if available
+                    if (plan != null)
+                    {
+                        if (plan.MaxUsers.HasValue && (!CompanyModel.MaxUsers.HasValue || CompanyModel.MaxUsers.Value == 0))
+                        {
+                            CompanyModel.MaxUsers = plan.MaxUsers;
+                        }
+
+                        if (plan.MaxProperties.HasValue && (!CompanyModel.MaxProperties.HasValue || CompanyModel.MaxProperties.Value == 0))
+                        {
+                            CompanyModel.MaxProperties = plan.MaxProperties;
+                        }
+
+                        if (plan.MaxBranches.HasValue && (!CompanyModel.MaxBranches.HasValue || CompanyModel.MaxBranches.Value == 0))
+                        {
+                            CompanyModel.MaxBranches = plan.MaxBranches;
+                        }
+
+                        // Set subscription dates if not already set
+                        if (!CompanyModel.SubscriptionStartDate.HasValue)
+                        {
+                            CompanyModel.SubscriptionStartDate = DateTime.Today;
+                        }
+
+                        if (!CompanyModel.SubscriptionEndDate.HasValue && plan.BillingCycleDays > 0)
+                        {
+                            CompanyModel.SubscriptionEndDate = CompanyModel.SubscriptionStartDate.Value.AddDays(plan.BillingCycleDays);
+                        }
+
+                        // Set trial period based on plan
+                        CompanyModel.IsTrialPeriod = plan.HasTrialPeriod;
+                    }
+                }
+            }
+        }
+    }
+
+    // Logo upload related fields
+    private bool showLogoUploadDialog = false;
     private IBrowserFile? logoFile;
     private bool isUploading = false;
     private int uploadProgress = 0;
+    private string uploadError = string.Empty;
     private long maxFileSize = 1024 * 1024 * 5; // 5MB
 
-    // Form tabs
-    private List<RVTab.RVTabItem> formTabs = new List<RVTab.RVTabItem>
-    {
-        new RVTab.RVTabItem { Id = "basic", Title = "Basic Information", Icon = "fa-light fa-building", IsActive = true },
-        new RVTab.RVTabItem { Id = "contact", Title = "Contact Details", Icon = "fa-light fa-address-card" },
-        new RVTab.RVTabItem { Id = "address", Title = "Address", Icon = "fa-light fa-map-marker-alt" },
-        new RVTab.RVTabItem { Id = "banking", Title = "Banking Details", Icon = "fa-light fa-university" },
-        new RVTab.RVTabItem { Id = "logo", Title = "Company Logo", Icon = "fa-light fa-image" }
-    };
+    // New fields for SfUploader and image processing
+    private string? previewImageData;
+    private byte[]? resizedImageData;
+    private string logoContentType = string.Empty;
+    private int logoTargetWidth = 512;
+    private int logoTargetHeight = 512;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1228,7 +1324,7 @@ Size="lg">
         try
         {
             using var context = await DbContextFactory.CreateDbContextAsync();
-            
+
             if (contactNumberTypes == null)
             {
                 contactNumberTypes = await context.ContactNumberTypes
@@ -1236,7 +1332,7 @@ Size="lg">
                     .OrderBy(t => t.DisplayOrder)
                     .ToListAsync();
             }
-            
+
             if (bankNameTypes == null)
             {
                 bankNameTypes = await context.BankNameTypes
@@ -1454,81 +1550,6 @@ Size="lg">
         }
     }
 
-    // Status and Subscription Plan handlers
-    private void UpdateStatus(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            CompanyModel.StatusId = null;
-            CompanyModel.Status = null;
-            return;
-        }
-
-        if (int.TryParse(value, out var statusId))
-        {
-            CompanyModel.StatusId = statusId;
-            // Update the status object if needed
-            if (CompanyStatusTypes != null)
-            {
-                CompanyModel.Status = CompanyStatusTypes.FirstOrDefault(s => s.Id == statusId);
-            }
-        }
-    }
-
-    private void UpdateSubscriptionPlan(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            CompanyModel.SubscriptionPlanId = null;
-            CompanyModel.SubscriptionPlan = null;
-            return;
-        }
-
-        if (int.TryParse(value, out var planId))
-        {
-            CompanyModel.SubscriptionPlanId = planId;
-            // Update the subscription plan object
-            if (SubscriptionPlans != null)
-            {
-                var plan = SubscriptionPlans.FirstOrDefault(p => p.Id == planId);
-                CompanyModel.SubscriptionPlan = plan;
-                
-                // Auto-populate limits from the plan if available
-                if (plan != null)
-                {
-                    if (plan.MaxUsers.HasValue && (!CompanyModel.MaxUsers.HasValue || CompanyModel.MaxUsers.Value == 0))
-                    {
-                        CompanyModel.MaxUsers = plan.MaxUsers;
-                    }
-                    
-                    if (plan.MaxProperties.HasValue && (!CompanyModel.MaxProperties.HasValue || CompanyModel.MaxProperties.Value == 0))
-                    {
-                        CompanyModel.MaxProperties = plan.MaxProperties;
-                    }
-                    
-                    if (plan.MaxBranches.HasValue && (!CompanyModel.MaxBranches.HasValue || CompanyModel.MaxBranches.Value == 0))
-                    {
-                        CompanyModel.MaxBranches = plan.MaxBranches;
-                    }
-                    
-                    // Set subscription dates if not already set
-                    if (!CompanyModel.SubscriptionStartDate.HasValue)
-                    {
-                        CompanyModel.SubscriptionStartDate = DateTime.Today;
-                    }
-                    
-                    if (!CompanyModel.SubscriptionEndDate.HasValue && plan.BillingCycleDays > 0)
-                    {
-                        CompanyModel.SubscriptionEndDate = CompanyModel.SubscriptionStartDate.Value.AddDays(plan.BillingCycleDays);
-                    }
-                    
-                    // Set trial period based on plan
-                    CompanyModel.IsTrialPeriod = plan.HasTrialPeriod;
-                }
-            }
-        }
-    }
-
     private void UpdateBankNameId(string value)
     {
         if (string.IsNullOrEmpty(value))
@@ -1540,7 +1561,7 @@ Size="lg">
         if (int.TryParse(value, out var bankNameId))
         {
             CompanyModel.BankAccount.BankNameId = bankNameId;
-            
+
             // Set default branch code if available
             if (bankNameTypes != null)
             {
@@ -1712,63 +1733,157 @@ Size="lg">
         phone.Description = value;
     }
 
-    // Logo handling methods
-    private async Task OnLogoInputChange(InputFileChangeEventArgs e)
+    // Logo upload methods
+    private void ShowUploadDialog()
     {
+        uploadError = string.Empty;
+        logoFile = null;
+        previewImageData = null;
+        resizedImageData = null;
+        showLogoUploadDialog = true;
+    }
+
+    private void CloseUploadDialog()
+    {
+        showLogoUploadDialog = false;
+        logoFile = null;
+        previewImageData = null;
+        resizedImageData = null;
+        uploadError = string.Empty;
+    }
+
+    // SfUploader logo file selection handler
+    private async Task OnLogoFileSelected(UploadChangeEventArgs args)
+    {
+        uploadError = string.Empty;
+
+        if (args.Files == null || args.Files.Count == 0)
+        {
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
+            return;
+        }
+
+        var file = args.Files[0];
+        logoFile = file.File;
+        logoContentType = file.FileInfo.MimeContentType;
+
+        if (logoFile.Size > maxFileSize)
+        {
+            uploadError = "File size exceeds 5MB limit";
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
+            return;
+        }
+
+        // Validate file type
+        if (!logoContentType.StartsWith("image/"))
+        {
+            uploadError = "Please select an image file";
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
+            return;
+        }
+
         try
         {
-            logoFile = e.File;
+            // Resize the image before upload
+            var resizedFile = await logoFile.RequestImageFileAsync(logoContentType, logoTargetWidth, logoTargetHeight);
 
-            if (logoFile.Size > maxFileSize)
+            // Create a buffer for the resized image
+            resizedImageData = new byte[resizedFile.Size];
+            using (var stream = resizedFile.OpenReadStream())
             {
-                ToastService.ShowError("File size exceeds 5MB limit", "Error");
-                return;
+                await stream.ReadAsync(resizedImageData);
             }
 
-            // Validate file type
-            if (!logoFile.ContentType.StartsWith("image/"))
-            {
-                ToastService.ShowError("Please select an image file", "Error");
-                return;
-            }
+            // Generate a preview image as base64
+            previewImageData = $"data:{logoContentType};base64,{Convert.ToBase64String(resizedImageData)}";
 
-            // Generate preview
-            isUploading = true;
-            uploadProgress = 0;
-
-            // Simulate upload progress
-            for (int i = 0; i <= 60; i += 10)
-            {
-                uploadProgress = i;
-                await Task.Delay(50); // Simulated delay
-                StateHasChanged();
-            }
-
-            var imageFormat = logoFile.ContentType.Split('/')[1];
-            var resizedImageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 512, 512);
-
-            using var stream = resizedImageFile.OpenReadStream();
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            byte[] imageData = ms.ToArray();
-
-            // Generate base64 preview
-            logoPreview = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(imageData)}";
-
-            isUploading = false;
-            uploadProgress = 100;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            isUploading = false;
-            ToastService.ShowError($"Error processing logo: {ex.Message}", "Error");
+            uploadError = $"Error processing image: {ex.Message}";
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
         }
     }
 
-    private void CancelLogoUpload()
+    private async Task UploadLogo()
     {
-        logoPreview = string.Empty;
-        logoFile = null;
+        if (logoFile == null || resizedImageData == null)
+        {
+            uploadError = "Please select a logo file to upload";
+            return;
+        }
+
+        try
+        {
+            isUploading = true;
+            uploadProgress = 0;
+            StateHasChanged();
+
+            // Create a unique filename
+            var fileName = $"company-logo-{CompanyModel.Id}-{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(logoFile.Name)}";
+
+            // Update progress as we prepare the upload
+            uploadProgress = 30;
+            StateHasChanged();
+
+            // Use the CDN service to upload the resized file
+            using var stream = new MemoryStream(resizedImageData);
+            var url = await CdnService.UploadFileAsync(
+                stream,
+                fileName,
+                logoContentType,
+                "logos",
+                CompanyModel.Id > 0 ? CompanyModel.Id.ToString() : ""
+            );
+
+            uploadProgress = 80;
+            StateHasChanged();
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                // Get the file metadata
+                var metadata = await CdnService.GetFileMetadataAsync(url);
+
+                if (metadata != null)
+                {
+                    // Update the company model with the new logo
+                    CompanyModel.MainLogoId = metadata.Id;
+                    CompanyModel.MainLogo = metadata;
+
+                    uploadProgress = 100;
+                    ToastService.ShowSuccess("Logo uploaded successfully", "Success");
+                    showLogoUploadDialog = false;
+                }
+                else
+                {
+                    uploadError = "Failed to retrieve uploaded file metadata";
+                }
+            }
+            else
+            {
+                uploadError = "Failed to upload logo";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error uploading logo: {ex.Message}";
+            ToastService.ShowError(uploadError, "Error");
+        }
+        finally
+        {
+            isUploading = false;
+            uploadProgress = 0;
+            StateHasChanged();
+        }
     }
 
     private async Task RemoveLogo()
@@ -1790,74 +1905,6 @@ Size="lg">
         catch (Exception ex)
         {
             ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
-        }
-    }
-
-    private async Task ApplyLogo()
-    {
-        if (logoFile == null) return;
-
-        try
-        {
-            isUploading = true;
-            uploadProgress = 0;
-
-            // Create a unique filename
-            var fileName = $"company-logo-{CompanyModel.Id}-{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(logoFile.Name)}";
-
-            // Update progress
-            uploadProgress = 30;
-            StateHasChanged();
-
-            // Convert IBrowserFile to Stream
-            using var stream = logoFile.OpenReadStream(maxFileSize);
-
-            // Upload the file using CDN service
-            var url = await CdnService.UploadFileAsync(
-                stream,
-                fileName,
-                logoFile.ContentType,
-                "logos", // category as string
-                CompanyModel.Id > 0 ? CompanyModel.Id.ToString() : ""
-            );
-
-            uploadProgress = 60;
-            StateHasChanged();
-
-            if (!string.IsNullOrEmpty(url))
-            {
-                // Get the file metadata
-                var metadata = await CdnService.GetFileMetadataAsync(url);
-
-                if (metadata != null)
-                {
-                    CompanyModel.MainLogoId = metadata.Id;
-                    CompanyModel.MainLogo = metadata;
-
-                    uploadProgress = 100;
-                    ToastService.ShowSuccess("Logo uploaded successfully", "Success");
-                    logoPreview = string.Empty;
-                    logoFile = null;
-                }
-                else
-                {
-                    ToastService.ShowError("Failed to retrieve uploaded file metadata", "Error");
-                }
-            }
-            else
-            {
-                ToastService.ShowError("Failed to upload logo", "Error");
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error uploading logo: {ex.Message}", "Error");
-        }
-        finally
-        {
-            isUploading = false;
-            uploadProgress = 0;
-            StateHasChanged();
         }
     }
 }

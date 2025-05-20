@@ -1628,9 +1628,9 @@
             uploadProgress = 30;
             StateHasChanged();
 
-            // Use the CDN service to upload the resized file
+            // Use the CDN service to upload the resized file WITH base64 backup
             using var stream = new MemoryStream(resizedImageData);
-            var url = await CdnService.UploadFileAsync(
+            var url = await CdnService.UploadFileWithBase64BackupAsync(
                 stream,
                 fileName,
                 logoContentType,
@@ -1653,7 +1653,7 @@
                     BranchModel.MainLogo = metadata;
 
                     uploadProgress = 100;
-                    ToastService.ShowSuccess("Logo uploaded successfully", "Success");
+                    ToastService.ShowSuccess("Logo uploaded successfully with base64 backup", "Success");
                     showLogoUploadDialog = false;
                 }
                 else

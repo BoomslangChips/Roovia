@@ -105,7 +105,6 @@
     border-radius: var(--border-radius-md);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-divider);
-    overflow: hidden;
     width: 100%;
 }
 

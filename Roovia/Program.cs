@@ -258,34 +258,29 @@ else
 }
 
 // Initialize database and seed data
-//using (var scope = app.Services.CreateScope())
-//{
-//    var services = scope.ServiceProvider;
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
 
-//    try
-//    {
-//        // First, ensure the database exists and is migrated
-//        var context = services.GetRequiredService<ApplicationDbContext>();
-//        await context.Database.MigrateAsync();
+    try
+    {
+        // Skip database migration and seeding for now
+        // var context = services.GetRequiredService<ApplicationDbContext>();
+        // await context.Database.MigrateAsync();
+        // var seedDataService = services.GetRequiredService<ISeedDataService>();
+        // await seedDataService.InitializeAsync();
+        // await PermissionSeeder.SeedPermissionsAndRoles(services);
 
-//        // Seed all lookup tables
-//        var seedDataService = services.GetRequiredService<ISeedDataService>();
-//        await seedDataService.InitializeAsync();
-
-//        // Seed permissions and roles
-//        await PermissionSeeder.SeedPermissionsAndRoles(services);
-
-//        logger.LogInformation("Database initialization and seeding completed successfully");
-//    }
-//    catch (Exception ex)
-//    {
-//        logger.LogError(ex, "An error occurred while initializing the database");
-//        // In production, you might want to handle this differently
-//        if (app.Environment.IsDevelopment())
-//        {
-//            throw;
-//        }
-//    }
-//}
+        logger.LogInformation("Database initialization skipped for troubleshooting");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while initializing the database");
+        if (app.Environment.IsDevelopment())
+        {
+            throw;
+        }
+    }
+}
 
 app.Run();

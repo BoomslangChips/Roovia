@@ -200,6 +200,9 @@ namespace Roovia.Security
         /// <summary>
         /// Updates a user's information
         /// </summary>
+        /// <summary>
+        /// Updates a user's information
+        /// </summary>
         public async Task<ResponseModel> UpdateUser(string id, ApplicationUser updatedUser)
         {
             ResponseModel response = new();
@@ -208,7 +211,11 @@ namespace Roovia.Security
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                var user = await context.Users.FindAsync(id);
+                var user = await context.Users
+                    .Include(u => u.EmailAddresses)
+                    .Include(u => u.ContactNumbers)
+                    .FirstOrDefaultAsync(u => u.Id == id);
+
                 if (user == null)
                 {
                     response.ResponseInfo.Success = false;
@@ -251,6 +258,104 @@ namespace Roovia.Security
                     user.NormalizedEmail = updatedUser.Email.ToUpper();
                 }
 
+                // Handle email addresses
+                if (updatedUser.EmailAddresses != null)
+                {
+                    // Get existing email addresses from the database
+                    var existingEmails = await context.Emails
+                        .Where(e => e.RelatedEntityType == "User" && e.RelatedEntityStringId == id)
+                        .ToListAsync();
+
+                    // Find emails to delete (exist in DB but not in updated collection)
+                    var emailsToDelete = existingEmails
+                        .Where(e => !updatedUser.EmailAddresses.Any(ue => ue.Id == e.Id))
+                        .ToList();
+
+                    // Delete removed emails
+                    foreach (var email in emailsToDelete)
+                    {
+                        context.Emails.Remove(email);
+                    }
+
+                    // Handle remaining emails (add new ones, update existing ones)
+                    foreach (var email in updatedUser.EmailAddresses)
+                    {
+                        if (email.Id == 0)
+                        {
+                            // New email
+                            email.RelatedEntityType = "User";
+                            email.RelatedEntityStringId = id;
+                            email.RelatedEntityId = null;
+                            await context.Emails.AddAsync(email);
+                        }
+                        else
+                        {
+                            // Existing email
+                            var existingEmail = existingEmails.FirstOrDefault(e => e.Id == email.Id);
+                            if (existingEmail != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingEmail).State = EntityState.Detached;
+
+                                // Update email properties
+                                email.RelatedEntityType = "User";
+                                email.RelatedEntityStringId = id;
+                                email.RelatedEntityId = null;
+                                context.Emails.Update(email);
+                            }
+                        }
+                    }
+                }
+
+                // Handle contact numbers
+                if (updatedUser.ContactNumbers != null)
+                {
+                    // Get existing contact numbers from the database
+                    var existingContacts = await context.ContactNumbers
+                        .Where(c => c.RelatedEntityType == "User" && c.RelatedEntityStringId == id)
+                        .ToListAsync();
+
+                    // Find contacts to delete (exist in DB but not in updated collection)
+                    var contactsToDelete = existingContacts
+                        .Where(c => !updatedUser.ContactNumbers.Any(uc => uc.Id == c.Id))
+                        .ToList();
+
+                    // Delete removed contacts
+                    foreach (var contact in contactsToDelete)
+                    {
+                        context.ContactNumbers.Remove(contact);
+                    }
+
+                    // Handle remaining contacts (add new ones, update existing ones)
+                    foreach (var contact in updatedUser.ContactNumbers)
+                    {
+                        if (contact.Id == 0)
+                        {
+                            // New contact
+                            contact.RelatedEntityType = "User";
+                            contact.RelatedEntityStringId = id;
+                            contact.RelatedEntityId = null;
+                            await context.ContactNumbers.AddAsync(contact);
+                        }
+                        else
+                        {
+                            // Existing contact
+                            var existingContact = existingContacts.FirstOrDefault(c => c.Id == contact.Id);
+                            if (existingContact != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingContact).State = EntityState.Detached;
+
+                                // Update contact properties
+                                contact.RelatedEntityType = "User";
+                                contact.RelatedEntityStringId = id;
+                                contact.RelatedEntityId = null;
+                                context.ContactNumbers.Update(contact);
+                            }
+                        }
+                    }
+                }
+
                 await context.SaveChangesAsync();
 
                 response.Response = user;
@@ -266,6 +371,8 @@ namespace Roovia.Security
 
             return response;
         }
+
+     
 
         /// <summary>
         /// Soft deletes a user
@@ -866,7 +973,10 @@ namespace Roovia.Security
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                var company = await context.Companies.FindAsync(id);
+                var company = await context.Companies
+                    .Include(c => c.EmailAddresses)
+                    .Include(c => c.ContactNumbers)
+                    .FirstOrDefaultAsync(c => c.Id == id);
 
                 if (company == null)
                 {
@@ -896,6 +1006,104 @@ namespace Roovia.Security
                 company.Tags = updatedCompany.Tags;
                 company.UpdatedDate = DateTime.Now;
                 company.UpdatedBy = updatedCompany.UpdatedBy;
+
+                // Handle email addresses
+                if (updatedCompany.EmailAddresses != null)
+                {
+                    // Get existing email addresses from the database
+                    var existingEmails = await context.Emails
+                        .Where(e => e.RelatedEntityType == "Company" && e.RelatedEntityId == id)
+                        .ToListAsync();
+
+                    // Find emails to delete (exist in DB but not in updated collection)
+                    var emailsToDelete = existingEmails
+                        .Where(e => !updatedCompany.EmailAddresses.Any(ue => ue.Id == e.Id))
+                        .ToList();
+
+                    // Delete removed emails
+                    foreach (var email in emailsToDelete)
+                    {
+                        context.Emails.Remove(email);
+                    }
+
+                    // Handle remaining emails (add new ones, update existing ones)
+                    foreach (var email in updatedCompany.EmailAddresses)
+                    {
+                        if (email.Id == 0)
+                        {
+                            // New email
+                            email.RelatedEntityType = "Company";
+                            email.RelatedEntityId = id;
+                            email.RelatedEntityStringId = null;
+                            await context.Emails.AddAsync(email);
+                        }
+                        else
+                        {
+                            // Existing email
+                            var existingEmail = existingEmails.FirstOrDefault(e => e.Id == email.Id);
+                            if (existingEmail != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingEmail).State = EntityState.Detached;
+
+                                // Update email properties
+                                email.RelatedEntityType = "Company";
+                                email.RelatedEntityId = id;
+                                email.RelatedEntityStringId = null;
+                                context.Emails.Update(email);
+                            }
+                        }
+                    }
+                }
+
+                // Handle contact numbers
+                if (updatedCompany.ContactNumbers != null)
+                {
+                    // Get existing contact numbers from the database
+                    var existingContacts = await context.ContactNumbers
+                        .Where(c => c.RelatedEntityType == "Company" && c.RelatedEntityId == id)
+                        .ToListAsync();
+
+                    // Find contacts to delete (exist in DB but not in updated collection)
+                    var contactsToDelete = existingContacts
+                        .Where(c => !updatedCompany.ContactNumbers.Any(uc => uc.Id == c.Id))
+                        .ToList();
+
+                    // Delete removed contacts
+                    foreach (var contact in contactsToDelete)
+                    {
+                        context.ContactNumbers.Remove(contact);
+                    }
+
+                    // Handle remaining contacts (add new ones, update existing ones)
+                    foreach (var contact in updatedCompany.ContactNumbers)
+                    {
+                        if (contact.Id == 0)
+                        {
+                            // New contact
+                            contact.RelatedEntityType = "Company";
+                            contact.RelatedEntityId = id;
+                            contact.RelatedEntityStringId = null;
+                            await context.ContactNumbers.AddAsync(contact);
+                        }
+                        else
+                        {
+                            // Existing contact
+                            var existingContact = existingContacts.FirstOrDefault(c => c.Id == contact.Id);
+                            if (existingContact != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingContact).State = EntityState.Detached;
+
+                                // Update contact properties
+                                contact.RelatedEntityType = "Company";
+                                contact.RelatedEntityId = id;
+                                contact.RelatedEntityStringId = null;
+                                context.ContactNumbers.Update(contact);
+                            }
+                        }
+                    }
+                }
 
                 await context.SaveChangesAsync();
 

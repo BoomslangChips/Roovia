@@ -204,3 +204,364 @@
         hasPermissionChanges = true;
     }
 }
+<style>
+    /* ====== UserPermissionsModal.razor.css ====== */
+    /* Comprehensive styling for the user permissions modal component */
+
+
+
+    /* ====== Modal Content ====== */
+    .roovia-modal-content {
+        width: 100%;
+        max-width: 900px;
+        max-height: 90vh;
+        background-color: var(--content-bg);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        border: 1px solid var(--border-divider);
+        animation: modal-slide-in 0.3s ease-out;
+    }
+
+        /* Modal sizes */
+        .roovia-modal-content.sm {
+            max-width: 500px;
+        }
+
+        .roovia-modal-content.md {
+            max-width: 700px;
+        }
+
+        .roovia-modal-content.lg {
+            max-width: 900px;
+        }
+
+        .roovia-modal-content.xl {
+            max-width: 1100px;
+        }
+
+    /* ====== Modal Header ====== */
+    .roovia-modal-header {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-4) var(--spacing-6);
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .roovia-modal-title {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+        .roovia-modal-title i {
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+
+    .roovia-modal-close {
+        margin-left: auto;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: var(--border-radius-md);
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .roovia-modal-close:hover {
+            background-color: var(--danger-light);
+            color: var(--danger);
+        }
+
+    /* ====== Modal Body ====== */
+    .roovia-modal-body {
+        flex: 1;
+        padding: var(--spacing-6);
+        overflow-y: auto;
+    }
+
+    /* ====== Modal Footer ====== */
+    .roovia-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-3);
+        padding: var(--spacing-4) var(--spacing-6);
+        border-top: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    /* ====== User Header ====== */
+    .user-permissions-header {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-5);
+        margin-bottom: var(--spacing-6);
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-4);
+    }
+
+    .user-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background-color: var(--primary-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        font-size: 1.75rem;
+        overflow: hidden;
+        flex-shrink: 0;
+        border: 2px solid var(--border-color);
+    }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-2);
+    }
+
+        .user-details h4 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+    .user-role {
+        display: flex;
+        align-items: center;
+    }
+
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-1) var(--spacing-3);
+        border-radius: var(--border-radius-pill);
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+        .role-badge i {
+            font-size: 0.85rem;
+        }
+
+        /* Role badge variants */
+        .role-badge.admin {
+            background-color: rgba(var(--primary-rgb), 0.1);
+            color: var(--primary);
+        }
+
+        .role-badge.manager {
+            background-color: rgba(var(--info-rgb), 0.1);
+            color: var(--info);
+        }
+
+        .role-badge.user {
+            background-color: rgba(var(--secondary-rgb), 0.1);
+            color: var(--text-secondary);
+        }
+
+    .permissions-description {
+        background-color: var(--subtle-bg);
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-4);
+        border-left: 3px solid var(--primary);
+    }
+
+        .permissions-description p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+    /* ====== Permissions Footer ====== */
+    .permissions-footer {
+        margin-top: var(--spacing-6);
+    }
+
+    /* ====== Alert Styles ====== */
+    .alert {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-3);
+        padding: var(--spacing-4);
+        border-radius: var(--border-radius-md);
+        margin-bottom: var(--spacing-4);
+    }
+
+        .alert i {
+            font-size: 1.25rem;
+            margin-top: 2px;
+        }
+
+    .alert-content {
+        flex: 1;
+    }
+
+        .alert-content p {
+            margin: 0;
+            font-size: var(--font-size-sm);
+        }
+
+    .alert-info {
+        background-color: rgba(var(--info-rgb), 0.1);
+        border: 1px solid rgba(var(--info-rgb), 0.2);
+    }
+
+        .alert-info i,
+        .alert-info p {
+            color: var(--info);
+        }
+
+    .alert-danger {
+        background-color: rgba(var(--danger-rgb), 0.1);
+        border: 1px solid rgba(var(--danger-rgb), 0.2);
+    }
+
+        .alert-danger i,
+        .alert-danger p {
+            color: var(--danger);
+        }
+
+    /* ====== Loading State ====== */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-10) var(--spacing-4);
+        text-align: center;
+    }
+
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(var(--primary-rgb), 0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: var(--spacing-4);
+    }
+
+    .loading-text {
+        font-size: var(--font-size-lg);
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* ====== Animations ====== */
+    @@keyframes fade-in {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    @@keyframes modal-slide-in {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* ====== Responsive Styles ====== */
+    @@media (max-width: 768px) {
+        .roovia-modal-content
+
+    {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .roovia-modal-header {
+        padding: var(--spacing-3) var(--spacing-4);
+    }
+
+    .roovia-modal-body {
+        padding: var(--spacing-4);
+    }
+
+    .roovia-modal-footer {
+        padding: var(--spacing-3) var(--spacing-4);
+        flex-direction: column;
+    }
+
+        .roovia-modal-footer button {
+            width: 100%;
+        }
+
+    .user-info {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .user-avatar {
+        margin: 0 auto;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .roovia-modal-content
+
+    {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    }
+</style>

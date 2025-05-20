@@ -820,7 +820,7 @@ namespace Roovia.Models.BusinessHelperModels
                 SystemRole.CompanyAdministrator => "fa-light fa-user-tie",
                 SystemRole.BranchManager => "fa-light fa-user-hard-hat",
                 SystemRole.PropertyManager => "fa-light fa-user-chart",
-                SystemRole.FinancialOfficer => "fa-light fa-user-dollar",
+                SystemRole.FinancialOfficer => "fa-light fa-chalkboard-user",
                 SystemRole.TenantOfficer => "fa-light fa-user-headset",
                 SystemRole.ReportsViewer => "fa-light fa-user-chart",
                 _ => "fa-light fa-user"
@@ -835,7 +835,7 @@ namespace Roovia.Models.BusinessHelperModels
                 SystemRole.CompanyAdministrator => "fa-light fa-tie",
                 SystemRole.BranchManager => "fa-light fa-hard-hat",
                 SystemRole.PropertyManager => "fa-light fa-chart-line",
-                SystemRole.FinancialOfficer => "fa-light fa-dollar-sign",
+                SystemRole.FinancialOfficer => "fa-light fa-chalkboard-user",
                 SystemRole.TenantOfficer => "fa-light fa-headset",
                 SystemRole.ReportsViewer => "fa-light fa-chart-pie",
                 _ => "fa-light fa-user"

@@ -1,0 +1,52 @@
+﻿@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+@code {
+    private DotNetObjectReference<ThemeManager> objRef;
+    private IJSObjectReference module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+
+            try
+            {
+                // Load our theme manager module
+                module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                    "import", "./js/theme-manager.js");
+
+                // Verify theme on component initialization
+                await JSRuntime.InvokeVoidAsync("ThemeManager.verifyTheme");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error initializing ThemeManager: {ex.Message}");
+            }
+        }
+
+    }
+
+    [JSInvokable]
+    public void OnThemeChanged(string theme)
+    {
+        // Can trigger state changes in other components if needed
+        Console.WriteLine($"Theme changed to: {theme}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        objRef?.Dispose();
+
+        if (module is not null)
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

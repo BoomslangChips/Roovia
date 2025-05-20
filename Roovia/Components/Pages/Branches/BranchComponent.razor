@@ -1,0 +1,2501 @@
+﻿@page "/branches/new"
+@page "/branches/{BranchId:int}"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using Roovia.Components
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyMappingModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Services
+@using Roovia.Services.General
+@rendermode InteractiveServer
+@inject IUser UserService
+@inject ICdnService CdnService
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+<link rel="stylesheet" href="@Assets["css/BranchDialog.css"]" />
+<PageTitle>@GetPageTitle() - Roovia</PageTitle>
+
+<div class="roovia-branch-component">
+    <!-- Animated Header -->
+    <div class="roovia-page-header-modern">
+        <div class="roovia-header-background">
+            <div class="roovia-header-pattern"></div>
+        </div>
+
+        <div class="roovia-header-content">
+            <div class="roovia-breadcrumb">
+                <a href="/dashboard" class="roovia-breadcrumb-item">
+                    <i class="fal fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <i class="fal fa-chevron-right"></i>
+                <a href="/users" class="roovia-breadcrumb-item">
+                    <i class="fal fa-users"></i>
+                    <span>Users</span>
+                </a>
+                @if (IsEdit && !IsAdd)
+                {
+                    <i class="fal fa-chevron-right"></i>
+                    <a href="/branches" class="roovia-breadcrumb-item">
+                        <i class="fal fa-code-branch"></i>
+                        <span>Branches</span>
+                    </a>
+                    <i class="fal fa-chevron-right"></i>
+                    <span class="roovia-breadcrumb-current">Edit Branch</span>
+                }
+                else if (IsAdd)
+                {
+                    <i class="fal fa-chevron-right"></i>
+                    <a href="/branches" class="roovia-breadcrumb-item">
+                        <i class="fal fa-code-branch"></i>
+                        <span>Branches</span>
+                    </a>
+                    <i class="fal fa-chevron-right"></i>
+                    <span class="roovia-breadcrumb-current">Add New Branch</span>
+                }
+                else
+                {
+                    <i class="fal fa-chevron-right"></i>
+                    <a href="/branches" class="roovia-breadcrumb-item">
+                        <i class="fal fa-code-branch"></i>
+                        <span>Branches</span>
+                    </a>
+                    <i class="fal fa-chevron-right"></i>
+                    <span class="roovia-breadcrumb-current">Branch Details</span>
+                }
+            </div>
+
+            <div class="roovia-header-main">
+                <div class="roovia-header-icon">
+                    <i class="fal fa-@(IsAdd ? "plus-circle" : (IsEdit ? "edit" : "code-branch"))"></i>
+                </div>
+                <div>
+                    <h1 class="roovia-page-title">@GetPageTitle()</h1>
+                    <p class="roovia-page-subtitle">@GetPageSubtitle()</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Indicator - Only show in add/edit mode -->
+    @if (IsEdit || IsAdd)
+    {
+        <div class="roovia-progress-container">
+            <div class="roovia-progress-bar">
+                <div class="roovia-progress-fill" style="width: @progressPercentage%"></div>
+            </div>
+            <div class="roovia-progress-steps">
+                @foreach (var (step, index) in steps.Select((s, i) => (s, i)))
+                {
+                    <div class="roovia-progress-step @(currentStep >= index ? "active" : "") @(currentStep == index ? "current" : "")">
+                        <div class="roovia-step-number">
+                            @if (currentStep > index)
+                            {
+                                <i class="fal fa-check"></i>
+                            }
+                            else
+                            {
+                                @(index + 1)
+                            }
+                        </div>
+                        <div class="roovia-step-info">
+                            <div class="roovia-step-title">@step.Title</div>
+                            <div class="roovia-step-subtitle">@step.Subtitle</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Main Content Container -->
+    <div class="roovia-container">
+        @if (isLoading)
+        {
+            <div class="roovia-loading-state">
+                <div class="roovia-spinner"></div>
+                <h3 class="roovia-loading-text">@loadingMessage</h3>
+            </div>
+        }
+        else
+        {
+            <!-- View Mode -->
+            @if (IsViewMode)
+            {
+                <div class="roovia-view-container">
+                    <div class="roovia-section-card">
+                        <div class="roovia-branch-header">
+                            <div class="roovia-branch-avatar">
+                                @if (Branch.MainLogoId.HasValue && Branch.MainLogo != null)
+                                {
+                                    <div class="roovia-branch-logo has-image">
+                                        <img src="@Branch.MainLogo.Url" alt="@Branch.Name" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="roovia-branch-logo">
+                                        <i class="fal fa-code-branch"></i>
+                                    </div>
+                                }
+                                <div class="roovia-status-indicator @(Branch.IsActive ? "active" : "inactive")"></div>
+                            </div>
+
+                            <div class="roovia-branch-details">
+                                <h2 class="roovia-branch-name">@Branch.Name</h2>
+                                <div class="roovia-branch-badges">
+                                    <span class="roovia-status-badge @(Branch.IsActive ? "active" : "inactive")">
+                                        <i class="fal fa-@(Branch.IsActive ? "check-circle" : "times-circle")"></i>
+                                        @(Branch.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                    @if (Branch.IsHeadOffice)
+                                    {
+                                        <span class="roovia-badge primary">
+                                            <i class="fal fa-star"></i>
+                                            Head Office
+                                        </span>
+                                    }
+                                </div>
+
+                                <div class="roovia-meta-info">
+                                    @if (Company != null)
+                                    {
+                                        <span class="roovia-meta-item"><i class="fal fa-building"></i>@Company.Name</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Branch.Code))
+                                    {
+                                        <span class="roovia-meta-item"><i class="fal fa-barcode"></i>@Branch.Code</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="roovia-branch-actions">
+                                @if (CanEdit)
+                                {
+                                    <button type="button" class="roovia-btn roovia-btn-primary" @onclick="SwitchToEditMode">
+                                        <i class="fal fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="roovia-tabs">
+                            <div class="roovia-tabs-nav">
+                                <button type="button" class="roovia-tab-btn @(activeViewTab == "basic" ? "active" : "")" @onclick='() => activeViewTab = "basic"'>
+                                    <i class="fal fa-info-circle"></i>
+                                    <span>Basic Information</span>
+                                </button>
+                                <button type="button" class="roovia-tab-btn @(activeViewTab == "contact" ? "active" : "")" @onclick='() => activeViewTab = "contact"'>
+                                    <i class="fal fa-address-card"></i>
+                                    <span>Contact</span>
+                                </button>
+                                <button type="button" class="roovia-tab-btn @(activeViewTab == "address" ? "active" : "")" @onclick='() => activeViewTab = "address"'>
+                                    <i class="fal fa-map-marker-alt"></i>
+                                    <span>Address</span>
+                                </button>
+                                <button type="button" class="roovia-tab-btn @(activeViewTab == "banking" ? "active" : "")" @onclick='() => activeViewTab = "banking"'>
+                                    <i class="fal fa-university"></i>
+                                    <span>Banking</span>
+                                </button>
+                                <button type="button" class="roovia-tab-btn @(activeViewTab == "branding" ? "active" : "")" @onclick='() => activeViewTab = "branding"'>
+                                    <i class="fal fa-image"></i>
+                                    <span>Branding</span>
+                                </button>
+                            </div>
+
+                            <div class="roovia-tabs-content">
+                                <!-- Basic Information Tab -->
+                                <div class="roovia-tab-pane @(activeViewTab == "basic" ? "active" : "")">
+                                    <div class="roovia-view-grid">
+                                        <div class="roovia-info-card">
+                                            <div class="roovia-card-header">
+                                                <i class="fal fa-info-circle"></i>
+                                                <h3>Branch Information</h3>
+                                            </div>
+                                            <div class="roovia-card-body">
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Branch Name</div>
+                                                    <div class="roovia-info-value">@Branch.Name</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Branch Code</div>
+                                                    <div class="roovia-info-value">@(Branch.Code ?? "Not set")</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Company</div>
+                                                    <div class="roovia-info-value">@(Company?.Name ?? "Not assigned")</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Status</div>
+                                                    <div class="roovia-info-value">
+                                                        <span class="roovia-status-badge @(Branch.IsActive ? "active" : "inactive")">
+                                                            @(Branch.IsActive ? "Active" : "Inactive")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Head Office</div>
+                                                    <div class="roovia-info-value">@(Branch.IsHeadOffice ? "Yes" : "No")</div>
+                                                </div>
+                                                @if (Branch.MaxUsers.HasValue)
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Max Users</div>
+                                                        <div class="roovia-info-value">@Branch.MaxUsers</div>
+                                                    </div>
+                                                }
+                                                @if (Branch.MaxProperties.HasValue)
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Max Properties</div>
+                                                        <div class="roovia-info-value">@Branch.MaxProperties</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="roovia-info-card">
+                                            <div class="roovia-card-header">
+                                                <i class="fal fa-history"></i>
+                                                <h3>Audit Information</h3>
+                                            </div>
+                                            <div class="roovia-card-body">
+                                                @if (Branch.CreatedOn != default)
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Created Date</div>
+                                                        <div class="roovia-info-value">@Branch.CreatedOn.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(Branch.CreatedBy))
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Created By</div>
+                                                        <div class="roovia-info-value">@Branch.CreatedBy</div>
+                                                    </div>
+                                                }
+                                                @if (Branch.UpdatedDate.HasValue)
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Last Updated</div>
+                                                        <div class="roovia-info-value">@Branch.UpdatedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(Branch.UpdatedBy))
+                                                {
+                                                    <div class="roovia-info-item">
+                                                        <div class="roovia-info-label">Updated By</div>
+                                                        <div class="roovia-info-value">@Branch.UpdatedBy</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Tab -->
+                                <div class="roovia-tab-pane @(activeViewTab == "contact" ? "active" : "")">
+                                    <div class="roovia-view-grid">
+                                        <div class="roovia-info-card">
+                                            <div class="roovia-card-header">
+                                                <i class="fal fa-envelope"></i>
+                                                <h3>Email Addresses</h3>
+                                            </div>
+                                            <div class="roovia-card-body">
+                                                @if (Branch.EmailAddresses?.Any() == true)
+                                                {
+                                                    var primaryEmail = Branch.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+                                                    @if (primaryEmail != null)
+                                                    {
+                                                        <div class="roovia-info-item">
+                                                            <div class="roovia-info-label">Primary Email</div>
+                                                            <div class="roovia-info-value">
+                                                                <a href="mailto:@primaryEmail.EmailAddress" class="roovia-email-link">
+                                                                    <i class="fal fa-envelope"></i> @primaryEmail.EmailAddress
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    @foreach (var email in Branch.EmailAddresses.Where(e => !e.IsPrimary))
+                                                    {
+                                                        <div class="roovia-info-item">
+                                                            <div class="roovia-info-label">
+                                                                @(!string.IsNullOrEmpty(email.Description) ? email.Description : "Email")
+                                                            </div>
+                                                            <div class="roovia-info-value">
+                                                                <a href="mailto:@email.EmailAddress" class="roovia-email-link">
+                                                                    <i class="fal fa-envelope"></i> @email.EmailAddress
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="roovia-empty-state">
+                                                        <i class="fal fa-envelope-open"></i>
+                                                        <p>No email addresses provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="roovia-info-card">
+                                            <div class="roovia-card-header">
+                                                <i class="fal fa-phone"></i>
+                                                <h3>Contact Numbers</h3>
+                                            </div>
+                                            <div class="roovia-card-body">
+                                                @if (Branch.ContactNumbers?.Any() == true)
+                                                {
+                                                    var primaryContact = Branch.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+                                                    @if (primaryContact != null)
+                                                    {
+                                                        <div class="roovia-info-item">
+                                                            <div class="roovia-info-label">Primary Phone</div>
+                                                            <div class="roovia-info-value">
+                                                                <a href="tel:@primaryContact.Number" class="roovia-phone-link">
+                                                                    <i class="fal fa-phone"></i> @primaryContact.Number
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    @foreach (var phone in Branch.ContactNumbers.Where(c => !c.IsPrimary))
+                                                    {
+                                                        <div class="roovia-info-item">
+                                                            <div class="roovia-info-label">
+                                                                @if (!string.IsNullOrEmpty(phone.Description))
+                                                                {
+                                                                    @phone.Description
+                                                                }
+                                                                else if (phone.ContactNumberType != null)
+                                                                {
+                                                                    @phone.ContactNumberType.Name
+                                                                }
+                                                                else
+                                                                {
+                                                                    @("Phone")
+                                                                }
+                                                            </div>
+                                                            <div class="roovia-info-value">
+                                                                <a href="tel:@phone.Number" class="roovia-phone-link">
+                                                                    <i class="fal fa-phone"></i> @phone.Number
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="roovia-empty-state">
+                                                        <i class="fal fa-phone-slash"></i>
+                                                        <p>No contact numbers provided</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Address Tab -->
+                                <div class="roovia-tab-pane @(activeViewTab == "address" ? "active" : "")">
+                                    <div class="roovia-info-card">
+                                        <div class="roovia-card-header">
+                                            <i class="fal fa-map-marker-alt"></i>
+                                            <h3>Branch Address</h3>
+                                        </div>
+                                        <div class="roovia-card-body">
+                                            @if (Branch.Address != null)
+                                            {
+                                                <div class="roovia-address-display">
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.ComplexName))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-building"></i> @Branch.Address.ComplexName</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.BuildingName))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-building"></i> @Branch.Address.BuildingName</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.UnitNumber))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-door-closed"></i> Unit @Branch.Address.UnitNumber</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.Street))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-road"></i> @Branch.Address.Street</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.Suburb))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-map"></i> @Branch.Address.Suburb</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.City))
+                                                    {
+                                                        <div class="roovia-address-line">
+                                                            <i class="fal fa-city"></i>
+                                                            @Branch.Address.City@(!string.IsNullOrEmpty(Branch.Address.Province) ? $", {Branch.Address.Province}" : "")
+                                                        </div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.PostalCode))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-mailbox"></i> @Branch.Address.PostalCode</div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(Branch.Address.Country))
+                                                    {
+                                                        <div class="roovia-address-line"><i class="fal fa-globe"></i> @Branch.Address.Country</div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="roovia-empty-state">
+                                                    <i class="fal fa-map-marker-slash"></i>
+                                                    <p>No address information provided</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Banking Tab -->
+                                <div class="roovia-tab-pane @(activeViewTab == "banking" ? "active" : "")">
+                                    <div class="roovia-info-card">
+                                        <div class="roovia-card-header">
+                                            <i class="fal fa-university"></i>
+                                            <h3>Banking Details</h3>
+                                        </div>
+                                        <div class="roovia-card-body">
+                                            @if (Branch.BankAccount != null && !string.IsNullOrEmpty(Branch.BankAccount.AccountNumber))
+                                            {
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Bank Name</div>
+                                                    <div class="roovia-info-value">@(Branch.BankAccount.BankName?.Name ?? "Not set")</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Account Type</div>
+                                                    <div class="roovia-info-value">@(Branch.BankAccount.AccountType ?? "Not set")</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Account Number</div>
+                                                    <div class="roovia-info-value">@FormatAccountNumber(Branch.BankAccount.AccountNumber)</div>
+                                                </div>
+                                                <div class="roovia-info-item">
+                                                    <div class="roovia-info-label">Branch Code</div>
+                                                    <div class="roovia-info-value">@Branch.BankAccount.BranchCode</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="roovia-empty-state">
+                                                    <i class="fal fa-credit-card-blank"></i>
+                                                    <p>No banking details provided</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Branding Tab -->
+                                <div class="roovia-tab-pane @(activeViewTab == "branding" ? "active" : "")">
+                                    <div class="roovia-info-card">
+                                        <div class="roovia-card-header">
+                                            <i class="fal fa-image"></i>
+                                            <h3>Branch Logo</h3>
+                                        </div>
+                                        <div class="roovia-card-body">
+                                            @if (Branch.MainLogoId.HasValue && Branch.MainLogo != null)
+                                            {
+                                                <div class="roovia-logo-display">
+                                                    <div class="roovia-logo-container">
+                                                        <img src="@Branch.MainLogo.Url" alt="@Branch.Name Logo" class="roovia-logo-image" />
+                                                    </div>
+                                                    <div class="roovia-logo-meta">
+                                                        <div class="roovia-logo-filename">@Branch.MainLogo.FileName</div>
+                                                        <div class="roovia-logo-info">
+                                                            <span><i class="fal fa-file-image"></i> @Branch.MainLogo.ContentType</span>
+                                                            <span><i class="fal fa-weight"></i> @((Branch.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
+                                                            <span><i class="fal fa-calendar"></i> @Branch.MainLogo.UploadDate.ToString("dd MMM yyyy")</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="roovia-empty-state">
+                                                    <i class="fal fa-file-image"></i>
+                                                    <p>No logo uploaded</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Edit/Add Mode -->
+                <EditForm Model="Branch" OnValidSubmit="HandleSubmit" FormName="branchForm">
+                    <DataAnnotationsValidator />
+                    <FluentValidationValidator />
+
+                    <!-- Form Content -->
+                    <div class="roovia-form-container">
+                        <!-- Basic Information Step -->
+                        <div class="roovia-form-step @(currentStep == 0 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-code-branch"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Branch Information</h2>
+                                        <p class="roovia-section-description">Basic information about the branch</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-form-grid">
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">Branch Name</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-code-branch"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Name"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter branch name" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Name)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Branch Code</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-barcode"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Code"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter unique code (optional)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">Company</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-building"></i>
+                                            </span>
+                                            <InputSelect @bind-Value="companyIdValue" 
+                                                         @onchange="OnCompanyChanged"
+                                                         class="roovia-select with-icon-left"
+                                                         disabled="@(!CanEditCompany)">
+                                                <option value="">Select company</option>
+                                                @if (Companies != null)
+                                                {
+                                                    @foreach (var company in Companies.OrderBy(c => c.Name))
+                                                    {
+                                                        <option value="@company.Id">@company.Name</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.CompanyId)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Status</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-toggle-on"></i>
+                                            </span>
+                                            <InputSelect @bind-Value="statusIdValue" class="roovia-select with-icon-left">
+                                                <option value="">-- Select Status --</option>
+                                                @if (BranchStatusTypes != null)
+                                                {
+                                                    @foreach (var status in BranchStatusTypes.OrderBy(s => s.DisplayOrder))
+                                                    {
+                                                        <option value="@status.Id">@status.Name</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Max Users</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-users"></i>
+                                            </span>
+                                            <InputNumber @bind-Value="Branch.MaxUsers"
+                                                         class="roovia-input with-icon-left"
+                                                         placeholder="Maximum number of users (optional)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Max Properties</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-home"></i>
+                                            </span>
+                                            <InputNumber @bind-Value="Branch.MaxProperties"
+                                                         class="roovia-input with-icon-left"
+                                                         placeholder="Maximum number of properties (optional)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group roovia-col-span-2">
+                                        <div class="roovia-checkbox-group">
+                                            <label class="roovia-checkbox-label">
+                                                <InputCheckbox @bind-Value="Branch.IsActive"
+                                                               class="roovia-checkbox" />
+                                                <span>Branch is active</span>
+                                            </label>
+                                            <small class="roovia-helper-text">Inactive branches will not be accessible to users</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group roovia-col-span-2">
+                                        <div class="roovia-checkbox-group">
+                                            <label class="roovia-checkbox-label">
+                                                <InputCheckbox @bind-Value="Branch.IsHeadOffice"
+                                                               class="roovia-checkbox" />
+                                                <span>This is the head office</span>
+                                            </label>
+                                            <small class="roovia-helper-text">Designate this branch as the company head office</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information Step -->
+                        <div class="roovia-form-step @(currentStep == 1 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-address-card"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Contact Information</h2>
+                                        <p class="roovia-section-description">Email addresses and phone numbers</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-subsection">
+                                    <h3 class="roovia-subsection-title">
+                                        <i class="fal fa-envelope"></i>
+                                        Email Addresses
+                                    </h3>
+
+                                    <div class="roovia-form-grid">
+                                        <div class="roovia-form-group roovia-col-span-2">
+                                            <label class="roovia-label">Primary Email Address</label>
+                                            <div class="roovia-input-wrapper">
+                                                <span class="roovia-input-icon-left">
+                                                    <i class="fal fa-envelope"></i>
+                                                </span>
+                                                <input type="email" 
+                                                       value="@GetPrimaryEmail()" 
+                                                       @onchange="(e) => UpdatePrimaryEmail(e.Value?.ToString())"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter primary email address" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-divider-with-text">
+                                        <span>Additional Email Addresses</span>
+                                        <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-ghost" @onclick="AddEmail">
+                                            <i class="fal fa-plus"></i> Add Email
+                                        </button>
+                                    </div>
+
+                                    @if (Branch.EmailAddresses?.Where(e => !e.IsPrimary).Any() == true)
+                                    {
+                                        <div class="roovia-contact-list">
+                                            @foreach (var email in Branch.EmailAddresses.Where(e => !e.IsPrimary))
+                                            {
+                                                <div class="roovia-contact-item">
+                                                    <div class="roovia-contact-inputs">
+                                                        <div class="roovia-input-wrapper roovia-flex-grow">
+                                                            <span class="roovia-input-icon-left">
+                                                                <i class="fal fa-envelope"></i>
+                                                            </span>
+                                                            <input type="email" 
+                                                                   value="@email.EmailAddress" 
+                                                                   @onchange="(e) => UpdateEmailAddress(email, e.Value?.ToString())"
+                                                                   class="roovia-input with-icon-left"
+                                                                   placeholder="Email address" />
+                                                        </div>
+                                                        <div class="roovia-input-wrapper">
+                                                            <span class="roovia-input-icon-left">
+                                                                <i class="fal fa-tag"></i>
+                                                            </span>
+                                                            <input type="text" 
+                                                                   value="@email.Description" 
+                                                                   @onchange="(e) => UpdateEmailDescription(email, e.Value?.ToString())"
+                                                                   class="roovia-input with-icon-left"
+                                                                   placeholder="Description (e.g. Support, Sales)" />
+                                                        </div>
+                                                        <button type="button" class="roovia-btn roovia-btn-icon roovia-btn-danger" @onclick="() => RemoveEmail(email)">
+                                                            <i class="fal fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="roovia-empty-contact-list">
+                                            <i class="fal fa-envelope-open"></i>
+                                            <p>No additional email addresses</p>
+                                            <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-outline" @onclick="AddEmail">
+                                                <i class="fal fa-plus"></i> Add Email
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="roovia-divider"></div>
+
+                                <div class="roovia-subsection">
+                                    <h3 class="roovia-subsection-title">
+                                        <i class="fal fa-phone"></i>
+                                        Contact Numbers
+                                    </h3>
+
+                                    <div class="roovia-form-grid">
+                                        <div class="roovia-form-group roovia-col-span-2">
+                                            <label class="roovia-label">Primary Phone Number</label>
+                                            <div class="roovia-input-wrapper">
+                                                <span class="roovia-input-icon-left">
+                                                    <i class="fal fa-phone"></i>
+                                                </span>
+                                                <input type="tel" 
+                                                       value="@GetPrimaryPhone()" 
+                                                       @onchange="(e) => UpdatePrimaryPhone(e.Value?.ToString())"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter primary phone number" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-divider-with-text">
+                                        <span>Additional Phone Numbers</span>
+                                        <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-ghost" @onclick="AddPhone">
+                                            <i class="fal fa-plus"></i> Add Phone
+                                        </button>
+                                    </div>
+
+                                    @if (Branch.ContactNumbers?.Where(c => !c.IsPrimary).Any() == true)
+                                    {
+                                        <div class="roovia-contact-list">
+                                            @foreach (var phone in Branch.ContactNumbers.Where(c => !c.IsPrimary))
+                                            {
+                                                <div class="roovia-contact-item">
+                                                    <div class="roovia-contact-inputs">
+                                                        <div class="roovia-input-wrapper roovia-flex-grow">
+                                                            <span class="roovia-input-icon-left">
+                                                                <i class="fal fa-phone"></i>
+                                                            </span>
+                                                            <input type="tel" 
+                                                                   value="@phone.Number" 
+                                                                   @onchange="(e) => UpdatePhoneNumber(phone, e.Value?.ToString())"
+                                                                   class="roovia-input with-icon-left"
+                                                                   placeholder="Phone number" />
+                                                        </div>
+                                                        <div class="roovia-input-wrapper">
+                                                            <span class="roovia-input-icon-left">
+                                                                <i class="fal fa-phone-office"></i>
+                                                            </span>
+                                                            <select class="roovia-select with-icon-left"
+                                                                    value="@phone.ContactNumberTypeId" 
+                                                                    @onchange="(e) => UpdatePhoneTypeId(phone, e.Value?.ToString())">
+                                                                <option value="">Select type</option>
+                                                                @if (ContactNumberTypes != null)
+                                                                {
+                                                                    @foreach (var type in ContactNumberTypes)
+                                                                    {
+                                                                        <option value="@type.Id">@type.Name</option>
+                                                                    }
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                        <button type="button" class="roovia-btn roovia-btn-icon roovia-btn-danger" @onclick="() => RemovePhone(phone)">
+                                                            <i class="fal fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="roovia-empty-contact-list">
+                                            <i class="fal fa-phone-slash"></i>
+                                            <p>No additional phone numbers</p>
+                                            <button type="button" class="roovia-btn roovia-btn-sm roovia-btn-outline" @onclick="AddPhone">
+                                                <i class="fal fa-plus"></i> Add Phone
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Address Information Step -->
+                        <div class="roovia-form-step @(currentStep == 2 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-map-marker-alt"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Address Information</h2>
+                                        <p class="roovia-section-description">Branch physical location</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-form-grid">
+                                    <div class="roovia-form-group roovia-col-span-2">
+                                        <label class="roovia-label required">Street Address</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-road"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.Street"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter street address" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Address.Street)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Unit Number</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-door-closed"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.UnitNumber"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Unit/Suite number" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Complex Name</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-building"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.ComplexName"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Complex or estate name" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Building Name</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-building"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.BuildingName"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Building name" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Floor</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-layer-group"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.Floor"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Floor level" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Suburb</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-map"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.Suburb"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Suburb" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">City</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-city"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.City"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="City" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Address.City)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">Province</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-map-marked"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.Province"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Province or state" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Address.Province)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">Postal Code</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-mailbox"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.PostalCode"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Postal or ZIP code" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Address.PostalCode)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label required">Country</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-globe"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.Country"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Country" />
+                                        </div>
+                                        <ValidationMessage For="@(() => Branch.Address.Country)" class="roovia-error" />
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Gate Code</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-key"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.Address.GateCode"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Security gate code" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-divider"></div>
+
+                                <div class="roovia-subsection">
+                                    <h3 class="roovia-subsection-title">
+                                        <i class="fal fa-info-circle"></i>
+                                        Additional Information
+                                    </h3>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Delivery Instructions</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-truck"></i>
+                                            </span>
+                                            <InputTextArea @bind-Value="Branch.Address.DeliveryInstructions"
+                                                           class="roovia-textarea with-icon-left"
+                                                           rows="3"
+                                                           placeholder="Special delivery instructions or directions" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Banking Information Step -->
+                        <div class="roovia-form-step @(currentStep == 3 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-university"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Banking Information</h2>
+                                        <p class="roovia-section-description">Bank account details for transactions</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-form-grid">
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Bank Name</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-university"></i>
+                                            </span>
+                                            <InputSelect @bind-Value="bankNameIdValue" class="roovia-select with-icon-left">
+                                                <option value="">Select bank</option>
+                                                @if (BankNameTypes != null)
+                                                {
+                                                    @foreach (var bank in BankNameTypes.OrderBy(b => b.Name))
+                                                    {
+                                                        <option value="@bank.Id">@bank.Name</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Account Type</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-money-check"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.BankAccount.AccountType"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="e.g. Current, Savings, Business" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Account Number</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-hashtag"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.BankAccount.AccountNumber"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="Enter account number" />
+                                        </div>
+                                    </div>
+
+                                    <div class="roovia-form-group">
+                                        <label class="roovia-label">Branch Code</label>
+                                        <div class="roovia-input-wrapper">
+                                            <span class="roovia-input-icon-left">
+                                                <i class="fal fa-code-branch"></i>
+                                            </span>
+                                            <InputText @bind-Value="Branch.BankAccount.BranchCode"
+                                                       class="roovia-input with-icon-left"
+                                                       placeholder="6-digit branch code" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-divider"></div>
+
+                                <div class="roovia-subsection">
+                                    <div class="roovia-info-box">
+                                        <i class="fal fa-shield-check"></i>
+                                        <p>Banking information is securely encrypted and stored. Only authorized personnel can access this information for financial transactions.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Logo Upload Step -->
+                        <div class="roovia-form-step @(currentStep == 4 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-image"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Branch Logo</h2>
+                                        <p class="roovia-section-description">Upload a logo for this branch</p>
+                                    </div>
+                                </div>
+
+                                <div class="roovia-logo-upload">
+                                    @if (Branch.MainLogoId.HasValue && Branch.MainLogo != null)
+                                    {
+                                        <div class="roovia-current-logo">
+                                            <div class="roovia-logo-container">
+                                                <img src="@Branch.MainLogo.Url" alt="@Branch.Name Logo" class="roovia-logo-image" />
+                                            </div>
+                                            <div class="roovia-logo-info">
+                                                <h4>Current Logo</h4>
+                                                <p>@Branch.MainLogo.FileName</p>
+                                                <div class="roovia-logo-meta">
+                                                    <span><i class="fal fa-file-image"></i> @Branch.MainLogo.ContentType</span>
+                                                    <span><i class="fal fa-weight"></i> @((Branch.MainLogo.FileSize / 1024).ToString("N0")) KB</span>
+                                                </div>
+                                                <div class="roovia-logo-actions">
+                                                    <button type="button" class="roovia-btn roovia-btn-outline roovia-btn-sm" @onclick="ShowLogoUploadDialog">
+                                                        <i class="fal fa-exchange"></i>
+                                                        <span>Replace</span>
+                                                    </button>
+                                                    <button type="button" class="roovia-btn roovia-btn-danger roovia-btn-sm" @onclick="RemoveLogo">
+                                                        <i class="fal fa-trash"></i>
+                                                        <span>Remove</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="roovia-upload-zone">
+                                            <div class="roovia-upload-content">
+                                                <i class="fal fa-cloud-upload"></i>
+                                                <h4>Upload Branch Logo</h4>
+                                                <p>Click below to upload a logo for this branch</p>
+                                                <div class="roovia-upload-specs">
+                                                    <div class="roovia-spec-item">
+                                                        <i class="fal fa-image"></i>
+                                                        <span>Recommended size: 512x512 pixels</span>
+                                                    </div>
+                                                    <div class="roovia-spec-item">
+                                                        <i class="fal fa-weight"></i>
+                                                        <span>Maximum file size: 5MB</span>
+                                                    </div>
+                                                    <div class="roovia-spec-item">
+                                                        <i class="fal fa-file-image"></i>
+                                                        <span>Supported formats: JPG, PNG, GIF</span>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="roovia-btn roovia-btn-primary" @onclick="ShowLogoUploadDialog">
+                                                    <i class="fal fa-cloud-upload"></i>
+                                                    <span>Upload Logo</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+
+                                    @if (isUploading)
+                                    {
+                                        <div class="roovia-upload-progress">
+                                            <div class="roovia-progress-bar">
+                                                <div class="roovia-progress-fill" style="width: @uploadProgress%"></div>
+                                            </div>
+                                            <span class="roovia-progress-text">Uploading... @uploadProgress%</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Review Step -->
+                        <div class="roovia-form-step @(currentStep == 5 ? "active" : "")">
+                            <div class="roovia-section-card">
+                                <div class="roovia-section-header">
+                                    <div class="roovia-section-icon">
+                                        <i class="fal fa-check-circle"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="roovia-section-title">Review Information</h2>
+                                        <p class="roovia-section-description">Please review all branch information before submitting</p>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Cards -->
+                                <div class="roovia-review-grid">
+                                    <!-- Basic Information Summary -->
+                                    <div class="roovia-review-section">
+                                        <h3 class="roovia-review-title">
+                                            <i class="fal fa-code-branch"></i>
+                                            Basic Information
+                                        </h3>
+                                        <div class="roovia-review-content">
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Branch Name:</span>
+                                                <span class="roovia-review-value">@Branch.Name</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Branch Code:</span>
+                                                <span class="roovia-review-value">@(Branch.Code ?? "Not set")</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Company:</span>
+                                                <span class="roovia-review-value">@(Company?.Name ?? "Not assigned")</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Status:</span>
+                                                <span class="roovia-review-value">
+                                                    <span class="roovia-status-badge @(Branch.IsActive ? "active" : "inactive")">
+                                                        @(Branch.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Head Office:</span>
+                                                <span class="roovia-review-value">@(Branch.IsHeadOffice ? "Yes" : "No")</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Contact Summary -->
+                                    <div class="roovia-review-section">
+                                        <h3 class="roovia-review-title">
+                                            <i class="fal fa-address-card"></i>
+                                            Contact Information
+                                        </h3>
+                                        <div class="roovia-review-content">
+                                            @{
+                                                var primaryEmail = Branch.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+                                                var primaryPhone = Branch.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+                                            }
+                                            
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Primary Email:</span>
+                                                <span class="roovia-review-value">@(primaryEmail?.EmailAddress ?? "Not set")</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Primary Phone:</span>
+                                                <span class="roovia-review-value">@(primaryPhone?.Number ?? "Not set")</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Additional Emails:</span>
+                                                <span class="roovia-review-value">@(Branch.EmailAddresses?.Count(e => !e.IsPrimary) ?? 0)</span>
+                                            </div>
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-label">Additional Phones:</span>
+                                                <span class="roovia-review-value">@(Branch.ContactNumbers?.Count(c => !c.IsPrimary) ?? 0)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Address Summary -->
+                                    <div class="roovia-review-section">
+                                        <h3 class="roovia-review-title">
+                                            <i class="fal fa-map-marker-alt"></i>
+                                            Address
+                                        </h3>
+                                        <div class="roovia-review-content">
+                                            <div class="roovia-review-item">
+                                                <span class="roovia-review-value roovia-address-summary">
+                                                    @if (Branch.Address != null)
+                                                    {
+                                                        @if (!string.IsNullOrEmpty(Branch.Address.UnitNumber))
+                                                        {
+                                                            @Branch.Address.UnitNumber
+                                                            <text>, </text>
+                                                        }
+                                                        @Branch.Address.Street<br />
+                                                        @if (!string.IsNullOrEmpty(Branch.Address.Suburb))
+                                                        {
+                                                            @Branch.Address.Suburb<text>, </text>
+                                                        }
+                                                        @Branch.Address.City<br />
+                                                        @Branch.Address.Province<text>, </text>@Branch.Address.PostalCode<br />
+                                                        @Branch.Address.Country
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>No address provided</span>
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Banking Summary -->
+                                    <div class="roovia-review-section">
+                                        <h3 class="roovia-review-title">
+                                            <i class="fal fa-university"></i>
+                                            Banking Information
+                                        </h3>
+                                        <div class="roovia-review-content">
+                                            @if (Branch.BankAccount != null && !string.IsNullOrEmpty(Branch.BankAccount.AccountNumber))
+                                            {
+                                                <div class="roovia-review-item">
+                                                    <span class="roovia-review-label">Bank:</span>
+                                                    <span class="roovia-review-value">@(Branch.BankAccount.BankName?.Name ?? "Not set")</span>
+                                                </div>
+                                                <div class="roovia-review-item">
+                                                    <span class="roovia-review-label">Account Type:</span>
+                                                    <span class="roovia-review-value">@(Branch.BankAccount.AccountType ?? "Not set")</span>
+                                                </div>
+                                                <div class="roovia-review-item">
+                                                    <span class="roovia-review-label">Account Number:</span>
+                                                    <span class="roovia-review-value">****@Branch.BankAccount.AccountNumber?.Substring(Math.Max(0, Branch.BankAccount.AccountNumber.Length - 4))</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="roovia-review-item">
+                                                    <span class="roovia-review-value">No banking details provided</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="roovia-alert roovia-alert-danger">
+                                        <i class="fal fa-exclamation-circle"></i>
+                                        <span>@errorMessage</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="roovia-form-navigation">
+                            <div class="roovia-nav-left">
+                                <button type="button"
+                                        class="roovia-btn roovia-btn-ghost"
+                                        @onclick="Cancel">
+                                    <i class="fal fa-times"></i>
+                                    Cancel
+                                </button>
+                            </div>
+
+                            <div class="roovia-nav-right">
+                                @if (currentStep > 0)
+                                {
+                                    <button type="button"
+                                            class="roovia-btn roovia-btn-secondary"
+                                            @onclick="PreviousStep">
+                                        <i class="fal fa-arrow-left"></i>
+                                        Previous
+                                    </button>
+                                }
+
+                                @if (currentStep < steps.Length - 1)
+                                {
+                                    <button type="button"
+                                            class="roovia-btn roovia-btn-primary"
+                                            @onclick="NextStep">
+                                        Next
+                                        <i class="fal fa-arrow-right"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="submit"
+                                            class="roovia-btn roovia-btn-success"
+                                            disabled="@isSubmitting">
+                                        @if (isSubmitting)
+                                        {
+                                            <div class="roovia-spinner-small"></div>
+                                            <span>@(IsAdd ? "Creating Branch" : "Updating Branch")</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fal fa-check"></i>
+                                            <span>@(IsAdd ? "Create Branch" : "Update Branch")</span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            }
+        }
+    </div>
+</div>
+
+<!-- Logo Upload Dialog -->
+@if (showLogoUploadDialog)
+{
+    <div class="roovia-modal-backdrop" @onclick="CancelLogoUpload"></div>
+    <div class="roovia-modal roovia-logo-upload-modal">
+        <div class="roovia-modal-header">
+            <h3 class="roovia-modal-title">
+                <i class="fal fa-cloud-upload"></i>
+                <span>Upload Branch Logo</span>
+            </h3>
+            <button type="button" class="roovia-modal-close" @onclick="CancelLogoUpload">
+                <i class="fal fa-times"></i>
+            </button>
+        </div>
+        <div class="roovia-modal-body">
+            <div class="roovia-upload-instructions">
+                <p>Please select an image file to upload as the branch logo.</p>
+                <div class="roovia-upload-requirements">
+                    <div class="roovia-requirement-item">
+                        <i class="fal fa-image"></i>
+                        <span>Recommended size: 512x512 pixels</span>
+                    </div>
+                    <div class="roovia-requirement-item">
+                        <i class="fal fa-weight"></i>
+                        <span>Maximum file size: 5MB</span>
+                    </div>
+                    <div class="roovia-requirement-item">
+                        <i class="fal fa-file-image"></i>
+                        <span>Supported formats: JPG, PNG, GIF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="roovia-upload-area @(logoFile != null ? "has-file" : "")">
+                <InputFile OnChange="OnLogoFileSelected" class="roovia-upload-input" accept=".jpg,.jpeg,.png,.gif" />
+                
+                <div class="roovia-upload-placeholder">
+                    <i class="fal fa-cloud-upload"></i>
+                    <p>Drag and drop a file here or click to browse</p>
+                    <small class="roovia-file-hint">Click to select a file</small>
+                </div>
+                
+                @if (logoFile != null)
+                {
+                    <div class="roovia-file-selected">
+                        <i class="fal fa-file-image"></i>
+                        <div class="roovia-file-info">
+                            <span class="roovia-file-name">@logoFile.Name</span>
+                            <span class="roovia-file-size">@((logoFile.Size / 1024).ToString("N0")) KB</span>
+                        </div>
+                    </div>
+                }
+                
+                @if (previewImageData != null)
+                {
+                    <div class="roovia-preview-container">
+                        <div class="roovia-preview-label">Preview:</div>
+                        <div class="roovia-preview-image-container">
+                            <img src="@previewImageData" alt="Logo Preview" class="roovia-preview-image" />
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(uploadError))
+            {
+                <div class="roovia-upload-error">
+                    <i class="fal fa-exclamation-triangle"></i>
+                    <p>@uploadError</p>
+                </div>
+            }
+        </div>
+        <div class="roovia-modal-footer">
+            <button type="button" class="roovia-btn roovia-btn-outline" @onclick="CancelLogoUpload">
+                <i class="fal fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="roovia-btn roovia-btn-primary" @onclick="UploadLogo" disabled="@(logoFile == null)">
+                <i class="fal fa-cloud-upload"></i>
+                <span>Upload</span>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int BranchId { get; set; }
+    [Parameter] public Branch Branch { get; set; } = new Branch();
+    [Parameter] public List<Company>? Companies { get; set; }
+    [Parameter] public List<BranchStatusType>? BranchStatusTypes { get; set; }
+    [Parameter] public List<BankNameType>? BankNameTypes { get; set; }
+    [Parameter] public List<ContactNumberType>? ContactNumberTypes { get; set; }
+    [Parameter] public int CompanyId { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    public bool IsAdd => BranchId == 0 && Branch.Id == 0;
+    [Parameter] public bool IsView { get; set; }
+    [Parameter] public bool CanEdit { get; set; } = true;
+    [Parameter] public bool CanEditCompany { get; set; } = true;
+    [Parameter] public bool IsDialog { get; set; }
+    [Parameter] public EventCallback<Branch> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    // State variables
+    private bool isLoading = true;
+    private string loadingMessage = "Loading branch information...";
+    private int currentStep = 0;
+    private string errorMessage = string.Empty;
+    private bool isSubmitting = false;
+    private string activeViewTab = "basic";
+    private Company? Company { get; set; }
+    private bool IsViewMode => IsView && !IsInEditMode;
+    private bool IsInEditMode = false;
+    private bool isEmbedded => IsDialog;
+
+    // Logo upload related
+    private bool showLogoUploadDialog = false;
+    private IBrowserFile? logoFile;
+    private string? previewImageData;
+    private bool isUploading = false;
+    private int uploadProgress = 0;
+    private string uploadError = string.Empty;
+    private long maxFileSize = 1024 * 1024 * 5; // 5MB
+
+    // Progress calculation
+    private int progressPercentage => (currentStep + 1) * 100 / steps.Length;
+
+    // Steps configuration
+    private readonly (string Title, string Subtitle)[] steps = 
+    {
+        ("Branch Information", "Basic branch details"),
+        ("Contact Information", "Email and phone numbers"),
+        ("Address Information", "Physical location"),
+        ("Banking Information", "Bank account details"),
+        ("Branch Logo", "Logo and branding"),
+        ("Review & Submit", "Confirm all information")
+    };
+
+    // Binding helpers
+    private string companyIdValue
+    {
+        get => Branch.CompanyId.ToString();
+        set
+        {
+            if (int.TryParse(value, out int id))
+            {
+                Branch.CompanyId = id;
+                _ = LoadCompanyDetails(id);
+            }
+        }
+    }
+
+    private string statusIdValue
+    {
+        get => Branch.StatusId?.ToString() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                Branch.StatusId = null;
+            }
+            else if (int.TryParse(value, out int id))
+            {
+                Branch.StatusId = id;
+            }
+        }
+    }
+
+    private string bankNameIdValue
+    {
+        get => Branch.BankAccount?.BankNameId?.ToString() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                if (Branch.BankAccount != null)
+                    Branch.BankAccount.BankNameId = null;
+            }
+            else if (int.TryParse(value, out int id))
+            {
+                EnsureBankAccountExists();
+                Branch.BankAccount.BankNameId = id;
+                
+                // Set default branch code if available
+                if (BankNameTypes != null)
+                {
+                    var bankName = BankNameTypes.FirstOrDefault(b => b.Id == id);
+                    if (bankName != null && !string.IsNullOrEmpty(bankName.DefaultBranchCode))
+                    {
+                        Branch.BankAccount.BranchCode = bankName.DefaultBranchCode;
+                    }
+                }
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReferenceData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Handle URL navigation or parameter changes
+        if (BranchId > 0 && (Branch == null || Branch.Id != BranchId))
+        {
+            await LoadBranchData();
+        }
+        else if (IsAdd && Branch.Id == 0)
+        {
+            InitializeNewBranch();
+            isLoading = false;
+        }
+
+        // Handle CompanyId parameter
+        if (CompanyId > 0 && Branch != null && Branch.CompanyId != CompanyId)
+        {
+            Branch.CompanyId = CompanyId;
+            await LoadCompanyDetails(CompanyId);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (Branch.Id == 0 && BranchId > 0)
+            {
+                await LoadBranchData();
+            }
+            else if (Branch.Id == 0)
+            {
+                InitializeNewBranch();
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadReferenceData()
+    {
+        try
+        {
+            isLoading = true;
+            
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Load companies if not provided
+            if (Companies == null)
+            {
+                Companies = await context.Companies
+                    .Where(c => c.IsActive)
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+            }
+
+            // Load status types if not provided
+            if (BranchStatusTypes == null)
+            {
+                BranchStatusTypes = await context.BranchStatusTypes
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.DisplayOrder)
+                    .ToListAsync();
+            }
+
+            // Load bank name types if not provided
+            if (BankNameTypes == null)
+            {
+                BankNameTypes = await context.BankNameTypes
+                    .Where(b => b.IsActive)
+                    .OrderBy(b => b.DisplayOrder)
+                    .ToListAsync();
+            }
+
+            // Load contact number types if not provided
+            if (ContactNumberTypes == null)
+            {
+                ContactNumberTypes = await context.ContactNumberTypes
+                    .Where(t => t.IsActive)
+                    .OrderBy(t => t.DisplayOrder)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading reference data: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void InitializeNewBranch()
+    {
+        Branch = new Branch
+        {
+            IsActive = true,
+            Address = new Address { Country = "South Africa" },
+            BankAccount = new BankAccount(),
+            EmailAddresses = new List<Email>(),
+            ContactNumbers = new List<ContactNumber>(),
+            CompanyId = CompanyId > 0 ? CompanyId : Branch.CompanyId,
+            CreatedOn = DateTime.Now
+        };
+
+        // Apply default status if available
+        if (BranchStatusTypes != null)
+        {
+            var activeStatus = BranchStatusTypes.FirstOrDefault(s => s.Name.Equals("Active", StringComparison.OrdinalIgnoreCase));
+            if (activeStatus != null)
+            {
+                Branch.StatusId = activeStatus.Id;
+            }
+        }
+
+        // Initialize collections if null
+        if (Branch.EmailAddresses == null)
+            Branch.EmailAddresses = new List<Email>();
+        if (Branch.ContactNumbers == null)
+            Branch.ContactNumbers = new List<ContactNumber>();
+        if (Branch.Address == null)
+            Branch.Address = new Address { Country = "South Africa" };
+        if (Branch.BankAccount == null)
+            Branch.BankAccount = new BankAccount();
+            
+        IsEdit = true;
+        IsView = false;
+        IsInEditMode = true;
+    }
+
+    private async Task LoadBranchData()
+    {
+        isLoading = true;
+        
+        try
+        {
+            var response = await UserService.GetBranchWithDetails(BranchId);
+            if (response.ResponseInfo.Success)
+            {
+                Branch = (Branch)response.Response;
+
+                // Initialize collections if null
+                if (Branch.EmailAddresses == null)
+                    Branch.EmailAddresses = new List<Email>();
+                if (Branch.ContactNumbers == null)
+                    Branch.ContactNumbers = new List<ContactNumber>();
+                if (Branch.Address == null)
+                    Branch.Address = new Address { Country = "South Africa" };
+                if (Branch.BankAccount == null)
+                    Branch.BankAccount = new BankAccount();
+
+                // Load the company details
+                if (Branch.CompanyId > 0)
+                {
+                    await LoadCompanyDetails(Branch.CompanyId);
+                }
+
+                // Load the logo if there's one
+                if (Branch.MainLogoId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    Branch.MainLogo = await context.CdnFileMetadata
+                        .FirstOrDefaultAsync(f => f.Id == Branch.MainLogoId.Value);
+                }
+
+                // Load status if there's one
+                if (Branch.StatusId.HasValue)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    Branch.Status = await context.BranchStatusTypes
+                        .FirstOrDefaultAsync(s => s.Id == Branch.StatusId.Value);
+                }
+
+                // Load bank name if applicable
+                if (Branch.BankAccount?.BankNameId.HasValue == true)
+                {
+                    using var context = await DbContextFactory.CreateDbContextAsync();
+                    Branch.BankAccount.BankName = await context.BankNameTypes
+                        .FirstOrDefaultAsync(b => b.Id == Branch.BankAccount.BankNameId.Value);
+                }
+
+                // Load contact number types
+                foreach (var contact in Branch.ContactNumbers ?? Enumerable.Empty<ContactNumber>())
+                {
+                    if (contact.ContactNumberTypeId > 0)
+                    {
+                        using var context = await DbContextFactory.CreateDbContextAsync();
+                        contact.ContactNumberType = await context.ContactNumberTypes
+                            .FirstOrDefaultAsync(t => t.Id == contact.ContactNumberTypeId);
+                    }
+                }
+            }
+            else
+            {
+                ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                NavigationManager.NavigateTo("/branches");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading branch: {ex.Message}", "Error");
+            NavigationManager.NavigateTo("/branches");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCompanyDetails(int companyId)
+    {
+        try
+        {
+            if (companyId <= 0)
+            {
+                Company = null;
+                return;
+            }
+            
+            // First check if we already have the company in the Companies list
+            if (Companies != null)
+            {
+                var existingCompany = Companies.FirstOrDefault(c => c.Id == companyId);
+                if (existingCompany != null)
+                {
+                    Company = existingCompany;
+                    return;
+                }
+            }
+            
+            // If not found in the list, load from the service
+            var response = await UserService.GetCompanyById(companyId);
+            if (response.ResponseInfo.Success)
+            {
+                Company = (Company)response.Response;
+                
+                // Add to the Companies list if not already there
+                if (Companies != null && !Companies.Any(c => c.Id == companyId))
+                {
+                    Companies.Add(Company);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading company details: {ex.Message}", "Error");
+        }
+    }
+
+    private string GetPageTitle()
+    {
+        if (IsAdd)
+            return "Add New Branch";
+        else if (IsEdit && !IsView)
+            return "Edit Branch";
+        else
+            return "Branch Details";
+    }
+
+    private string GetPageSubtitle()
+    {
+        if (IsAdd)
+            return "Create a new branch and set up its initial information";
+        else if (IsEdit && !IsView)
+            return "Modify branch information and settings";
+        else
+            return "View detailed branch information";
+    }
+
+    private void SwitchToEditMode()
+    {
+        IsInEditMode = true;
+        IsView = false;
+        StateHasChanged();
+    }
+
+    private async Task NextStep()
+    {
+        if (await ValidateCurrentStep())
+        {
+            if (currentStep < steps.Length - 1)
+            {
+                currentStep++;
+                await InvokeAsync(StateHasChanged);
+                await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+            }
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+            JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    private async Task<bool> ValidateCurrentStep()
+    {
+        errorMessage = null;
+        
+        switch (currentStep)
+        {
+            case 0: // Basic Information
+                if (string.IsNullOrWhiteSpace(Branch.Name) || Branch.CompanyId <= 0)
+                {
+                    errorMessage = "Please fill in all required fields";
+                    ToastService.ShowWarning("Please provide branch name and select a company", "Required Fields");
+                    return false;
+                }
+                break;
+                
+            case 1: // Contact Information
+                // No required fields in this step
+                break;
+                
+            case 2: // Address Information
+                if (Branch.Address == null ||
+                    string.IsNullOrWhiteSpace(Branch.Address.Street) ||
+                    string.IsNullOrWhiteSpace(Branch.Address.City) ||
+                    string.IsNullOrWhiteSpace(Branch.Address.Province) ||
+                    string.IsNullOrWhiteSpace(Branch.Address.PostalCode) ||
+                    string.IsNullOrWhiteSpace(Branch.Address.Country))
+                {
+                    errorMessage = "Please fill in all required address fields";
+                    ToastService.ShowWarning("Please complete the required address information", "Required Fields");
+                    return false;
+                }
+                
+                // Validate postal code format (4 digits for South Africa)
+                if (Branch.Address.Country == "South Africa" && 
+                    !System.Text.RegularExpressions.Regex.IsMatch(Branch.Address.PostalCode, @"^\d{4}$"))
+                {
+                    errorMessage = "Postal code must be exactly 4 digits";
+                    ToastService.ShowWarning("Postal code must be exactly 4 digits", "Validation Error");
+                    return false;
+                }
+                break;
+                
+            case 3: // Banking Information
+                // No required fields, but validate if data is provided
+                if (Branch.BankAccount != null && !string.IsNullOrWhiteSpace(Branch.BankAccount.AccountNumber))
+                {
+                    if (!Branch.BankAccount.BankNameId.HasValue)
+                    {
+                        errorMessage = "Please select a bank name";
+                        ToastService.ShowWarning("Please select a bank name", "Validation Error");
+                        return false;
+                    }
+                    
+                    if (string.IsNullOrWhiteSpace(Branch.BankAccount.BranchCode))
+                    {
+                        errorMessage = "Please provide a branch code";
+                        ToastService.ShowWarning("Please provide a branch code", "Validation Error");
+                        return false;
+                    }
+                    
+                    // Validate account number (South African account numbers are generally 10-11 digits)
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(Branch.BankAccount.AccountNumber, @"^\d{9,12}$"))
+                    {
+                        errorMessage = "Account number should be 9-12 digits";
+                        ToastService.ShowWarning("Account number should be 9-12 digits", "Validation Error");
+                        return false;
+                    }
+                    
+                    // Validate branch code (South African branch codes are 6 digits)
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(Branch.BankAccount.BranchCode, @"^\d{6}$"))
+                    {
+                        errorMessage = "Branch code must be exactly 6 digits";
+                        ToastService.ShowWarning("Branch code must be exactly 6 digits", "Validation Error");
+                        return false;
+                    }
+                }
+                break;
+                
+            case 4: // Logo Upload
+                // No required fields
+                break;
+        }
+        
+        return true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (isSubmitting)
+            return;
+
+        try
+        {
+            isSubmitting = true;
+            errorMessage = null;
+            
+            // Validate all steps
+            for (int i = 0; i < steps.Length - 1; i++)
+            {
+                currentStep = i;
+                if (!await ValidateCurrentStep())
+                {
+                    isSubmitting = false;
+                    return;
+                }
+            }
+            
+            // If this is a new branch
+            if (Branch.Id == 0)
+            {
+                Branch.CreatedBy = "CurrentUser"; // Replace with actual current user
+                Branch.CreatedOn = DateTime.Now;
+            }
+            else
+            {
+                Branch.UpdatedBy = "CurrentUser"; // Replace with actual current user
+                Branch.UpdatedDate = DateTime.Now;
+            }
+            
+            // Ensure all emails & phone numbers have RelatedEntityType and BranchId set
+            if (Branch.EmailAddresses != null)
+            {
+                foreach (var email in Branch.EmailAddresses)
+                {
+                    email.RelatedEntityType = "Branch";
+                    if (Branch.Id > 0)
+                    {
+                        email.RelatedEntityId = Branch.Id;
+                    }
+                }
+            }
+            
+            if (Branch.ContactNumbers != null)
+            {
+                foreach (var phone in Branch.ContactNumbers)
+                {
+                    phone.RelatedEntityType = "Branch";
+                    if (Branch.Id > 0)
+                    {
+                        phone.RelatedEntityId = Branch.Id;
+                    }
+                }
+            }
+            
+            // If a callback is provided, use it
+            if (OnSave.HasDelegate)
+            {
+                await OnSave.InvokeAsync(Branch);
+            }
+            else
+            {
+                // Otherwise use direct service call
+                if (Branch.Id == 0)
+                {
+                    var response = await UserService.CreateBranch(Branch);
+                    if (response.ResponseInfo.Success)
+                    {
+                        ToastService.ShowSuccess($"Branch '{Branch.Name}' created successfully", "Success");
+                        
+                        // Navigate to the branch details page
+                        var newBranch = (Branch)response.Response;
+                        NavigationManager.NavigateTo($"/branches/{newBranch.Id}");
+                    }
+                    else
+                    {
+                        ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                        isSubmitting = false;
+                        return;
+                    }
+                }
+                else
+                {
+                    var response = await UserService.UpdateBranch(Branch.Id, Branch);
+                    if (response.ResponseInfo.Success)
+                    {
+                        ToastService.ShowSuccess($"Branch '{Branch.Name}' updated successfully", "Success");
+                        
+                        // Refresh the page
+                        NavigationManager.NavigateTo($"/branches/{Branch.Id}", true);
+                    }
+                    else
+                    {
+                        ToastService.ShowError(response.ResponseInfo.Message, "Error");
+                        isSubmitting = false;
+                        return;
+                    }
+                }
+            }
+            
+            if (IsInEditMode)
+            {
+                IsInEditMode = false;
+                IsView = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving branch: {ex.Message}";
+            ToastService.ShowError(errorMessage, "Error");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            OnCancel.InvokeAsync();
+        }
+        else
+        {
+            // Navigate back or to branches page
+            if (BranchId > 0)
+            {
+                NavigationManager.NavigateTo($"/branches/{BranchId}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/branches");
+            }
+        }
+    }
+
+    private async Task OnCompanyChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out int companyId) && companyId > 0)
+        {
+            Branch.CompanyId = companyId;
+            await LoadCompanyDetails(companyId);
+        }
+    }
+
+    // Email management helpers
+    private string GetPrimaryEmail()
+    {
+        var primaryEmail = Branch.EmailAddresses?.FirstOrDefault(e => e.IsPrimary);
+        return primaryEmail?.EmailAddress ?? string.Empty;
+    }
+
+    private void UpdatePrimaryEmail(string value)
+    {
+        if (Branch.EmailAddresses == null)
+        {
+            Branch.EmailAddresses = new List<Email>();
+        }
+
+        var primaryEmail = Branch.EmailAddresses.FirstOrDefault(e => e.IsPrimary);
+
+        if (primaryEmail != null)
+        {
+            primaryEmail.EmailAddress = value;
+            primaryEmail.UpdatedDate = DateTime.Now;
+        }
+        else if (!string.IsNullOrEmpty(value))
+        {
+            var newEmail = new Email
+            {
+                EmailAddress = value,
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Branch",
+                RelatedEntityId = Branch.Id > 0 ? Branch.Id : 0,
+                CreatedOn = DateTime.Now
+            };
+
+            Branch.EmailAddresses.Add(newEmail);
+        }
+    }
+
+    private void AddEmail()
+    {
+        if (Branch.EmailAddresses == null)
+        {
+            Branch.EmailAddresses = new List<Email>();
+        }
+
+        Branch.EmailAddresses.Add(new Email
+        {
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "Branch",
+            RelatedEntityId = Branch.Id > 0 ? Branch.Id : 0,
+            CreatedOn = DateTime.Now
+        });
+    }
+
+    private void RemoveEmail(Email email)
+    {
+        if (Branch.EmailAddresses != null)
+        {
+            Branch.EmailAddresses.Remove(email);
+        }
+    }
+
+    private void UpdateEmailAddress(Email email, string value)
+    {
+        email.EmailAddress = value;
+        email.UpdatedDate = DateTime.Now;
+    }
+
+    private void UpdateEmailDescription(Email email, string value)
+    {
+        email.Description = value;
+        email.UpdatedDate = DateTime.Now;
+    }
+
+    // Phone management helpers
+    private string GetPrimaryPhone()
+    {
+        var primaryPhone = Branch.ContactNumbers?.FirstOrDefault(c => c.IsPrimary);
+        return primaryPhone?.Number ?? string.Empty;
+    }
+
+    private void UpdatePrimaryPhone(string value)
+    {
+        if (Branch.ContactNumbers == null)
+        {
+            Branch.ContactNumbers = new List<ContactNumber>();
+        }
+
+        var primaryPhone = Branch.ContactNumbers.FirstOrDefault(c => c.IsPrimary);
+
+        if (primaryPhone != null)
+        {
+            primaryPhone.Number = value;
+            primaryPhone.UpdatedDate = DateTime.Now;
+        }
+        else if (!string.IsNullOrEmpty(value))
+        {
+            var newPhone = new ContactNumber
+            {
+                Number = value,
+                ContactNumberTypeId = ContactNumberTypes.FirstOrDefault().Id,
+                IsPrimary = true,
+                IsActive = true,
+                RelatedEntityType = "Branch",
+                RelatedEntityId = Branch.Id > 0 ? Branch.Id : 0,
+                CreatedOn = DateTime.Now
+            };
+
+            Branch.ContactNumbers.Add(newPhone);
+        }
+    }
+
+    private void AddPhone()
+    {
+        if (Branch.ContactNumbers == null)
+        {
+            Branch.ContactNumbers = new List<ContactNumber>();
+        }
+
+        Branch.ContactNumbers.Add(new ContactNumber
+        {
+            ContactNumberTypeId = ContactNumberTypes.FirstOrDefault().Id,
+            IsPrimary = false,
+            IsActive = true,
+            RelatedEntityType = "Branch",
+            RelatedEntityId = Branch.Id > 0 ? Branch.Id : 0,
+            CreatedOn = DateTime.Now
+        });
+    }
+
+    private void RemovePhone(ContactNumber phone)
+    {
+        if (Branch.ContactNumbers != null)
+        {
+            Branch.ContactNumbers.Remove(phone);
+        }
+    }
+
+    private void UpdatePhoneNumber(ContactNumber phone, string value)
+    {
+        phone.Number = value;
+        phone.UpdatedDate = DateTime.Now;
+    }
+
+    private void UpdatePhoneTypeId(ContactNumber phone, string value)
+    {
+        if (int.TryParse(value, out int typeId))
+        {
+            phone.ContactNumberTypeId = typeId;
+            phone.UpdatedDate = DateTime.Now;
+        }
+    }
+
+    // Helper to ensure BankAccount exists
+    private void EnsureBankAccountExists()
+    {
+        if (Branch.BankAccount == null)
+        {
+            Branch.BankAccount = new BankAccount();
+        }
+    }
+
+    // Logo upload methods
+    private void ShowLogoUploadDialog()
+    {
+        logoFile = null;
+        previewImageData = null;
+        uploadError = string.Empty;
+        showLogoUploadDialog = true;
+    }
+
+    private void CancelLogoUpload()
+    {
+        showLogoUploadDialog = false;
+        logoFile = null;
+        previewImageData = null;
+        uploadError = string.Empty;
+    }
+
+    private async Task OnLogoFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadError = string.Empty;
+        
+        if (e.FileCount == 0)
+        {
+            logoFile = null;
+            previewImageData = null;
+            return;
+        }
+        
+        try
+        {
+            logoFile = e.File;
+            
+            if (logoFile.Size > maxFileSize)
+            {
+                uploadError = "File size exceeds 5MB limit";
+                logoFile = null;
+                previewImageData = null;
+                return;
+            }
+
+            // Validate file type
+            if (!logoFile.ContentType.StartsWith("image/"))
+            {
+                uploadError = "Please select an image file";
+                logoFile = null;
+                previewImageData = null;
+                return;
+            }
+
+            // Create preview
+            var imageFile = await logoFile.RequestImageFileAsync(logoFile.ContentType, 300, 300);
+            var buffer = new byte[imageFile.Size];
+            using (var stream = imageFile.OpenReadStream())
+            {
+                await stream.ReadAsync(buffer);
+            }
+            
+            previewImageData = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error processing image: {ex.Message}";
+            logoFile = null;
+            previewImageData = null;
+        }
+    }
+
+    private async Task UploadLogo()
+    {
+        if (logoFile == null)
+        {
+            uploadError = "Please select a logo file to upload";
+            return;
+        }
+
+        try
+        {
+            isUploading = true;
+            uploadProgress = 0;
+            StateHasChanged();
+
+            // Create a unique filename
+            var fileName = $"branch-logo-{(Branch.Id > 0 ? Branch.Id : "new")}-{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(logoFile.Name)}";
+
+            // Update progress as we prepare the upload
+            uploadProgress = 30;
+            StateHasChanged();
+
+            // Read the file
+            var buffer = new byte[logoFile.Size];
+            using (var stream = logoFile.OpenReadStream(maxFileSize))
+            {
+                await stream.ReadAsync(buffer);
+            }
+
+            // Resize the image for consistent dimensions
+            // Note: In a real implementation, you would resize the image here
+            
+            uploadProgress = 50;
+            StateHasChanged();
+
+            // Use the CDN service to upload
+            using var memoryStream = new MemoryStream(buffer);
+            var url = await CdnService.UploadFileWithBase64BackupAsync(
+                memoryStream,
+                fileName,
+                logoFile.ContentType,
+                "logos",
+                Branch.Id > 0 ? Branch.Id.ToString() : "temp"
+            );
+
+            uploadProgress = 80;
+            StateHasChanged();
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                // Get the file metadata
+                var metadata = await CdnService.GetFileMetadataAsync(url);
+
+                if (metadata != null)
+                {
+                    // Update the branch model with the new logo
+                    Branch.MainLogoId = metadata.Id;
+                    Branch.MainLogo = metadata;
+
+                    uploadProgress = 100;
+                    ToastService.ShowSuccess("Logo uploaded successfully", "Success");
+                    showLogoUploadDialog = false;
+                }
+                else
+                {
+                    uploadError = "Failed to retrieve uploaded file metadata";
+                }
+            }
+            else
+            {
+                uploadError = "Failed to upload logo";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error uploading logo: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+            uploadProgress = 0;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveLogo()
+    {
+        try
+        {
+            if (Branch.MainLogoId.HasValue && Branch.MainLogo != null)
+            {
+                // Confirm with the user
+                bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to remove this logo?");
+                
+                if (!confirmed)
+                    return;
+                
+                // Remove from CDN if possible
+                try
+                {
+                    await CdnService.DeleteFileAsync(Branch.MainLogo.Url);
+                }
+                catch
+                {
+                    // Continue even if deletion fails - maybe the file doesn't exist anymore
+                }
+
+                // Update the model
+                Branch.MainLogoId = null;
+                Branch.MainLogo = null;
+
+                ToastService.ShowSuccess("Logo removed successfully", "Success");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error removing logo: {ex.Message}", "Error");
+        }
+    }
+
+    private string FormatAccountNumber(string accountNumber)
+    {
+        if (string.IsNullOrEmpty(accountNumber) || accountNumber.Length <= 4)
+            return accountNumber;
+            
+        return $"****{accountNumber.Substring(accountNumber.Length - 4)}";
+    }
+}

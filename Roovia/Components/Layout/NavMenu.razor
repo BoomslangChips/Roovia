@@ -25,7 +25,7 @@
     </div>
 
     <!-- Property Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="properties">
+  @*   <Roovia.Security.PermissionAuthorizeView Category="properties">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Property Management</span>
@@ -71,10 +71,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Tenant Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="tenants">
+   @*  <Roovia.Security.PermissionAuthorizeView Category="tenants">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Tenant Management</span>
@@ -122,10 +122,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Beneficiary Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="beneficiaries">
+ @*    <Roovia.Security.PermissionAuthorizeView Category="beneficiaries">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Beneficiary Management</span>
@@ -159,10 +159,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Financial Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="payments">
+  @*   <Roovia.Security.PermissionAuthorizeView Category="payments">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Financial Management</span>
@@ -210,10 +210,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Maintenance Management Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="maintenance">
+ @*    <Roovia.Security.PermissionAuthorizeView Category="maintenance">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Maintenance Management</span>
@@ -247,10 +247,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Documents Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="documents">
+ @*    <Roovia.Security.PermissionAuthorizeView Category="documents">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Document Management</span>
@@ -291,10 +291,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Communication Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="communications">
+  @*   <Roovia.Security.PermissionAuthorizeView Category="communications">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Communications</span>
@@ -335,10 +335,10 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Reports Section -->
-    <Roovia.Security.PermissionAuthorizeView Category="reports">
+  @*   <Roovia.Security.PermissionAuthorizeView Category="reports">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Reports</span>
@@ -409,7 +409,7 @@
                 </Roovia.Security.PermissionAuthorizeView>
             </div>
         </div>
-    </Roovia.Security.PermissionAuthorizeView>
+    </Roovia.Security.PermissionAuthorizeView> *@
 
     <!-- Administration Section -->
     <Roovia.Security.PermissionAuthorizeView Category="settings">
@@ -420,13 +420,13 @@
             </div>
             <div class="roovia-nav-links">
                 <Roovia.Security.PermissionAuthorizeView Permission="settings.users">
-                    <NavLink class="roovia-nav-link" href="admin/users" title="Users">
+                    <NavLink class="roovia-nav-link" href="/users" title="Users">
                         <i class="fal fa-users-cog"></i>
                         <span>Users</span>
                     </NavLink>
                 </Roovia.Security.PermissionAuthorizeView>
 
-                <Roovia.Security.PermissionAuthorizeView Permission="settings.permissions">
+              @*   <Roovia.Security.PermissionAuthorizeView Permission="settings.permissions">
                     <NavLink class="roovia-nav-link" href="admin/roles" title="Role Management">
                         <i class="fal fa-shield-check"></i>
                         <span>Roles & Permissions</span>
@@ -487,13 +487,13 @@
                         <i class="fal fa-bug"></i>
                         <span>System Logs</span>
                     </NavLink>
-                </Roovia.Security.PermissionAuthorizeView>
+                </Roovia.Security.PermissionAuthorizeView> *@
             </div>
         </div>
     </Roovia.Security.PermissionAuthorizeView>
 
     <!-- Development Tools Section - Only visible to Global Admins -->
-    <AuthorizeView Policy="GlobalAdminPolicy">
+ @*    <AuthorizeView Policy="GlobalAdminPolicy">
         <div class="roovia-nav-section">
             <div class="roovia-nav-section-title">
                 <span class="roovia-nav-section-title-full">Dev Tools</span>
@@ -526,7 +526,7 @@
                 </NavLink>
             </div>
         </div>
-    </AuthorizeView>
+    </AuthorizeView> *@
 </div>
 
 <div class="roovia-desktop-toggle-wrapper">
