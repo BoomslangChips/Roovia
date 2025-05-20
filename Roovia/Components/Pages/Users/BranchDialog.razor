@@ -7,6 +7,7 @@
 @using Roovia.Models.UserCompanyModels
 @using Roovia.Services
 @using Roovia.Services.General
+@using Syncfusion.Blazor.Inputs
 @inject IUser UserService
 @inject ICdnService CdnService
 @inject ToastService ToastService
@@ -921,19 +922,25 @@
             </div>
 
             <div class="bd-upload-area @(logoFile != null ? "bd-has-file" : "")">
-                <InputFile OnChange="OnLogoFileSelected" class="bd-upload-input" accept="image/*" />
-                <div class="bd-upload-placeholder">
-                    <i class="fa-light fa-cloud-upload"></i>
-                    <p>Drag and drop your logo here, or click to browse</p>
-                    <span class="bd-file-hint">JPG, PNG or GIF format recommended</span>
-                </div>
-                @if (logoFile != null)
+                <!-- Replace InputFile with SfUploader -->
+                <SfUploader ID="LogoUploader" 
+                           AllowedExtensions=".jpg, .jpeg, .png, .gif" 
+                           MaxFileSize="5242880"
+                           AllowMultiple="false"
+                           ShowFileList="true"
+                           AutoUpload="false">
+                    <UploaderEvents ValueChange="OnLogoFileSelected"></UploaderEvents>
+@*                     <UploaderButtons>
+                        <ButtonsProps Browse="Select Logo" Clear="Clear"></ButtonsProps>
+                    </UploaderButtons> *@
+                </SfUploader>
+                
+                @if (previewImageData != null)
                 {
-                    <div class="bd-file-selected">
-                        <i class="fa-light fa-file-image"></i>
-                        <div class="bd-file-info">
-                            <span class="bd-file-name">@logoFile.Name</span>
-                            <span class="bd-file-size">(@((logoFile.Size / 1024).ToString("N0")) KB)</span>
+                    <div class="bd-image-preview">
+                        <h5>Preview</h5>
+                        <div class="bd-preview-container">
+                            <img src="@previewImageData" alt="Logo Preview" class="bd-logo-preview-image" />
                         </div>
                     </div>
                 }
@@ -981,6 +988,7 @@
     private bool isInEditMode = false;
     private bool IsViewMode => IsView || !IsEditMode;
     private Company? Company { get; set; }
+    
     // Add these properties to handle binding with InputSelect
     private string companyValue
     {
@@ -1003,6 +1011,7 @@
             BranchModel.StatusId = string.IsNullOrEmpty(value) ? null : int.Parse(value);
         }
     }
+    
     // Logo upload related fields
     private bool showLogoUploadDialog = false;
     private IBrowserFile? logoFile;
@@ -1010,6 +1019,13 @@
     private int uploadProgress = 0;
     private string uploadError = string.Empty;
     private long maxFileSize = 1024 * 1024 * 5; // 5MB
+    
+    // New fields for SfUploader and image processing
+    private string? previewImageData;
+    private byte[]? resizedImageData;
+    private string logoContentType = string.Empty;
+    private int logoTargetWidth = 512;
+    private int logoTargetHeight = 512;
 
     // Form tabs
     private List<RVTab.RVTabItem> formTabs = new List<RVTab.RVTabItem>
@@ -1509,11 +1525,13 @@
         phone.Description = value;
     }
 
-    // Logo handling methods
+    // Logo handling methods with SfUploader implementation
     private void ShowUploadDialog()
     {
         uploadError = string.Empty;
         logoFile = null;
+        previewImageData = null;
+        resizedImageData = null;
         showLogoUploadDialog = true;
     }
 
@@ -1521,33 +1539,77 @@
     {
         showLogoUploadDialog = false;
         logoFile = null;
+        previewImageData = null;
+        resizedImageData = null;
         uploadError = string.Empty;
     }
 
-    private void OnLogoFileSelected(InputFileChangeEventArgs e)
+    // New method for SfUploader
+    private async Task OnLogoFileSelected(UploadChangeEventArgs args)
     {
-        logoFile = e.File;
         uploadError = string.Empty;
+        
+        if (args.Files == null || args.Files.Count == 0)
+        {
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
+            return;
+        }
+        
+        var file = args.Files[0];
+        logoFile = file.File;
+        logoContentType = file.FileInfo.MimeContentType;
 
         if (logoFile.Size > maxFileSize)
         {
             uploadError = "File size exceeds 5MB limit";
             logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
             return;
         }
 
         // Validate file type
-        if (!logoFile.ContentType.StartsWith("image/"))
+        if (!logoContentType.StartsWith("image/"))
         {
             uploadError = "Please select an image file";
             logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
             return;
+        }
+
+        try
+        {
+            // Resize the image before upload
+            var resizedFile = await logoFile.RequestImageFileAsync(logoContentType, logoTargetWidth, logoTargetHeight);
+            
+            // Create a buffer for the resized image
+            resizedImageData = new byte[resizedFile.Size];
+            using (var stream = resizedFile.OpenReadStream())
+            {
+                await stream.ReadAsync(resizedImageData);
+            }
+            
+            // Generate a preview image as base64
+            previewImageData = $"data:{logoContentType};base64,{Convert.ToBase64String(resizedImageData)}";
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error processing image: {ex.Message}";
+            logoFile = null;
+            previewImageData = null;
+            resizedImageData = null;
         }
     }
 
+    // Updated method to use the resized image
     private async Task UploadLogo()
     {
-        if (logoFile == null)
+        if (logoFile == null || resizedImageData == null)
         {
             uploadError = "Please select a logo file to upload";
             return;
@@ -1566,12 +1628,12 @@
             uploadProgress = 30;
             StateHasChanged();
 
-            // Use the CDN service to upload the file
-            using var stream = logoFile.OpenReadStream(maxFileSize);
+            // Use the CDN service to upload the resized file
+            using var stream = new MemoryStream(resizedImageData);
             var url = await CdnService.UploadFileAsync(
                 stream,
                 fileName,
-                logoFile.ContentType,
+                logoContentType,
                 "logos",
                 BranchModel.Id > 0 ? BranchModel.Id.ToString() : ""
             );

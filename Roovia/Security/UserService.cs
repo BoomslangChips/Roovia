@@ -1198,6 +1198,104 @@ namespace Roovia.Security
                 branch.UpdatedDate = DateTime.Now;
                 branch.UpdatedBy = updatedBranch.UpdatedBy;
 
+                // Handle email addresses
+                if (updatedBranch.EmailAddresses != null)
+                {
+                    // Get existing email addresses from the database
+                    var existingEmails = await context.Emails
+                        .Where(e => e.RelatedEntityType == "Branch" && e.RelatedEntityId == id)
+                        .ToListAsync();
+
+                    // Find emails to delete (exist in DB but not in updated collection)
+                    var emailsToDelete = existingEmails
+                        .Where(e => !updatedBranch.EmailAddresses.Any(ue => ue.Id == e.Id))
+                        .ToList();
+
+                    // Delete removed emails
+                    foreach (var email in emailsToDelete)
+                    {
+                        context.Emails.Remove(email);
+                    }
+
+                    // Handle remaining emails (add new ones, update existing ones)
+                    foreach (var email in updatedBranch.EmailAddresses)
+                    {
+                        if (email.Id == 0)
+                        {
+                            // New email
+                            email.RelatedEntityType = "Branch";
+                            email.RelatedEntityId = id;
+                            email.RelatedEntityStringId = null;
+                            await context.Emails.AddAsync(email);
+                        }
+                        else
+                        {
+                            // Existing email
+                            var existingEmail = existingEmails.FirstOrDefault(e => e.Id == email.Id);
+                            if (existingEmail != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingEmail).State = EntityState.Detached;
+
+                                // Update email properties
+                                email.RelatedEntityType = "Branch";
+                                email.RelatedEntityId = id;
+                                email.RelatedEntityStringId = null;
+                                context.Emails.Update(email);
+                            }
+                        }
+                    }
+                }
+
+                // Handle contact numbers
+                if (updatedBranch.ContactNumbers != null)
+                {
+                    // Get existing contact numbers from the database
+                    var existingContacts = await context.ContactNumbers
+                        .Where(c => c.RelatedEntityType == "Branch" && c.RelatedEntityId == id)
+                        .ToListAsync();
+
+                    // Find contacts to delete (exist in DB but not in updated collection)
+                    var contactsToDelete = existingContacts
+                        .Where(c => !updatedBranch.ContactNumbers.Any(uc => uc.Id == c.Id))
+                        .ToList();
+
+                    // Delete removed contacts
+                    foreach (var contact in contactsToDelete)
+                    {
+                        context.ContactNumbers.Remove(contact);
+                    }
+
+                    // Handle remaining contacts (add new ones, update existing ones)
+                    foreach (var contact in updatedBranch.ContactNumbers)
+                    {
+                        if (contact.Id == 0)
+                        {
+                            // New contact
+                            contact.RelatedEntityType = "Branch";
+                            contact.RelatedEntityId = id;
+                            contact.RelatedEntityStringId = null;
+                            await context.ContactNumbers.AddAsync(contact);
+                        }
+                        else
+                        {
+                            // Existing contact
+                            var existingContact = existingContacts.FirstOrDefault(c => c.Id == contact.Id);
+                            if (existingContact != null)
+                            {
+                                // Detach from tracking
+                                context.Entry(existingContact).State = EntityState.Detached;
+
+                                // Update contact properties
+                                contact.RelatedEntityType = "Branch";
+                                contact.RelatedEntityId = id;
+                                contact.RelatedEntityStringId = null;
+                                context.ContactNumbers.Update(contact);
+                            }
+                        }
+                    }
+                }
+
                 await context.SaveChangesAsync();
 
                 // If this branch is marked as head office, update other branches

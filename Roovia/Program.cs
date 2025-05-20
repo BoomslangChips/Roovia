@@ -12,6 +12,8 @@ using Roovia.Data;
 using Roovia.Models.UserCompanyModels;
 using Roovia.Security;
 using Roovia.Services.General;
+using Syncfusion.Blazor;
+using Syncfusion.Licensing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -148,6 +150,11 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, GlobalAdminHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+
+SyncfusionLicenseProvider.RegisterLicense("Mzg2OTg4OEAzMjM5MmUzMDJlMzAzYjMyMzkzYkZOcU9vNHZKdjZNQ1BwNWtybTQyQ215cUJVUVl6YXdLYmcreUkzdkJ2UXc9");
+builder.Services.AddSyncfusionBlazor();
+
 
 var app = builder.Build();
 
