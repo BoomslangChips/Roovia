@@ -1,0 +1,1246 @@
+﻿@page "/property/{PropertyId:int}"
+@attribute [Authorize(Policy = "PropertiesAccess")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessMappingModels
+@using Roovia.Security
+@using Roovia.Services
+@using Roovia.Services.General
+@using System.Security.Claims
+@inject IProperty PropertyService
+@inject IPropertyOwner PropertyOwnerService
+@inject ITenant TenantService
+@inject IUser UserService
+@inject IPermissionService PermissionService
+@inject ICdnService CdnService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="@Assets["css/properties/ViewProperty.css"]" />
+
+<div class="pv-page">
+    @if (property != null)
+    {
+        <!-- Property Header with Gradient Background -->
+        <div class="pv-header-section">
+            <div class="pv-header-background">
+                <div class="pv-header-pattern"></div>
+            </div>
+            <div class="pv-header-content">
+                <div class="pv-breadcrumb">
+                    <a href="/dashboard" class="pv-breadcrumb-item">
+                        <i class="fa-light fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                    <i class="fa-light fa-chevron-right"></i>
+                    <a href="/properties" class="pv-breadcrumb-item">
+                        <i class="fa-light fa-buildings"></i>
+                        <span>Properties</span>
+                    </a>
+                    <i class="fa-light fa-chevron-right"></i>
+                    <span class="pv-breadcrumb-current">@property.PropertyName</span>
+                </div>
+
+                <!-- Property Header Content -->
+                <div class="pv-property-header">
+                    <div class="pv-property-image-section">
+                        @if (property.MainImage != null)
+                        {
+                            <img src="@property.MainImage.Url" alt="@property.PropertyName" class="pv-property-image" />
+                        }
+                        else
+                        {
+                            <div class="pv-property-image-placeholder">
+                                <i class="fa-light fa-building"></i>
+                            </div>
+                        }
+
+                        <PermissionAuthorizeView Permission="properties.edit">
+                            <button class="pv-image-actions-btn" @onclick="UploadPropertyImage" title="Manage Images">
+                                <i class="fa-light fa-camera"></i>
+                            </button>
+                        </PermissionAuthorizeView>
+                    </div>
+
+                    <div class="pv-property-details-section">
+                        <div class="pv-property-title-area">
+                            <h1 class="pv-property-title">@property.PropertyName</h1>
+                            <div class="pv-property-code">
+                                <i class="fa-light fa-hashtag"></i>
+                                @property.PropertyCode
+                            </div>
+                        </div>
+
+                        <div class="pv-property-meta">
+                            <div class="pv-meta-group">
+                                <span class="pv-meta-item">
+                                    <i class="fa-light fa-building-circle-check"></i>
+                                    @GetPropertyTypeName(property.PropertyTypeId)
+                                </span>
+                                <span class="pv-meta-item">
+                                    <i class="fa-light fa-location-dot"></i>
+                                    @GetFormattedAddress(property.Address)
+                                </span>
+                            </div>
+
+                            <div class="pv-property-status-badges">
+                                <span class="pv-status-badge @GetStatusClass(property.StatusId)">
+                                    <i class="fa-light fa-circle-info"></i>
+                                    @GetStatusName(property.StatusId)
+                                </span>
+
+                                @if (property.HasTenant)
+                                {
+                                    <span class="pv-status-badge pv-badge-occupied">
+                                        <i class="fa-light fa-user-check"></i>
+                                        Occupied
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="pv-status-badge pv-badge-vacant">
+                                        <i class="fa-light fa-door-open"></i>
+                                        Vacant
+                                    </span>
+                                }
+
+                                @if (!string.IsNullOrEmpty(property.ServiceLevel))
+                                {
+                                    <span class="pv-status-badge pv-badge-service">
+                                        <i class="fa-light fa-star"></i>
+                                        @property.ServiceLevel
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="pv-property-owner">
+                            @if (property.Owner != null)
+                            {
+                                <div class="pv-owner-info">
+                                    <div class="pv-owner-avatar">
+                                        <i class="fa-light fa-user-tie"></i>
+                                    </div>
+                                    <div class="pv-owner-details">
+                                        <div class="pv-owner-name">
+                                            <span>Owner: </span>
+                                            <a href="/owner/@property.OwnerId" class="pv-owner-link">@property.Owner.DisplayName</a>
+                                        </div>
+                                        <div class="pv-owner-contact">
+                                            @if (!string.IsNullOrEmpty(property.Owner.PrimaryEmail))
+                                            {
+                                                <a href="mailto:@property.Owner.PrimaryEmail" class="pv-contact-link">
+                                                    <i class="fa-light fa-envelope"></i>
+                                                    @property.Owner.PrimaryEmail
+                                                </a>
+                                            }
+                                            @if (!string.IsNullOrEmpty(property.Owner.PrimaryContactNumber))
+                                            {
+                                                <a href="tel:@property.Owner.PrimaryContactNumber" class="pv-contact-link">
+                                                    <i class="fa-light fa-phone"></i>
+                                                    @property.Owner.PrimaryContactNumber
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="pv-owner-placeholder">
+                                    <i class="fa-light fa-user-slash"></i>
+                                    <span>No owner assigned</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="pv-property-actions">
+                        <PermissionAuthorizeView Permission="properties.edit">
+                            <button class="pv-btn pv-btn-primary" @onclick="NavigateToEditProperty">
+                                <i class="fa-light fa-edit"></i>
+                                <span>Edit Property</span>
+                            </button>
+                        </PermissionAuthorizeView>
+
+                        <div class="pv-dropdown">
+                            <button class="pv-btn pv-btn-outline" @onclick="ToggleActionsMenu">
+                                <i class="fa-light fa-ellipsis-vertical"></i>
+                                <span>Actions</span>
+                            </button>
+                            @if (showActionsMenu)
+                            {
+                                <div class="pv-dropdown-menu">
+                                    <button class="pv-dropdown-item" @onclick="NavigateToAddTenant">
+                                        <i class="fa-light fa-user-plus"></i> Add Tenant
+                                    </button>
+                                    <button class="pv-dropdown-item" @onclick="ScheduleInspection">
+                                        <i class="fa-light fa-clipboard-check"></i> Schedule Inspection
+                                    </button>
+                                    <button class="pv-dropdown-item" @onclick="AddMaintenanceRequest">
+                                        <i class="fa-light fa-screwdriver-wrench"></i> Maintenance Request
+                                    </button>
+                                    <button class="pv-dropdown-item" @onclick="RecordPayment">
+                                        <i class="fa-light fa-money-bill-wave"></i> Record Payment
+                                    </button>
+                                    <button class="pv-dropdown-item" @onclick="PrintProperty">
+                                        <i class="fa-light fa-print"></i> Print Property Info
+                                    </button>
+                                    <PermissionAuthorizeView Permission="properties.delete">
+                                        <button class="pv-dropdown-item pv-item-danger" @onclick="ConfirmArchiveProperty">
+                                            <i class="fa-light fa-trash"></i> Archive Property
+                                        </button>
+                                    </PermissionAuthorizeView>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Property Key Stats Cards -->
+        <div class="pv-stats-section">
+            <div class="pv-stats-container">
+                <div class="pv-stat-card">
+                    <div class="pv-stat-icon">
+                        <i class="fa-light fa-coins"></i>
+                    </div>
+                    <div class="pv-stat-content">
+                        <div class="pv-stat-value">R @property.RentalAmount.ToString("N0")</div>
+                        <div class="pv-stat-label">Monthly Rental</div>
+                    </div>
+                </div>
+
+                <div class="pv-stat-card">
+                    <div class="pv-stat-icon">
+                        <i class="fa-light fa-users"></i>
+                    </div>
+                    <div class="pv-stat-content">
+                        <div class="pv-stat-value">@(property.Tenants?.Count ?? 0)</div>
+                        <div class="pv-stat-label">Tenants</div>
+                    </div>
+                </div>
+
+                <div class="pv-stat-card">
+                    <div class="pv-stat-icon">
+                        <i class="fa-light fa-wallet"></i>
+                    </div>
+                    <div class="pv-stat-content">
+                        <div class="pv-stat-value">R @((property.PropertyAccountBalance ?? 0).ToString("N0"))</div>
+                        <div class="pv-stat-label">Account Balance</div>
+                    </div>
+                </div>
+
+                <div class="pv-stat-card">
+                    <div class="pv-stat-icon">
+                        <i class="fa-light fa-calendar-check"></i>
+                    </div>
+                    <div class="pv-stat-content">
+                        <div class="pv-stat-value">@(property.Inspections?.Count ?? 0)</div>
+                        <div class="pv-stat-label">Inspections</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="pv-tab-navigation">
+            <div class="pv-tabs-container">
+                <button class="pv-tab @(activeTab == "overview" ? "active" : "")" @onclick='() => SetActiveTab("overview")'>
+                    <i class="fa-light fa-info-circle"></i>
+                    <span>Overview</span>
+                </button>
+                <button class="pv-tab @(activeTab == "tenants" ? "active" : "")" @onclick='() => SetActiveTab("tenants")'>
+                    <i class="fa-light fa-users"></i>
+                    <span>Tenants</span>
+                </button>
+                <button class="pv-tab @(activeTab == "financials" ? "active" : "")" @onclick='() => SetActiveTab("financials")'>
+                    <i class="fa-light fa-money-bill-wave"></i>
+                    <span>Financials</span>
+                </button>
+                <button class="pv-tab @(activeTab == "inspections" ? "active" : "")" @onclick='() => SetActiveTab("inspections")'>
+                    <i class="fa-light fa-clipboard-check"></i>
+                    <span>Inspections</span>
+                </button>
+                <button class="pv-tab @(activeTab == "maintenance" ? "active" : "")" @onclick='() => SetActiveTab("maintenance")'>
+                    <i class="fa-light fa-screwdriver-wrench"></i>
+                    <span>Maintenance</span>
+                </button>
+                <button class="pv-tab @(activeTab == "documents" ? "active" : "")" @onclick='() => SetActiveTab("documents")'>
+                    <i class="fa-light fa-file-alt"></i>
+                    <span>Documents</span>
+                </button>
+                <button class="pv-tab @(activeTab == "notes" ? "active" : "")" @onclick='() => SetActiveTab("notes")'>
+                    <i class="fa-light fa-sticky-note"></i>
+                    <span>Notes</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="pv-main-container">
+            <div class="pv-tab-content @(isLoading ? "loading" : "")">
+                @if (isLoading)
+                {
+                    <div class="pv-loading-state">
+                        <div class="pv-loading-spinner"></div>
+                        <p class="pv-loading-text">Loading property data...</p>
+                    </div>
+                }
+                else
+                {
+                    @switch (activeTab)
+                    {
+                        case "overview":
+                            <div class="pv-overview-section">
+                                <div class="pv-section-card">
+                                    <div class="pv-section-header">
+                                        <div class="pv-section-icon">
+                                            <i class="fa-light fa-building"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="pv-section-title">Property Details</h2>
+                                            <p class="pv-section-description">Basic information about this property</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="pv-data-grid">
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Property Name</div>
+                                            <div class="pv-data-value">@property.PropertyName</div>
+                                        </div>
+
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Property Code</div>
+                                            <div class="pv-data-value">@property.PropertyCode</div>
+                                        </div>
+
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Property Type</div>
+                                            <div class="pv-data-value">@GetPropertyTypeName(property.PropertyTypeId)</div>
+                                        </div>
+
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Status</div>
+                                            <div class="pv-data-value">
+                                                <span class="pv-status-pill @GetStatusClass(property.StatusId)">
+                                                    @GetStatusName(property.StatusId)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Service Level</div>
+                                            <div class="pv-data-value">@(string.IsNullOrEmpty(property.ServiceLevel) ? "Not specified" : property.ServiceLevel)</div>
+                                        </div>
+
+                                        <div class="pv-data-group">
+                                            <div class="pv-data-label">Occupancy</div>
+                                            <div class="pv-data-value">
+                                                <span class="pv-status-pill @(property.HasTenant ? "pv-badge-occupied" : "pv-badge-vacant")">
+                                                    @(property.HasTenant ? "Occupied" : "Vacant")
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        @if (property.Branch != null)
+                                        {
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Branch</div>
+                                                <div class="pv-data-value">@property.Branch.Name</div>
+                                            </div>
+                                        }
+
+                                        @if (!string.IsNullOrEmpty(property.CustomerRef))
+                                        {
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Customer Reference</div>
+                                                <div class="pv-data-value">@property.CustomerRef</div>
+                                            </div>
+                                        }
+
+                                        @if (property.Tags != null)
+                                        {
+                                            <div class="pv-data-group pv-data-full-width">
+                                                <div class="pv-data-label">Tags</div>
+                                                <div class="pv-data-value">
+                                                    <div class="pv-tags-container">
+                                                        @foreach (var tag in property.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                                        {
+                                                            <span class="pv-tag">@tag.Trim()</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="pv-section-card">
+                                    <div class="pv-section-header">
+                                        <div class="pv-section-icon">
+                                            <i class="fa-light fa-map-marker-alt"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="pv-section-title">Property Address</h2>
+                                            <p class="pv-section-description">Location details of this property</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="pv-address-container">
+                                        <div class="pv-address-details">
+                                            @if (!string.IsNullOrEmpty(property.Address.UnitNumber))
+                                            {
+                                                <div class="pv-address-line">
+                                                    <span class="pv-address-label">Unit:</span>
+                                                    <span class="pv-address-value">@property.Address.UnitNumber</span>
+                                                </div>
+                                            }
+
+                                            @if (!string.IsNullOrEmpty(property.Address.ComplexName))
+                                            {
+                                                <div class="pv-address-line">
+                                                    <span class="pv-address-label">Complex:</span>
+                                                    <span class="pv-address-value">@property.Address.ComplexName</span>
+                                                </div>
+                                            }
+
+                                            <div class="pv-address-line">
+                                                <span class="pv-address-label">Street:</span>
+                                                <span class="pv-address-value">@property.Address.Street</span>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(property.Address.Suburb))
+                                            {
+                                                <div class="pv-address-line">
+                                                    <span class="pv-address-label">Suburb:</span>
+                                                    <span class="pv-address-value">@property.Address.Suburb</span>
+                                                </div>
+                                            }
+
+                                            <div class="pv-address-line">
+                                                <span class="pv-address-label">City:</span>
+                                                <span class="pv-address-value">@property.Address.City</span>
+                                            </div>
+
+                                            <div class="pv-address-line">
+                                                <span class="pv-address-label">Province:</span>
+                                                <span class="pv-address-value">@property.Address.Province</span>
+                                            </div>
+
+                                            <div class="pv-address-line">
+                                                <span class="pv-address-label">Postal Code:</span>
+                                                <span class="pv-address-value">@property.Address.PostalCode</span>
+                                            </div>
+
+                                            <div class="pv-address-line">
+                                                <span class="pv-address-label">Country:</span>
+                                                <span class="pv-address-value">@property.Address.Country</span>
+                                            </div>
+
+                                            <div class="pv-address-type">
+                                                <i class="fa-light @(property.Address.IsResidential ? "fa-home" : "fa-building")"></i>
+                                                <span>@(property.Address.IsResidential ? "Residential" : "Commercial") Property</span>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(property.Address.DeliveryInstructions))
+                                            {
+                                                <div class="pv-address-instructions">
+                                                    <div class="pv-instructions-label">Delivery Instructions:</div>
+                                                    <div class="pv-instructions-value">@property.Address.DeliveryInstructions</div>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <div class="pv-address-map">
+                                            <div class="pv-map-placeholder">
+                                                <i class="fa-light fa-map"></i>
+                                                <span>Map View</span>
+                                                <button class="pv-map-btn" @onclick="ShowMapView">
+                                                    <i class="fa-light fa-location-arrow"></i>
+                                                    View on Map
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pv-section-card">
+                                    <div class="pv-section-header">
+                                        <div class="pv-section-icon">
+                                            <i class="fa-light fa-coins"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="pv-section-title">Financial Summary</h2>
+                                            <p class="pv-section-description">Key financial information</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="pv-finance-summary">
+                                        <div class="pv-finance-stats">
+                                            <div class="pv-finance-stat">
+                                                <div class="pv-stat-header">
+                                                    <i class="fa-light fa-rand-sign"></i>
+                                                    <span>Monthly Rental</span>
+                                                </div>
+                                                <div class="pv-stat-amount">R @property.RentalAmount.ToString("N2")</div>
+                                            </div>
+
+                                            <div class="pv-finance-stat">
+                                                <div class="pv-stat-header">
+                                                    <i class="fa-light fa-wallet"></i>
+                                                    <span>Account Balance</span>
+                                                </div>
+                                                <div class="pv-stat-amount @((property.PropertyAccountBalance ?? 0) < 0 ? "pv-negative-amount" : "")">
+                                                    R @((property.PropertyAccountBalance ?? 0).ToString("N2"))
+                                                </div>
+                                            </div>
+
+                                            <div class="pv-finance-stat">
+                                                <div class="pv-stat-header">
+                                                    <i class="fa-light fa-percent"></i>
+                                                    <span>Commission</span>
+                                                </div>
+                                                <div class="pv-stat-amount">
+                                                    @GetCommissionDisplay(property.CommissionTypeId.GetValueOrDefault(), property.CommissionValue.GetValueOrDefault())
+                                                </div>
+                                            </div>
+
+                                            <div class="pv-finance-stat">
+                                                <div class="pv-stat-header">
+                                                    <i class="fa-light fa-credit-card"></i>
+                                                    <span>Payments</span>
+                                                </div>
+                                                <div class="pv-stat-amount @(property.PaymentsEnabled ? "pv-status-active" : "pv-status-inactive")">
+                                                    @(property.PaymentsEnabled ? "Enabled" : "Disabled")
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            break;
+
+                        case "tenants":
+                            <div class="pv-tenants-section">
+                                <div class="pv-section-header-with-actions">
+                                    <div class="pv-section-header">
+                                        <div class="pv-section-icon">
+                                            <i class="fa-light fa-users"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="pv-section-title">Property Tenants</h2>
+                                            <p class="pv-section-description">Current and previous tenants of this property</p>
+                                        </div>
+                                    </div>
+
+                                    <PermissionAuthorizeView Permission="properties.edit">
+                                        <button class="pv-btn pv-btn-primary" @onclick="NavigateToAddTenant">
+                                            <i class="fa-light fa-user-plus"></i>
+                                            <span>Add Tenant</span>
+                                        </button>
+                                    </PermissionAuthorizeView>
+                                </div>
+
+                                <div class="pv-section-content">
+                                    @if (property.Tenants == null || !property.Tenants.Any())
+                                    {
+                                        <div class="pv-empty-state">
+                                            <div class="pv-empty-icon">
+                                                <i class="fa-light fa-users"></i>
+                                            </div>
+                                            <h3 class="pv-empty-title">No Tenants Found</h3>
+                                            <p class="pv-empty-description">This property doesn't have any tenants yet. Add a tenant to manage leases and payments.</p>
+                                            <button class="pv-btn pv-btn-primary" @onclick="NavigateToAddTenant">
+                                                <i class="fa-light fa-user-plus"></i>
+                                                Add First Tenant
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="pv-tenant-grid">
+                                            @foreach (var tenant in property.Tenants)
+                                            {
+                                                <div class="pv-tenant-card">
+                                                    <div class="pv-tenant-header">
+                                                        <div class="pv-tenant-avatar">
+                                                            <i class="fa-light fa-user"></i>
+                                                        </div>
+                                                        <div class="pv-tenant-info">
+                                                            <h3 class="pv-tenant-name">@tenant.DisplayName</h3>
+                                                            <div class="pv-tenant-contact">
+                                                                <span><i class="fa-light fa-envelope"></i> @tenant.PrimaryEmail</span>
+                                                                <span><i class="fa-light fa-phone"></i> @tenant.PrimaryContactNumber</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="pv-tenant-status">
+                                                            <span class="pv-status-pill @(tenant.IsLeaseActive ? "pv-badge-active" : "pv-badge-inactive")">
+                                                                @(tenant.IsLeaseActive ? "Active" : "Inactive")
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="pv-tenant-details">
+                                                        <div class="pv-detail-item">
+                                                            <span class="pv-detail-label">Lease Period:</span>
+                                                            <span class="pv-detail-value">@tenant.LeaseStartDate.ToString("d") - @tenant.LeaseEndDate.ToString("d")</span>
+                                                        </div>
+                                                        <div class="pv-detail-item">
+                                                            <span class="pv-detail-label">Monthly Rent:</span>
+                                                            <span class="pv-detail-value">R @tenant.RentAmount.ToString("N2")</span>
+                                                        </div>
+                                                        @if (tenant.DepositAmount.HasValue)
+                                                        {
+                                                            <div class="pv-detail-item">
+                                                                <span class="pv-detail-label">Deposit:</span>
+                                                                <span class="pv-detail-value">R @tenant.DepositAmount.Value.ToString("N2")</span>
+                                                            </div>
+                                                        }
+                                                        <div class="pv-detail-item">
+                                                            <span class="pv-detail-label">Balance:</span>
+                                                            <span class="pv-detail-value @(tenant.Balance < 0 ? "pv-negative-amount" : "")">
+                                                                R @tenant.Balance.ToString("N2")
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="pv-tenant-actions">
+                                                        <button class="pv-btn pv-btn-sm pv-btn-outline" @onclick="() => ViewTenant(tenant.Id)">
+                                                            <i class="fa-light fa-eye"></i> View
+                                                        </button>
+                                                        <PermissionAuthorizeView Permission="properties.edit">
+                                                            <button class="pv-btn pv-btn-sm pv-btn-primary" @onclick="() => EditTenant(tenant.Id)">
+                                                                <i class="fa-light fa-edit"></i> Edit
+                                                            </button>
+                                                        </PermissionAuthorizeView>
+                                                        <div class="pv-dropdown pv-dropdown-sm">
+                                                            <button class="pv-btn pv-btn-sm pv-btn-outline" @onclick="() => ToggleTenantMenu(tenant.Id)">
+                                                                <i class="fa-light fa-ellipsis-vertical"></i>
+                                                            </button>
+                                                            @if (openTenantMenuId == tenant.Id)
+                                                            {
+                                                                <div class="pv-dropdown-menu">
+                                                                    <button class="pv-dropdown-item" @onclick="() => RecordTenantPayment(tenant.Id)">
+                                                                        <i class="fa-light fa-money-bill-wave"></i> Record Payment
+                                                                    </button>
+                                                                    <button class="pv-dropdown-item" @onclick="() => SendReminder(tenant.Id)">
+                                                                        <i class="fa-light fa-bell"></i> Send Reminder
+                                                                    </button>
+                                                                    <button class="pv-dropdown-item" @onclick="() => GenerateStatementForTenant(tenant.Id)">
+                                                                        <i class="fa-light fa-file-invoice"></i> Generate Statement
+                                                                    </button>
+                                                                    <button class="pv-dropdown-item" @onclick="() => ExtendLease(tenant.Id)">
+                                                                        <i class="fa-light fa-calendar-plus"></i> Extend Lease
+                                                                    </button>
+                                                                    <button class="pv-dropdown-item" @onclick="() => ViewTenantDocuments(tenant.Id)">
+                                                                        <i class="fa-light fa-folder-open"></i> View Documents
+                                                                    </button>
+                                                                    <PermissionAuthorizeView Permission="properties.edit">
+                                                                        <button class="pv-dropdown-item pv-item-danger" @onclick="() => EndTenancy(tenant.Id)">
+                                                                            <i class="fa-light fa-user-slash"></i> End Tenancy
+                                                                        </button>
+                                                                    </PermissionAuthorizeView>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            break;
+
+                        case "financials":
+                            <div class="pv-financials-section">
+                                <div class="pv-section-card">
+                                    <div class="pv-section-header">
+                                        <div class="pv-section-icon">
+                                            <i class="fa-light fa-money-bill-wave"></i>
+                                        </div>
+                                        <div>
+                                            <h2 class="pv-section-title">Financial Details</h2>
+                                            <p class="pv-section-description">Rental and commission information</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="pv-finance-details">
+                                        <div class="pv-data-grid">
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Monthly Rental</div>
+                                                <div class="pv-data-value">R @property.RentalAmount.ToString("N2")</div>
+                                            </div>
+
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Account Balance</div>
+                                                <div class="pv-data-value @((property.PropertyAccountBalance ?? 0) < 0 ? "pv-negative-amount" : "")">
+                                                    R @((property.PropertyAccountBalance ?? 0).ToString("N2"))
+                                                </div>
+                                            </div>
+
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Commission Type</div>
+                                                <div class="pv-data-value">@GetCommissionTypeName(property.CommissionTypeId.GetValueOrDefault())</div>
+                                            </div>
+
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Commission Value</div>
+                                                <div class="pv-data-value">@GetCommissionValueDisplay(property.CommissionTypeId.GetValueOrDefault(), property.CommissionValue.GetValueOrDefault())</div>
+                                            </div>
+
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Payments Enabled</div>
+                                                <div class="pv-data-value">
+                                                    <span class="pv-toggle-indicator @(property.PaymentsEnabled ? "pv-toggle-active" : "pv-toggle-inactive")">
+                                                        @(property.PaymentsEnabled ? "Yes" : "No")
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="pv-data-group">
+                                                <div class="pv-data-label">Payment Verification</div>
+                                                <div class="pv-data-value">
+                                                    <span class="pv-toggle-indicator @(property.PaymentsVerify ? "pv-toggle-active" : "pv-toggle-inactive")">
+                                                        @(property.PaymentsVerify ? "Required" : "Not Required")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pv-payment-history">
+                                    <div class="pv-section-header-with-actions">
+                                        <div class="pv-section-header">
+                                            <div class="pv-section-icon">
+                                                <i class="fa-light fa-credit-card"></i>
+                                            </div>
+                                            <div>
+                                                <h2 class="pv-section-title">Payment History</h2>
+                                                <p class="pv-section-description">Recent payments for this property</p>
+                                            </div>
+                                        </div>
+
+                                        <button class="pv-btn pv-btn-primary" @onclick="RecordPayment">
+                                            <i class="fa-light fa-plus"></i>
+                                            <span>Record Payment</span>
+                                        </button>
+                                    </div>
+
+                                    @if (property.Payments == null || !property.Payments.Any())
+                                    {
+                                        <div class="pv-empty-state">
+                                            <div class="pv-empty-icon">
+                                                <i class="fa-light fa-credit-card"></i>
+                                            </div>
+                                            <h3 class="pv-empty-title">No Payment History</h3>
+                                            <p class="pv-empty-description">No payments have been recorded for this property yet.</p>
+                                            <button class="pv-btn pv-btn-primary" @onclick="RecordPayment">
+                                                <i class="fa-light fa-plus"></i>
+                                                Record First Payment
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="pv-table-container">
+                                            <table class="pv-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Reference</th>
+                                                        <th>Type</th>
+                                                        <th>Date</th>
+                                                        <th>Tenant</th>
+                                                        <th>Amount</th>
+                                                        <th>Status</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var payment in property.Payments.OrderByDescending(p => p.PaymentDate ?? p.DueDate))
+                                                    {
+                                                        <tr>
+                                                            <td>@payment.PaymentReference</td>
+                                                            <td>
+                                                                @(payment.PaymentType?.Name ?? "Unknown")
+                                                            </td>
+                                                            <td>@(payment.PaymentDate?.ToString("d") ?? payment.DueDate.ToString("d"))</td>
+                                                            <td>
+                                                                @if (payment.Tenant != null)
+                                                                {
+                                                                    @payment.Tenant.DisplayName
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="pv-text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td class="pv-amount-cell">R @payment.Amount.ToString("N2")</td>
+                                                            <td>
+                                                                <span class="pv-status-indicator pv-status-@GetPaymentStatusClass(payment.StatusId)">
+                                                                    @(payment.Status?.Name ?? "Unknown")
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="pv-table-actions">
+                                                                    <button class="pv-btn pv-btn-icon pv-btn-sm" @onclick="() => ViewPayment(payment.Id)" title="View Details">
+                                                                        <i class="fa-light fa-eye"></i>
+                                                                    </button>
+                                                                    <button class="pv-btn pv-btn-icon pv-btn-sm" @onclick="() => PrintReceipt(payment.Id)" title="Print Receipt">
+                                                                        <i class="fa-light fa-print"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            break;
+
+
+                        case "inspections":
+                        case "maintenance":
+                        case "documents":
+                        case "notes":
+                            <div class="pv-empty-state">
+                                <div class="pv-empty-icon">
+                                    <i class="fa-light fa-code"></i>
+                                </div>
+                                <h3 class="pv-empty-title">Tab Content Under Development</h3>
+                                <p class="pv-empty-description">This tab's content is being implemented. The structure would follow the same pattern as the Overview, Tenants, and Financials tabs.</p>
+                            </div>
+                            break;
+                    }
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="pv-error-container">
+            <div class="pv-error-icon">
+                <i class="fa-light fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="pv-error-title">Property Not Found</h3>
+            <p class="pv-error-message">The property you're looking for doesn't exist or you don't have permission to view it.</p>
+            <button class="pv-btn pv-btn-primary" @onclick='() => NavigationManager.NavigateTo("/properties")'>
+                <i class="fa-light fa-arrow-left"></i>
+                <span>Back to Properties</span>
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Archive Confirmation Modal -->
+@if (showArchiveConfirmation)
+{
+    <div class="pv-modal-overlay" @onclick="CancelArchiveProperty">
+        <div class="pv-modal pv-modal-danger" @onclick:stopPropagation="true">
+            <div class="pv-modal-header">
+                <h3 class="pv-modal-title">
+                    <i class="fa-light fa-trash"></i>
+                    Archive Property
+                </h3>
+                <button class="pv-modal-close" @onclick="CancelArchiveProperty">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            </div>
+            <div class="pv-modal-body">
+                <div class="pv-warning-message">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <p>Are you sure you want to archive <strong>@property.PropertyName</strong>?</p>
+                </div>
+                <p>This action will remove the property from active listings. It can be restored by an administrator if needed.</p>
+                <p>All related data including tenants, payments, and documents will be preserved but no longer accessible from the main interface.</p>
+            </div>
+            <div class="pv-modal-footer">
+                <button class="pv-btn pv-btn-outline" @onclick="CancelArchiveProperty">
+                    <i class="fa-light fa-times"></i>
+                    Cancel
+                </button>
+                <button class="pv-btn pv-btn-danger" @onclick="ArchiveProperty">
+                    <i class="fa-light fa-trash"></i>
+                    Archive Property
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add any backdrop overlay for dropdowns -->
+@if (showActionsMenu || openTenantMenuId != null)
+{
+    <div class="pv-backdrop" @onclick="CloseAllMenus"></div>
+}
+
+@code {
+    [Parameter]
+    public int PropertyId { get; set; }
+
+    // State
+    private Property property;
+    private string activeTab = "overview";
+    private bool isLoading = true;
+    private bool showActionsMenu = false;
+    private int? openTenantMenuId = null;
+    private bool showArchiveConfirmation = false;
+
+    // User and context
+    private ApplicationUser currentUser;
+    private int currentUserCompanyId;
+
+    // Reference data
+    private List<PropertyStatusType> propertyStatusTypes = new();
+    private List<PropertyType> propertyTypes = new();
+    private List<CommissionType> commissionTypes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadReferenceData();
+        await LoadProperty();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var userResult = await UserService.GetUserById(userId);
+                if (userResult.ResponseInfo.Success)
+                {
+                    currentUser = userResult.Response as ApplicationUser;
+                    currentUserCompanyId = currentUser?.CompanyId ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadReferenceData()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Load property status types
+            propertyStatusTypes = await context.PropertyStatusTypes
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.DisplayOrder)
+                .ToListAsync();
+
+            // Load property types
+            propertyTypes = await context.PropertyTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load commission types
+            commissionTypes = await context.CommissionTypes
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.DisplayOrder)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load reference data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadProperty()
+    {
+        isLoading = true;
+
+        try
+        {
+            var result = await PropertyService.GetPropertyById(PropertyId, currentUserCompanyId);
+            if (result.ResponseInfo.Success)
+            {
+                property = result.Response as Property;
+            }
+            else
+            {
+                ToastService.ShowError(result.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load property: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private void ToggleActionsMenu()
+    {
+        showActionsMenu = !showActionsMenu;
+        openTenantMenuId = null;
+    }
+
+    private void ToggleTenantMenu(int tenantId)
+    {
+        if (openTenantMenuId == tenantId)
+        {
+            openTenantMenuId = null;
+        }
+        else
+        {
+            openTenantMenuId = tenantId;
+            showActionsMenu = false;
+        }
+    }
+
+    private void CloseAllMenus()
+    {
+        showActionsMenu = false;
+        openTenantMenuId = null;
+    }
+
+    private void NavigateToEditProperty()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/edit");
+    }
+
+    private void NavigateToAddTenant()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/add");
+    }
+
+    private void ConfirmArchiveProperty()
+    {
+        showArchiveConfirmation = true;
+    }
+
+    private void CancelArchiveProperty()
+    {
+        showArchiveConfirmation = false;
+    }
+
+    private async Task ArchiveProperty()
+    {
+        try
+        {
+            var result = await PropertyService.DeleteProperty(PropertyId, currentUserCompanyId, currentUser);
+            if (result.ResponseInfo.Success)
+            {
+                ToastService.ShowSuccess("Property archived successfully");
+                NavigationManager.NavigateTo("/properties");
+            }
+            else
+            {
+                ToastService.ShowError(result.ResponseInfo.Message, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to archive property: {ex.Message}", "Error");
+        }
+        finally
+        {
+            showArchiveConfirmation = false;
+        }
+    }
+
+    private void ViewTenant(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}");
+    }
+
+    private void EditTenant(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/edit");
+    }
+
+    private void ScheduleInspection()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/inspections/schedule");
+    }
+
+    private void AddMaintenanceRequest()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/maintenance/create");
+    }
+
+    private void RecordPayment()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/payments/create");
+    }
+
+    private void RecordTenantPayment(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/payments/create");
+    }
+
+    private void SendReminder(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/reminder");
+    }
+
+    private void GenerateStatementForTenant(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/statement");
+    }
+
+    private void ExtendLease(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/extend-lease");
+    }
+
+    private void ViewTenantDocuments(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/documents");
+    }
+
+    private void EndTenancy(int tenantId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/end-tenancy");
+    }
+
+    private void ViewPayment(int paymentId)
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/payments/{paymentId}");
+    }
+
+    private async Task PrintReceipt(int paymentId)
+    {
+        // In a real implementation, this might generate a PDF and open it
+        ToastService.ShowInfo("Generating payment receipt...");
+        await Task.Delay(1000);
+        await JSRuntime.InvokeVoidAsync("alert", "Receipt printing functionality will be implemented in the next phase");
+    }
+
+    private async Task PrintProperty()
+    {
+        await JSRuntime.InvokeVoidAsync("print");
+    }
+
+    private void UploadPropertyImage()
+    {
+        NavigationManager.NavigateTo($"/property/{PropertyId}/gallery");
+    }
+
+    private async Task ShowMapView()
+    {
+        // This would typically open a map modal or navigate to a map page
+        // For now, we'll show a toast message
+        ToastService.ShowInfo("Map view will be implemented in the next phase");
+    }
+
+    // Helper methods
+    private string GetPropertyTypeName(int typeId)
+    {
+        return propertyTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "Unknown";
+    }
+
+    private string GetStatusName(int statusId)
+    {
+        return propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name ?? "Unknown";
+    }
+
+    private string GetStatusClass(int statusId)
+    {
+        var status = propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name?.ToLower();
+
+        return status switch
+        {
+            "active" => "pv-status-active",
+            "inactive" => "pv-status-inactive",
+            "under maintenance" => "pv-status-maintenance",
+            "rented" => "pv-status-rented",
+            "for sale" => "pv-status-sale",
+            _ => ""
+        };
+    }
+
+    private string GetFormattedAddress(Address address)
+    {
+        if (address == null) return "No address";
+
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(address.Street))
+            parts.Add(address.Street);
+
+        if (!string.IsNullOrEmpty(address.City))
+            parts.Add(address.City);
+
+        if (!string.IsNullOrEmpty(address.Province))
+            parts.Add(address.Province);
+
+        return string.Join(", ", parts);
+    }
+
+    private string GetCommissionTypeName(int commissionTypeId)
+    {
+        return commissionTypes.FirstOrDefault(c => c.Id == commissionTypeId)?.Name ?? "Unknown";
+    }
+
+    private string GetCommissionValueDisplay(int commissionTypeId, decimal value)
+    {
+        var commissionType = commissionTypes.FirstOrDefault(c => c.Id == commissionTypeId)?.Name?.ToLower();
+
+        return commissionType switch
+        {
+            "percentage" => $"{value}%",
+            "fixed" => $"R {value.ToString("N2")}",
+            _ => value.ToString("N2")
+        };
+    }
+
+    private string GetCommissionDisplay(int commissionTypeId, decimal value)
+    {
+        var commissionType = commissionTypes.FirstOrDefault(c => c.Id == commissionTypeId)?.Name;
+
+        if (string.IsNullOrEmpty(commissionType))
+            return "Not configured";
+
+        return commissionType.ToLower() switch
+        {
+            "percentage" => $"{value}% of rental",
+            "fixed" => $"R {value.ToString("N2")} fixed amount",
+            _ => $"{commissionType}: {value.ToString("N2")}"
+        };
+    }
+
+    private string GetPaymentStatusClass(int statusId)
+    {
+        // Example implementation - in a real app, this would map to your status types
+        return statusId switch
+        {
+            1 => "pending", // Assuming 1 is Pending
+            2 => "paid", // Assuming 2 is Paid
+            3 => "overdue", // Assuming 3 is Overdue
+            4 => "rejected", // Assuming 4 is Rejected
+            _ => "unknown"
+        };
+    }
+}

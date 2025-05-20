@@ -12,6 +12,7 @@
 @using Roovia.Security
 @using Roovia.Services
 @using Roovia.Services.General
+@using System.Security.Claims
 @inject IProperty PropertyService
 @inject IPropertyOwner PropertyOwnerService
 @inject IUser UserService
@@ -572,8 +573,7 @@
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.Identity?.Name;
-
+            var userId = authState.User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier)?.FirstOrDefault()?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
                 var userResult = await UserService.GetUserById(userId);

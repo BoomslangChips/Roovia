@@ -1,0 +1,1712 @@
+﻿@page "/property/{PropertyId:int}/edit"
+@attribute [Authorize(Policy = "PropertiesAccess")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessMappingModels
+@using Roovia.Security
+@using Roovia.Services
+@using Roovia.Services.General
+@using System.ComponentModel.DataAnnotations
+@inject IProperty PropertyService
+@inject IPropertyOwner PropertyOwnerService
+@inject IUser UserService
+@inject IPermissionService PermissionService
+@inject ICdnService CdnService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="@Assets["css/properties/EditProperty.css"]" />
+
+<div class="ep-page">
+    <!-- Header with gradient background and floating icon -->
+    @if (property != null)
+    {
+        <div class="ep-header-section">
+            <div class="ep-header-background">
+                <div class="ep-header-pattern"></div>
+            </div>
+            <div class="ep-header-content">
+                <div class="ep-breadcrumb">
+                    <a href="/dashboard" class="ep-breadcrumb-item">
+                        <i class="fa-light fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                    <i class="fa-light fa-chevron-right"></i>
+                    <a href="/properties" class="ep-breadcrumb-item">
+                        <i class="fa-light fa-buildings"></i>
+                        <span>Properties</span>
+                    </a>
+                    <i class="fa-light fa-chevron-right"></i>
+                    <a href="/property/@PropertyId" class="ep-breadcrumb-item">
+                        <i class="fa-light fa-building"></i>
+                        <span>@property.PropertyName</span>
+                    </a>
+                    <i class="fa-light fa-chevron-right"></i>
+                    <span class="ep-breadcrumb-current">Edit Property</span>
+                </div>
+
+                <!-- Property Header Content -->
+                <div class="ep-property-header">
+                    <div class="ep-property-picture-wrapper">
+                        @if (property.MainImage != null)
+                        {
+                            <img src="@property.MainImage.Url" alt="@property.PropertyName" class="ep-property-picture" />
+                        }
+                        else
+                        {
+                            <div class="ep-property-picture-placeholder">
+                                <i class="fa-light fa-building"></i>
+                            </div>
+                        }
+                        <button class="ep-property-upload-btn" @onclick="UploadPropertyImage">
+                            <i class="fa-light fa-camera"></i>
+                        </button>
+                    </div>
+
+                    <div class="ep-property-info-section">
+                        <h1 class="ep-property-title">@property.PropertyName</h1>
+                        <div class="ep-property-metadata">
+                            <span class="ep-meta-badge">
+                                <i class="fa-light fa-hashtag"></i>
+                                @property.PropertyCode
+                            </span>
+                            <span class="ep-meta-badge">
+                                <i class="fa-light fa-building-circle-check"></i>
+                                @GetPropertyTypeName(property.PropertyTypeId)
+                            </span>
+                            <span class="ep-meta-badge">
+                                <i class="fa-light fa-location-dot"></i>
+                                @GetFormattedAddress(property.Address)
+                            </span>
+                            <span class="ep-meta-badge">
+                                <i class="fa-light fa-envelope"></i>
+                                @(property.Owner?.PrimaryEmail ?? "No email")
+                            </span>
+                        </div>
+
+                        <div class="ep-property-status-badges">
+                            <span class="ep-status-badge @GetStatusClass(property.StatusId)">
+                                <i class="fa-light fa-circle-info"></i>
+                                @GetStatusName(property.StatusId)
+                            </span>
+
+                            @if (property.HasTenant)
+                            {
+                                <span class="ep-status-badge ep-badge-occupied">
+                                    <i class="fa-light fa-user-check"></i>
+                                    Occupied
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="ep-status-badge ep-badge-vacant">
+                                    <i class="fa-light fa-door-open"></i>
+                                    Vacant
+                                </span>
+                            }
+
+                            @if (!string.IsNullOrEmpty(property.ServiceLevel))
+                            {
+                                <span class="ep-status-badge ep-badge-service">
+                                    <i class="fa-light fa-star"></i>
+                                    @property.ServiceLevel
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="ep-property-stats-section">
+                        <div class="ep-stat-box">
+                            <div class="ep-stat-number">R @property.RentalAmount.ToString("N0")</div>
+                            <div class="ep-stat-text">Monthly Rental</div>
+                        </div>
+                        <div class="ep-stat-box">
+                            <div class="ep-stat-number">@(property.Tenants?.Count ?? 0)</div>
+                            <div class="ep-stat-text">Tenants</div>
+                        </div>
+                        <div class="ep-stat-box">
+                            <div class="ep-stat-number">@(property.Inspections?.Count ?? 0)</div>
+                            <div class="ep-stat-text">Inspections</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="ep-tab-navigation">
+            <div class="ep-tabs-container">
+                <button class="ep-tab @(activeTab == "basic" ? "active" : "")" @onclick='() => SetActiveTab("basic")'>
+                    <i class="fa-light fa-building"></i>
+                    <span>Basic Info</span>
+                </button>
+                <button class="ep-tab @(activeTab == "owner" ? "active" : "")" @onclick='() => SetActiveTab("owner")'>
+                    <i class="fa-light fa-user-tie"></i>
+                    <span>Owner</span>
+                </button>
+                <button class="ep-tab @(activeTab == "address" ? "active" : "")" @onclick='() => SetActiveTab("address")'>
+                    <i class="fa-light fa-map-marker-alt"></i>
+                    <span>Address</span>
+                </button>
+                <button class="ep-tab @(activeTab == "financial" ? "active" : "")" @onclick='() => SetActiveTab("financial")'>
+                    <i class="fa-light fa-money-bill-wave"></i>
+                    <span>Financial</span>
+                </button>
+                <button class="ep-tab @(activeTab == "tenants" ? "active" : "")" @onclick='() => SetActiveTab("tenants")'>
+                    <i class="fa-light fa-users"></i>
+                    <span>Tenants</span>
+                </button>
+                <button class="ep-tab @(activeTab == "documents" ? "active" : "")" @onclick='() => SetActiveTab("documents")'>
+                    <i class="fa-light fa-file-alt"></i>
+                    <span>Documents</span>
+                </button>
+                <button class="ep-tab @(activeTab == "notes" ? "active" : "")" @onclick='() => SetActiveTab("notes")'>
+                    <i class="fa-light fa-sticky-note"></i>
+                    <span>Notes</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="ep-main-container">
+            <div class="ep-tab-content @(isLoading ? "loading" : "")">
+                @if (isLoading)
+                {
+                    <div class="ep-loading-state">
+                        <div class="ep-loading-spinner"></div>
+                        <p>Loading property data...</p>
+                    </div>
+                }
+                else
+                {
+                    @switch (activeTab)
+                    {
+                        case "basic":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-building"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Basic Property Information</h2>
+                                        <p class="ep-section-description">Edit the essential details about your property</p>
+                                    </div>
+                                </div>
+
+                                <div class="ep-form-grid">
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Property Name</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-building"></i>
+                                            </span>
+                                            <input @bind="property.PropertyName"
+                                                   class="ep-input with-icon-left @(HasError("PropertyName") ? "ep-input-error" : "")"
+                                                   placeholder="Enter property name" />
+                                        </div>
+                                        @if (HasError("PropertyName"))
+                                        {
+                                            <div class="ep-error">@GetError("PropertyName")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Property Code</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-barcode"></i>
+                                            </span>
+                                            <input @bind="property.PropertyCode"
+                                                   class="ep-input with-icon-left @(HasError("PropertyCode") ? "ep-input-error" : "")"
+                                                   placeholder="Enter property code" />
+                                        </div>
+                                        @if (HasError("PropertyCode"))
+                                        {
+                                            <div class="ep-error">@GetError("PropertyCode")</div>
+                                        }
+                                        <small class="ep-helper-text">Unique identifier for this property</small>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Customer Reference</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-hashtag"></i>
+                                            </span>
+                                            <input @bind="property.CustomerRef"
+                                                   class="ep-input with-icon-left"
+                                                   placeholder="Optional customer reference" />
+                                        </div>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Property Type</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-house-building"></i>
+                                            </span>
+                                            <select @bind="property.PropertyTypeId"
+                                                    class="ep-select with-icon-left @(HasError("PropertyTypeId") ? "ep-input-error" : "")">
+                                                <option value="0">Select property type</option>
+                                                @foreach (var type in propertyTypes)
+                                                {
+                                                    <option value="@type.Id">@type.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        @if (HasError("PropertyTypeId"))
+                                        {
+                                            <div class="ep-error">@GetError("PropertyTypeId")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Property Status</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-circle-info"></i>
+                                            </span>
+                                            <select @bind="property.StatusId"
+                                                    class="ep-select with-icon-left @(HasError("StatusId") ? "ep-input-error" : "")">
+                                                <option value="0">Select status</option>
+                                                @foreach (var status in propertyStatusTypes)
+                                                {
+                                                    <option value="@status.Id">@status.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        @if (HasError("StatusId"))
+                                        {
+                                            <div class="ep-error">@GetError("StatusId")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Service Level</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-star"></i>
+                                            </span>
+                                            <select @bind="property.ServiceLevel" class="ep-select with-icon-left">
+                                                <option value="">Select service level</option>
+                                                <option value="Basic">Basic</option>
+                                                <option value="Standard">Standard</option>
+                                                <option value="Premium">Premium</option>
+                                                <option value="VIP">VIP</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Tags</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-tags"></i>
+                                            </span>
+                                            <input @bind="property.Tags"
+                                                   class="ep-input with-icon-left"
+                                                   placeholder="Comma-separated tags" />
+                                        </div>
+                                        <small class="ep-helper-text">Use tags to categorize properties (e.g., modern, renovated, pool)</small>
+                                    </div>
+
+                                    @if (branches.Any())
+                                    {
+                                        <div class="ep-form-group">
+                                            <label class="ep-label">Branch</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-code-branch"></i>
+                                                </span>
+                                                <select @bind="property.BranchId" class="ep-select with-icon-left">
+                                                    <option value="">Select branch</option>
+                                                    @foreach (var branch in branches)
+                                                    {
+                                                        <option value="@branch.Id">@branch.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            break;
+
+                        case "owner":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-user-tie"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Owner Information</h2>
+                                        <p class="ep-section-description">Select or update the property owner</p>
+                                    </div>
+                                </div>
+
+                                <div class="ep-owner-selector">
+                                    <div class="ep-radio-group">
+                                        <label class="ep-radio-label">
+                                            <input type="radio" name="ownerType" value="existing" checked="@(property.OwnerId.HasValue && property.OwnerId > 0)"
+                                                   @onchange="@(e => { isNewOwner = false; skipOwner = false; })" />
+                                            <span>Select Existing Owner</span>
+                                        </label>
+                                        <label class="ep-radio-label">
+                                            <input type="radio" name="ownerType" value="new" checked="@isNewOwner"
+                                                   @onchange="@(e => { isNewOwner = true; skipOwner = false; })" />
+                                            <span>Create New Owner</span>
+                                        </label>
+                                        <label class="ep-radio-label ep-radio-accent">
+                                            <input type="radio" name="ownerType" value="skip" checked="@skipOwner"
+                                                   @onchange="@(e => { skipOwner = true; isNewOwner = false; })" />
+                                            <span>No Owner</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                @if (!isNewOwner && !skipOwner)
+                                {
+                                    <div class="ep-form-grid">
+                                        <div class="ep-form-group ep-col-span-2">
+                                            <label class="ep-label required">Select Owner</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-user-tie"></i>
+                                                </span>
+                                                <select @bind="property.OwnerId"
+                                                        class="ep-select with-icon-left @(HasError("OwnerId") ? "ep-input-error" : "")">
+                                                    <option value="">Select owner</option>
+                                                    @foreach (var owner in propertyOwners)
+                                                    {
+                                                        <option value="@owner.Id">@owner.DisplayName</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            @if (HasError("OwnerId"))
+                                            {
+                                                <div class="ep-error">@GetError("OwnerId")</div>
+                                            }
+                                        </div>
+
+                                        @if (selectedOwner != null)
+                                        {
+                                            <div class="ep-owner-details">
+                                                <div class="ep-owner-info">
+                                                    <h3 class="ep-owner-name">@selectedOwner.DisplayName</h3>
+                                                    <p class="ep-owner-contact">
+                                                        <i class="fa-light fa-envelope"></i> @selectedOwner.PrimaryEmail
+                                                    </p>
+                                                    <p class="ep-owner-contact">
+                                                        <i class="fa-light fa-phone"></i> @selectedOwner.PrimaryContactNumber
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else if (isNewOwner && !skipOwner)
+                                {
+                                    <div class="ep-form-grid">
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Owner Type</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-id-card"></i>
+                                                </span>
+                                                <select @bind="ownerModel.PropertyOwnerTypeId"
+                                                        @bind:after="OwnerTypeChanged"
+                                                        class="ep-select with-icon-left @(HasError("OwnerType") ? "ep-input-error" : "")">
+                                                    <option value="0">Select owner type</option>
+                                                    @foreach (var type in ownerTypes)
+                                                    {
+                                                        <option value="@type.Id">@type.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            @if (HasError("OwnerType"))
+                                            {
+                                                <div class="ep-error">@GetError("OwnerType")</div>
+                                            }
+                                        </div>
+
+                                        <!-- Individual owner fields -->
+                                        @if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+                                        {
+                                            <div class="ep-form-group">
+                                                <label class="ep-label required">First Name</label>
+                                                <div class="ep-input-wrapper">
+                                                    <span class="ep-input-icon-left">
+                                                        <i class="fa-light fa-user"></i>
+                                                    </span>
+                                                    <input @bind="ownerModel.FirstName"
+                                                           class="ep-input with-icon-left @(HasError("FirstName") ? "ep-input-error" : "")"
+                                                           placeholder="Enter first name" />
+                                                </div>
+                                                @if (HasError("FirstName"))
+                                                {
+                                                    <div class="ep-error">@GetError("FirstName")</div>
+                                                }
+                                            </div>
+
+                                            <div class="ep-form-group">
+                                                <label class="ep-label required">Last Name</label>
+                                                <div class="ep-input-wrapper">
+                                                    <span class="ep-input-icon-left">
+                                                        <i class="fa-light fa-user"></i>
+                                                    </span>
+                                                    <input @bind="ownerModel.LastName"
+                                                           class="ep-input with-icon-left @(HasError("LastName") ? "ep-input-error" : "")"
+                                                           placeholder="Enter last name" />
+                                                </div>
+                                                @if (HasError("LastName"))
+                                                {
+                                                    <div class="ep-error">@GetError("LastName")</div>
+                                                }
+                                            </div>
+                                        }
+                                        else if (ownerModel.PropertyOwnerTypeId > 1) // Company, Trust, etc.
+                                        {
+                                            <div class="ep-form-group ep-col-span-2">
+                                                <label class="ep-label required">Company/Organization Name</label>
+                                                <div class="ep-input-wrapper">
+                                                    <span class="ep-input-icon-left">
+                                                        <i class="fa-light fa-building"></i>
+                                                    </span>
+                                                    <input @bind="ownerModel.CompanyName"
+                                                           class="ep-input with-icon-left @(HasError("CompanyName") ? "ep-input-error" : "")"
+                                                           placeholder="Enter company name" />
+                                                </div>
+                                                @if (HasError("CompanyName"))
+                                                {
+                                                    <div class="ep-error">@GetError("CompanyName")</div>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Email Address</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-envelope"></i>
+                                                </span>
+                                                <input @bind="ownerEmail"
+                                                       class="ep-input with-icon-left @(HasError("OwnerEmail") ? "ep-input-error" : "")"
+                                                       placeholder="Enter email address" />
+                                            </div>
+                                            @if (HasError("OwnerEmail"))
+                                            {
+                                                <div class="ep-error">@GetError("OwnerEmail")</div>
+                                            }
+                                        </div>
+
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Phone Number</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-phone"></i>
+                                                </span>
+                                                <input @bind="ownerPhone"
+                                                       class="ep-input with-icon-left @(HasError("OwnerPhone") ? "ep-input-error" : "")"
+                                                       placeholder="Enter phone number" />
+                                            </div>
+                                            @if (HasError("OwnerPhone"))
+                                            {
+                                                <div class="ep-error">@GetError("OwnerPhone")</div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="ep-skip-section">
+                                        <div class="ep-skip-info">
+                                            <i class="fa-light fa-info-circle"></i>
+                                            <p>You've chosen to have no owner associated with this property. You can add an owner later if needed.</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            break;
+
+                        case "address":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-map-marker-alt"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Property Address</h2>
+                                        <p class="ep-section-description">Update the physical location of the property</p>
+                                    </div>
+                                </div>
+
+                                <div class="ep-form-grid">
+                                    <div class="ep-form-group ep-col-span-2">
+                                        <label class="ep-label required">Street Address</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-road"></i>
+                                            </span>
+                                            <input @bind="property.Address.Street"
+                                                   class="ep-input with-icon-left @(HasError("Street") ? "ep-input-error" : "")"
+                                                   placeholder="Enter street address" />
+                                        </div>
+                                        @if (HasError("Street"))
+                                        {
+                                            <div class="ep-error">@GetError("Street")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Unit Number</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-door-closed"></i>
+                                            </span>
+                                            <input @bind="property.Address.UnitNumber" class="ep-input with-icon-left"
+                                                   placeholder="Apartment or unit number" />
+                                        </div>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Complex Name</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-buildings"></i>
+                                            </span>
+                                            <input @bind="property.Address.ComplexName" class="ep-input with-icon-left"
+                                                   placeholder="Enter complex name" />
+                                        </div>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">City</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-city"></i>
+                                            </span>
+                                            <input @bind="property.Address.City"
+                                                   class="ep-input with-icon-left @(HasError("City") ? "ep-input-error" : "")"
+                                                   placeholder="Enter city" />
+                                        </div>
+                                        @if (HasError("City"))
+                                        {
+                                            <div class="ep-error">@GetError("City")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label">Suburb</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-house-building"></i>
+                                            </span>
+                                            <input @bind="property.Address.Suburb" class="ep-input with-icon-left"
+                                                   placeholder="Enter suburb" />
+                                        </div>
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Province</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-map"></i>
+                                            </span>
+                                            <input @bind="property.Address.Province"
+                                                   class="ep-input with-icon-left @(HasError("Province") ? "ep-input-error" : "")"
+                                                   placeholder="Enter province/state" />
+                                        </div>
+                                        @if (HasError("Province"))
+                                        {
+                                            <div class="ep-error">@GetError("Province")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Postal Code</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-mailbox"></i>
+                                            </span>
+                                            <input @bind="property.Address.PostalCode"
+                                                   class="ep-input with-icon-left @(HasError("PostalCode") ? "ep-input-error" : "")"
+                                                   placeholder="Enter postal code" />
+                                        </div>
+                                        @if (HasError("PostalCode"))
+                                        {
+                                            <div class="ep-error">@GetError("PostalCode")</div>
+                                        }
+                                    </div>
+
+                                    <div class="ep-form-group">
+                                        <label class="ep-label required">Country</label>
+                                        <div class="ep-input-wrapper">
+                                            <span class="ep-input-icon-left">
+                                                <i class="fa-light fa-globe"></i>
+                                            </span>
+                                            <input @bind="property.Address.Country"
+                                                   class="ep-input with-icon-left @(HasError("Country") ? "ep-input-error" : "")"
+                                                   placeholder="Enter country" />
+                                        </div>
+                                        @if (HasError("Country"))
+                                        {
+                                            <div class="ep-error">@GetError("Country")</div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="ep-checkbox-group">
+                                    <label class="ep-checkbox-label">
+                                        <input type="checkbox" @bind="property.Address.IsResidential" class="ep-checkbox" />
+                                        <span>This is a residential property</span>
+                                    </label>
+                                </div>
+
+                                <div class="ep-form-group ep-mt-6">
+                                    <label class="ep-label">Delivery Instructions</label>
+                                    <div class="ep-input-wrapper">
+                                        <textarea @bind="property.Address.DeliveryInstructions"
+                                                  class="ep-textarea"
+                                                  placeholder="Special delivery or access instructions..."
+                                                  rows="3"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            break;
+
+                        case "financial":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-money-bill-wave"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Financial Details</h2>
+                                        <p class="ep-section-description">Update rental and commission information</p>
+                                    </div>
+                                </div>
+
+                                <div class="ep-subsection">
+                                    <h3 class="ep-subsection-title">
+                                        <i class="fa-light fa-coins"></i>
+                                        Rental Information
+                                    </h3>
+                                    <div class="ep-form-grid">
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Monthly Rental Amount</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-rand-sign"></i>
+                                                </span>
+                                                <input type="number" @bind="property.RentalAmount"
+                                                       class="ep-input with-icon-left @(HasError("RentalAmount") ? "ep-input-error" : "")"
+                                                       placeholder="Enter monthly rent" step="0.01" />
+                                            </div>
+                                            @if (HasError("RentalAmount"))
+                                            {
+                                                <div class="ep-error">@GetError("RentalAmount")</div>
+                                            }
+                                        </div>
+
+                                        <div class="ep-form-group">
+                                            <label class="ep-label">Property Account Balance</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-rand-sign"></i>
+                                                </span>
+                                                <input type="number" @bind="property.PropertyAccountBalance"
+                                                       class="ep-input with-icon-left"
+                                                       placeholder="Current balance" step="0.01" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ep-divider"></div>
+
+                                <div class="ep-subsection">
+                                    <h3 class="ep-subsection-title">
+                                        <i class="fa-light fa-percent"></i>
+                                        Commission Settings
+                                    </h3>
+
+                                    <div class="ep-form-grid">
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Commission Type</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-tag"></i>
+                                                </span>
+                                                <select @bind="property.CommissionTypeId"
+                                                        class="ep-select with-icon-left @(HasError("CommissionTypeId") ? "ep-input-error" : "")">
+                                                    <option value="0">Select commission type</option>
+                                                    @foreach (var type in commissionTypes)
+                                                    {
+                                                        <option value="@type.Id">@type.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            @if (HasError("CommissionTypeId"))
+                                            {
+                                                <div class="ep-error">@GetError("CommissionTypeId")</div>
+                                            }
+                                        </div>
+
+                                        <div class="ep-form-group">
+                                            <label class="ep-label required">Commission Value</label>
+                                            <div class="ep-input-wrapper">
+                                                <span class="ep-input-icon-left">
+                                                    <i class="fa-light fa-percent"></i>
+                                                </span>
+                                                <input type="number" @bind="property.CommissionValue"
+                                                       class="ep-input with-icon-left @(HasError("CommissionValue") ? "ep-input-error" : "")"
+                                                       placeholder="Enter commission value" step="0.01" />
+                                            </div>
+                                            @if (HasError("CommissionValue"))
+                                            {
+                                                <div class="ep-error">@GetError("CommissionValue")</div>
+                                            }
+                                            <small class="ep-helper-text">Value is a percentage or fixed amount based on commission type</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ep-divider"></div>
+
+                                <div class="ep-subsection">
+                                    <h3 class="ep-subsection-title">
+                                        <i class="fa-light fa-credit-card"></i>
+                                        Payment Settings
+                                    </h3>
+                                    <div class="ep-checkbox-group">
+                                        <label class="ep-checkbox-label">
+                                            <input type="checkbox" @bind="property.PaymentsEnabled" class="ep-checkbox" />
+                                            <span>Enable payments for this property</span>
+                                        </label>
+                                    </div>
+                                    <div class="ep-checkbox-group">
+                                        <label class="ep-checkbox-label">
+                                            <input type="checkbox" @bind="property.PaymentsVerify" class="ep-checkbox" />
+                                            <span>Verify payments before processing</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            break;
+
+                        case "tenants":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-users"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Tenants</h2>
+                                        <p class="ep-section-description">Manage tenants for this property</p>
+                                    </div>
+                                    <div class="ep-header-actions">
+                                        <button class="ep-btn ep-btn-primary" @onclick="NavigateToAddTenant">
+                                            <i class="fa-light fa-user-plus"></i>
+                                            Add Tenant
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (property.Tenants == null || !property.Tenants.Any())
+                                {
+                                    <div class="ep-empty-state">
+                                        <div class="ep-empty-icon">
+                                            <i class="fa-light fa-users"></i>
+                                        </div>
+                                        <h3 class="ep-empty-title">No Tenants Found</h3>
+                                        <p class="ep-empty-description">This property doesn't have any tenants yet. Add a tenant to manage leases and payments.</p>
+                                        <button class="ep-btn ep-btn-primary" @onclick="NavigateToAddTenant">
+                                            <i class="fa-light fa-user-plus"></i>
+                                            Add First Tenant
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="ep-tenant-list">
+                                        @foreach (var tenant in property.Tenants)
+                                        {
+                                            <div class="ep-tenant-card">
+                                                <div class="ep-tenant-header">
+                                                    <div class="ep-tenant-avatar">
+                                                        <i class="fa-light fa-user"></i>
+                                                    </div>
+                                                    <div class="ep-tenant-info">
+                                                        <h3 class="ep-tenant-name">@tenant.DisplayName</h3>
+                                                        <div class="ep-tenant-contact">
+                                                            <span><i class="fa-light fa-envelope"></i> @tenant.PrimaryEmail</span>
+                                                            <span><i class="fa-light fa-phone"></i> @tenant.PrimaryContactNumber</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="ep-tenant-status">
+                                                        <span class="ep-status-badge @(tenant.IsLeaseActive ? "ep-badge-active" : "ep-badge-inactive")">
+                                                            @(tenant.IsLeaseActive ? "Active" : "Inactive")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="ep-tenant-details">
+                                                    <div class="ep-detail-item">
+                                                        <span class="ep-detail-label">Lease Period:</span>
+                                                        <span class="ep-detail-value">@tenant.LeaseStartDate.ToString("d") - @tenant.LeaseEndDate.ToString("d")</span>
+                                                    </div>
+                                                    <div class="ep-detail-item">
+                                                        <span class="ep-detail-label">Monthly Rent:</span>
+                                                        <span class="ep-detail-value">R @tenant.RentAmount.ToString("N2")</span>
+                                                    </div>
+                                                    @if (tenant.DepositAmount.HasValue)
+                                                    {
+                                                        <div class="ep-detail-item">
+                                                            <span class="ep-detail-label">Deposit:</span>
+                                                            <span class="ep-detail-value">R @tenant.DepositAmount.Value.ToString("N2")</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div class="ep-tenant-actions">
+                                                    <button class="ep-btn ep-btn-sm ep-btn-outline" @onclick="() => ViewTenant(tenant.Id)">
+                                                        <i class="fa-light fa-eye"></i> View
+                                                    </button>
+                                                    <button class="ep-btn ep-btn-sm ep-btn-primary" @onclick="() => EditTenant(tenant.Id)">
+                                                        <i class="fa-light fa-edit"></i> Edit
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            break;
+
+                        case "documents":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-file-alt"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Documents</h2>
+                                        <p class="ep-section-description">Manage documents attached to this property</p>
+                                    </div>
+                                    <div class="ep-header-actions">
+                                        <button class="ep-btn ep-btn-primary" @onclick="UploadDocument">
+                                            <i class="fa-light fa-file-upload"></i>
+                                            Upload Document
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (property.Documents == null || !property.Documents.Any())
+                                {
+                                    <div class="ep-empty-state">
+                                        <div class="ep-empty-icon">
+                                            <i class="fa-light fa-folder-open"></i>
+                                        </div>
+                                        <h3 class="ep-empty-title">No Documents Found</h3>
+                                        <p class="ep-empty-description">This property doesn't have any documents attached yet. Upload documents like contracts, inspections, or photos.</p>
+                                        <button class="ep-btn ep-btn-primary" @onclick="UploadDocument">
+                                            <i class="fa-light fa-file-upload"></i>
+                                            Upload First Document
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="ep-document-list">
+                                        <div class="ep-document-grid">
+                                            @foreach (var doc in property.Documents)
+                                            {
+                                                <div class="ep-document-card">
+                                                    <div class="ep-document-icon">
+                                                        <i class="fa-light fa-file-alt"></i>
+                                                    </div>
+                                                    <div class="ep-document-info">
+                                                        <h4>@doc.DocumentType?.Name</h4>
+                                                        <p class="ep-document-date">
+                                                            <i class="fa-light fa-calendar"></i>
+                                                            @doc.CreatedOn.ToString("d")
+                                                        </p>
+                                                    </div>
+                                                    <div class="ep-document-actions">
+                                                        <button class="ep-btn ep-btn-sm ep-btn-outline" @onclick="() => ViewDocument(doc.Id)">
+                                                            <i class="fa-light fa-eye"></i>
+                                                        </button>
+                                                        <button class="ep-btn ep-btn-sm ep-btn-danger" @onclick="() => DeleteDocument(doc.Id)">
+                                                            <i class="fa-light fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            break;
+
+                        case "notes":
+                            <div class="ep-section-card">
+                                <div class="ep-section-header">
+                                    <div class="ep-section-icon">
+                                        <i class="fa-light fa-sticky-note"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="ep-section-title">Notes</h2>
+                                        <p class="ep-section-description">Manage notes and reminders for this property</p>
+                                    </div>
+                                    <div class="ep-header-actions">
+                                        <button class="ep-btn ep-btn-primary" @onclick="AddNote">
+                                            <i class="fa-light fa-plus"></i>
+                                            Add Note
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (property.Notes == null || !property.Notes.Any())
+                                {
+                                    <div class="ep-empty-state">
+                                        <div class="ep-empty-icon">
+                                            <i class="fa-light fa-sticky-note"></i>
+                                        </div>
+                                        <h3 class="ep-empty-title">No Notes Found</h3>
+                                        <p class="ep-empty-description">This property doesn't have any notes yet. Add notes to keep track of important information.</p>
+                                        <button class="ep-btn ep-btn-primary" @onclick="AddNote">
+                                            <i class="fa-light fa-plus"></i>
+                                            Add First Note
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="ep-note-list">
+                                        @foreach (var note in property.Notes.OrderByDescending(n => n.CreatedOn))
+                                        {
+                                            <div class="ep-note-card">
+                                                <div class="ep-note-header">
+                                                    <h3 class="ep-note-title">@note.Title</h3>
+                                                    <div class="ep-note-meta">
+                                                        <span class="ep-note-date">
+                                                            <i class="fa-light fa-calendar"></i>
+                                                            @note.CreatedOn.ToString("d")
+                                                        </span>
+                                                        <span class="ep-note-author">
+                                                            <i class="fa-light fa-user"></i>
+                                                            @note.CreatedBy
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="ep-note-content">
+                                                    @note.Content
+                                                </div>
+                                                <div class="ep-note-actions">
+                                                    <button class="ep-btn ep-btn-sm ep-btn-outline" @onclick="() => EditNote(note.Id)">
+                                                        <i class="fa-light fa-edit"></i>
+                                                    </button>
+                                                    <button class="ep-btn ep-btn-sm ep-btn-danger" @onclick="() => DeleteNote(note.Id)">
+                                                        <i class="fa-light fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            break;
+                    }
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="ep-alert ep-alert-danger">
+                            <i class="fa-light fa-exclamation-circle"></i>
+                            <span>@errorMessage</span>
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="ep-form-actions">
+                <div class="ep-action-left">
+                    <button type="button"
+                            class="ep-btn ep-btn-outline"
+                            @onclick='() => NavigationManager.NavigateTo($"/property/{PropertyId}")'>
+                        <i class="fa-light fa-times"></i>
+                        Cancel
+                    </button>
+                </div>
+                <div class="ep-action-right">
+                    <button type="button"
+                            class="ep-btn ep-btn-primary"
+                            disabled="@isSubmitting"
+                            @onclick="SaveProperty">
+                        @if (isSubmitting)
+                        {
+                            <div class="ep-spinner-small"></div>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <i class="fa-light fa-save"></i>
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="ep-error-container">
+            <div class="ep-error-icon">
+                <i class="fa-light fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="ep-error-title">Property Not Found</h3>
+            <p class="ep-error-message">The property you're looking for doesn't exist or you don't have permission to view it.</p>
+            <button class="ep-btn ep-btn-primary" @onclick='() => NavigationManager.NavigateTo("/properties")'>
+                <i class="fa-light fa-arrow-left"></i>
+                <span>Back to Properties</span>
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Success Modal -->
+@if (showSuccessModal)
+{
+    <div class="ep-modal-overlay">
+        <div class="ep-modal ep-modal-success">
+            <div class="ep-modal-icon-container">
+                <div class="ep-modal-icon">
+                    <i class="fa-light fa-check"></i>
+                </div>
+            </div>
+            <h2 class="ep-modal-title">Property Updated Successfully!</h2>
+            <p class="ep-modal-message">Your property has been updated successfully.</p>
+
+            <div class="ep-modal-actions">
+                <button class="ep-btn ep-btn-secondary" @onclick='() => NavigationManager.NavigateTo("/properties")'>
+                    <i class="fa-light fa-list"></i>
+                    View All Properties
+                </button>
+
+                <button class="ep-btn ep-btn-primary" @onclick='() => NavigationManager.NavigateTo($"/property/{PropertyId}")'>
+                    <i class="fa-light fa-building"></i>
+                    View Property Details
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PropertyId { get; set; }
+
+    // State
+    private Property property;
+    private string activeTab = "basic";
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool showSuccessModal = false;
+    private string errorMessage;
+    private Dictionary<string, string> validationErrors = new();
+
+    // Owner state
+    private bool isNewOwner = false;
+    private bool skipOwner = false;
+    private PropertyOwnerModel ownerModel = new();
+    private string ownerEmail = "";
+    private string ownerPhone = "";
+
+    // User and context
+    private ApplicationUser currentUser;
+    private int currentUserCompanyId;
+
+    // Reference data
+    private List<PropertyOwner> propertyOwners = new();
+    private PropertyOwner selectedOwner => property?.OwnerId.HasValue == true ?
+        propertyOwners.FirstOrDefault(o => o.Id == property.OwnerId) : null;
+    private List<PropertyStatusType> propertyStatusTypes = new();
+    private List<PropertyType> propertyTypes = new();
+    private List<CommissionType> commissionTypes = new();
+    private List<PropertyOwnerType> ownerTypes = new();
+    private List<Branch> branches = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadReferenceData();
+        await LoadProperty();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var userResult = await UserService.GetUserById(userId);
+                if (userResult.ResponseInfo.Success)
+                {
+                    currentUser = userResult.Response as ApplicationUser;
+                    currentUserCompanyId = currentUser?.CompanyId ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadReferenceData()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Load property status types
+            propertyStatusTypes = await context.PropertyStatusTypes
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.DisplayOrder)
+                .ToListAsync();
+
+            // Load property types
+            propertyTypes = await context.PropertyTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load commission types
+            commissionTypes = await context.CommissionTypes
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.DisplayOrder)
+                .ToListAsync();
+
+            // Load property owner types
+            ownerTypes = await context.PropertyOwnerTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load property owners for current company
+            if (currentUserCompanyId > 0)
+            {
+                var ownerResult = await PropertyOwnerService.GetAllPropertyOwners(currentUserCompanyId);
+                if (ownerResult.ResponseInfo.Success)
+                {
+                    propertyOwners = ownerResult.Response as List<PropertyOwner> ?? new();
+                }
+
+                // Load branches for current company
+                branches = await context.Branches
+                    .Where(b => b.CompanyId == currentUserCompanyId && b.IsActive)
+                    .OrderBy(b => b.Name)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load reference data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadProperty()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await PropertyService.GetPropertyById(PropertyId, currentUser.CompanyId.GetValueOrDefault());
+            if (result.ResponseInfo.Success)
+            {
+                property = result.Response as Property;
+
+                // Set default values for tabs without data
+                if (property.OwnerId == null || property.OwnerId <= 0)
+                {
+                    skipOwner = true;
+                }
+
+                // Initialize owner email and phone if owner exists
+                if (property.Owner != null && !skipOwner)
+                {
+                    ownerEmail = property.Owner.PrimaryEmail;
+                    ownerPhone = property.Owner.PrimaryContactNumber;
+                }
+            }
+            else
+            {
+                errorMessage = result.ResponseInfo.Message;
+                ToastService.ShowError(errorMessage, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load property: {ex.Message}";
+            ToastService.ShowError(errorMessage, "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private void OwnerTypeChanged()
+    {
+        // Clear fields when owner type changes
+        if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+        {
+            ownerModel.CompanyName = null;
+        }
+        else // Company, Trust, etc.
+        {
+            ownerModel.FirstName = null;
+            ownerModel.LastName = null;
+        }
+    }
+
+    private async Task SaveProperty()
+    {
+        try
+        {
+            isSubmitting = true;
+            errorMessage = null;
+            validationErrors.Clear();
+
+            // Validate current tab
+            if (!await ValidateCurrentTab())
+            {
+                isSubmitting = false;
+                return;
+            }
+
+            // Handle owner creation if needed
+            if (!skipOwner && isNewOwner)
+            {
+                // Create PropertyOwner entity
+                var newOwner = new PropertyOwner
+                    {
+                        CompanyId = currentUserCompanyId,
+                        PropertyOwnerTypeId = ownerModel.PropertyOwnerTypeId,
+                        StatusId = 1, // Assuming 1 is Active
+                    // Individual fields
+                        FirstName = ownerModel.FirstName,
+                        LastName = ownerModel.LastName,
+                    // Company fields
+                        CompanyName = ownerModel.CompanyName,
+                    // Common
+                        CreatedBy = currentUser.UserName,
+                        CreatedOn = DateTime.Now,
+                        IsRemoved = false
+                    };
+
+                // Create owner in the database
+                var ownerResult = await PropertyOwnerService.CreatePropertyOwner(newOwner);
+                if (!ownerResult.ResponseInfo.Success)
+                {
+                    errorMessage = $"Failed to create property owner: {ownerResult.ResponseInfo.Message}";
+                    ToastService.ShowError(errorMessage);
+                    isSubmitting = false;
+                    return;
+                }
+
+                // Get the new owner ID
+                newOwner = ownerResult.Response as PropertyOwner;
+                property.OwnerId = newOwner.Id;
+
+                // Add email and contact number
+                if (!string.IsNullOrEmpty(ownerEmail))
+                {
+                    var email = new Email
+                        {
+                            EmailAddress = ownerEmail,
+                            IsPrimary = true,
+                            RelatedEntityType = "PropertyOwner",
+                            RelatedEntityId = newOwner.Id,
+                            CreatedBy = currentUser.Id,
+                            CreatedOn = DateTime.Now
+                        };
+                    await PropertyOwnerService.AddEmailAddress(newOwner.Id, email);
+                }
+
+                if (!string.IsNullOrEmpty(ownerPhone))
+                {
+                    var phone = new ContactNumber
+                        {
+                            Number = ownerPhone,
+                            IsPrimary = true,
+                            ContactNumberTypeId = 1, // Assuming 1 is Mobile
+                            RelatedEntityType = "PropertyOwner",
+                            RelatedEntityId = newOwner.Id,
+                            CreatedBy = currentUser.Id,
+                            CreatedOn = DateTime.Now
+                        };
+                    await PropertyOwnerService.AddContactNumber(newOwner.Id, phone);
+                }
+            }
+            else if (skipOwner)
+            {
+                property.OwnerId = null;
+            }
+
+            // Update property
+            property.UpdatedBy = currentUser.Id;
+            property.UpdatedDate = DateTime.Now;
+
+            var propertyResult = await PropertyService.UpdateProperty(property.Id, property, currentUser.CompanyId.GetValueOrDefault());
+            if (!propertyResult.ResponseInfo.Success)
+            {
+                errorMessage = $"Failed to update property: {propertyResult.ResponseInfo.Message}";
+                ToastService.ShowError(errorMessage);
+                isSubmitting = false;
+                return;
+            }
+
+            // Show success modal
+            showSuccessModal = true;
+            ToastService.ShowSuccess($"Property '{property.PropertyName}' updated successfully", "Success");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating property: {ex.Message}";
+            ToastService.ShowError(errorMessage, "Error");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task<bool> ValidateCurrentTab()
+    {
+        bool isValid = true;
+
+        switch (activeTab)
+        {
+            case "basic":
+                if (string.IsNullOrWhiteSpace(property.PropertyName))
+                {
+                    validationErrors["PropertyName"] = "Property name is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(property.PropertyCode))
+                {
+                    validationErrors["PropertyCode"] = "Property code is required";
+                    isValid = false;
+                }
+
+                if (property.PropertyTypeId <= 0)
+                {
+                    validationErrors["PropertyTypeId"] = "Property type is required";
+                    isValid = false;
+                }
+
+                if (property.StatusId <= 0)
+                {
+                    validationErrors["StatusId"] = "Property status is required";
+                    isValid = false;
+                }
+
+                // Check for duplicate property code if all other validations pass
+                if (isValid && property.PropertyCode != null)
+                {
+                    using (var context = await DbContextFactory.CreateDbContextAsync())
+                    {
+                        var duplicateCode = await context.Properties
+                            .AnyAsync(p => p.PropertyCode == property.PropertyCode && p.Id != property.Id && !p.IsRemoved);
+
+                        if (duplicateCode)
+                        {
+                            validationErrors["PropertyCode"] = "A property with this code already exists";
+                            isValid = false;
+                        }
+                    }
+                }
+                break;
+
+            case "owner":
+                if (!skipOwner)
+                {
+                    if (isNewOwner)
+                    {
+                        // Validate new owner
+                        if (ownerModel.PropertyOwnerTypeId <= 0)
+                        {
+                            validationErrors["OwnerType"] = "Owner type is required";
+                            isValid = false;
+                        }
+
+                        if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+                        {
+                            if (string.IsNullOrWhiteSpace(ownerModel.FirstName))
+                            {
+                                validationErrors["FirstName"] = "First name is required";
+                                isValid = false;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(ownerModel.LastName))
+                            {
+                                validationErrors["LastName"] = "Last name is required";
+                                isValid = false;
+                            }
+                        }
+                        else if (ownerModel.PropertyOwnerTypeId > 1) // Company, Trust, etc.
+                        {
+                            if (string.IsNullOrWhiteSpace(ownerModel.CompanyName))
+                            {
+                                validationErrors["CompanyName"] = "Company name is required";
+                                isValid = false;
+                            }
+                        }
+
+                        // Validate email
+                        if (string.IsNullOrWhiteSpace(ownerEmail))
+                        {
+                            validationErrors["OwnerEmail"] = "Email address is required";
+                            isValid = false;
+                        }
+                        else if (!System.Text.RegularExpressions.Regex.IsMatch(ownerEmail,
+                                @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                        {
+                            validationErrors["OwnerEmail"] = "Please enter a valid email address";
+                            isValid = false;
+                        }
+
+                        // Validate phone
+                        if (string.IsNullOrWhiteSpace(ownerPhone))
+                        {
+                            validationErrors["OwnerPhone"] = "Phone number is required";
+                            isValid = false;
+                        }
+                    }
+                    else
+                    {
+                        // Validate existing owner selection
+                        if (!property.OwnerId.HasValue || property.OwnerId <= 0)
+                        {
+                            validationErrors["OwnerId"] = "Please select a property owner";
+                            isValid = false;
+                        }
+                    }
+                }
+                break;
+
+            case "address":
+                if (string.IsNullOrWhiteSpace(property.Address.Street))
+                {
+                    validationErrors["Street"] = "Street address is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(property.Address.City))
+                {
+                    validationErrors["City"] = "City is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(property.Address.Province))
+                {
+                    validationErrors["Province"] = "Province is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(property.Address.PostalCode))
+                {
+                    validationErrors["PostalCode"] = "Postal code is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(property.Address.Country))
+                {
+                    validationErrors["Country"] = "Country is required";
+                    isValid = false;
+                }
+                break;
+
+            case "financial":
+                if (property.RentalAmount <= 0)
+                {
+                    validationErrors["RentalAmount"] = "Rental amount must be greater than zero";
+                    isValid = false;
+                }
+
+                if (property.CommissionTypeId <= 0)
+                {
+                    validationErrors["CommissionTypeId"] = "Commission type is required";
+                    isValid = false;
+                }
+
+                if (property.CommissionValue <= 0)
+                {
+                    validationErrors["CommissionValue"] = "Commission value must be greater than zero";
+                    isValid = false;
+                }
+                break;
+        }
+
+        if (!isValid)
+        {
+            ToastService.ShowWarning("Please correct the errors before saving.", "Validation Error");
+        }
+
+        return isValid;
+    }
+
+    private void UploadPropertyImage()
+    {
+        // Navigate to image upload page
+        NavigationManager.NavigateTo($"/property/{PropertyId}/gallery");
+    }
+
+    private void NavigateToAddTenant()
+    {
+        // Navigate to add tenant page
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/add");
+    }
+
+    private void ViewTenant(int tenantId)
+    {
+        // Navigate to tenant details
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}");
+    }
+
+    private void EditTenant(int tenantId)
+    {
+        // Navigate to edit tenant
+        NavigationManager.NavigateTo($"/property/{PropertyId}/tenants/{tenantId}/edit");
+    }
+
+    private void UploadDocument()
+    {
+        // Navigate to document upload
+        NavigationManager.NavigateTo($"/property/{PropertyId}/documents/upload");
+    }
+
+    private void ViewDocument(int documentId)
+    {
+        // Navigate to document viewer
+        NavigationManager.NavigateTo($"/property/{PropertyId}/documents/{documentId}");
+    }
+
+    private async Task DeleteDocument(int documentId)
+    {
+        // Delete document implementation
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this document?");
+        if (confirmed)
+        {
+            // Delete implementation would go here
+            ToastService.ShowInfo("Document deleted successfully");
+            await LoadProperty();
+        }
+    }
+
+    private void AddNote()
+    {
+        // Navigate to add note page
+        NavigationManager.NavigateTo($"/property/{PropertyId}/notes/add");
+    }
+
+    private void EditNote(int noteId)
+    {
+        // Navigate to edit note
+        NavigationManager.NavigateTo($"/property/{PropertyId}/notes/{noteId}/edit");
+    }
+
+    private async Task DeleteNote(int noteId)
+    {
+        // Delete note implementation
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this note?");
+        if (confirmed)
+        {
+            // Delete implementation would go here
+            ToastService.ShowInfo("Note deleted successfully");
+            await LoadProperty();
+        }
+    }
+
+    // Helper methods
+    private bool HasError(string fieldName)
+    {
+        return validationErrors.ContainsKey(fieldName);
+    }
+
+    private string GetError(string fieldName)
+    {
+        return validationErrors.ContainsKey(fieldName) ? validationErrors[fieldName] : "";
+    }
+
+    private string GetPropertyTypeName(int typeId)
+    {
+        return propertyTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "Unknown";
+    }
+
+    private string GetStatusName(int statusId)
+    {
+        return propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name ?? "Unknown";
+    }
+
+    private string GetStatusClass(int statusId)
+    {
+        var status = propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name?.ToLower();
+
+        return status switch
+        {
+            "active" => "ep-status-active",
+            "inactive" => "ep-status-inactive",
+            "under maintenance" => "ep-status-maintenance",
+            "rented" => "ep-status-rented",
+            "for sale" => "ep-status-sale",
+            _ => ""
+        };
+    }
+
+    private string GetFormattedAddress(Address address)
+    {
+        if (address == null) return "No address";
+
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(address.Street))
+            parts.Add(address.Street);
+
+        if (!string.IsNullOrEmpty(address.City))
+            parts.Add(address.City);
+
+        if (!string.IsNullOrEmpty(address.Province))
+            parts.Add(address.Province);
+
+        return string.Join(", ", parts);
+    }
+
+    // Property owner model for form binding
+    private class PropertyOwnerModel
+    {
+        public int PropertyOwnerTypeId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string CompanyName { get; set; }
+    }
+}
