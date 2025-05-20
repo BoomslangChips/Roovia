@@ -43,36 +43,50 @@ namespace Roovia.Services
                     return response;
                 }
 
-                if (property.OwnerId <= 0)
-                {
-                    response.ResponseInfo.Success = false;
-                    response.ResponseInfo.Message = "A valid property owner is required.";
-                    return response;
-                }
-
                 using var context = await _contextFactory.CreateDbContextAsync();
                 using var transaction = await context.Database.BeginTransactionAsync();
 
                 try
                 {
-                    // Validate owner exists
-                    var owner = await context.PropertyOwners
-                        .FirstOrDefaultAsync(o => o.Id == property.OwnerId && !o.IsRemoved);
-
-                    if (owner == null)
+                    // Validate owner exists if an owner ID is provided
+                    if (property.OwnerId.HasValue && property.OwnerId > 0)
                     {
-                        response.ResponseInfo.Success = false;
-                        response.ResponseInfo.Message = "The specified property owner does not exist.";
-                        return response;
-                    }
+                        var owner = await context.PropertyOwners
+                            .FirstOrDefaultAsync(o => o.Id == property.OwnerId && !o.IsRemoved);
 
+                        if (owner == null)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "The specified property owner does not exist.";
+                            return response;
+                        }
+                    }
+                    else
+                    {
+                        // Ensure OwnerId is null, not 0 or other invalid value
+                        property.OwnerId = null;
+                    }
+                    if (property.CommissionTypeId.HasValue)
+                    {
+                        var commissionType = await context.CommissionTypes
+                            .FirstOrDefaultAsync(c => c.Id == property.CommissionTypeId.Value);
+
+                        if (commissionType == null)
+                        {
+                            // Set to null if the commission type doesn't exist
+                            property.CommissionTypeId = null;
+
+                            // Optional: Log a warning or add a note to the response
+                            _logger.LogWarning("Commission type with ID {CommissionTypeId} not found. Setting to null.", property.CommissionTypeId);
+                        }
+                    }
                     // Check if property code already exists
                     if (!string.IsNullOrEmpty(property.PropertyCode))
                     {
                         var existingPropertyWithCode = await context.Properties
                             .FirstOrDefaultAsync(p => p.PropertyCode == property.PropertyCode &&
-                                                    p.CompanyId == property.CompanyId &&
-                                                    !p.IsRemoved);
+                                                   p.CompanyId == property.CompanyId &&
+                                                   !p.IsRemoved);
 
                         if (existingPropertyWithCode != null)
                         {
@@ -127,7 +141,7 @@ namespace Roovia.Services
 
                     await transaction.CommitAsync();
 
-                    // Reload with related data
+                    // Reload with related data - use left joins to handle missing owner
                     var createdProperty = await context.Properties
                         .Include(p => p.Owner)
                         .Include(p => p.Status)
@@ -345,7 +359,10 @@ namespace Roovia.Services
 
                 try
                 {
+                    // Get the existing property
                     var property = await context.Properties
+                        .Include(p => p.Beneficiaries)
+                        .Include(p => p.Tenants)
                         .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId && !p.IsRemoved);
 
                     if (property == null)
@@ -355,15 +372,47 @@ namespace Roovia.Services
                         return response;
                     }
 
+                    // Validate owner exists if an owner ID is provided and has changed
+                    if (updatedProperty.OwnerId.HasValue && updatedProperty.OwnerId > 0)
+                    {
+                        var owner = await context.PropertyOwners
+                            .FirstOrDefaultAsync(o => o.Id == updatedProperty.OwnerId && !o.IsRemoved);
+
+                        if (owner == null)
+                        {
+                            response.ResponseInfo.Success = false;
+                            response.ResponseInfo.Message = "The specified property owner does not exist.";
+                            return response;
+                        }
+                    }
+                    else
+                    {
+                        // Ensure OwnerId is null, not 0 or other invalid value
+                        property.OwnerId = null;
+                    }
+                    if (property.CommissionTypeId.HasValue)
+                    {
+                        var commissionType = await context.CommissionTypes
+                            .FirstOrDefaultAsync(c => c.Id == property.CommissionTypeId.Value);
+
+                        if (commissionType == null)
+                        {
+                            // Set to null if the commission type doesn't exist
+                            property.CommissionTypeId = null;
+
+                            // Optional: Log a warning or add a note to the response
+                            _logger.LogWarning("Commission type with ID {CommissionTypeId} not found. Setting to null.", property.CommissionTypeId);
+                        }
+                    }
                     // Check if property code already exists (if changed)
                     if (!string.IsNullOrEmpty(updatedProperty.PropertyCode) &&
-                        updatedProperty.PropertyCode != property.PropertyCode)
+                        property.PropertyCode != updatedProperty.PropertyCode)
                     {
                         var existingPropertyWithCode = await context.Properties
                             .FirstOrDefaultAsync(p => p.PropertyCode == updatedProperty.PropertyCode &&
-                                                    p.CompanyId == companyId &&
-                                                    !p.IsRemoved &&
-                                                    p.Id != id);
+                                                   p.CompanyId == companyId &&
+                                                   p.Id != id &&
+                                                   !p.IsRemoved);
 
                         if (existingPropertyWithCode != null)
                         {
@@ -386,54 +435,57 @@ namespace Roovia.Services
                         }
                     }
 
-                    // Ensure dates are valid
-                    updatedProperty.EnsureValidDates();
-
-                    // Update property fields
+                    // Update the property fields
                     property.PropertyName = updatedProperty.PropertyName;
                     property.PropertyCode = updatedProperty.PropertyCode;
                     property.CustomerRef = updatedProperty.CustomerRef;
                     property.PropertyTypeId = updatedProperty.PropertyTypeId;
-                    property.RentalAmount = updatedProperty.RentalAmount;
-                    property.PropertyAccountBalance = updatedProperty.PropertyAccountBalance;
                     property.StatusId = updatedProperty.StatusId;
                     property.ServiceLevel = updatedProperty.ServiceLevel;
-                    property.HasTenant = updatedProperty.HasTenant;
-                    property.LeaseOriginalStartDate = updatedProperty.LeaseOriginalStartDate;
-                    property.CurrentLeaseStartDate = updatedProperty.CurrentLeaseStartDate;
-                    property.LeaseEndDate = updatedProperty.LeaseEndDate;
-                    property.CurrentTenantId = updatedProperty.CurrentTenantId;
+                    property.Tags = updatedProperty.Tags;
+                    property.BranchId = updatedProperty.BranchId;
+
+                    // Update owner ID - can be set to 0 if removing owner
+                    property.OwnerId = updatedProperty.OwnerId;
+
+                    // Update financial details
+                    property.RentalAmount = updatedProperty.RentalAmount;
+                    property.PropertyAccountBalance = updatedProperty.PropertyAccountBalance;
+
+                    // Update commission details
                     property.CommissionTypeId = updatedProperty.CommissionTypeId;
                     property.CommissionValue = updatedProperty.CommissionValue;
+
+                    // Update payment settings
                     property.PaymentsEnabled = updatedProperty.PaymentsEnabled;
                     property.PaymentsVerify = updatedProperty.PaymentsVerify;
-                    property.Address = updatedProperty.Address;
-                    property.Tags = updatedProperty.Tags;
+
+                    // Update address
+                    if (updatedProperty.Address != null)
+                    {
+                        property.Address = updatedProperty.Address;
+                    }
+
+                    // Update main image if changed
+                    if (updatedProperty.MainImageId != property.MainImageId)
+                    {
+                        property.MainImageId = updatedProperty.MainImageId;
+                    }
+
+                    // Update audit fields
                     property.UpdatedDate = DateTime.Now;
                     property.UpdatedBy = updatedProperty.UpdatedBy;
 
-                    // Only update OwnerId if it was changed and is valid
-                    if (updatedProperty.OwnerId > 0 && updatedProperty.OwnerId != property.OwnerId)
-                    {
-                        // Verify new owner exists
-                        var newOwner = await context.PropertyOwners
-                            .FirstOrDefaultAsync(o => o.Id == updatedProperty.OwnerId && !o.IsRemoved);
+                    // Ensure dates are valid
+                    property.EnsureValidDates();
 
-                        if (newOwner == null)
-                        {
-                            response.ResponseInfo.Success = false;
-                            response.ResponseInfo.Message = "The specified new property owner does not exist.";
-                            return response;
-                        }
-
-                        property.OwnerId = updatedProperty.OwnerId;
-                    }
-
+                    // Save the changes
+                    context.Properties.Update(property);
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
                     // Reload with related data
-                    var updatedResult = await context.Properties
+                    var updatedPropertyWithDetails = await context.Properties
                         .Include(p => p.Owner)
                         .Include(p => p.Status)
                         .Include(p => p.CommissionType)
@@ -441,11 +493,11 @@ namespace Roovia.Services
                         .Include(p => p.PropertyType)
                         .FirstOrDefaultAsync(p => p.Id == id);
 
-                    response.Response = updatedResult;
+                    response.Response = updatedPropertyWithDetails;
                     response.ResponseInfo.Success = true;
                     response.ResponseInfo.Message = "Property updated successfully.";
 
-                    _logger.LogInformation("Property updated: {PropertyId}", id);
+                    _logger.LogInformation("Property updated with ID: {PropertyId}", property.Id);
                 }
                 catch (Exception ex)
                 {
@@ -455,7 +507,7 @@ namespace Roovia.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating property {PropertyId}", id);
+                _logger.LogError(ex, "Error updating property");
                 response.ResponseInfo.Success = false;
                 response.ResponseInfo.Message = "An error occurred while updating the property: " + ex.Message;
             }

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Include="wwwroot\css\BranchDialog.css" />
+    <None Include="wwwroot\css\properties\AddProperty.css" />
   </ItemGroup>
 
   <ItemGroup>

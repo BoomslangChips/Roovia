@@ -1,0 +1,1704 @@
+﻿@page "/property/create"
+@attribute [Authorize(Policy = "PropertiesAccess")]
+@using Roovia.Components.Elements
+@using System.Security.Claims
+@attribute [Authorize(Policy = "PropertiesAccess")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
+@using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessMappingModels
+@using Roovia.Security
+@using Roovia.Services
+@using Roovia.Services.General
+@using System.ComponentModel.DataAnnotations
+@inject IProperty PropertyService
+@inject IPropertyOwner PropertyOwnerService
+@inject IUser UserService
+@inject IPermissionService PermissionService
+@inject ICdnService CdnService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="@Assets["css/properties/AddProperty.css"]" />
+
+<div class="pc-page">
+    <!-- Modern Header Section with Gradient Background and Pattern -->
+    <div class="pc-header-section">
+        <div class="pc-header-background">
+            <div class="pc-header-pattern"></div>
+        </div>
+        <div class="pc-header-content">
+            <div class="pc-breadcrumb">
+                <a href="/dashboard" class="pc-breadcrumb-item">
+                    <i class="fa-light fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <i class="fa-light fa-chevron-right"></i>
+                <a href="/properties" class="pc-breadcrumb-item">
+                    <i class="fa-light fa-buildings"></i>
+                    <span>Properties</span>
+                </a>
+                <i class="fa-light fa-chevron-right"></i>
+                <span class="pc-breadcrumb-current">Add New Property</span>
+            </div>
+            <div class="pc-header-main">
+                <div class="pc-header-icon">
+                    <i class="fa-light fa-building-circle-check"></i>
+                </div>
+                <div class="pc-header-text-content">
+                    <h1 class="pc-header-title">Add New Property</h1>
+                    <p class="pc-header-subtitle">Create a new property in your portfolio and set up its details</p>
+                </div>
+                <div class="pc-header-actions">
+                    <button class="pc-btn pc-btn-ghost" @onclick='() => NavigationManager.NavigateTo("/properties")'>
+                        <i class="fa-light fa-arrow-left"></i>
+                        Back to Properties
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="pc-progress-container">
+        <div class="pc-progress-bar">
+            <div class="pc-progress-fill" style="width: @progressPercentage%"></div>
+        </div>
+        <div class="pc-progress-steps">
+            @foreach (var (step, index) in steps.Select((s, i) => (s, i)))
+            {
+                <div class="pc-progress-step @(currentStep >= index ? "active" : "") @(currentStep == index ? "current" : "")">
+                    <div class="pc-step-number">
+                        @if (currentStep > index)
+                        {
+                            <i class="fa-light fa-check"></i>
+                        }
+                        else
+                        {
+                            @(index + 1)
+                        }
+                    </div>
+                    <div class="pc-step-info">
+                        <div class="pc-step-title">@step.Title</div>
+                        <div class="pc-step-subtitle">@step.Subtitle</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Form Content -->
+    <div class="pc-form-container">
+        <!-- Step 1: Basic Property Information -->
+        <div class="pc-form-step @(currentStep == 0 ? "active" : "")">
+            <div class="pc-section-card">
+                <div class="pc-section-header">
+                    <div class="pc-section-icon">
+                        <i class="fa-light fa-building"></i>
+                    </div>
+                    <div>
+                        <h2 class="pc-section-title">Basic Property Information</h2>
+                        <p class="pc-section-description">Enter the essential details about your property</p>
+                    </div>
+                </div>
+
+                <div class="pc-form-grid">
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Property Name</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-building"></i>
+                            </span>
+                            <input @bind="propertyModel.PropertyName"
+                                   class="pc-input with-icon-left @(HasError("PropertyName") ? "pc-input-error" : "")"
+                                   placeholder="Enter property name" />
+                        </div>
+                        @if (HasError("PropertyName"))
+                        {
+                            <div class="pc-error">@GetError("PropertyName")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Property Code</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-barcode"></i>
+                            </span>
+                            <input @bind="propertyModel.PropertyCode"
+                                   class="pc-input with-icon-left @(HasError("PropertyCode") ? "pc-input-error" : "")"
+                                   placeholder="Enter property code" />
+                        </div>
+                        @if (HasError("PropertyCode"))
+                        {
+                            <div class="pc-error">@GetError("PropertyCode")</div>
+                        }
+                        <small class="pc-helper-text">Unique identifier for this property</small>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Customer Reference</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-hashtag"></i>
+                            </span>
+                            <input @bind="propertyModel.CustomerRef"
+                                   class="pc-input with-icon-left"
+                                   placeholder="Optional customer reference" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Property Type</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-house-building"></i>
+                            </span>
+                            <select @bind="propertyModel.PropertyTypeId"
+                                    class="pc-select with-icon-left @(HasError("PropertyTypeId") ? "pc-input-error" : "")">
+                                <option value="0">Select property type</option>
+                                @foreach (var type in propertyTypes)
+                                {
+                                    <option value="@type.Id">@type.Name</option>
+                                }
+                            </select>
+                        </div>
+                        @if (HasError("PropertyTypeId"))
+                        {
+                            <div class="pc-error">@GetError("PropertyTypeId")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Property Status</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-circle-info"></i>
+                            </span>
+                            <select @bind="propertyModel.StatusId"
+                                    class="pc-select with-icon-left @(HasError("StatusId") ? "pc-input-error" : "")">
+                                <option value="0">Select status</option>
+                                @foreach (var status in propertyStatusTypes)
+                                {
+                                    <option value="@status.Id">@status.Name</option>
+                                }
+                            </select>
+                        </div>
+                        @if (HasError("StatusId"))
+                        {
+                            <div class="pc-error">@GetError("StatusId")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Service Level</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-star"></i>
+                            </span>
+                            <select @bind="propertyModel.ServiceLevel" class="pc-select with-icon-left">
+                                <option value="">Select service level</option>
+                                <option value="Basic">Basic</option>
+                                <option value="Standard">Standard</option>
+                                <option value="Premium">Premium</option>
+                                <option value="VIP">VIP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Tags</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-tags"></i>
+                            </span>
+                            <input @bind="propertyModel.Tags"
+                                   class="pc-input with-icon-left"
+                                   placeholder="Comma-separated tags" />
+                        </div>
+                        <small class="pc-helper-text">Use tags to categorize properties (e.g., modern, renovated, pool)</small>
+                    </div>
+
+                    @if (branches.Any())
+                    {
+                        <div class="pc-form-group">
+                            <label class="pc-label">Branch</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-code-branch"></i>
+                                </span>
+                                <select @bind="propertyModel.BranchId" class="pc-select with-icon-left">
+                                    <option value="">Select branch</option>
+                                    @foreach (var branch in branches)
+                                    {
+                                        <option value="@branch.Id">@branch.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Owner Information -->
+        <div class="pc-form-step @(currentStep == 1 ? "active" : "")">
+            <div class="pc-section-card">
+                <div class="pc-section-header">
+                    <div class="pc-section-icon">
+                        <i class="fa-light fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <h2 class="pc-section-title">Owner Information</h2>
+                        <p class="pc-section-description">Select or create the property owner</p>
+                    </div>
+                </div>
+
+                <div class="pc-owner-selector">
+                    <div class="pc-radio-group">
+                        <label class="pc-radio-label">
+                            <input type="radio" name="ownerType" value="existing" checked="@(!isNewOwner && !skipOwner)"
+                                   @onchange="@(e => { isNewOwner = false; skipOwner = false; })" />
+                            <span>Select Existing Owner</span>
+                        </label>
+                        <label class="pc-radio-label">
+                            <input type="radio" name="ownerType" value="new" checked="@(isNewOwner && !skipOwner)"
+                                   @onchange="@(e => { isNewOwner = true; skipOwner = false; })" />
+                            <span>Create New Owner</span>
+                        </label>
+                        <label class="pc-radio-label pc-radio-accent">
+                            <input type="radio" name="ownerType" value="skip" checked="@skipOwner"
+                                   @onchange="@(e => { skipOwner = true; isNewOwner = false; })" />
+                            <span>Add Owner Later</span>
+                        </label>
+                    </div>
+                </div>
+
+                @if (!isNewOwner && !skipOwner)
+                {
+                    <div class="pc-form-grid">
+                        <div class="pc-form-group pc-col-span-2">
+                            <label class="pc-label required">Select Owner</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-user-tie"></i>
+                                </span>
+                                <select @bind="propertyModel.OwnerId"
+                                        class="pc-select with-icon-left @(HasError("OwnerId") ? "pc-input-error" : "")">
+                                    <option value="">Select owner</option>
+                                    @foreach (var owner in propertyOwners)
+                                    {
+                                        <option value="@owner.Id">@owner.DisplayName</option>
+                                    }
+                                </select>
+                            </div>
+                            @if (HasError("OwnerId"))
+                            {
+                                <div class="pc-error">@GetError("OwnerId")</div>
+                            }
+                        </div>
+
+                        @if (selectedOwner != null)
+                        {
+                            <div class="pc-owner-details">
+                                <div class="pc-owner-info">
+                                    <h3 class="pc-owner-name">@selectedOwner.DisplayName</h3>
+                                    <p class="pc-owner-contact">
+                                        <i class="fa-light fa-envelope"></i> @selectedOwner.PrimaryEmail
+                                    </p>
+                                    <p class="pc-owner-contact">
+                                        <i class="fa-light fa-phone"></i> @selectedOwner.PrimaryContactNumber
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (isNewOwner && !skipOwner)
+                {
+                    <div class="pc-form-grid">
+                        <div class="pc-form-group">
+                            <label class="pc-label required">Owner Type</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-id-card"></i>
+                                </span>
+                                <select @bind="ownerModel.PropertyOwnerTypeId"
+                                        @bind:after="OwnerTypeChanged"
+                                        class="pc-select with-icon-left @(HasError("OwnerType") ? "pc-input-error" : "")">
+                                    <option value="0">Select owner type</option>
+                                    @foreach (var type in ownerTypes)
+                                    {
+                                        <option value="@type.Id">@type.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            @if (HasError("OwnerType"))
+                            {
+                                <div class="pc-error">@GetError("OwnerType")</div>
+                            }
+                        </div>
+
+                        <!-- Individual owner fields -->
+                        @if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+                        {
+                            <div class="pc-form-group">
+                                <label class="pc-label required">First Name</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-user"></i>
+                                    </span>
+                                    <input @bind="ownerModel.FirstName"
+                                           class="pc-input with-icon-left @(HasError("FirstName") ? "pc-input-error" : "")"
+                                           placeholder="Enter first name" />
+                                </div>
+                                @if (HasError("FirstName"))
+                                {
+                                    <div class="pc-error">@GetError("FirstName")</div>
+                                }
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label required">Last Name</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-user"></i>
+                                    </span>
+                                    <input @bind="ownerModel.LastName"
+                                           class="pc-input with-icon-left @(HasError("LastName") ? "pc-input-error" : "")"
+                                           placeholder="Enter last name" />
+                                </div>
+                                @if (HasError("LastName"))
+                                {
+                                    <div class="pc-error">@GetError("LastName")</div>
+                                }
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label">ID Number</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-id-card"></i>
+                                    </span>
+                                    <input @bind="ownerModel.IdNumber" class="pc-input with-icon-left"
+                                           placeholder="Enter ID number" />
+                                </div>
+                            </div>
+                        }
+                        else if (ownerModel.PropertyOwnerTypeId > 1) // Company, Trust, etc.
+                        {
+                            <div class="pc-form-group pc-col-span-2">
+                                <label class="pc-label required">Company/Organization Name</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-building"></i>
+                                    </span>
+                                    <input @bind="ownerModel.CompanyName"
+                                           class="pc-input with-icon-left @(HasError("CompanyName") ? "pc-input-error" : "")"
+                                           placeholder="Enter company name" />
+                                </div>
+                                @if (HasError("CompanyName"))
+                                {
+                                    <div class="pc-error">@GetError("CompanyName")</div>
+                                }
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label">Registration Number</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-file-certificate"></i>
+                                    </span>
+                                    <input @bind="ownerModel.RegistrationNumber" class="pc-input with-icon-left"
+                                           placeholder="Enter registration number" />
+                                </div>
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label">VAT Number</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-receipt"></i>
+                                    </span>
+                                    <input @bind="ownerModel.VatNumber" class="pc-input with-icon-left"
+                                           placeholder="Enter VAT number" />
+                                </div>
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label">Contact Person</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-user"></i>
+                                    </span>
+                                    <input @bind="ownerModel.ContactPerson" class="pc-input with-icon-left"
+                                           placeholder="Enter contact person name" />
+                                </div>
+                            </div>
+                        }
+
+                        <div class="pc-form-group">
+                            <label class="pc-label required">Email Address</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-envelope"></i>
+                                </span>
+                                <input @bind="ownerEmail"
+                                       class="pc-input with-icon-left @(HasError("OwnerEmail") ? "pc-input-error" : "")"
+                                       placeholder="Enter email address" />
+                            </div>
+                            @if (HasError("OwnerEmail"))
+                            {
+                                <div class="pc-error">@GetError("OwnerEmail")</div>
+                            }
+                        </div>
+
+                        <div class="pc-form-group">
+                            <label class="pc-label required">Phone Number</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-phone"></i>
+                                </span>
+                                <input @bind="ownerPhone"
+                                       class="pc-input with-icon-left @(HasError("OwnerPhone") ? "pc-input-error" : "")"
+                                       placeholder="Enter phone number" />
+                            </div>
+                            @if (HasError("OwnerPhone"))
+                            {
+                                <div class="pc-error">@GetError("OwnerPhone")</div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="pc-skip-section">
+                        <div class="pc-skip-info">
+                            <i class="fa-light fa-info-circle"></i>
+                            <p>You've chosen to add the owner details later. You can add or link an owner after creating the property.</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Step 3: Address Information -->
+        <div class="pc-form-step @(currentStep == 2 ? "active" : "")">
+            <div class="pc-section-card">
+                <div class="pc-section-header">
+                    <div class="pc-section-icon">
+                        <i class="fa-light fa-map-marker-alt"></i>
+                    </div>
+                    <div>
+                        <h2 class="pc-section-title">Property Address</h2>
+                        <p class="pc-section-description">Enter the physical location of the property</p>
+                    </div>
+                </div>
+
+                <div class="pc-form-grid">
+                    <div class="pc-form-group pc-col-span-2">
+                        <label class="pc-label required">Street Address</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-road"></i>
+                            </span>
+                            <input @bind="addressModel.Street"
+                                   class="pc-input with-icon-left @(HasError("Street") ? "pc-input-error" : "")"
+                                   placeholder="Enter street address" />
+                        </div>
+                        @if (HasError("Street"))
+                        {
+                            <div class="pc-error">@GetError("Street")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Unit Number</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-door-closed"></i>
+                            </span>
+                            <input @bind="addressModel.UnitNumber" class="pc-input with-icon-left"
+                                   placeholder="Apartment or unit number" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Complex Name</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-buildings"></i>
+                            </span>
+                            <input @bind="addressModel.ComplexName" class="pc-input with-icon-left"
+                                   placeholder="Enter complex name" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Building Name</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-building"></i>
+                            </span>
+                            <input @bind="addressModel.BuildingName" class="pc-input with-icon-left"
+                                   placeholder="Enter building name" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Floor</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-stairs"></i>
+                            </span>
+                            <input @bind="addressModel.Floor" class="pc-input with-icon-left"
+                                   placeholder="Floor number" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">City</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-city"></i>
+                            </span>
+                            <input @bind="addressModel.City"
+                                   class="pc-input with-icon-left @(HasError("City") ? "pc-input-error" : "")"
+                                   placeholder="Enter city" />
+                        </div>
+                        @if (HasError("City"))
+                        {
+                            <div class="pc-error">@GetError("City")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Suburb</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-house-building"></i>
+                            </span>
+                            <input @bind="addressModel.Suburb" class="pc-input with-icon-left"
+                                   placeholder="Enter suburb" />
+                        </div>
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Province</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-map"></i>
+                            </span>
+                            <input @bind="addressModel.Province"
+                                   class="pc-input with-icon-left @(HasError("Province") ? "pc-input-error" : "")"
+                                   placeholder="Enter province/state" />
+                        </div>
+                        @if (HasError("Province"))
+                        {
+                            <div class="pc-error">@GetError("Province")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Postal Code</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-mailbox"></i>
+                            </span>
+                            <input @bind="addressModel.PostalCode"
+                                   class="pc-input with-icon-left @(HasError("PostalCode") ? "pc-input-error" : "")"
+                                   placeholder="Enter postal code" />
+                        </div>
+                        @if (HasError("PostalCode"))
+                        {
+                            <div class="pc-error">@GetError("PostalCode")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label required">Country</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-globe"></i>
+                            </span>
+                            <input @bind="addressModel.Country"
+                                   class="pc-input with-icon-left @(HasError("Country") ? "pc-input-error" : "")"
+                                   placeholder="Enter country" />
+                        </div>
+                        @if (HasError("Country"))
+                        {
+                            <div class="pc-error">@GetError("Country")</div>
+                        }
+                    </div>
+
+                    <div class="pc-form-group">
+                        <label class="pc-label">Gate Code</label>
+                        <div class="pc-input-wrapper">
+                            <span class="pc-input-icon-left">
+                                <i class="fa-light fa-key"></i>
+                            </span>
+                            <input @bind="addressModel.GateCode" class="pc-input with-icon-left"
+                                   placeholder="Enter gate/access code" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pc-checkbox-group">
+                    <label class="pc-checkbox-label">
+                        <input type="checkbox" @bind="addressModel.IsResidential" class="pc-checkbox" />
+                        <span>This is a residential property</span>
+                    </label>
+                </div>
+
+                <div class="pc-form-group pc-mt-6">
+                    <label class="pc-label">Delivery Instructions</label>
+                    <div class="pc-input-wrapper">
+                        <textarea @bind="addressModel.DeliveryInstructions"
+                                  class="pc-textarea"
+                                  placeholder="Special delivery or access instructions..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Financial Information -->
+        <div class="pc-form-step @(currentStep == 3 ? "active" : "")">
+            <div class="pc-section-card">
+                <div class="pc-section-header">
+                    <div class="pc-section-icon">
+                        <i class="fa-light fa-money-bill-wave"></i>
+                    </div>
+                    <div>
+                        <h2 class="pc-section-title">Financial Details</h2>
+                        <p class="pc-section-description">Set up rental and commission information</p>
+                    </div>
+                </div>
+
+                <div class="pc-subsection">
+                    <h3 class="pc-subsection-title">
+                        <i class="fa-light fa-coins"></i>
+                        Rental Information
+                    </h3>
+                    <div class="pc-form-grid">
+                        <div class="pc-form-group">
+                            <label class="pc-label required">Monthly Rental Amount</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-rand-sign"></i>
+                                </span>
+                                <input type="number" @bind="propertyModel.RentalAmount"
+                                       class="pc-input with-icon-left @(HasError("RentalAmount") ? "pc-input-error" : "")"
+                                       placeholder="Enter monthly rent" step="0.01" />
+                            </div>
+                            @if (HasError("RentalAmount"))
+                            {
+                                <div class="pc-error">@GetError("RentalAmount")</div>
+                            }
+                        </div>
+
+                        <div class="pc-form-group">
+                            <label class="pc-label">Initial Property Account Balance</label>
+                            <div class="pc-input-wrapper">
+                                <span class="pc-input-icon-left">
+                                    <i class="fa-light fa-rand-sign"></i>
+                                </span>
+                                <input type="number" @bind="propertyModel.PropertyAccountBalance"
+                                       class="pc-input with-icon-left"
+                                       placeholder="Optional starting balance" step="0.01" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pc-divider"></div>
+
+                <div class="pc-subsection">
+                    <div class="pc-skip-section-heading">
+                        <h3 class="pc-subsection-title">
+                            <i class="fa-light fa-percent"></i>
+                            Commission Settings
+                        </h3>
+
+                        <div class="pc-checkbox-group">
+                            <label class="pc-checkbox-label pc-checkbox-accent">
+                                <input type="checkbox" @bind="skipCommission" class="pc-checkbox" />
+                                <span>Add Commission Later</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (!skipCommission)
+                    {
+                        <div class="pc-form-grid">
+                            <div class="pc-form-group">
+                                <label class="pc-label required">Commission Type</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-tag"></i>
+                                    </span>
+                                    <select @bind="propertyModel.CommissionTypeId"
+                                            class="pc-select with-icon-left @(HasError("CommissionTypeId") ? "pc-input-error" : "")">
+                                        <option value="0">Select commission type</option>
+                                        @foreach (var type in commissionTypes)
+                                        {
+                                            <option value="@type.Id">@type.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                @if (HasError("CommissionTypeId"))
+                                {
+                                    <div class="pc-error">@GetError("CommissionTypeId")</div>
+                                }
+                            </div>
+
+                            <div class="pc-form-group">
+                                <label class="pc-label required">Commission Value</label>
+                                <div class="pc-input-wrapper">
+                                    <span class="pc-input-icon-left">
+                                        <i class="fa-light fa-percent"></i>
+                                    </span>
+                                    <input type="number" @bind="propertyModel.CommissionValue"
+                                           class="pc-input with-icon-left @(HasError("CommissionValue") ? "pc-input-error" : "")"
+                                           placeholder="Enter commission value" step="0.01" />
+                                </div>
+                                @if (HasError("CommissionValue"))
+                                {
+                                    <div class="pc-error">@GetError("CommissionValue")</div>
+                                }
+                                <small class="pc-helper-text">Value is a percentage or fixed amount based on commission type</small>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pc-skip-section">
+                            <div class="pc-skip-info">
+                                <i class="fa-light fa-info-circle"></i>
+                                <p>You've chosen to add commission details later. You can update this after creating the property.</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="pc-divider"></div>
+
+                <div class="pc-subsection">
+                    <h3 class="pc-subsection-title">
+                        <i class="fa-light fa-credit-card"></i>
+                        Payment Settings
+                    </h3>
+                    <div class="pc-checkbox-group">
+                        <label class="pc-checkbox-label">
+                            <input type="checkbox" @bind="propertyModel.PaymentsEnabled" class="pc-checkbox" />
+                            <span>Enable payments for this property</span>
+                        </label>
+                    </div>
+                    <div class="pc-checkbox-group">
+                        <label class="pc-checkbox-label">
+                            <input type="checkbox" @bind="propertyModel.PaymentsVerify" class="pc-checkbox" />
+                            <span>Verify payments before processing</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Review Information -->
+        <div class="pc-form-step @(currentStep == 4 ? "active" : "")">
+            <div class="pc-section-card">
+                <div class="pc-section-header">
+                    <div class="pc-section-icon">
+                        <i class="fa-light fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <h2 class="pc-section-title">Review Information</h2>
+                        <p class="pc-section-description">Please review all property details before creating</p>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="pc-review-grid">
+                    <!-- Basic Information Summary -->
+                    <div class="pc-review-section">
+                        <h3 class="pc-review-title">
+                            <i class="fa-light fa-building"></i>
+                            Basic Information
+                        </h3>
+                        <div class="pc-review-content">
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Property Name:</span>
+                                <span class="pc-review-value">@propertyModel.PropertyName</span>
+                            </div>
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Property Code:</span>
+                                <span class="pc-review-value">@propertyModel.PropertyCode</span>
+                            </div>
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Type:</span>
+                                <span class="pc-review-value">@GetPropertyTypeName(propertyModel.PropertyTypeId)</span>
+                            </div>
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Status:</span>
+                                <span class="pc-review-value">@GetPropertyStatusName(propertyModel.StatusId)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Owner Information Summary -->
+                    <div class="pc-review-section">
+                        <h3 class="pc-review-title">
+                            <i class="fa-light fa-user-tie"></i>
+                            Owner Information
+                        </h3>
+                        <div class="pc-review-content">
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Owner:</span>
+                                <span class="pc-review-value">
+                                    @if (skipOwner)
+                                    {
+                                        <span class="pc-skip-tag">To be added later</span>
+                                    }
+                                    else if (isNewOwner)
+                                    {
+                                        @(ownerModel.PropertyOwnerTypeId == 1
+                                            ? $"{ownerModel.FirstName} {ownerModel.LastName}"
+                                            : ownerModel.CompanyName)
+                                        <span class="pc-new-tag">New</span>
+                                    }
+                                    else
+                                    {
+                                        @GetOwnerName(propertyModel.OwnerId)
+                                    }
+                                </span>
+                            </div>
+                            @if (!skipOwner)
+                            {
+                                <div class="pc-review-item">
+                                    <span class="pc-review-label">Contact:</span>
+                                    <span class="pc-review-value">
+                                        @if (isNewOwner)
+                                        {
+                                            @ownerEmail
+
+                                            <br />
+                                            @ownerPhone
+                                        }
+                                        else if (selectedOwner != null)
+                                        {
+                                            @selectedOwner.PrimaryEmail
+
+                                            <br />
+                                            @selectedOwner.PrimaryContactNumber
+                                        }
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Address Summary -->
+                    <div class="pc-review-section">
+                        <h3 class="pc-review-title">
+                            <i class="fa-light fa-map-marker-alt"></i>
+                            Property Address
+                        </h3>
+                        <div class="pc-review-content">
+                            <div class="pc-review-item">
+                                <span class="pc-review-value">
+                                    @if (!string.IsNullOrEmpty(addressModel.UnitNumber))
+                                    {
+                                        @addressModel.UnitNumber
+                                        <text>, </text>
+                                    }
+                                    @addressModel.Street<br />
+                                    @if (!string.IsNullOrEmpty(addressModel.Suburb))
+                                    {
+                                        @addressModel.Suburb
+
+                                        <text>, </text>
+                                    }
+                                    @addressModel.City<br />
+                                    @addressModel.Province, @addressModel.PostalCode<br />
+                                    @addressModel.Country
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary -->
+                    <div class="pc-review-section">
+                        <h3 class="pc-review-title">
+                            <i class="fa-light fa-money-bill-wave"></i>
+                            Financial Details
+                        </h3>
+                        <div class="pc-review-content">
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Monthly Rent:</span>
+                                <span class="pc-review-value">R @propertyModel.RentalAmount.ToString("N2")</span>
+                            </div>
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Commission:</span>
+                                <span class="pc-review-value">
+                                    @if (skipCommission)
+                                    {
+                                        <span class="pc-skip-tag">To be added later</span>
+                                    }
+                                    else
+                                    {
+                                        @GetCommissionTypeName(propertyModel.CommissionTypeId)
+                                        <text>: </text>
+                                        @propertyModel.CommissionValue.ToString("N2")
+                                        @(GetCommissionTypeIsPercentage(propertyModel.CommissionTypeId) ? "%" : "R")
+                                    }
+                                </span>
+                            </div>
+                            <div class="pc-review-item">
+                                <span class="pc-review-label">Payments:</span>
+                                <span class="pc-review-value">
+                                    @(propertyModel.PaymentsEnabled ? "Enabled" : "Disabled")
+                                    @if (propertyModel.PaymentsEnabled && propertyModel.PaymentsVerify)
+                                    {
+                                        <text> (with verification)</text>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="pc-alert pc-alert-danger">
+                        <i class="fa-light fa-exclamation-circle"></i>
+                        <span>@errorMessage</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="pc-form-navigation">
+            <div class="pc-nav-left">
+                <button type="button"
+                        class="pc-btn pc-btn-ghost"
+                        @onclick='() => NavigationManager.NavigateTo("/properties")'>
+                    <i class="fa-light fa-times"></i>
+                    Cancel
+                </button>
+            </div>
+
+            <div class="pc-nav-right">
+                @if (currentStep > 0)
+                {
+                    <button type="button"
+                            class="pc-btn pc-btn-secondary"
+                            @onclick="PreviousStep">
+                        <i class="fa-light fa-arrow-left"></i>
+                        Previous
+                    </button>
+                }
+
+                @if (currentStep < steps.Length - 1)
+                {
+                    <button type="button"
+                            class="pc-btn pc-btn-primary"
+                            @onclick="NextStep">
+                        Next
+                        <i class="fa-light fa-arrow-right"></i>
+                    </button>
+                }
+                else
+                {
+                    <button type="button"
+                            class="pc-btn pc-btn-success"
+                            @onclick="CreateProperty"
+                            disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <div class="pc-spinner-small"></div>
+                            <span>Creating Property...</span>
+                        }
+                        else
+                        {
+                            <i class="fa-light fa-check"></i>
+                            <span>Create Property</span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+@if (showSuccessModal)
+{
+    <div class="pc-modal-overlay">
+        <div class="pc-modal pc-modal-success">
+            <div class="pc-modal-icon-container">
+                <div class="pc-modal-icon">
+                    <i class="fa-light fa-check"></i>
+                </div>
+            </div>
+            <h2 class="pc-modal-title">Property Created Successfully!</h2>
+            <p class="pc-modal-message">Your property has been created. What would you like to do next?</p>
+
+            <div class="pc-modal-actions">
+                <button class="pc-btn pc-btn-secondary" @onclick='() => NavigationManager.NavigateTo($"/properties")'>
+                    <i class="fa-light fa-list"></i>
+                    View All Properties
+                </button>
+
+                <button class="pc-btn pc-btn-primary" @onclick='() => NavigationManager.NavigateTo($"/property/{createdPropertyId}")'>
+                    <i class="fa-light fa-building"></i>
+                    View Property Details
+                </button>
+            </div>
+
+            <div class="pc-modal-additional-options">
+                <button class="pc-btn pc-btn-outline" @onclick='() => NavigationManager.NavigateTo($"/property/{createdPropertyId}/gallery")'>
+                    <i class="fa-light fa-images"></i>
+                    Add Property Photos
+                </button>
+
+                @if (skipOwner)
+                {
+                    <button class="pc-btn pc-btn-outline" @onclick='() => NavigationManager.NavigateTo($"/property/{createdPropertyId}/owner")'>
+                        <i class="fa-light fa-user-tie"></i>
+                        Add Property Owner
+                    </button>
+                }
+
+                @if (skipCommission)
+                {
+                    <button class="pc-btn pc-btn-outline" @onclick='() => NavigationManager.NavigateTo($"/property/{createdPropertyId}/financial")'>
+                        <i class="fa-light fa-percent"></i>
+                        Set Up Commission
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // User and context
+    private ApplicationUser currentUser;
+    private int currentUserCompanyId;
+
+    // Models
+    private PropertyModel propertyModel = new();
+    private PropertyOwnerModel ownerModel = new();
+    private Address addressModel = new();
+
+    // Form state
+    private int currentStep = 0;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    private bool isNewOwner = false;
+    private bool skipOwner = false;
+    private bool skipCommission = false;
+    private string ownerEmail = "";
+    private string ownerPhone = "";
+    private Dictionary<string, string> validationErrors = new();
+    private bool showSuccessModal = false;
+    private int createdPropertyId = 0;
+
+    // Progress calculation
+    private int progressPercentage => (currentStep + 1) * 100 / steps.Length;
+
+    // Steps configuration
+    private readonly (string Title, string Subtitle)[] steps =
+    {
+        ("Basic Information", "Property details"),
+        ("Owner Information", "Property owner"),
+        ("Address Information", "Location details"),
+        ("Financial Details", "Rent and commission"),
+        ("Review & Submit", "Confirm all information")
+    };
+
+    // Reference data
+    private List<PropertyOwner> propertyOwners = new();
+    private PropertyOwner selectedOwner => propertyOwners.FirstOrDefault(o => o.Id == propertyModel.OwnerId);
+    private List<PropertyStatusType> propertyStatusTypes = new();
+    private List<PropertyType> propertyTypes = new();
+    private List<CommissionType> commissionTypes = new();
+    private List<PropertyOwnerType> ownerTypes = new();
+    private List<Branch> branches = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadReferenceData();
+        SetDefaultValues();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier)?.FirstOrDefault()?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var userResult = await UserService.GetUserById(userId);
+                if (userResult.ResponseInfo.Success)
+                {
+                    currentUser = userResult.Response as ApplicationUser;
+                    currentUserCompanyId = currentUser?.CompanyId ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user data: {ex.Message}", "Error");
+        }
+    }
+
+    private async Task LoadReferenceData()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Load property status types
+            propertyStatusTypes = await context.PropertyStatusTypes
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.DisplayOrder)
+                .ToListAsync();
+
+            // Load property types
+            propertyTypes = await context.PropertyTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load commission types
+            commissionTypes = await context.CommissionTypes
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.DisplayOrder)
+                .ToListAsync();
+
+            // Load property owner types
+            ownerTypes = await context.PropertyOwnerTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load property owners for current company
+            if (currentUserCompanyId > 0)
+            {
+                var ownerResult = await PropertyOwnerService.GetAllPropertyOwners(currentUserCompanyId);
+                if (ownerResult.ResponseInfo.Success)
+                {
+                    propertyOwners = ownerResult.Response as List<PropertyOwner> ?? new();
+                }
+
+                // Load branches for current company
+                branches = await context.Branches
+                    .Where(b => b.CompanyId == currentUserCompanyId && b.IsActive)
+                    .OrderBy(b => b.Name)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load reference data: {ex.Message}", "Error");
+        }
+    }
+
+    private void SetDefaultValues()
+    {
+        // Set defaults for property model
+        propertyModel.CompanyId = currentUserCompanyId;
+        propertyModel.PaymentsEnabled = true;
+        propertyModel.PaymentsVerify = true;
+
+        // Set default status (assuming 1 is Active)
+        var defaultStatus = propertyStatusTypes.FirstOrDefault(s => s.Name?.ToLower() == "active");
+        if (defaultStatus != null)
+        {
+            propertyModel.StatusId = defaultStatus.Id;
+        }
+
+        // Set default commission type (assuming 1 is Percentage)
+        var defaultCommission = commissionTypes.FirstOrDefault(c => c.Name?.ToLower().Contains("percentage") == true);
+        if (defaultCommission != null)
+        {
+            propertyModel.CommissionTypeId = defaultCommission.Id;
+            propertyModel.CommissionValue = 10; // Default 10%
+        }
+
+        // Set default country for address
+        addressModel.Country = "South Africa";
+        addressModel.IsResidential = true;
+    }
+
+    private void OwnerTypeChanged()
+    {
+        // Clear fields when owner type changes
+        if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+        {
+            ownerModel.CompanyName = null;
+            ownerModel.RegistrationNumber = null;
+            ownerModel.VatNumber = null;
+            ownerModel.ContactPerson = null;
+        }
+        else // Company, Trust, etc.
+        {
+            ownerModel.FirstName = null;
+            ownerModel.LastName = null;
+            ownerModel.IdNumber = null;
+        }
+    }
+
+    private async Task NextStep()
+    {
+        // Clear previous validation errors
+        validationErrors.Clear();
+
+        // Validate current step before proceeding
+        if (await ValidateCurrentStep())
+        {
+            if (currentStep < steps.Length - 1)
+            {
+                currentStep++;
+                StateHasChanged();
+
+                // If moving to the review step, scroll to top
+                if (currentStep == steps.Length - 1)
+                {
+                    await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+                }
+            }
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> ValidateCurrentStep()
+    {
+        errorMessage = null;
+        bool isValid = true;
+
+        switch (currentStep)
+        {
+            case 0: // Basic Property Information
+                if (string.IsNullOrWhiteSpace(propertyModel.PropertyName))
+                {
+                    validationErrors["PropertyName"] = "Property name is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(propertyModel.PropertyCode))
+                {
+                    validationErrors["PropertyCode"] = "Property code is required";
+                    isValid = false;
+                }
+
+                if (propertyModel.PropertyTypeId <= 0)
+                {
+                    validationErrors["PropertyTypeId"] = "Property type is required";
+                    isValid = false;
+                }
+
+                if (propertyModel.StatusId <= 0)
+                {
+                    validationErrors["StatusId"] = "Property status is required";
+                    isValid = false;
+                }
+
+                // Check for duplicate property code if all other validations pass
+                if (isValid)
+                {
+                    using (var context = await DbContextFactory.CreateDbContextAsync())
+                    {
+                        var duplicateCode = await context.Properties
+                            .AnyAsync(p => p.PropertyCode == propertyModel.PropertyCode && !p.IsRemoved);
+
+                        if (duplicateCode)
+                        {
+                            validationErrors["PropertyCode"] = "A property with this code already exists";
+                            isValid = false;
+                        }
+                    }
+                }
+                break;
+
+            case 1: // Owner Information
+                if (!skipOwner)
+                {
+                    if (isNewOwner)
+                    {
+                        // Validate new owner
+                        if (ownerModel.PropertyOwnerTypeId <= 0)
+                        {
+                            validationErrors["OwnerType"] = "Owner type is required";
+                            isValid = false;
+                        }
+
+                        if (ownerModel.PropertyOwnerTypeId == 1) // Individual
+                        {
+                            if (string.IsNullOrWhiteSpace(ownerModel.FirstName))
+                            {
+                                validationErrors["FirstName"] = "First name is required";
+                                isValid = false;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(ownerModel.LastName))
+                            {
+                                validationErrors["LastName"] = "Last name is required";
+                                isValid = false;
+                            }
+                        }
+                        else if (ownerModel.PropertyOwnerTypeId > 1) // Company, Trust, etc.
+                        {
+                            if (string.IsNullOrWhiteSpace(ownerModel.CompanyName))
+                            {
+                                validationErrors["CompanyName"] = "Company name is required";
+                                isValid = false;
+                            }
+                        }
+
+                        // Validate email
+                        if (string.IsNullOrWhiteSpace(ownerEmail))
+                        {
+                            validationErrors["OwnerEmail"] = "Email address is required";
+                            isValid = false;
+                        }
+                        else if (!System.Text.RegularExpressions.Regex.IsMatch(ownerEmail,
+                                 @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                        {
+                            validationErrors["OwnerEmail"] = "Please enter a valid email address";
+                            isValid = false;
+                        }
+
+                        // Validate phone
+                        if (string.IsNullOrWhiteSpace(ownerPhone))
+                        {
+                            validationErrors["OwnerPhone"] = "Phone number is required";
+                            isValid = false;
+                        }
+                    }
+                    else
+                    {
+                        // Validate existing owner selection
+                        if (!propertyModel.OwnerId.HasValue || propertyModel.OwnerId <= 0)
+                        {
+                            validationErrors["OwnerId"] = "Please select a property owner";
+                            isValid = false;
+                        }
+                    }
+                }
+                break;
+
+            case 2: // Address Information
+                if (string.IsNullOrWhiteSpace(addressModel.Street))
+                {
+                    validationErrors["Street"] = "Street address is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(addressModel.City))
+                {
+                    validationErrors["City"] = "City is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(addressModel.Province))
+                {
+                    validationErrors["Province"] = "Province is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(addressModel.PostalCode))
+                {
+                    validationErrors["PostalCode"] = "Postal code is required";
+                    isValid = false;
+                }
+
+                if (string.IsNullOrWhiteSpace(addressModel.Country))
+                {
+                    validationErrors["Country"] = "Country is required";
+                    isValid = false;
+                }
+                break;
+
+            case 3: // Financial Information
+                if (propertyModel.RentalAmount <= 0)
+                {
+                    validationErrors["RentalAmount"] = "Rental amount must be greater than zero";
+                    isValid = false;
+                }
+
+                if (!skipCommission)
+                {
+                    if (propertyModel.CommissionTypeId <= 0)
+                    {
+                        validationErrors["CommissionTypeId"] = "Commission type is required";
+                        isValid = false;
+                    }
+
+                    if (propertyModel.CommissionValue <= 0)
+                    {
+                        validationErrors["CommissionValue"] = "Commission value must be greater than zero";
+                        isValid = false;
+                    }
+                }
+                break;
+        }
+
+        if (!isValid)
+        {
+            ToastService.ShowWarning("Please correct the errors before continuing.", "Validation Error");
+        }
+
+        return isValid;
+    }
+
+    private async Task CreateProperty()
+    {
+        try
+        {
+            isSubmitting = true;
+            errorMessage = null;
+            validationErrors.Clear();
+
+            // Validate all steps
+            bool isValid = true;
+            for (int i = 0; i < steps.Length - 1; i++)
+            {
+                currentStep = i;
+                if (!await ValidateCurrentStep())
+                {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            // Return to final step
+            currentStep = steps.Length - 1;
+
+            if (!isValid)
+            {
+                isSubmitting = false;
+                errorMessage = "Please correct all errors before creating the property.";
+                return;
+            }
+
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Handle owner creation if needed
+            if (!skipOwner && isNewOwner)
+            {
+                // Create PropertyOwner entity
+                var newOwner = new PropertyOwner
+                    {
+                        CompanyId = currentUserCompanyId,
+                        PropertyOwnerTypeId = ownerModel.PropertyOwnerTypeId,
+                        StatusId = 1, // Assuming 1 is Active
+                    // Individual fields
+                        FirstName = ownerModel.FirstName,
+                        LastName = ownerModel.LastName,
+                        IdNumber = ownerModel.IdNumber,
+                    // Company fields
+                        CompanyName = ownerModel.CompanyName,
+                        RegistrationNumber = ownerModel.RegistrationNumber,
+                        VatNumber = ownerModel.VatNumber,
+                        ContactPerson = ownerModel.ContactPerson,
+                    // Common
+                        CreatedBy = currentUser.UserName,
+                        CreatedOn = DateTime.Now,
+                        IsRemoved = false
+                    };
+
+                // Create owner in the database
+                var ownerResult = await PropertyOwnerService.CreatePropertyOwner(newOwner);
+                if (!ownerResult.ResponseInfo.Success)
+                {
+                    errorMessage = $"Failed to create property owner: {ownerResult.ResponseInfo.Message}";
+                    ToastService.ShowError(errorMessage);
+                    isSubmitting = false;
+                    return;
+                }
+
+                // Get the new owner ID
+                newOwner = ownerResult.Response as PropertyOwner;
+                propertyModel.OwnerId = newOwner.Id;
+
+                // Add email and contact number
+                if (!string.IsNullOrEmpty(ownerEmail))
+                {
+                    var email = new Email
+                        {
+                            EmailAddress = ownerEmail,
+                            IsPrimary = true,
+                            RelatedEntityType = "PropertyOwner",
+                            RelatedEntityId = newOwner.Id,
+                            CreatedBy = currentUser.Id, // Use user ID for CreatedBy
+                            CreatedOn = DateTime.Now
+                        };
+                    await PropertyOwnerService.AddEmailAddress(newOwner.Id, email);
+                }
+
+                if (!string.IsNullOrEmpty(ownerPhone))
+                {
+                    var phone = new ContactNumber
+                        {
+                            Number = ownerPhone,
+                            IsPrimary = true,
+                            ContactNumberTypeId = 1, // Assuming 1 is Mobile
+                            RelatedEntityType = "PropertyOwner",
+                            RelatedEntityId = newOwner.Id,
+                            CreatedBy = currentUser.Id, // Use user ID for CreatedBy
+                            CreatedOn = DateTime.Now
+                        };
+                    await PropertyOwnerService.AddContactNumber(newOwner.Id, phone);
+                }
+            }
+
+            // Create new Property
+            var newProperty = new Property
+                {
+                    OwnerId = skipOwner ? 0 : (propertyModel.OwnerId.HasValue ? propertyModel.OwnerId.Value : 0), // Use 0 if skipping owner
+                    CompanyId = currentUserCompanyId,
+                    BranchId = propertyModel.BranchId,
+                    PropertyTypeId = propertyModel.PropertyTypeId,
+                    PropertyName = propertyModel.PropertyName,
+                    PropertyCode = propertyModel.PropertyCode,
+                    CustomerRef = propertyModel.CustomerRef,
+                    RentalAmount = propertyModel.RentalAmount,
+                    PropertyAccountBalance = propertyModel.PropertyAccountBalance,
+                    StatusId = propertyModel.StatusId,
+                    ServiceLevel = propertyModel.ServiceLevel,
+                    HasTenant = false,
+                    CommissionTypeId = skipCommission ? 0 : (propertyModel.CommissionTypeId > 0 ? propertyModel.CommissionTypeId : 0), // Use 0 if skipping commission
+                    CommissionValue = skipCommission ? 0 : propertyModel.CommissionValue,   // Use 0 if skipping commission
+                    PaymentsEnabled = propertyModel.PaymentsEnabled,
+                    PaymentsVerify = propertyModel.PaymentsVerify,
+                    Tags = propertyModel.Tags,
+                    Address = addressModel,
+                    CreatedBy = currentUser.Id, // Use user ID for CreatedBy
+                    CreatedOn = DateTime.Now,
+                    IsRemoved = false
+                };
+
+            // Create property in the database
+            var propertyResult = await PropertyService.CreateProperty(newProperty);
+            if (!propertyResult.ResponseInfo.Success)
+            {
+                errorMessage = $"Failed to create property: {propertyResult.ResponseInfo.Message}";
+                ToastService.ShowError(errorMessage);
+                isSubmitting = false;
+                return;
+            }
+
+            // Get the new property ID
+            newProperty = propertyResult.Response as Property;
+            createdPropertyId = newProperty.Id;
+
+            // Show the success modal instead of navigating directly
+            showSuccessModal = true;
+
+            // Toast notification
+            ToastService.ShowSuccess($"Property '{newProperty.PropertyName}' created successfully", "Success");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating property: {ex.Message}";
+            ToastService.ShowError(errorMessage, "Error");
+            isSubmitting = false;
+        }
+    }
+
+    // Validation helper methods
+    private bool HasError(string fieldName)
+    {
+        return validationErrors.ContainsKey(fieldName);
+    }
+
+    private string GetError(string fieldName)
+    {
+        return validationErrors.ContainsKey(fieldName) ? validationErrors[fieldName] : "";
+    }
+
+    // Helper methods
+    private string GetPropertyTypeName(int typeId)
+    {
+        return propertyTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "Unknown";
+    }
+
+    private string GetPropertyStatusName(int statusId)
+    {
+        return propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name ?? "Unknown";
+    }
+
+    private string GetOwnerName(int? ownerId)
+    {
+        var owner = propertyOwners.FirstOrDefault(o => o.Id == ownerId);
+        if (owner == null) return "Unknown";
+        return owner.DisplayName ?? $"{owner.FirstName} {owner.LastName}";
+    }
+
+    private string GetCommissionTypeName(int typeId)
+    {
+        return commissionTypes.FirstOrDefault(c => c.Id == typeId)?.Name ?? "Unknown";
+    }
+
+    private bool GetCommissionTypeIsPercentage(int typeId)
+    {
+        var commissionType = commissionTypes.FirstOrDefault(c => c.Id == typeId);
+        return commissionType?.Name?.ToLower().Contains("percentage") == true;
+    }
+
+    // Property model for form binding
+    private class PropertyModel
+    {
+        public string PropertyName { get; set; }
+        public string PropertyCode { get; set; }
+        public string CustomerRef { get; set; }
+        public int PropertyTypeId { get; set; }
+        public int StatusId { get; set; }
+        public string ServiceLevel { get; set; }
+        public int? OwnerId { get; set; }
+        public int? BranchId { get; set; }
+        public int CompanyId { get; set; }
+        public decimal RentalAmount { get; set; }
+        public decimal? PropertyAccountBalance { get; set; }
+        public int CommissionTypeId { get; set; }
+        public decimal CommissionValue { get; set; }
+        public bool PaymentsEnabled { get; set; } = true;
+        public bool PaymentsVerify { get; set; } = true;
+        public string Tags { get; set; }
+    }
+
+    // Owner model for form binding
+    private class PropertyOwnerModel
+    {
+        public int PropertyOwnerTypeId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string IdNumber { get; set; }
+        public string CompanyName { get; set; }
+        public string RegistrationNumber { get; set; }
+        public string VatNumber { get; set; }
+        public string ContactPerson { get; set; }
+    }
+}

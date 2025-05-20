@@ -1,366 +1,808 @@
-﻿@* @using Microsoft.AspNetCore.Components
+﻿@using Microsoft.AspNetCore.Components.Forms
 @using Roovia.Models.BusinessModels
-@using Roovia.Models.BusinessHelperModels
 @using Roovia.Models.BusinessMappingModels
 
-<div class="property-modal-overlay" @onclick="HandleOverlayClick">
-    <div class="property-modal" @onclick:stopPropagation="true">
-        <div class="property-modal-header">
-            <h3 class="property-modal-title">Edit Property - @Property.PropertyCode</h3>
-            <button class="property-modal-close" @onclick="Cancel">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
+<div class="modal-backdrop"></div>
+<div class="property-editor-modal">
+    <div class="modal-header">
+        <h3>
+            <i class="fa-light fa-building-circle-arrow-right"></i>
+            @(IsEdit ? "Edit Property" : "Add New Property")
+        </h3>
+        <button class="modal-close-btn" @onclick="OnCancel">
+            <i class="fa-light fa-times"></i>
+        </button>
+    </div>
 
-        <div class="property-modal-body">
-            <form @onsubmit:preventDefault="true">
-                <div class="property-form-tabs">
-                    <button type="button" class="property-form-tab @(activeTab == "basic" ? "active" : "")" @onclick='() => activeTab = "basic"'>
-                        Basic Information
-                    </button>
-                    <button type="button" class="property-form-tab @(activeTab == "address" ? "active" : "")" @onclick='() => activeTab = "address"'>
-                        Address
-                    </button>
-                    <button type="button" class="property-form-tab @(activeTab == "lease" ? "active" : "")" @onclick='() => activeTab = "lease"'>
-                        Lease Information
-                    </button>
-                    <button type="button" class="property-form-tab @(activeTab == "commission" ? "active" : "")" @onclick='() => activeTab = "commission"'>
-                        Commission
-                    </button>
-                </div>
+    <div class="modal-body">
+        <EditForm Model="@Property" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
 
+            <div class="form-tabs">
+                <button class="form-tab @(activeTab == "basic" ? "active" : "")" @onclick='() => activeTab = "basic"'>
+                    <i class="fa-light fa-circle-info"></i> Basic Information
+                </button>
+                <button class="form-tab @(activeTab == "address" ? "active" : "")" @onclick='() => activeTab = "address"'>
+                    <i class="fa-light fa-location-dot"></i> Location
+                </button>
+                <button class="form-tab @(activeTab == "financial" ? "active" : "")" @onclick='() => activeTab = "financial"'>
+                    <i class="fa-light fa-money-bill-wave"></i> Financial Details
+                </button>
+                <button class="form-tab @(activeTab == "media" ? "active" : "")" @onclick='() => activeTab = "media"'>
+                    <i class="fa-light fa-images"></i> Media
+                </button>
+            </div>
+
+            <div class="form-tab-content">
                 @if (activeTab == "basic")
                 {
-                    <div class="property-form-section">
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Property Name*</label>
-                                <input type="text" class="property-form-input" @bind="Property.PropertyName" required />
+                    <div class="form-section">
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="propertyName">Property Name</label>
+                                <InputText id="propertyName" class="form-control" @bind-Value="Property.PropertyName" />
+                                <ValidationMessage For="@(() => Property.PropertyName)" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Property Code*</label>
-                                <input type="text" class="property-form-input" @bind="Property.PropertyCode" required />
+                            <div class="form-group required">
+                                <label for="propertyCode">Property Code</label>
+                                <InputText id="propertyCode" class="form-control" @bind-Value="Property.PropertyCode" />
+                                <ValidationMessage For="@(() => Property.PropertyCode)" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Owner*</label>
-                                <select class="property-form-select" @bind="Property.OwnerId" required>
-                                    @foreach (var owner in PropertyOwners)
-                                    {
-                                        <option value="@owner.Id">@owner.FullName</option>
-                                    }
-                                </select>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customerRef">Customer Reference</label>
+                                <InputText id="customerRef" class="form-control" @bind-Value="Property.CustomerRef" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Status*</label>
-                                <select class="property-form-select" @bind="Property.StatusId" required>
-                                    @foreach (var status in PropertyStatuses)
+                            <div class="form-group required">
+                                <label for="propertyType">Property Type</label>
+                                <InputSelect id="propertyType" class="form-control" @bind-Value="Property.PropertyTypeId">
+                                    @foreach (var type in PropertyTypes)
+                                    {
+                                        <option value="@type.Id">@type.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => Property.PropertyTypeId)" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="owner">Property Owner</label>
+                                <InputSelect id="owner" class="form-control" @bind-Value="Property.OwnerId">
+                                    <option value="">-- Select Owner --</option>
+                                    @foreach (var owner in PropertyOwners)
+                                    {
+                                        <option value="@owner.Id">@(owner.DisplayName ?? $"{owner.FirstName} {owner.LastName}")</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => Property.OwnerId)" />
+                            </div>
+
+                            <div class="form-group required">
+                                <label for="status">Status</label>
+                                <InputSelect id="status" class="form-control" @bind-Value="Property.StatusId">
+                                    @foreach (var status in PropertyStatusTypes)
                                     {
                                         <option value="@status.Id">@status.Name</option>
                                     }
-                                </select>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => Property.StatusId)" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Rental Amount (R)</label>
-                                <input type="number" class="property-form-input" @bind="Property.RentalAmount" step="0.01" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Service Level</label>
-                                <input type="text" class="property-form-input" @bind="Property.ServiceLevel" />
-                            </div>
-                        </div>
-
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Customer Reference</label>
-                                <input type="text" class="property-form-input" @bind="Property.CustomerRef" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Account Balance (R)</label>
-                                <input type="number" class="property-form-input" @bind="Property.PropertyAccountBalance" step="0.01" />
-                            </div>
+                        <div class="form-group">
+                            <label for="tags">Tags</label>
+                            <InputText id="tags" class="form-control" placeholder="Comma separated tags" @bind-Value="Property.Tags" />
                         </div>
                     </div>
                 }
-
-                @if (activeTab == "address")
+                else if (activeTab == "address")
                 {
-                    <div class="property-form-section">
-                        <div class="property-form-row">
-                            <div class="property-form-group property-form-group-full">
-                                <label class="property-form-label">Street Address</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.Street" />
+                    <div class="form-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="unitNumber">Unit Number</label>
+                                <InputText id="unitNumber" class="form-control" @bind-Value="Property.Address.UnitNumber" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="complexName">Complex/Estate Name</label>
+                                <InputText id="complexName" class="form-control" @bind-Value="Property.Address.ComplexName" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Unit Number</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.UnitNumber" />
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="buildingName">Building Name</label>
+                                <InputText id="buildingName" class="form-control" @bind-Value="Property.Address.BuildingName" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Floor</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.Floor" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Complex Name</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.ComplexName" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Building Name</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.BuildingName" />
+                            <div class="form-group">
+                                <label for="floor">Floor</label>
+                                <InputText id="floor" class="form-control" @bind-Value="Property.Address.Floor" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">City</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.City" />
+                        <div class="form-group required">
+                            <label for="street">Street Address</label>
+                            <InputText id="street" class="form-control" @bind-Value="Property.Address.Street" />
+                            <ValidationMessage For="@(() => Property.Address.Street)" />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="suburb">Suburb</label>
+                                <InputText id="suburb" class="form-control" @bind-Value="Property.Address.Suburb" />
+                                <ValidationMessage For="@(() => Property.Address.Suburb)" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Suburb</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.Suburb" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Province</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.Province" />
-                            </div>
-
-                            <div class="property-form-group">
-                                <label class="property-form-label">Postal Code</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.PostalCode" />
+                            <div class="form-group required">
+                                <label for="city">City</label>
+                                <InputText id="city" class="form-control" @bind-Value="Property.Address.City" />
+                                <ValidationMessage For="@(() => Property.Address.City)" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Country</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.Country" />
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="province">Province</label>
+                                <InputText id="province" class="form-control" @bind-Value="Property.Address.Province" />
+                                <ValidationMessage For="@(() => Property.Address.Province)" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Gate Code</label>
-                                <input type="text" class="property-form-input" @bind="Property.Address.GateCode" />
+                            <div class="form-group required">
+                                <label for="postalCode">Postal Code</label>
+                                <InputText id="postalCode" class="form-control" @bind-Value="Property.Address.PostalCode" />
+                                <ValidationMessage For="@(() => Property.Address.PostalCode)" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group property-form-group-full">
-                                <label class="property-form-label">Delivery Instructions</label>
-                                <textarea class="property-form-textarea" @bind="Property.Address.DeliveryInstructions" rows="3"></textarea>
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="country">Country</label>
+                                <InputText id="country" class="form-control" @bind-Value="Property.Address.Country" />
+                                <ValidationMessage For="@(() => Property.Address.Country)" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="gateCode">Gate/Access Code</label>
+                                <InputText id="gateCode" class="form-control" @bind-Value="Property.Address.GateCode" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-checkbox">
-                                    <input type="checkbox" @bind="Property.Address.IsResidential" />
-                                    <span>Is Residential Property</span>
-                                </label>
-                            </div>
+                        <div class="form-group">
+                            <label for="deliveryInstructions">Delivery Instructions</label>
+                            <InputTextArea id="deliveryInstructions" class="form-control" @bind-Value="Property.Address.DeliveryInstructions" />
+                        </div>
+
+                        <div class="form-check">
+                            <InputCheckbox id="isResidential" class="form-check-input" @bind-Value="Property.Address.IsResidential" />
+                            <label class="form-check-label" for="isResidential">This is a residential property</label>
                         </div>
                     </div>
                 }
-
-                @if (activeTab == "lease")
+                else if (activeTab == "financial")
                 {
-                    <div class="property-form-section">
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-checkbox">
-                                    <input type="checkbox" @bind="Property.HasTenant" />
-                                    <span>Property Has Tenant</span>
-                                </label>
+                    <div class="form-section">
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="rentalAmount">Monthly Rental Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <InputNumber id="rentalAmount" class="form-control" @bind-Value="Property.RentalAmount" />
+                                </div>
+                                <ValidationMessage For="@(() => Property.RentalAmount)" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="propertyBalance">Property Account Balance</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <InputNumber id="propertyBalance" class="form-control" @bind-Value="Property.PropertyAccountBalance" />
+                                </div>
                             </div>
                         </div>
 
-                        @if (Property.HasTenant)
-                        {
-                            <div class="property-form-row">
-                                <div class="property-form-group">
-                                    <label class="property-form-label">Lease Original Start Date</label>
-                                    <input type="date" class="property-form-input" @bind="Property.LeaseOriginalStartDate" />
-                                </div>
-
-                                <div class="property-form-group">
-                                    <label class="property-form-label">Current Lease Start Date</label>
-                                    <input type="date" class="property-form-input" @bind="Property.CurrentLeaseStartDate" />
-                                </div>
-                            </div>
-
-                            <div class="property-form-row">
-                                <div class="property-form-group">
-                                    <label class="property-form-label">Lease End Date</label>
-                                    <input type="date" class="property-form-input" @bind="Property.LeaseEndDate" />
-                                </div>
-
-                                <div class="property-form-group">
-                                    <label class="property-form-label">Current Tenant ID</label>
-                                    <input type="number" class="property-form-input" @bind="Property.CurrentTenantId" readonly />
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-
-                @if (activeTab == "commission")
-                {
-                    <div class="property-form-section">
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-label">Commission Type</label>
-                                <select class="property-form-select" @bind="Property.CommissionTypeId">
+                        <div class="form-row">
+                            <div class="form-group required">
+                                <label for="commissionType">Commission Type</label>
+                                <InputSelect id="commissionType" class="form-control" @bind-Value="Property.CommissionTypeId">
                                     @foreach (var type in CommissionTypes)
                                     {
                                         <option value="@type.Id">@type.Name</option>
                                     }
-                                </select>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => Property.CommissionTypeId)" />
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-label">Commission Value</label>
-                                <input type="number" class="property-form-input" @bind="Property.CommissionValue" step="0.01" />
+                            <div class="form-group required">
+                                <label for="commissionValue">Commission Value</label>
+                                <div class="input-group">
+                                    @if (Property.CommissionTypeId == 1) // Assuming 1 is Percentage
+                                    {
+                                        <InputNumber id="commissionValue" class="form-control" @bind-Value="Property.CommissionValue" />
+                                        <span class="input-group-text">%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="input-group-text">R</span>
+                                        <InputNumber id="commissionValue" class="form-control" @bind-Value="Property.CommissionValue" />
+                                    }
+                                </div>
+                                <ValidationMessage For="@(() => Property.CommissionValue)" />
                             </div>
                         </div>
 
-                        <div class="property-form-row">
-                            <div class="property-form-group">
-                                <label class="property-form-checkbox">
-                                    <input type="checkbox" @bind="Property.PaymentsEnabled" />
-                                    <span>Enable Payments</span>
-                                </label>
+                        <div class="form-group">
+                            <label for="serviceLevel">Service Level</label>
+                            <InputSelect id="serviceLevel" class="form-control" @bind-Value="Property.ServiceLevel">
+                                <option value="Standard">Standard</option>
+                                <option value="Premium">Premium</option>
+                                <option value="VIP">VIP</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="form-check-group">
+                            <div class="form-check">
+                                <InputCheckbox id="paymentsEnabled" class="form-check-input" @bind-Value="Property.PaymentsEnabled" />
+                                <label class="form-check-label" for="paymentsEnabled">Enable Payments</label>
                             </div>
 
-                            <div class="property-form-group">
-                                <label class="property-form-checkbox">
-                                    <input type="checkbox" @bind="Property.PaymentsVerify" />
-                                    <span>Verify Payments</span>
-                                </label>
+                            <div class="form-check">
+                                <InputCheckbox id="paymentsVerify" class="form-check-input" @bind-Value="Property.PaymentsVerify" />
+                                <label class="form-check-label" for="paymentsVerify">Verify Payments</label>
                             </div>
                         </div>
                     </div>
                 }
-            </form>
-        </div>
+                else if (activeTab == "media")
+                {
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>Property Main Image</label>
 
-        <div class="property-modal-footer">
-            <button class="property-btn property-btn-outline" @onclick="Cancel">Cancel</button>
-            <button class="property-btn property-btn-primary" @onclick="Save">Update Property</button>
-        </div>
+                            <div class="image-upload-area">
+                                @if (Property.MainImageId.HasValue && Property.MainImage != null)
+                                {
+                                    <div class="current-image">
+                                        <img src="@Property.MainImage.Url" alt="Property Image" />
+                                        <button type="button" class="remove-image-btn" @onclick="RemoveMainImage">
+                                            <i class="fa-light fa-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="upload-placeholder">
+                                        <i class="fa-light fa-cloud-arrow-up"></i>
+                                        <p>Drag & drop an image or click to browse</p>
+                                        <InputFile OnChange="OnFileSelected" class="file-input" accept="image/*" />
+                                    </div>
+                                }
+                            </div>
+
+                            @if (isUploading)
+                            {
+                                <div class="upload-progress">
+                                    <div class="upload-progress-bar" style="width: @uploadProgress%"></div>
+                                </div>
+                                <p class="upload-status">Uploading... @uploadProgress%</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="OnCancel">Cancel</button>
+                <button type="submit" class="btn btn-primary" disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>@(IsEdit ? "Update Property" : "Create Property")</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
     </div>
 </div>
 
-@code {
-    [Parameter] public Property Property { get; set; } = new();
-    [Parameter] public EventCallback<Property> OnSave { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public List<PropertyStatusType> PropertyStatuses { get; set; } = new();
-    [Parameter] public List<PropertyOwner> PropertyOwners { get; set; } = new();
-    [Parameter] public List<CommissionType> CommissionTypes { get; set; } = new();
-
-    private string activeTab = "basic";
-
-    private async Task Save()
-    {
-        if (ValidateProperty())
-        {
-            await OnSave.InvokeAsync(Property);
-        }
-    }
-
-    private async Task Cancel()
-    {
-        await OnCancel.InvokeAsync();
-    }
-
-    private void HandleOverlayClick()
-    {
-        Cancel();
-    }
-
-    private bool ValidateProperty()
-    {
-        if (string.IsNullOrWhiteSpace(Property.PropertyName))
-            return false;
-
-        if (string.IsNullOrWhiteSpace(Property.PropertyCode))
-            return false;
-
-        if (Property.OwnerId == 0)
-            return false;
-
-        return true;
-    }
-}
-
 <style>
-    /* Using the same modal styles from CreatePropertyModal */
-
-    .property-form-tabs {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 2rem;
-        border-bottom: 2px solid var(--border-light);
+    /* Modal Styles */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 999;
     }
 
-    .property-form-tab {
+    .property-editor-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow-xl);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        animation: modal-in 0.3s ease;
+    }
+
+    @@keyframes modal-in {
+        from
+
+    {
+        opacity: 0;
+        transform: translate(-50%, -48%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+
+    }
+
+    .modal-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-divider);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: var(--subtle-bg);
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+    }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+    .modal-close-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: none;
         border: none;
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-muted);
+        color: var(--text-secondary);
         cursor: pointer;
-        position: relative;
-        transition: color 0.2s;
+        transition: all 0.2s ease;
     }
 
-        .property-form-tab:hover {
-            color: var(--text-primary);
-        }
-
-        .property-form-tab.active {
+        .modal-close-btn:hover {
+            background-color: var(--primary-light);
             color: var(--primary);
         }
 
-            .property-form-tab.active::after {
-                content: '';
-                position: absolute;
-                bottom: -2px;
-                left: 0;
-                right: 0;
-                height: 2px;
-                background-color: var(--primary);
-            }
-
-    .property-form-textarea {
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        font-size: 1rem;
-        font-family: inherit;
-        background-color: var(--content-bg);
-        color: var(--text-primary);
-        resize: vertical;
-        transition: border-color 0.2s;
+    .modal-body {
+        padding: 0;
+        overflow-y: auto;
+        flex: 1;
     }
 
-        .property-form-textarea:focus {
+    .modal-footer {
+        padding: 1.25rem;
+        border-top: 1px solid var(--border-divider);
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        background-color: var(--subtle-bg);
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+
+    /* Form Tabs */
+    .form-tabs {
+        display: flex;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--border-divider);
+        background-color: var(--subtle-bg);
+    }
+
+    .form-tab {
+        padding: 1rem 1.25rem;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+        border-bottom: 2px solid transparent;
+    }
+
+        .form-tab:hover {
+            color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.05);
+        }
+
+        .form-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.08);
+        }
+
+    /* Form Content */
+    .form-tab-content {
+        padding: 1.5rem;
+    }
+
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+        .form-group.required label::after {
+            content: " *";
+            color: var(--danger);
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+    .form-control {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        background-color: var(--input-bg);
+        transition: all 0.2s ease;
+    }
+
+        .form-control:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
         }
-</style> *@
+
+        .form-control.invalid {
+            border-color: var(--danger);
+        }
+
+    .validation-message {
+        color: var(--danger);
+        font-size: 0.8125rem;
+        margin-top: 0.25rem;
+    }
+
+    .input-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group-text {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.625rem 0.875rem;
+        background-color: var(--subtle-bg);
+        border: 1px solid var(--border-color);
+        border-right: none;
+        border-top-left-radius: 6px;
+        border-bottom-left-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .input-group .form-control {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        flex: 1;
+    }
+
+    .input-group .input-group-text:last-child {
+        border-right: 1px solid var(--border-color);
+        border-left: none;
+        border-radius: 0 6px 6px 0;
+    }
+
+    .form-check-group {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+    }
+
+    .form-check-label {
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+    }
+
+    /* Image Upload */
+    .image-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+        .image-upload-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(var(--primary-rgb), 0.03);
+        }
+
+    .upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        color: var(--text-muted);
+        text-align: center;
+        position: relative;
+    }
+
+        .upload-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-placeholder p {
+            margin: 0 0 1rem;
+            font-size: 0.9375rem;
+        }
+
+    .file-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .current-image {
+        position: relative;
+        width: 100%;
+        height: 200px;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+        .current-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .remove-image-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .remove-image-btn:hover {
+            background-color: var(--danger);
+        }
+
+    .upload-progress {
+        height: 6px;
+        background-color: var(--border-light);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .upload-progress-bar {
+        height: 100%;
+        background-color: var(--primary);
+        transition: width 0.3s ease;
+    }
+
+    .upload-status {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        border-radius: 6px;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+    .btn-outline {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+
+        .btn-outline:hover {
+            background-color: var(--subtle-bg);
+            color: var(--text-primary);
+        }
+
+    .spinner-border {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border 0.75s linear infinite;
+    }
+
+    @@keyframes spinner-border {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    .me-2 {
+        margin-right: 0.5rem;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .property-editor-modal
+
+    {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-tabs {
+        overflow-x: auto;
+    }
+
+    .form-tab {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    }
+</style>
+
+@code {
+    [Parameter] public Property Property { get; set; }
+    [Parameter] public List<PropertyStatusType> PropertyStatusTypes { get; set; } = new();
+    [Parameter] public List<PropertyType> PropertyTypes { get; set; } = new();
+    [Parameter] public List<PropertyOwner> PropertyOwners { get; set; } = new();
+    [Parameter] public List<CommissionType> CommissionTypes { get; set; } = new();
+    [Parameter] public EventCallback<Property> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    private string activeTab = "basic";
+    private bool isUploading = false;
+    private int uploadProgress = 0;
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSave.InvokeAsync(Property);
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        // In a real implementation, this would handle file uploads
+        // For now, we'll just simulate progress
+        isUploading = true;
+        uploadProgress = 0;
+
+        // Simulate upload progress
+        var timer = new System.Threading.Timer(async _ =>
+        {
+            uploadProgress += 10;
+
+            if (uploadProgress >= 100)
+            {
+                isUploading = false;
+
+                // Simulate setting the image
+                Property.MainImageId = 1; // This would be the actual image ID
+
+                await InvokeAsync(StateHasChanged);
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }, null, 0, 300);
+    }
+
+    private void RemoveMainImage()
+    {
+        Property.MainImageId = null;
+        Property.MainImage = null;
+    }
+}

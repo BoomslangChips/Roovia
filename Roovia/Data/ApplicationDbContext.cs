@@ -340,7 +340,14 @@ namespace Roovia.Data
                 entity.HasOne(p => p.Owner)
                     .WithMany(o => o.Properties)
                     .HasForeignKey(p => p.OwnerId)
+                    .IsRequired(false) // Explicitly mark as optional
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.CommissionType)
+       .WithMany()
+       .HasForeignKey(p => p.CommissionTypeId)
+       .IsRequired(false) // Mark as optional
+       .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(p => p.MainImage)
                     .WithMany()

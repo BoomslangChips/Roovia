@@ -14,7 +14,7 @@ namespace Roovia.Models.BusinessModels
         [Key]
         public int Id { get; set; }
 
-        public int OwnerId { get; set; }
+        public int? OwnerId { get; set; }
 
         public int CompanyId { get; set; }
 
@@ -53,9 +53,9 @@ namespace Roovia.Models.BusinessModels
         public int? CurrentTenantId { get; set; }
 
         // Commission settings
-        public int CommissionTypeId { get; set; } // FK to CommissionType
+        public int? CommissionTypeId { get; set; } // FK to CommissionType
 
-        public decimal CommissionValue { get; set; } // Percentage or fixed amount
+        public decimal? CommissionValue { get; set; } // Percentage or fixed amount
 
         // Payment settings
         public bool PaymentsEnabled { get; set; } = true;

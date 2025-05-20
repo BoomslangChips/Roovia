@@ -1,253 +1,667 @@
-﻿@* @page "/properties"
+﻿@page "/properties"
 @attribute [Authorize(Policy = "PropertiesAccess")]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+@using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessModels
+@using Roovia.Models.BusinessHelperModels
 @using Roovia.Models.UserCompanyModels
+@using Roovia.Models.BusinessMappingModels
+@using Roovia.Security
 @using Roovia.Services
 @using Roovia.Services.General
 @inject IProperty PropertyService
 @inject IPropertyOwner PropertyOwnerService
 @inject IUser UserService
 @inject IPermissionService PermissionService
+@inject ICdnService CdnService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@inject NavigationManager Navigation
 @inject ToastService ToastService
-
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @rendermode InteractiveServer
 
-<div class="properties-container">
-    <div class="properties-header">
-        <h2 class="properties-title">Properties Management</h2>
-        @if (_canCreateProperties)
-        {
-            <button class="property-btn property-btn-primary" @onclick="() => ShowCreateModal()">
-                <i class="fas fa-plus me-2"></i> Add Property
-            </button>
-        }
+<div class="pm-page">
+    <div class="pm-header-section">
+        <div class="pm-header-content">
+            <div class="pm-header-text-content">
+                <div class="pm-header-icon">
+                    <i class="fa-light fa-buildings"></i>
+                </div>
+                <div class="pm-header-title-group">
+                    <h1 class="pm-header-title">Properties Management</h1>
+                    <p class="pm-header-subtitle">Manage your property portfolio, tenants, and financial details</p>
+                </div>
+            </div>
+            <div class="pm-header-action-panel">
+                <PermissionAuthorizeView Permission="properties.create">
+                    <button class="pm-custom-btn pm-custom-btn-primary pm-custom-btn-with-icon" @onclick="() => NavigateToCreateProperty()">
+                        <i class="fa-light fa-building-circle-check"></i>
+                        <span>Add Property</span>
+                    </button>
+                </PermissionAuthorizeView>
+
+                <div class="pm-dropdown">
+                    <button class="pm-custom-btn pm-custom-btn-outline pm-custom-btn-with-icon" @onclick="ToggleOptionsMenu">
+                        <i class="fa-light fa-ellipsis-vertical"></i>
+                    </button>
+                    @if (showOptionsMenu)
+                    {
+                        <div class="pm-dropdown-menu">
+                            <button class="pm-dropdown-item" @onclick="ExportProperties">
+                                <i class="fa-light fa-file-export"></i> Export Properties
+                            </button>
+                            <button class="pm-dropdown-item" @onclick="RefreshProperties">
+                                <i class="fa-light fa-arrows-rotate"></i> Refresh Data
+                            </button>
+                            <button class="pm-dropdown-item" @onclick="ToggleDisplayMode">
+                                <i class="fa-light @(displayMode == "grid" ? "fa-list" : "fa-grid-2")"></i>
+                                Switch to @(displayMode == "grid" ? "List" : "Grid") View
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="properties-filters">
-        <div class="property-search-container">
-            <input type="text" class="property-search-input"
-                   placeholder="Search properties..."
-                   @bind-value="searchTerm"
-                   @bind-value:event="oninput"
-                   @onkeyup="@(() => FilterProperties())">
-            <i class="fas fa-search property-search-icon"></i>
-        </div>
+    <div class="pm-main-container">
+        <div class="pm-toolbar">
+            <div class="pm-search">
+                <div class="pm-search-container">
+                    <i class="fa-light fa-magnifying-glass pm-search-icon"></i>
+                    <input type="text"
+                           class="pm-search-input"
+                           placeholder="Search properties..."
+                           @bind-value="searchText"
+                           @bind-value:event="oninput"
+                           @onkeyup="FilterProperties" />
+                    @if (!string.IsNullOrEmpty(searchText))
+                    {
+                        <button class="pm-search-clear" @onclick="ClearSearch">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    }
+                </div>
+            </div>
 
-        <div class="property-filter-row">
-            <select class="property-filter-select" @bind="statusFilter" @bind:event="onchange">
-                <option value="">All Statuses</option>
-                @foreach (var status in propertyStatuses)
+            <div class="pm-filters">
+                @if (availableStatusTypes.Any())
                 {
-                    <option value="@status.Id">@status.Name</option>
+                    <div class="pm-filter-group">
+                        <label for="status-filter">Status</label>
+                        <select id="status-filter" class="pm-filter-select" @bind="selectedStatusFilter" @bind:after="FilterProperties">
+                            <option value="">All Statuses</option>
+                            @foreach (var status in availableStatusTypes)
+                            {
+                                <option value="@status.Id">@status.Name</option>
+                            }
+                        </select>
+                    </div>
                 }
-            </select>
 
-            <select class="property-filter-select" @bind="tenantFilter" @bind:event="onchange">
-                <option value="">All Properties</option>
-                <option value="with-tenant">With Tenant</option>
-                <option value="vacant">Vacant</option>
-            </select>
-        </div>
-    </div>
+                @if (availablePropertyTypes.Any())
+                {
+                    <div class="pm-filter-group">
+                        <label for="type-filter">Type</label>
+                        <select id="type-filter" class="pm-filter-select" @bind="selectedTypeFilter" @bind:after="FilterProperties">
+                            <option value="">All Types</option>
+                            @foreach (var type in availablePropertyTypes)
+                            {
+                                <option value="@type.Id">@type.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
 
-    @if (isLoading)
-    {
-        <div class="property-loading">
-            <div class="property-spinner"></div>
-            <p>Loading properties...</p>
+                @if (hasVacantProperties || hasOccupiedProperties)
+                {
+                    <div class="pm-filter-group">
+                        <label for="tenant-filter">Occupancy</label>
+                        <select id="tenant-filter" class="pm-filter-select" @bind="selectedTenantFilter" @bind:after="FilterProperties">
+                            <option value="">All Properties</option>
+                            @if (hasOccupiedProperties)
+                            {
+                                <option value="with-tenant">Occupied</option>
+                            }
+                            @if (hasVacantProperties)
+                            {
+                                <option value="vacant">Vacant</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="pm-filter-group">
+                    <label for="sort-filter">Sort By</label>
+                    <select id="sort-filter" class="pm-filter-select" @bind="selectedSortOption" @bind:after="FilterProperties">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="rent-asc">Rent (Low-High)</option>
+                        <option value="rent-desc">Rent (High-Low)</option>
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
+
+                @if (activeFilters > 0)
+                {
+                    <button class="pm-clear-filters-btn" @onclick="ClearAllFilters">
+                        <i class="fa-light fa-filter-circle-xmark"></i> Clear Filters (@activeFilters)
+                    </button>
+                }
+            </div>
         </div>
-    }
-    else if (!filteredProperties.Any())
-    {
-        <div class="property-empty-state">
-            <i class="fas fa-home property-empty-icon"></i>
-            <h3>No Properties Found</h3>
-            <p>No properties match your search criteria.</p>
-        </div>
-    }
-    else
-    {
-        <div class="properties-grid">
-            @foreach (var property in filteredProperties)
+
+        @if (isLoading)
+        {
+            <div class="pm-loading-state">
+                <div class="pm-loading-spinner"></div>
+                <p class="pm-loading-text">Loading properties...</p>
+            </div>
+        }
+        else if (!filteredProperties.Any())
+        {
+            <div class="pm-empty-state">
+                <div class="pm-empty-icon">
+                    <i class="fa-light fa-building-magnifying-glass"></i>
+                </div>
+                <h3 class="pm-empty-title">No Properties Found</h3>
+                <p class="pm-empty-description">No properties match your current search and filter criteria.</p>
+                @if (activeFilters > 0)
+                {
+                    <button class="pm-custom-btn pm-custom-btn-primary" @onclick="ClearAllFilters">
+                        <i class="fa-light fa-filter-circle-xmark pm-me-2"></i> Clear All Filters
+                    </button>
+                }
+                else
+                {
+                    <PermissionAuthorizeView Permission="properties.create">
+                        <button class="pm-custom-btn pm-custom-btn-primary" @onclick="() => NavigateToCreateProperty()">
+                            <i class="fa-light fa-building-circle-check pm-me-2"></i> Add Your First Property
+                        </button>
+                    </PermissionAuthorizeView>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="pm-stats">
+                <div class="pm-stat-card">
+                    <div class="pm-stat-icon">
+                        <i class="fa-light fa-buildings"></i>
+                    </div>
+                    <div class="pm-stat-content">
+                        <div class="pm-stat-value">@filteredProperties.Count()</div>
+                        <div class="pm-stat-label">Properties</div>
+                    </div>
+                </div>
+
+                <div class="pm-stat-card">
+                    <div class="pm-stat-icon">
+                        <i class="fa-light fa-user-check"></i>
+                    </div>
+                    <div class="pm-stat-content">
+                        <div class="pm-stat-value">@filteredProperties.Count(p => p.HasTenant)</div>
+                        <div class="pm-stat-label">Occupied</div>
+                    </div>
+                </div>
+
+                <div class="pm-stat-card">
+                    <div class="pm-stat-icon">
+                        <i class="fa-light fa-door-open"></i>
+                    </div>
+                    <div class="pm-stat-content">
+                        <div class="pm-stat-value">@filteredProperties.Count(p => !p.HasTenant)</div>
+                        <div class="pm-stat-label">Vacant</div>
+                    </div>
+                </div>
+
+                <div class="pm-stat-card">
+                    <div class="pm-stat-icon">
+                        <i class="fa-light fa-sack-dollar"></i>
+                    </div>
+                    <div class="pm-stat-content">
+                        <div class="pm-stat-value">R @filteredProperties.Sum(p => p.RentalAmount).ToString("N0")</div>
+                        <div class="pm-stat-label">Monthly Rental</div>
+                    </div>
+                </div>
+            </div>
+
+            @if (displayMode == "grid")
             {
-                <div class="property-card">
-                    <div class="property-card-header">
-                        @if (property.MainImage != null)
+                <div class="pm-grid">
+                    @foreach (var property in pagedProperties)
+                    {
+                        <div class="pm-card" @onclick="() => NavigateToPropertyDetails(property.Id)">
+                            <div class="pm-card-header">
+                                @if (property.MainImage != null)
+                                {
+                                    <img src="@property.MainImage.Url" alt="@property.PropertyName" class="pm-card-image" />
+                                }
+                                else
+                                {
+                                    <div class="pm-placeholder-image">
+                                        <i class="fa-light fa-building"></i>
+                                    </div>
+                                }
+                                <div class="pm-status-badge @GetStatusClass(property.StatusId)">
+                                    @GetStatusName(property.StatusId)
+                                </div>
+                                @if (property.HasTenant)
+                                {
+                                    <div class="pm-tenant-badge">
+                                        <i class="fa-light fa-user-check"></i> Occupied
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="pm-tenant-badge vacant">
+                                        <i class="fa-light fa-door-open"></i> Vacant
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="pm-card-body">
+                                <h4 class="pm-property-name">@property.PropertyName</h4>
+                                <p class="pm-property-code">@property.PropertyCode</p>
+
+                                <div class="pm-property-address">
+                                    <i class="fa-light fa-location-dot"></i>
+                                    @GetPropertyAddress(property)
+                                </div>
+
+                                <div class="pm-property-type">
+                                    <i class="fa-light fa-building-circle-check"></i>
+                                    @GetPropertyTypeName(property.PropertyTypeId)
+                                </div>
+
+                                <div class="pm-property-info-row">
+                                    <div class="pm-property-info-item">
+                                        <div class="pm-property-info-label">Rental Amount</div>
+                                        <div class="pm-property-info-value">R @property.RentalAmount.ToString("N2")</div>
+                                    </div>
+
+                                    <div class="pm-property-info-item">
+                                        <div class="pm-property-info-label">Owner</div>
+                                        <div class="pm-property-info-value">@GetOwnerName(property.OwnerId.GetValueOrDefault())</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pm-card-footer">
+                                <PermissionAuthorizeView Permission="properties.view">
+                                    <button class="pm-btn pm-btn-sm pm-btn-outline" @onclick:stopPropagation="true" @onclick="() => NavigateToPropertyDetails(property.Id)">
+                                        <i class="fa-light fa-eye"></i> View
+                                    </button>
+                                </PermissionAuthorizeView>
+                                <PermissionAuthorizeView Permission="properties.edit">
+                                    <button class="pm-btn pm-btn-sm pm-btn-primary" @onclick:stopPropagation="true" @onclick="() => NavigateToEditProperty(property.Id)">
+                                        <i class="fa-light fa-edit"></i> Edit
+                                    </button>
+                                </PermissionAuthorizeView>
+                                <div class="pm-card-menu">
+                                    <button class="pm-btn pm-btn-sm pm-btn-ghost" @onclick:stopPropagation="true" @onclick="() => TogglePropertyMenu(property.Id)">
+                                        <i class="fa-light fa-ellipsis-vertical"></i>
+                                    </button>
+                                    @if (openPropertyMenuId == property.Id)
+                                    {
+                                        <div class="pm-menu-dropdown">
+                                            <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => AddTenant(property)">
+                                                <i class="fa-light fa-user-plus"></i> Add Tenant
+                                            </button>
+                                            <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => ScheduleInspection(property)">
+                                                <i class="fa-light fa-clipboard-check"></i> Schedule Inspection
+                                            </button>
+                                            <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => ManageDocuments(property)">
+                                                <i class="fa-light fa-folder-open"></i> Manage Documents
+                                            </button>
+                                            <PermissionAuthorizeView Permission="properties.delete">
+                                                <button class="pm-menu-item danger" @onclick:stopPropagation="true" @onclick="() => ArchiveProperty(property)">
+                                                    <i class="fa-light fa-trash"></i> Archive Property
+                                                </button>
+                                            </PermissionAuthorizeView>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pm-table-container">
+                    <table class="pm-table">
+                        <thead>
+                            <tr>
+                                <th class="pm-col-status">Status</th>
+                                <th class="pm-col-image"></th>
+                                <th class="pm-col-name">Property</th>
+                                <th class="pm-col-type">Type</th>
+                                <th class="pm-col-address">Address</th>
+                                <th class="pm-col-tenant">Occupancy</th>
+                                <th class="pm-col-rent">Monthly Rent</th>
+                                <th class="pm-col-owner">Owner</th>
+                                <th class="pm-col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var property in pagedProperties)
+                            {
+                                <tr class="pm-table-row" @onclick="() => NavigateToPropertyDetails(property.Id)">
+                                    <td class="pm-col-status">
+                                        <span class="pm-status-pill @GetStatusClass(property.StatusId)">
+                                            @GetStatusName(property.StatusId)
+                                        </span>
+                                    </td>
+                                    <td class="pm-col-image">
+                                        @if (property.MainImage != null)
+                                        {
+                                            <img src="@property.MainImage.Url" alt="@property.PropertyName" class="pm-thumbnail" />
+                                        }
+                                        else
+                                        {
+                                            <div class="pm-thumbnail-placeholder">
+                                                <i class="fa-light fa-building"></i>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td class="pm-col-name">
+                                        <div class="pm-name-container">
+                                            <div class="pm-table-name">@property.PropertyName</div>
+                                            <div class="pm-table-code">@property.PropertyCode</div>
+                                        </div>
+                                    </td>
+                                    <td class="pm-col-type">@GetPropertyTypeName(property.PropertyTypeId)</td>
+                                    <td class="pm-col-address">@GetPropertyAddress(property)</td>
+                                    <td class="pm-col-tenant">
+                                        @if (property.HasTenant)
+                                        {
+                                            <span class="pm-tenant-pill">
+                                                <i class="fa-light fa-user-check"></i> Occupied
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="pm-tenant-pill vacant">
+                                                <i class="fa-light fa-door-open"></i> Vacant
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="pm-col-rent">R @property.RentalAmount.ToString("N2")</td>
+                                    <td class="pm-col-owner">@GetOwnerName(property.OwnerId.GetValueOrDefault())</td>
+                                    <td class="pm-col-actions">
+                                        <div class="pm-table-actions">
+                                            <PermissionAuthorizeView Permission="properties.view">
+                                                <button class="pm-btn pm-btn-xs pm-btn-outline" @onclick:stopPropagation="true" @onclick="() => NavigateToPropertyDetails(property.Id)">
+                                                    <i class="fa-light fa-eye"></i>
+                                                </button>
+                                            </PermissionAuthorizeView>
+                                            <PermissionAuthorizeView Permission="properties.edit">
+                                                <button class="pm-btn pm-btn-xs pm-btn-primary" @onclick:stopPropagation="true" @onclick="() => NavigateToEditProperty(property.Id)">
+                                                    <i class="fa-light fa-edit"></i>
+                                                </button>
+                                            </PermissionAuthorizeView>
+                                            <div class="pm-table-menu">
+                                                <button class="pm-btn pm-btn-xs pm-btn-ghost" @onclick:stopPropagation="true" @onclick="() => TogglePropertyMenu(property.Id)">
+                                                    <i class="fa-light fa-ellipsis-vertical"></i>
+                                                </button>
+                                                @if (openPropertyMenuId == property.Id)
+                                                {
+                                                    <div class="pm-table-menu-dropdown">
+                                                        <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => AddTenant(property)">
+                                                            <i class="fa-light fa-user-plus"></i> Add Tenant
+                                                        </button>
+                                                        <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => ScheduleInspection(property)">
+                                                            <i class="fa-light fa-clipboard-check"></i> Schedule Inspection
+                                                        </button>
+                                                        <button class="pm-menu-item" @onclick:stopPropagation="true" @onclick="() => ManageDocuments(property)">
+                                                            <i class="fa-light fa-folder-open"></i> Manage Documents
+                                                        </button>
+                                                        <PermissionAuthorizeView Permission="properties.delete">
+                                                            <button class="pm-menu-item danger" @onclick:stopPropagation="true" @onclick="() => ArchiveProperty(property)">
+                                                                <i class="fa-light fa-trash"></i> Archive Property
+                                                            </button>
+                                                        </PermissionAuthorizeView>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="pm-pagination-container">
+                <div class="pm-pagination-info">
+                    Showing @((currentPage - 1) * pageSize + 1) to @Math.Min(currentPage * pageSize, filteredProperties.Count()) of @filteredProperties.Count() properties
+                </div>
+                <div class="pm-pagination-controls">
+                    <button class="pm-pagination-btn" disabled="@(currentPage <= 1)" @onclick="() => ChangePage(1)" title="First Page">
+                        <i class="fa-light fa-angles-left"></i>
+                    </button>
+                    <button class="pm-pagination-btn" disabled="@(currentPage <= 1)" @onclick="() => ChangePage(currentPage - 1)" title="Previous Page">
+                        <i class="fa-light fa-angle-left"></i>
+                    </button>
+
+                    @foreach (var pageNumber in GetPageNumbers())
+                    {
+                        if (pageNumber == -1)
                         {
-                            <img src="@property.MainImage.Url" alt="@property.PropertyName" class="property-image" />
+                            <span class="pm-pagination-ellipsis">...</span>
                         }
                         else
                         {
-                            <div class="property-placeholder-image">
-                                <i class="fas fa-building"></i>
-                            </div>
-                        }
-                        <div class="property-status-badge @GetStatusClass(property.StatusId)">
-                            @property.Status?.Name
-                        </div>
-                        @if (property.HasTenant)
-                        {
-                            <div class="property-tenant-badge">
-                                <i class="fas fa-user me-1"></i> Occupied
-                            </div>
-                        }
-                    </div>
-
-                    <div class="property-card-body">
-                        <h4 class="property-name">@property.PropertyName</h4>
-                        <p class="property-code">Code: @property.PropertyCode</p>
-
-                        <div class="property-address">
-                            <i class="fas fa-map-marker-alt me-2"></i>
-                            @GetPropertyAddress(property)
-                        </div>
-
-                        <div class="property-info-row">
-                            <div class="property-info-item">
-                                <span class="property-info-label">Rental Amount</span>
-                                <span class="property-info-value">R @property.RentalAmount.ToString("N2")</span>
-                            </div>
-                            @if (property.Owner != null)
-                            {
-                                <div class="property-info-item">
-                                    <span class="property-info-label">Owner</span>
-                                    <span class="property-info-value">@property.Owner.FullName</span>
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="property-card-footer">
-                        @if (_canViewAllProperties)
-                        {
-                            <button class="property-btn property-btn-sm property-btn-outline" @onclick="() => ViewProperty(property)">
-                                <i class="fas fa-eye"></i> View
+                            <button class="pm-pagination-btn @(pageNumber == currentPage ? "active" : "")" @onclick="() => ChangePage(pageNumber)">
+                                @pageNumber
                             </button>
                         }
-                        @if (_canCreateProperties)
-                        {
-                            <button class="property-btn property-btn-sm property-btn-primary" @onclick="() => EditProperty(property)">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                        }
-                        @if (_canArchiveProperties)
-                        {
-                            <button class="property-btn property-btn-sm property-btn-danger" @onclick="() => ArchiveProperty(property)">
-                                <i class="fas fa-archive"></i> Archive
-                            </button>
-                        }
-                    </div>
+                    }
+
+                    <button class="pm-pagination-btn" disabled="@(currentPage >= totalPages)" @onclick="() => ChangePage(currentPage + 1)" title="Next Page">
+                        <i class="fa-light fa-angle-right"></i>
+                    </button>
+                    <button class="pm-pagination-btn" disabled="@(currentPage >= totalPages)" @onclick="() => ChangePage(totalPages)" title="Last Page">
+                        <i class="fa-light fa-angles-right"></i>
+                    </button>
                 </div>
-            }
+                <div class="pm-pagination-size">
+                    <span>Show</span>
+                    <select class="pm-pagination-select" value="@pageSize" @onchange="ChangePageSize">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>per page</span>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (showArchiveConfirmation)
+    {
+        <div class="pm-modal-backdrop" @onclick="() => showArchiveConfirmation = false"></div>
+        <div class="pm-confirm-modal">
+            <div class="pm-confirm-modal-header">
+                <h3><i class="fa-light fa-triangle-exclamation"></i> Archive Property</h3>
+                <button class="pm-modal-close-btn" @onclick="() => showArchiveConfirmation = false">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            </div>
+            <div class="pm-confirm-modal-body">
+                <p>Are you sure you want to archive <strong>@propertyToArchive?.PropertyName</strong>?</p>
+                <p>This property will no longer be visible in the active properties list.</p>
+            </div>
+            <div class="pm-confirm-modal-footer">
+                <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => showArchiveConfirmation = false">Cancel</button>
+                <button class="pm-custom-btn pm-custom-btn-danger" @onclick="ConfirmArchiveProperty">
+                    <i class="fa-light fa-trash pm-me-2"></i> Archive Property
+                </button>
+            </div>
         </div>
     }
 </div>
 
-@if (showCreateModal)
+@if (openPropertyMenuId != null)
 {
-    <CreatePropertyModal Property="@newProperty"
-                         OnSave="@SaveNewProperty"
-                         OnCancel="@(() => showCreateModal = false)"
-                         PropertyStatuses="@propertyStatuses"
-                         PropertyOwners="@propertyOwners"
-                         CommissionTypes="@commissionTypes" />
-}
-
-@if (showEditModal && selectedProperty != null)
-{
-    <EditPropertyModal Property="@selectedProperty"
-                       OnSave="@UpdateProperty"
-                       OnCancel="@(() => showEditModal = false)"
-                       PropertyStatuses="@propertyStatuses"
-                       PropertyOwners="@propertyOwners"
-                       CommissionTypes="@commissionTypes" />
-}
-
-@if (showViewModal && selectedProperty != null)
-{
-    <ViewPropertyModal Property="@selectedProperty"
-                       OnClose="@(() => showViewModal = false)" />
+    <div class="pm-backdrop" @onclick="CloseAllMenus"></div>
 }
 
 @code {
-    private ApplicationUser? currentUser;
+    // User and Authentication
+    private ApplicationUser currentUser;
+    private int currentUserCompanyId;
+    private bool canManageProperties;
+
+    // Properties and Data
     private List<Property> properties = new();
     private List<Property> filteredProperties = new();
-    private Property? selectedProperty;
-    private Property newProperty = new();
-
-    private List<PropertyStatusType> propertyStatuses = new();
+    private List<PropertyStatusType> propertyStatusTypes = new();
+    private List<PropertyType> propertyTypes = new();
     private List<PropertyOwner> propertyOwners = new();
     private List<CommissionType> commissionTypes = new();
 
-    private string searchTerm = "";
-    private string statusFilter = "";
-    private string tenantFilter = "";
+    // Available filter options (only those that exist in data)
+    private List<PropertyStatusType> availableStatusTypes = new();
+    private List<PropertyType> availablePropertyTypes = new();
+    private bool hasVacantProperties = false;
+    private bool hasOccupiedProperties = false;
 
+    // UI State
     private bool isLoading = true;
-    private bool showCreateModal = false;
-    private bool showEditModal = false;
-    private bool showViewModal = false;
+    private string displayMode = "grid"; // "grid" or "list"
+    private int? openPropertyMenuId = null;
+    private bool showOptionsMenu = false;
+    private string searchText = "";
+    private string selectedStatusFilter = "";
+    private string selectedTypeFilter = "";
+    private string selectedTenantFilter = "";
+    private string selectedSortOption = "name-asc";
+    private int activeFilters = 0;
 
-    // Permissions
-    private bool _canCreateProperties = false;
-    private bool _canArchiveProperties = false;
-    private bool _canViewAllProperties = false;
+    // Modals
+    private bool showArchiveConfirmation = false;
+    private Property propertyToArchive;
+
+    // Pagination
+    private int pageSize = 10;
+    private int currentPage = 1;
+    private int totalPages => (int)Math.Ceiling(filteredProperties.Count() / (double)pageSize);
+    private List<Property> pagedProperties => filteredProperties
+        .Skip((currentPage - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userId = authState.User.Identity?.Name;
+        await LoadCurrentUser();
+        await LoadMappingData();
+        await LoadProperties();
+    }
 
-        if (!string.IsNullOrEmpty(userId))
+    private async Task LoadCurrentUser()
+    {
+        try
         {
-            var userResult = await UserService.GetUserById(userId);
-            if (userResult.ResponseInfo.Success)
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.Identity?.Name;
+
+            if (!string.IsNullOrEmpty(userId))
             {
-                currentUser = userResult.Response as ApplicationUser;
-                await CheckUserPermissions();
-                await LoadInitialData();
+                var userResult = await UserService.GetUserById(userId);
+                if (userResult.ResponseInfo.Success)
+                {
+                    currentUser = userResult.Response as ApplicationUser;
+                    currentUserCompanyId = currentUser?.CompanyId ?? 0;
+                    canManageProperties = await PermissionService.UserHasPermission(userId, "properties.manage");
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load user data: {ex.Message}", "Error");
         }
     }
 
-    private async Task CheckUserPermissions()
+    private async Task LoadMappingData()
     {
-        if (currentUser == null) return;
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
 
-        _canCreateProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.create");
-        _canArchiveProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.archive");
-        _canViewAllProperties = await PermissionService.UserHasPermission(currentUser.Id, "properties.view.all");
+            // Load property status types
+            propertyStatusTypes = await context.PropertyStatusTypes
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.DisplayOrder)
+                .ToListAsync();
+
+            // Load property types
+            propertyTypes = await context.PropertyTypes
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.DisplayOrder)
+                .ToListAsync();
+
+            // Load commission types
+            commissionTypes = await context.CommissionTypes
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.DisplayOrder)
+                .ToListAsync();
+
+            // Load property owners for current company
+            if (currentUserCompanyId > 0)
+            {
+                var ownerResult = await PropertyOwnerService.GetAllPropertyOwners(currentUserCompanyId);
+                if (ownerResult.ResponseInfo.Success)
+                {
+                    propertyOwners = ownerResult.Response as List<PropertyOwner> ?? new();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load reference data: {ex.Message}", "Error");
+        }
     }
 
-    private async Task LoadInitialData()
+    private async Task LoadProperties()
     {
         isLoading = true;
 
         try
         {
-            // Load properties
-            if (currentUser?.CompanyId != null)
+            // Only load properties if user has a company assigned
+            if (currentUserCompanyId > 0)
             {
-                var result = await PropertyService.GetAllProperties(currentUser.CompanyId.Value);
+                var result = await PropertyService.GetAllProperties(currentUserCompanyId);
                 if (result.ResponseInfo.Success)
                 {
-                    properties = result.Response as List<Property> ?? new();
+                    properties = (result.Response as List<Property>) ?? new();
+
+                    // Load related property data (images, owners, etc.)
+                    await LoadPropertyRelations();
+
+                    // Analyze which filter options actually exist in data
+                    UpdateAvailableFilterOptions();
+
                     FilterProperties();
                 }
+                else
+                {
+                    ToastService.ShowError(result.ResponseInfo.Message, "Error");
+                }
             }
-
-            // Load lookup data
-            await LoadLookupData();
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Error loading properties: {ex.Message}");
+            ToastService.ShowError($"Failed to load properties: {ex.Message}", "Error");
         }
         finally
         {
@@ -255,439 +669,376 @@
         }
     }
 
-    private async Task LoadLookupData()
+    private async Task LoadPropertyRelations()
     {
-        // In a real implementation, these would come from lookup services
-        // For now, creating mock data
-        propertyStatuses = new List<PropertyStatusType>
-        {
-            new() { Id = 1, Name = "Active" },
-            new() { Id = 2, Name = "Inactive" },
-            new() { Id = 3, Name = "Under Maintenance" }
-        };
+        if (!properties.Any()) return;
 
-        if (currentUser?.CompanyId != null)
+        try
         {
-            var ownerResult = await PropertyOwnerService.GetAllPropertyOwners(currentUser.CompanyId.Value);
-            if (ownerResult.ResponseInfo.Success)
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // Get all property IDs
+            var propertyIds = properties.Select(p => p.Id).ToList();
+
+            // Load property images in a single query
+            var propertiesWithImages = await context.Properties
+                .Where(p => propertyIds.Contains(p.Id))
+                .Include(p => p.MainImage)
+                .Include(p => p.Owner)
+                .Include(p => p.PropertyType)
+                .ToListAsync();
+
+            // Update main property list with images and relations
+            foreach (var property in properties)
             {
-                propertyOwners = ownerResult.Response as List<PropertyOwner> ?? new();
+                var propertyWithRelations = propertiesWithImages.FirstOrDefault(p => p.Id == property.Id);
+                if (propertyWithRelations != null)
+                {
+                    property.MainImage = propertyWithRelations.MainImage;
+                    property.Owner = propertyWithRelations.Owner;
+                    property.PropertyType = propertyWithRelations.PropertyType;
+                }
             }
         }
-
-        commissionTypes = new List<CommissionType>
+        catch (Exception ex)
         {
-            new() { Id = 1, Name = "Percentage" },
-            new() { Id = 2, Name = "Fixed Amount" }
-        };
+            ToastService.ShowError($"Failed to load property details: {ex.Message}", "Error");
+        }
+    }
+
+    private void UpdateAvailableFilterOptions()
+    {
+        // Get status types that exist in the properties
+        var statusIdsInData = properties.Select(p => p.StatusId).Distinct().ToList();
+        availableStatusTypes = propertyStatusTypes.Where(s => statusIdsInData.Contains(s.Id)).ToList();
+
+        // Get property types that exist in the properties
+        var typeIdsInData = properties.Select(p => p.PropertyTypeId).Distinct().ToList();
+        availablePropertyTypes = propertyTypes.Where(t => typeIdsInData.Contains(t.Id)).ToList();
+
+        // Check if we have vacant and/or occupied properties
+        hasVacantProperties = properties.Any(p => !p.HasTenant);
+        hasOccupiedProperties = properties.Any(p => p.HasTenant);
     }
 
     private void FilterProperties()
     {
-        filteredProperties = properties.Where(p =>
-            (string.IsNullOrEmpty(searchTerm) ||
-             p.PropertyName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
-             p.PropertyCode?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
-             p.Address?.Street?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) &&
-            (string.IsNullOrEmpty(statusFilter) || p.StatusId.ToString() == statusFilter) &&
-            (string.IsNullOrEmpty(tenantFilter) ||
-             (tenantFilter == "with-tenant" && p.HasTenant) ||
-             (tenantFilter == "vacant" && !p.HasTenant))
-        ).ToList();
+        // Start with all properties
+        IEnumerable<Property> result = properties;
+
+        // Filter by search text (across multiple fields)
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            searchText = searchText.ToLower();
+            result = result.Where(p =>
+                (p.PropertyName?.ToLower().Contains(searchText) == true) ||
+                (p.PropertyCode?.ToLower().Contains(searchText) == true) ||
+                (p.Address?.Street?.ToLower().Contains(searchText) == true) ||
+                (p.Address?.City?.ToLower().Contains(searchText) == true) ||
+                (p.Address?.Suburb?.ToLower().Contains(searchText) == true) ||
+                (p.CustomerRef?.ToLower().Contains(searchText) == true)
+            );
+        }
+
+        // Filter by status
+        if (!string.IsNullOrEmpty(selectedStatusFilter) && int.TryParse(selectedStatusFilter, out int statusId))
+        {
+            result = result.Where(p => p.StatusId == statusId);
+        }
+
+        // Filter by property type
+        if (!string.IsNullOrEmpty(selectedTypeFilter) && int.TryParse(selectedTypeFilter, out int typeId))
+        {
+            result = result.Where(p => p.PropertyTypeId == typeId);
+        }
+
+        // Filter by tenant status
+        if (!string.IsNullOrEmpty(selectedTenantFilter))
+        {
+            result = selectedTenantFilter switch
+            {
+                "with-tenant" => result.Where(p => p.HasTenant),
+                "vacant" => result.Where(p => !p.HasTenant),
+                _ => result
+            };
+        }
+
+        // Apply sorting
+        result = ApplySorting(result);
+
+        // Update filtered properties
+        filteredProperties = result.ToList();
+
+        // Count active filters
+        activeFilters = 0;
+        if (!string.IsNullOrWhiteSpace(searchText)) activeFilters++;
+        if (!string.IsNullOrEmpty(selectedStatusFilter)) activeFilters++;
+        if (!string.IsNullOrEmpty(selectedTypeFilter)) activeFilters++;
+        if (!string.IsNullOrEmpty(selectedTenantFilter)) activeFilters++;
+
+        // Reset to first page when filters change
+        currentPage = 1;
 
         StateHasChanged();
     }
 
-    private void ShowCreateModal()
+    private IEnumerable<Property> ApplySorting(IEnumerable<Property> properties)
     {
-        newProperty = new Property
-            {
-                Address = new Address(),
-                CompanyId = currentUser?.CompanyId ?? 0,
-                BranchId = currentUser?.BranchId,
-                CreatedBy = currentUser?.Id ?? "",
-                CreatedOn = DateTime.Now,
-                StatusId = 1,
-                CommissionTypeId = 1,
-                PaymentsEnabled = true,
-                PaymentsVerify = true
-            };
-        showCreateModal = true;
+        return selectedSortOption switch
+        {
+            "name-asc" => properties.OrderBy(p => p.PropertyName),
+            "name-desc" => properties.OrderByDescending(p => p.PropertyName),
+            "rent-asc" => properties.OrderBy(p => p.RentalAmount),
+            "rent-desc" => properties.OrderByDescending(p => p.RentalAmount),
+            "newest" => properties.OrderByDescending(p => p.CreatedOn),
+            "oldest" => properties.OrderBy(p => p.CreatedOn),
+            _ => properties.OrderBy(p => p.PropertyName)
+        };
     }
 
-    private async Task SaveNewProperty(Property property)
+    private void ClearSearch()
     {
-        if (currentUser == null || currentUser.CompanyId == null) return;
-
-        property.CompanyId = currentUser.CompanyId.Value;
-        property.CreatedBy = currentUser.Id;
-        property.CreatedOn = DateTime.Now;
-
-        var result = await PropertyService.CreateProperty(property);
-
-        if (result.ResponseInfo.Success)
-        {
-            ToastService.ShowSuccess("Property created successfully");
-            await LoadInitialData();
-            showCreateModal = false;
-        }
-        else
-        {
-            ToastService.ShowError($"Error creating property: {result.ResponseInfo.Message}");
-        }
+        searchText = "";
+        FilterProperties();
     }
 
-    private void EditProperty(Property property)
+    private void ClearAllFilters()
     {
-        selectedProperty = property;
-        showEditModal = true;
+        searchText = "";
+        selectedStatusFilter = "";
+        selectedTypeFilter = "";
+        selectedTenantFilter = "";
+        selectedSortOption = "name-asc";
+        FilterProperties();
     }
 
-    private async Task UpdateProperty(Property property)
+    private void NavigateToCreateProperty()
     {
-        if (currentUser?.CompanyId == null) return;
-
-        property.UpdatedBy = currentUser.Id;
-        property.UpdatedDate = DateTime.Now;
-
-        var result = await PropertyService.UpdateProperty(property.Id, property, currentUser.CompanyId.Value);
-
-        if (result.ResponseInfo.Success)
-        {
-            ToastService.ShowSuccess("Property updated successfully");
-            await LoadInitialData();
-            showEditModal = false;
-        }
-        else
-        {
-            ToastService.ShowError($"Error updating property: {result.ResponseInfo.Message}");
-        }
+        NavigationManager.NavigateTo("/property/create");
     }
 
-    private void ViewProperty(Property property)
+    private void NavigateToEditProperty(int propertyId)
     {
-        selectedProperty = property;
-        showViewModal = true;
+        NavigationManager.NavigateTo($"/property/{propertyId}/edit");
     }
 
-    private async Task ArchiveProperty(Property property)
+    private void ArchiveProperty(Property property)
     {
-        if (currentUser?.CompanyId == null) return;
+        propertyToArchive = property;
+        showArchiveConfirmation = true;
+    }
 
-        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to archive {property.PropertyName}?"))
+    private async Task ConfirmArchiveProperty()
+    {
+        if (propertyToArchive == null) return;
+
+        try
         {
-            var result = await PropertyService.DeleteProperty(property.Id, currentUser.CompanyId.Value, currentUser);
+            var result = await PropertyService.DeleteProperty(propertyToArchive.Id, currentUserCompanyId, currentUser);
 
             if (result.ResponseInfo.Success)
             {
                 ToastService.ShowSuccess("Property archived successfully");
-                await LoadInitialData();
+                await LoadProperties();
+                showArchiveConfirmation = false;
             }
             else
             {
-                ToastService.ShowError($"Error archiving property: {result.ResponseInfo.Message}");
+                ToastService.ShowError(result.ResponseInfo.Message, "Error");
             }
         }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to archive property: {ex.Message}", "Error");
+        }
+    }
+
+    private void NavigateToPropertyDetails(int propertyId)
+    {
+        NavigationManager.NavigateTo($"/property/{propertyId}");
+    }
+
+    private void AddTenant(Property property)
+    {
+        NavigationManager.NavigateTo($"/property/{property.Id}/tenants/add");
+    }
+
+    private void ScheduleInspection(Property property)
+    {
+        NavigationManager.NavigateTo($"/property/{property.Id}/inspections/schedule");
+    }
+
+    private void ManageDocuments(Property property)
+    {
+        NavigationManager.NavigateTo($"/property/{property.Id}/documents");
+    }
+
+    private async Task RefreshProperties()
+    {
+        await LoadProperties();
+        ToastService.ShowInfo("Property data refreshed");
+    }
+
+    private void ExportProperties()
+    {
+        ToastService.ShowInfo("Export functionality will be implemented in the next phase");
+    }
+
+    private void ToggleOptionsMenu()
+    {
+        showOptionsMenu = !showOptionsMenu;
+        openPropertyMenuId = null;
+    }
+
+    private void TogglePropertyMenu(int propertyId)
+    {
+        if (openPropertyMenuId == propertyId)
+        {
+            openPropertyMenuId = null;
+        }
+        else
+        {
+            openPropertyMenuId = propertyId;
+        }
+
+        showOptionsMenu = false;
+    }
+
+    private void ToggleDisplayMode()
+    {
+        displayMode = displayMode == "grid" ? "list" : "grid";
+        showOptionsMenu = false;
+    }
+
+    private void CloseAllMenus()
+    {
+        showOptionsMenu = false;
+        openPropertyMenuId = null;
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+    }
+
+    private void ChangePageSize(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int size))
+        {
+            pageSize = size;
+            currentPage = 1; // Reset to first page
+        }
+    }
+
+    private List<int> GetPageNumbers()
+    {
+        var pageNumbers = new List<int>();
+
+        // Always show first page
+        pageNumbers.Add(1);
+
+        // Calculate start and end of middle section
+        var middleStart = Math.Max(2, currentPage - 1);
+        var middleEnd = Math.Min(totalPages - 1, currentPage + 1);
+
+        // Add ellipsis if needed
+        if (middleStart > 2)
+        {
+            pageNumbers.Add(-1); // -1 represents ellipsis
+        }
+
+        // Add middle pages
+        for (int i = middleStart; i <= middleEnd; i++)
+        {
+            pageNumbers.Add(i);
+        }
+
+        // Add ellipsis if needed
+        if (middleEnd < totalPages - 1)
+        {
+            pageNumbers.Add(-1); // -1 represents ellipsis
+        }
+
+        // Add last page if there is more than one page
+        if (totalPages > 1)
+        {
+            pageNumbers.Add(totalPages);
+        }
+
+        return pageNumbers;
     }
 
     private string GetPropertyAddress(Property property)
     {
-        if (property.Address == null) return "No address";
+        if (property.Address == null) return "No address provided";
 
-        var parts = new List<string>();
-        if (!string.IsNullOrEmpty(property.Address.Street)) parts.Add(property.Address.Street);
-        if (!string.IsNullOrEmpty(property.Address.City)) parts.Add(property.Address.City);
-        if (!string.IsNullOrEmpty(property.Address.Province)) parts.Add(property.Address.Province);
+        var addressParts = new List<string>();
 
-        return string.Join(", ", parts);
+        if (!string.IsNullOrEmpty(property.Address.UnitNumber))
+        {
+            addressParts.Add($"Unit {property.Address.UnitNumber}");
+        }
+
+        if (!string.IsNullOrEmpty(property.Address.ComplexName))
+        {
+            addressParts.Add(property.Address.ComplexName);
+        }
+
+        if (!string.IsNullOrEmpty(property.Address.Street))
+        {
+            addressParts.Add(property.Address.Street);
+        }
+
+        if (!string.IsNullOrEmpty(property.Address.Suburb))
+        {
+            addressParts.Add(property.Address.Suburb);
+        }
+
+        if (!string.IsNullOrEmpty(property.Address.City))
+        {
+            addressParts.Add(property.Address.City);
+        }
+
+        if (!string.IsNullOrEmpty(property.Address.Province))
+        {
+            addressParts.Add(property.Address.Province);
+        }
+
+        return string.Join(", ", addressParts);
     }
 
     private string GetStatusClass(int statusId)
     {
-        return statusId switch
+        var status = propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name?.ToLower();
+
+        return status switch
         {
-            1 => "property-status-active",
-            2 => "property-status-inactive",
-            3 => "property-status-maintenance",
-            _ => "property-status-default"
+            "active" => "pm-status-active",
+            "inactive" => "pm-status-inactive",
+            "under maintenance" => "pm-status-maintenance",
+            "rented" => "pm-status-rented",
+            "for sale" => "pm-status-sale",
+            _ => ""
         };
     }
-}
 
-<style>
-    .properties-container {
-        padding: 1.5rem;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-
-    .properties-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .properties-title {
-        font-size: 2rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .property-btn {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .property-btn-primary {
-        background-color: var(--primary);
-        color: white;
-    }
-
-        .property-btn-primary:hover {
-            background-color: var(--primary-hover);
-        }
-
-    .property-btn-outline {
-        background-color: transparent;
-        color: var(--primary);
-        border: 1px solid var(--primary);
-    }
-
-        .property-btn-outline:hover {
-            background-color: var(--primary);
-            color: white;
-        }
-
-    .property-btn-danger {
-        background-color: var(--danger);
-        color: white;
-    }
-
-        .property-btn-danger:hover {
-            background-color: var(--danger-hover);
-        }
-
-    .property-btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.8125rem;
-    }
-
-    .properties-filters {
-        margin-bottom: 2rem;
-    }
-
-    .property-search-container {
-        position: relative;
-        margin-bottom: 1rem;
-    }
-
-    .property-search-input {
-        width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.5rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 1rem;
-        background-color: var(--content-bg);
-        color: var(--text-primary);
-    }
-
-    .property-search-icon {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted);
-    }
-
-    .property-filter-row {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .property-filter-select {
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background-color: var(--content-bg);
-        color: var(--text-primary);
-        font-size: 0.875rem;
-    }
-
-    .property-loading {
-        text-align: center;
-        padding: 4rem 2rem;
-    }
-
-    .property-spinner {
-        width: 3rem;
-        height: 3rem;
-        border: 3px solid var(--border-color);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-    }
-
-    @@keyframes spin {
-        to
-
+    private string GetStatusName(int statusId)
     {
-        transform: rotate(360deg);
+        return propertyStatusTypes.FirstOrDefault(s => s.Id == statusId)?.Name ?? "Unknown";
     }
 
+    private string GetPropertyTypeName(int typeId)
+    {
+        return propertyTypes.FirstOrDefault(t => t.Id == typeId)?.Name ?? "Unknown";
     }
 
-    .property-empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-    }
+    private string GetOwnerName(int ownerId)
+    {
+        var owner = propertyOwners.FirstOrDefault(o => o.Id == ownerId);
 
-    .property-empty-icon {
-        font-size: 4rem;
-        color: var(--text-muted);
-        margin-bottom: 1rem;
-    }
+        if (owner == null) return "Unknown";
 
-    .properties-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 1.5rem;
+        return owner.DisplayName ?? $"{owner.FirstName} {owner.LastName}";
     }
-
-    .property-card {
-        background-color: var(--content-bg);
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-        .property-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-    .property-card-header {
-        position: relative;
-        height: 200px;
-        overflow: hidden;
-    }
-
-    .property-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .property-placeholder-image {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: var(--subtle-bg);
-        color: var(--text-muted);
-        font-size: 3rem;
-    }
-
-    .property-status-badge {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-
-    .property-status-active {
-        background-color: var(--success);
-        color: white;
-    }
-
-    .property-status-inactive {
-        background-color: var(--gray);
-        color: white;
-    }
-
-    .property-status-maintenance {
-        background-color: var(--warning);
-        color: white;
-    }
-
-    .property-tenant-badge {
-        position: absolute;
-        top: 0.75rem;
-        left: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        background-color: var(--info);
-        color: white;
-    }
-
-    .property-card-body {
-        padding: 1.5rem;
-    }
-
-    .property-name {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        color: var(--text-primary);
-    }
-
-    .property-code {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        margin-bottom: 1rem;
-    }
-
-    .property-address {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .property-info-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-
-    .property-info-item {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .property-info-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        margin-bottom: 0.25rem;
-    }
-
-    .property-info-value {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .property-card-footer {
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--border-light);
-        display: flex;
-        gap: 0.5rem;
-    }
-</style> *@
+}
