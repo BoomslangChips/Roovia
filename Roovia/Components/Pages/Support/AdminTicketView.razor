@@ -1,0 +1,322 @@
+﻿@page "/ticketadmin"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Roovia.Data
+@using Roovia.Interfaces
+@using Roovia.Models.BusinessModels
+@using Roovia.Services
+@using static Roovia.Models.SupportModels
+@inject ISupportService SupportService
+@inject ToastService ToastService
+@inject NavigationManager NavigationManager
+
+
+
+<div class="pm-page">
+    <div class="admin-header-section">
+        <div class="admin-header-content">
+            <div class="header-text-content">
+                <div class="header-icon">
+                    <i class="fa-light fa-list-check"></i>
+                </div>
+                <div class="header-title-group">
+                    <h1 class="header-title">Admin Ticket View</h1>
+                    <p class="header-subtitle">View all submitted support tickets</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="pm-main-container">
+        @if (isLoading)
+        {
+            <div>Loading tickets...</div>
+        }
+        else if (!allTickets.Any())
+        {
+            <div class="pm-empty-state">
+                <div class="pm-empty-icon">
+                    <i class="fa-light fa-clipboard-list"></i>
+                </div>
+                <h3 class="pm-empty-title">No Tickets Found</h3>
+                <p class="pm-empty-description">There are no submitted tickets.</p>
+            </div>
+        }
+        else
+        {
+            <div class="pm-ticket-list">
+                @foreach (var ticket in allTickets)
+                {
+                    <div class="pm-ticket-card">
+                        <div class="pm-ticket-card-header">
+                            <div class="pm-ticket-number">
+                                <span class="pm-ticket-label">Ticket #</span>
+                                <span class="pm-ticket-value">@ticket.TicketNumber</span>
+                            </div>
+                            <span class="pm-ticket-status pm-status-@ticket.TicketStatus.ToString().ToLower()">
+                                @ticket.TicketStatus.ToString()
+                            </span>
+                        </div>
+                        <div class="pm-ticket-card-body">
+                            <div class="pm-ticket-info">
+                                <div>
+                                    <span class="pm-ticket-label">Subject:</span>
+                                    <span class="pm-ticket-value">@ticket.Subject</span>
+                                </div>
+                                <div>
+                                    <span class="pm-ticket-label">Category:</span>
+                                    <span class="pm-ticket-value">@ticket.Category</span>
+                                </div>
+                                <div>
+                                    <span class="pm-ticket-label">Created:</span>
+                                    <span class="pm-ticket-value">@ticket.CreatedDate.ToString("g")</span>
+                                </div>
+                            </div>
+                            <div class="pm-ticket-actions">
+                                <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => ViewTicketDetails(ticket)">
+                                    <i class="fa-light fa-eye"></i> View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<SupportTicket> allTickets = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTickets();
+    }
+
+    private async Task LoadTickets()
+    {
+        isLoading = true;
+        try
+        {
+            // For admin view, fetch tickets for all companies.
+            // Adjust the parameter as needed. Here, 0 indicates all companies.
+            var result = await SupportService.GetAllSupportTicketsAsync();
+            if (result.ResponseInfo.Success)
+            {
+                allTickets = result.Response as List<SupportTicket> ?? new();
+            }
+            else
+            {
+                ToastService.ShowError("Failed to load tickets", "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading tickets: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewTicketDetails(SupportTicket ticket)
+    {
+        NavigationManager.NavigateTo($"/admin/ticketdetails/{ticket.Id}");
+    }
+}
+
+<style>
+    .pm-page {
+        padding: 32px 0;
+        background: #f8f9fb;
+        min-height: 100vh;
+    }
+
+    .admin-header-section {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 24px 0 16px 0;
+        margin-bottom: 32px;
+    }
+
+    .admin-header-content {
+        max-width: 900px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+    }
+
+    .header-text-content {
+        display: flex;
+        align-items: center;
+    }
+
+    .header-icon {
+        font-size: 2.5rem;
+        color: #4f46e5;
+        margin-right: 18px;
+    }
+
+    .header-title-group .header-title {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .header-title-group .header-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 1rem;
+    }
+
+    .pm-main-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .pm-empty-state {
+        text-align: center;
+        padding: 60px 0;
+        color: #64748b;
+    }
+
+    .pm-empty-icon {
+        font-size: 3rem;
+        color: #cbd5e1;
+        margin-bottom: 12px;
+    }
+
+    .pm-empty-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #1e293b;
+    }
+
+    .pm-empty-description {
+        font-size: 1rem;
+        color: #64748b;
+    }
+
+    .pm-ticket-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .pm-ticket-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(30,41,59,0.06);
+        border: 1px solid #e5e7eb;
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.2s;
+    }
+
+        .pm-ticket-card:hover {
+            box-shadow: 0 4px 16px rgba(30,41,59,0.10);
+        }
+
+    .pm-ticket-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .pm-ticket-number {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pm-ticket-label {
+        font-size: 0.95rem;
+        color: #64748b;
+        font-weight: 500;
+        margin-right: 2px;
+    }
+
+    .pm-ticket-value {
+        font-size: 1.05rem;
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .pm-ticket-status {
+        padding: 4px 14px;
+        border-radius: 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-transform: capitalize;
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e5e7eb;
+    }
+
+    .pm-status-open {
+        background: #e0f2fe;
+        color: #0284c7;
+        border-color: #bae6fd;
+    }
+
+    .pm-status-inprogress {
+        background: #fef9c3;
+        color: #b45309;
+        border-color: #fde68a;
+    }
+
+    .pm-status-closed {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #bbf7d0;
+    }
+
+    .pm-ticket-card-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .pm-ticket-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .pm-ticket-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pm-custom-btn {
+        padding: 6px 18px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .pm-custom-btn-outline {
+        background: #fff;
+        color: #4f46e5;
+        border: 1.5px solid #4f46e5;
+    }
+
+        .pm-custom-btn-outline:hover {
+            background: #4f46e5;
+            color: #fff;
+        }
+</style>

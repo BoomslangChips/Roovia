@@ -48,7 +48,7 @@
                        placeholder="Search FAQs, documentation and knowledge base..."
                        @bind-value="searchText"
                        @bind-value:event="oninput"
-                       @onkeyup="SearchFaqs" style="    border-radius: 16px;    width: 26em;   padding: 7px;    border: 1px solid #e5eeee;" />
+                       @onkeyup="SearchFaqs" style="border-radius: 16px; width: 26em; padding: 7px; border: 1px solid #e5eeee;" />
                 @if (!string.IsNullOrEmpty(searchText))
                 {
                     <button class="pm-search-clear" @onclick="ClearSearch">
@@ -57,7 +57,6 @@
                 }
             </div>
         </div>
-
 
         <!-- Quick Actions -->
         <div class="pm-support-section">
@@ -77,6 +76,15 @@
                     </div>
                     <div class="pm-action-text">My Tickets</div>
                 </div>
+                @if (currentUser != null && currentUser.Role != null && currentUser.Role.Value >= SystemRole.SystemAdministrator)
+                {
+                    <div class="pm-action-card">
+                        <div class="pm-action-icon">
+                            <i class="fa-light fa-list-check"></i>
+                        </div>
+                        <div class="pm-action-text">View All Tickets</div>
+                    </div>
+                }
                 <div class="pm-action-card" @onclick="ViewKnowledgeBase">
                     <div class="pm-action-icon">
                         <i class="fa-light fa-book"></i>
@@ -89,6 +97,7 @@
                     </div>
                     <div class="pm-action-text">Documentation</div>
                 </div>
+              
             </div>
         </div>
 
@@ -106,12 +115,12 @@
                     </div>
                 }
                 <div class="pm-category-tabs">
-                    <button class="@(selectedCategory == "all" ? "active" : "")">All</button>
-                    <button class="@(selectedCategory == "account" ? "active" : "")">Account</button>
-                    <button class="@(selectedCategory == "properties" ? "active" : "")">Properties</button>
-                    <button class="@(selectedCategory == "tenants" ? "active" : "")">Tenants</button>
-                    <button class="@(selectedCategory == "financials" ? "active" : "")">Financials</button>
-                    <button class="@(selectedCategory == "technical" ? "active" : "")">Technical</button>
+                    <button class="@(selectedCategory == "all" ? "active" : "")" @onclick="@(() => SelectCategory("all"))">All</button>
+                    <button class="@(selectedCategory == "account" ? "active" : "")" @onclick="@(() => SelectCategory("account"))">Account</button>
+                    <button class="@(selectedCategory == "properties" ? "active" : "")" @onclick="@(() => SelectCategory("properties"))">Properties</button>
+                    <button class="@(selectedCategory == "tenants" ? "active" : "")" @onclick="@(() => SelectCategory("tenants"))">Tenants</button>
+                    <button class="@(selectedCategory == "financials" ? "active" : "")" @onclick="@(() => SelectCategory("financials"))">Financials</button>
+                    <button class="@(selectedCategory == "technical" ? "active" : "")" @onclick="@(() => SelectCategory("technical"))">Technical</button>
                 </div>
             </div>
 
@@ -177,7 +186,7 @@
                                 <div class="pm-ticket-number">
                                     <span class="pm-ticket-label">Ticket #</span> <span class="pm-ticket-value">@ticket.TicketNumber</span>
                                 </div>
-                                <span class="pm-ticket-status pm-status-@ticket.Status.ToLower()">@ticket.Status</span>
+                                <span class="pm-ticket-status pm-status-@ticket.TicketStatus.ToString().ToLower()">@ticket.TicketStatus.ToString()</span>
                             </div>
                             <div class="pm-ticket-card-body">
                                 <div class="pm-ticket-info">
@@ -197,6 +206,9 @@
                                 <div class="pm-ticket-actions">
                                     <button class="pm-custom-btn pm-custom-btn-outline pm-ticket-comment-btn" @onclick="() => ToggleCommentBox(ticket.TicketNumber)">
                                         <i class="fa-light fa-comment-lines"></i> Add Comment
+                                    </button>
+                                    <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => OpenTicketCommentsView(ticket)">
+                                        <i class="fa-light fa-comment-alt"></i> View Comments
                                     </button>
                                 </div>
                             </div>
@@ -310,6 +322,62 @@
     </div>
 }
 
+@if (showTicketCommentsModal)
+{
+    <div class="pm-modal-backdrop pm-blur-backdrop" @onclick="CloseTicketCommentsView"></div>
+    <div class="pm-ticket-modal pm-ticket-modal-lg">
+        <div class="pm-modal-header">
+            <h3><i class="fa-light fa-comment-lines"></i> Ticket Comments - @selectedTicketCommentNumber</h3>
+            <button class="pm-modal-close-btn" @onclick="CloseTicketCommentsView">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="pm-modal-body">
+            @if (ticketComments.Any())
+            {
+                <div class="pm-comment-list">
+                    @foreach (var comment in ticketComments)
+                    {
+                        <div class="pm-ticket-card">
+                            <div class="pm-ticket-card-header">
+                                <span class="pm-ticket-label">Commented:</span>
+                                <span class="pm-ticket-value">@comment.CreatedDate.ToString("g")</span>
+                            </div>
+                            <div class="pm-ticket-card-body">
+                                <p>@comment.Comment</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pm-empty-state">
+                    <div class="pm-empty-icon">
+                        <i class="fa-light fa-comment-alt"></i>
+                    </div>
+                    <h3 class="pm-empty-title">No Comments Found</h3>
+                    <p class="pm-empty-description">There are no comments for this ticket.</p>
+                </div>
+            }
+            <div class="pm-ticket-comment-box" style="margin-top: 1rem;">
+                <textarea class="pm-form-textarea" rows="3" placeholder="Write a comment..." @bind="newCommentTextForModal"></textarea>
+                <div class="pm-ticket-comment-actions" style="margin-top: 0.5rem;">
+                    <button class="pm-custom-btn pm-custom-btn-primary" @onclick="SubmitModalComment">
+                        <i class="fa-light fa-paper-plane pm-me-2"></i> Submit
+                    </button>
+                    <button class="pm-custom-btn pm-custom-btn-outline" @onclick="CloseTicketCommentsView">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="pm-modal-footer">
+            <button class="pm-custom-btn pm-custom-btn-outline" @onclick="CloseTicketCommentsView">Close</button>
+        </div>
+    </div>
+}
+
 
 
 @code {
@@ -325,6 +393,7 @@
     private int? expandedFaqId = null;
     private bool showNewTicketModal = false;
     private bool showUserTicketsModal = false;
+    private bool showTicketCommentsModal = false;
 
     // Tickets
     private List<SupportTicket> allTickets = new();
@@ -340,6 +409,14 @@
     // FAQs
     private List<FaqItem> faqItems = new();
     private List<FaqItem> filteredFaqs = new();
+
+    // Comments (for inline comment box)
+    private string newCommentText;
+
+    // Ticket Comments Modal State
+    private string selectedTicketCommentNumber;
+    private List<TicketComment> ticketComments = new();
+    private string newCommentTextForModal = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -376,7 +453,6 @@
         try
         {
             // In a real implementation, you would load this data from services
-            // This is mock data for demonstration purposes
 
             // Load FAQs
             faqItems = new List<FaqItem>
@@ -504,7 +580,7 @@
     {
         newTicket = new SupportTicket
             {
-                Status = "New",
+                TicketStatus = TicketStatuses.New,
                 CreatedDate = DateTime.Now,
                 Priority = "Medium"
             };
@@ -531,9 +607,6 @@
 
     private async Task SubmitTicket()
     {
-        // In a real implementation, you would send the ticket to the server
-        // For demo purposes, we'll just show a success message and close the modal
-
         if (string.IsNullOrWhiteSpace(newTicket.Subject))
         {
             ToastService.ShowError("Please enter a subject for your ticket", "Validation Error");
@@ -555,14 +628,13 @@
         newTicket.CompanyId = currentUser.CompanyId.Value;
         newTicket.UserId = Guid.Parse(currentUser.Id);
         newTicket.TicketNumber = Guid.NewGuid().ToString().Substring(0, 6);
+        newTicket.TicketStatus = TicketStatuses.New;
         var ticketCreateResponse = await SupportService.CreateSupportTicketAsync(newTicket);
         if (ticketCreateResponse.ResponseInfo.Success)
         {
             ToastService.ShowSuccess("Ticket created successfully!", "Success");
         }
 
-
-        // Success case
         showNewTicketModal = false;
     }
 
@@ -574,14 +646,12 @@
             allTickets = allTicketsResponse.Response as List<SupportTicket>;
             userTickets = allTickets.Where(x => x.UserId == Guid.Parse(currentUser.Id)).ToList();
             showUserTicketsModal = true;
-
         }
         else
         {
             ToastService.ShowError("Failed to load tickets", "Error");
             return;
         }
-
     }
 
     private void ViewActiveTickets()
@@ -598,7 +668,6 @@
     {
         NavigationManager.NavigateTo("/documentation");
     }
-
 
     private void ViewKnowledgeBase()
     {
@@ -623,21 +692,76 @@
         };
     }
 
-    private string commentBoxOpenFor = null;
-    private string newCommentText = "";
+    private string GetTicketStatusString(TicketStatuses status)
+    {
+        return status switch
+        {
+            TicketStatuses.New => "New",
+            TicketStatuses.Pending => "Pending",
+            TicketStatuses.Closed => "Closed",
+            _ => "Unknown"
+        };
+    }
 
+    private string GetTicketStatusCss(TicketStatuses status)
+    {
+        return status switch
+        {
+            TicketStatuses.New => "new",
+            TicketStatuses.Pending => "pending",
+            TicketStatuses.Closed => "closed",
+            _ => "unknown"
+        };
+    }
+
+    private async Task OpenTicketCommentsView(SupportTicket ticket)
+    {
+        var ticketCommentResponse = await SupportService.GetAllTicketCommentsAsync(ticket.Id);
+        if (!ticketCommentResponse.ResponseInfo.Success)
+        {
+            ToastService.ShowError("Error fetching comments.", "Error!");
+            return;
+        }
+        ticketComments = ((IEnumerable<TicketComment>?)ticketCommentResponse.Response)?.ToList()
+            ?? new List<TicketComment>();
+        selectedTicketCommentNumber = ticket.TicketNumber;
+        showTicketCommentsModal = true;
+    }
+
+    private void CloseTicketCommentsView()
+    {
+        showTicketCommentsModal = false;
+        newCommentTextForModal = "";
+    }
+
+    private async Task SubmitModalComment()
+    {
+        if (string.IsNullOrWhiteSpace(newCommentTextForModal))
+        {
+            return;
+        }
+        ticketComments.Add(new TicketComment { Comment = newCommentTextForModal, CreatedDate = DateTime.Now });
+        newCommentTextForModal = "";
+        await Task.CompletedTask;
+    }
+
+    // Dummy implementations for inline comment functionality
     private void ToggleCommentBox(string ticketNumber)
     {
-        if (commentBoxOpenFor == ticketNumber)
+        commentBoxOpenFor = commentBoxOpenFor == ticketNumber ? null : ticketNumber;
+    }
+
+    private async Task SubmitTicketComment(string ticketNumber)
+    {
+        if (string.IsNullOrWhiteSpace(newCommentText))
         {
-            commentBoxOpenFor = null;
-            newCommentText = "";
+            ToastService.ShowError("Please enter a comment", "Validation Error");
+            return;
         }
-        else
-        {
-            commentBoxOpenFor = ticketNumber;
-            newCommentText = "";
-        }
+        ToastService.ShowSuccess("Comment submitted successfully", "Success");
+        newCommentText = "";
+        commentBoxOpenFor = null;
+        await Task.CompletedTask;
     }
 
     private void CloseCommentBox()
@@ -646,33 +770,11 @@
         newCommentText = "";
     }
 
-    private async Task SubmitTicketComment(string ticketNumber)
-    {
-        if (string.IsNullOrWhiteSpace(newCommentText))
-        {
-            ToastService.ShowError("Please enter a comment.", "Validation Error");
-            return;
-        }
+    // This variable determines which ticket's inline comment box is open.
+    private string commentBoxOpenFor;
 
-        TicketComment comment = new();
-        comment.TicketId = userTickets.Where(x => x.TicketNumber == ticketNumber).FirstOrDefault().Id;
-        comment.UserId = Guid.Parse(currentUser.Id);
-        comment.Comment = newCommentText;
-        comment.CreatedDate = DateTime.Now;
-        var ticketCommentResponse = await SupportService.CreateTicketCommentAsync(comment);
-        if (ticketCommentResponse.ResponseInfo.Success)
-        {
-            ToastService.ShowSuccess("Comment added successfully.", "Success!");
-        }
-        else
-        {
-            ToastService.ShowError(ticketCommentResponse.ResponseInfo.Message, "Ticket Comment Error!");
-        }
-
-        commentBoxOpenFor = null;
-        newCommentText = "";
-    }
 }
+
 
 <style>
     /* ====== Support Page Styles ====== */
@@ -1658,3 +1760,4 @@
         }
     }
 </style>
+

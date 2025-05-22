@@ -403,7 +403,7 @@ namespace Roovia.Services
                 using var connection = new SqlConnection(_connectionString);
                 var sql = "SELECT Id, TicketId, UserId, Comment, CreatedDate FROM Support_TicketComments WHERE TicketId = @TicketId";
                 var comments = await connection.QueryAsync<TicketComment>(sql, new { TicketId = ticketId });
-                response.Response = comments.ToList();
+                response.Response = comments as List<TicketComment>;
                 response.ResponseInfo.Success = true;
             }
             catch (Exception ex)

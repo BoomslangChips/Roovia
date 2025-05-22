@@ -11,16 +11,17 @@ namespace Roovia.Models
 
             public Guid? UserId { get; set; }
 
-            public int CompanyId { get; set; }  
+            public int CompanyId { get; set; }
             public string TicketNumber { get; set; }
             public string Subject { get; set; }
             public string Description { get; set; }
             public string Category { get; set; }
-            public string Status { get; set; }
             public string Priority { get; set; }
             public DateTime CreatedDate { get; set; }
 
             List<UploadedFile> Files { get; set; }
+
+            public TicketStatuses TicketStatus { get; set; }
         }
 
 
@@ -48,6 +49,13 @@ namespace Roovia.Models
             public Guid? UserId { get; set; }
             public string Comment { get; set; }
             public DateTime CreatedDate { get; set; }
+        }
+
+        public enum TicketStatuses
+        {
+            New, 
+            Pending, 
+            Closed
         }
     }
 }
