@@ -1,0 +1,1105 @@
+﻿@page "/reporting"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<div class="pm-page">
+    <div class="pm-header-section">
+        <div class="pm-header-content">
+            <div class="pm-header-text-content">
+                <div class="pm-header-icon">
+                    <i class="fa-light fa-chart-line"></i>
+                </div>
+                <div class="pm-header-title-group">
+                    <h1 class="pm-header-title">Reports & Analytics</h1>
+                    <p class="pm-header-subtitle">Comprehensive insights into your property portfolio performance</p>
+                </div>
+            </div>
+            <div class="pm-header-action-panel">
+                <button class="pm-custom-btn pm-custom-btn-primary pm-custom-btn-with-icon" @onclick="ShowScheduledReports">
+                    <i class="fa-light fa-calendar-check"></i>
+                    <span>Scheduled Reports</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="pm-main-container">
+        <!-- Search and Filters -->
+        <div class="pm-toolbar">
+            <div class="pm-search">
+                <div class="pm-search-container">
+                    <i class="fa-light fa-magnifying-glass pm-search-icon"></i>
+                    <input type="text"
+                           class="pm-search-input"
+                           placeholder="Search reports..."
+                           @bind-value="searchText"
+                           @bind-value:event="oninput" />
+                    @if (!string.IsNullOrEmpty(searchText))
+                    {
+                        <button class="pm-search-clear" @onclick="ClearSearch">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="pm-filters">
+                <div class="pm-filter-group">
+                    <label for="date-filter">Date Range</label>
+                    <select id="date-filter" class="pm-filter-select">
+                        <option value="this-month">This Month</option>
+                        <option value="last-month">Last Month</option>
+                        <option value="this-quarter">This Quarter</option>
+                        <option value="this-year">This Year</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="pm-filter-group">
+                    <label for="property-filter">Property</label>
+                    <select id="property-filter" class="pm-filter-select">
+                        <option value="">All Properties</option>
+                        <option value="sunset-towers">Sunset Towers</option>
+                        <option value="oak-apartments">Oak Apartments</option>
+                        <option value="riverside-complex">Riverside Complex</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="pm-stats">
+            <div class="pm-stat-card">
+                <div class="pm-stat-icon">
+                    <i class="fa-light fa-file-chart-line"></i>
+                </div>
+                <div class="pm-stat-content">
+                    <div class="pm-stat-value">142</div>
+                    <div class="pm-stat-label">Reports Generated</div>
+                </div>
+            </div>
+            <div class="pm-stat-card">
+                <div class="pm-stat-icon">
+                    <i class="fa-light fa-clock"></i>
+                </div>
+                <div class="pm-stat-content">
+                    <div class="pm-stat-value">12</div>
+                    <div class="pm-stat-label">Scheduled Reports</div>
+                </div>
+            </div>
+            <div class="pm-stat-card">
+                <div class="pm-stat-icon">
+                    <i class="fa-light fa-star"></i>
+                </div>
+                <div class="pm-stat-content">
+                    <div class="pm-stat-value">8</div>
+                    <div class="pm-stat-label">Favorite Reports</div>
+                </div>
+            </div>
+            <div class="pm-stat-card">
+                <div class="pm-stat-icon">
+                    <i class="fa-light fa-share-nodes"></i>
+                </div>
+                <div class="pm-stat-content">
+                    <div class="pm-stat-value">24</div>
+                    <div class="pm-stat-label">Shared Reports</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Reports Section -->
+        <div class="pm-report-section">
+            <div class="pm-section-header">
+                <h2><i class="fa-light fa-sack-dollar"></i> Financial Reports</h2>
+                <span class="pm-section-subtitle">Track income, expenses, and profitability</span>
+            </div>
+            <div class="pm-report-grid">
+                <div class="pm-report-card" @onclick="ShowFinancialReport">
+                    <div class="pm-report-icon financial">
+                        <i class="fa-light fa-file-invoice-dollar"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Income Statement</h3>
+                        <p>Monthly revenue and expense breakdown with profit analysis</p>
+                        <span class="pm-report-tag">Monthly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowCashFlowReport">
+                    <div class="pm-report-icon financial">
+                        <i class="fa-light fa-money-bill-trend-up"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Cash Flow Analysis</h3>
+                        <p>Track money movement and liquidity across properties</p>
+                        <span class="pm-report-tag">Real-time</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowRentCollectionReport">
+                    <div class="pm-report-icon financial">
+                        <i class="fa-light fa-hand-holding-dollar"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Rent Collection</h3>
+                        <p>Payment status, overdue accounts, and collection rates</p>
+                        <span class="pm-report-tag">Weekly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowExpenseReport">
+                    <div class="pm-report-icon financial">
+                        <i class="fa-light fa-receipt"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Expense Tracking</h3>
+                        <p>Detailed breakdown of maintenance and operational costs</p>
+                        <span class="pm-report-tag">Monthly</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Property Performance Section -->
+        <div class="pm-report-section">
+            <div class="pm-section-header">
+                <h2><i class="fa-light fa-building-circle-check"></i> Property Performance</h2>
+                <span class="pm-section-subtitle">Analyze occupancy, maintenance, and tenant metrics</span>
+            </div>
+            <div class="pm-report-grid">
+                <div class="pm-report-card" @onclick="ShowOccupancyReport">
+                    <div class="pm-report-icon property">
+                        <i class="fa-light fa-house-circle-check"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Occupancy Analysis</h3>
+                        <p>Vacancy rates, turnover trends, and occupancy forecasts</p>
+                        <span class="pm-report-tag">Monthly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowMaintenanceReport">
+                    <div class="pm-report-icon property">
+                        <i class="fa-light fa-screwdriver-wrench"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Maintenance Overview</h3>
+                        <p>Work orders, completion times, and maintenance costs</p>
+                        <span class="pm-report-tag">Weekly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowPropertyComparison">
+                    <div class="pm-report-icon property">
+                        <i class="fa-light fa-scale-balanced"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Property Comparison</h3>
+                        <p>Compare performance metrics across your portfolio</p>
+                        <span class="pm-report-tag">Quarterly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowLeaseExpirations">
+                    <div class="pm-report-icon property">
+                        <i class="fa-light fa-calendar-xmark"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Lease Expirations</h3>
+                        <p>Upcoming lease renewals and expiration timeline</p>
+                        <span class="pm-report-tag">60-day outlook</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tenant & Operational Section -->
+        <div class="pm-report-section">
+            <div class="pm-section-header">
+                <h2><i class="fa-light fa-users"></i> Tenant & Operations</h2>
+                <span class="pm-section-subtitle">Tenant behavior, satisfaction, and operational efficiency</span>
+            </div>
+            <div class="pm-report-grid">
+                <div class="pm-report-card" @onclick="ShowTenantAnalysis">
+                    <div class="pm-report-icon tenant">
+                        <i class="fa-light fa-user-chart"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Tenant Analytics</h3>
+                        <p>Demographics, payment history, and retention rates</p>
+                        <span class="pm-report-tag">Quarterly</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowDelinquencyReport">
+                    <div class="pm-report-icon tenant">
+                        <i class="fa-light fa-circle-exclamation"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Delinquency Report</h3>
+                        <p>Late payments, outstanding balances, and collection status</p>
+                        <span class="pm-report-tag">Daily</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowUserActivity">
+                    <div class="pm-report-icon tenant">
+                        <i class="fa-light fa-users-gear"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Staff Activity Log</h3>
+                        <p>User actions, system usage, and productivity metrics</p>
+                        <span class="pm-report-tag">Real-time</span>
+                    </div>
+                </div>
+                <div class="pm-report-card" @onclick="ShowVendorPerformance">
+                    <div class="pm-report-icon tenant">
+                        <i class="fa-light fa-handshake"></i>
+                    </div>
+                    <div class="pm-report-content">
+                        <h3>Vendor Performance</h3>
+                        <p>Service quality, response times, and cost analysis</p>
+                        <span class="pm-report-tag">Monthly</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string searchText = "";
+
+    private void ShowFinancialReport()
+    {
+        // TODO: Navigate to or load the Monthly Financial Summary report.
+    }
+
+    private void ShowOccupancyReport()
+    {
+        // TODO: Navigate to or load the Occupancy Report.
+    }
+
+    private void ShowMaintenanceReport()
+    {
+        // TODO: Navigate to or load the Maintenance Tickets report.
+    }
+
+    private void ShowUserActivity()
+    {
+        // TODO: Navigate to or load the User Activity Log.
+    }
+
+    private void ShowCustomReportBuilder()
+    {
+        // TODO: Navigate to or load the Custom Report Builder feature.
+    }
+
+    private void ShowCashFlowReport()
+    {
+        // TODO: Implement cash flow report
+    }
+
+    private void ShowRentCollectionReport()
+    {
+        // TODO: Implement rent collection report
+    }
+
+    private void ShowExpenseReport()
+    {
+        // TODO: Implement expense report
+    }
+
+    private void ShowPropertyComparison()
+    {
+        // TODO: Implement property comparison
+    }
+
+    private void ShowLeaseExpirations()
+    {
+        // TODO: Implement lease expiration report
+    }
+
+    private void ShowTenantAnalysis()
+    {
+        // TODO: Implement tenant analysis
+    }
+
+    private void ShowDelinquencyReport()
+    {
+        // TODO: Implement delinquency report
+    }
+
+    private void ShowVendorPerformance()
+    {
+        // TODO: Implement vendor performance report
+    }
+
+    private void ShowDashboardBuilder()
+    {
+        // TODO: Implement dashboard builder
+    }
+
+    private void ShowDataExport()
+    {
+        // TODO: Implement data export
+    }
+
+    private void ShowReportScheduler()
+    {
+        // TODO: Implement report scheduler
+    }
+
+    private void ShowScheduledReports()
+    {
+        // TODO: Show scheduled reports
+    }
+
+    private void ExportDashboard()
+    {
+        // TODO: Export dashboard functionality
+    }
+
+    private void ClearSearch()
+    {
+        searchText = "";
+    }
+}
+
+<style>
+    /* ====== Reports Page Styles ====== */
+
+    /* Header Section */
+    .pm-header-section {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+        color: white;
+        padding: 1.25rem 0;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1.5rem;
+        border-bottom-left-radius: 15px;
+        border-bottom-right-radius: 15px;
+    }
+
+        .pm-header-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, var(--success), var(--info));
+            z-index: 1;
+        }
+
+        .pm-header-section::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255, 255, 255, 0.08) 35px, rgba(255, 255, 255, 0.08) 70px), repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255, 255, 255, 0.08) 35px, rgba(255, 255, 255, 0.08) 70px);
+            opacity: 0.5;
+            animation: header-pattern-slide 60s linear infinite;
+            z-index: 0;
+        }
+
+    @@keyframes header-pattern-slide {
+        0%
+
+    {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 70px 70px;
+    }
+
+    }
+
+    .pm-header-content {
+        position: relative;
+        z-index: 1;
+        max-width: var(--content-max-width, 1200px);
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pm-header-text-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .pm-header-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--users-header-icon-bg, rgba(255,255,255,0.12));
+        backdrop-filter: blur(8px);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.10);
+        border: 1px solid var(--users-header-icon-border, rgba(255,255,255,0.18));
+        transition: transform 0.3s ease;
+        animation: icon-float 3.5s ease-in-out infinite;
+        position: relative;
+        z-index: 2;
+    }
+
+    @@keyframes icon-float {
+        0%, 100%
+
+    {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+
+    }
+
+    .pm-header-title-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pm-header-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        color: white;
+    }
+
+    .pm-header-subtitle {
+        margin: 0.25rem 0 0;
+        opacity: 0.85;
+        font-size: 0.95rem;
+        font-weight: 400;
+        color: #f5f5f5;
+    }
+
+    .pm-header-action-panel {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    /* Main Container */
+    .pm-main-container {
+        max-width: var(--content-max-width, 1200px);
+        margin: 0 auto;
+        padding: 0 1.5rem 2rem;
+    }
+
+    /* Toolbar */
+    .pm-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        background-color: var(--content-bg);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .pm-search {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .pm-search-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .pm-search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .pm-search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.938rem;
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+
+        .pm-search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+        }
+
+    .pm-search-clear {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+        .pm-search-clear:hover {
+            color: var(--text-primary);
+            background-color: rgba(var(--primary-rgb), 0.1);
+        }
+
+    /* Filters */
+    .pm-filters {
+        display: flex;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 0.875rem;
+    }
+
+    .pm-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 120px;
+    }
+
+        .pm-filter-group label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-left: 0.25rem;
+        }
+
+    .pm-filter-select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        height: 38px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' stroke='currentColor' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.5rem center;
+        padding-right: 2rem;
+    }
+
+    /* Stats Cards */
+    .pm-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .pm-stat-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background-color: var(--content-bg);
+        border-radius: 10px;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .pm-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+    .pm-stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        border-radius: 10px;
+        font-size: 1.25rem;
+        transition: transform 0.3s ease;
+    }
+
+    .pm-stat-card:hover .pm-stat-icon {
+        transform: scale(1.1);
+    }
+
+    .pm-stat-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pm-stat-value {
+        font-size: 1.375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .pm-stat-label {
+        font-size: 0.813rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    /* Report Sections */
+    .pm-report-section {
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 0.3s ease;
+        margin-bottom: 2rem;
+    }
+
+        .pm-report-section:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+    .pm-section-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: var(--subtle-bg);
+    }
+
+        .pm-section-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+            .pm-section-header h2 i {
+                color: var(--primary);
+            }
+
+    .pm-section-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    /* Report Grid */
+    .pm-report-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        padding: 1.5rem;
+    }
+
+    .pm-report-card {
+        background-color: var(--subtle-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .pm-report-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+            background-color: var(--primary-lighter);
+            border-color: var(--primary);
+        }
+
+        .pm-report-card.custom-report {
+            background: linear-gradient(135deg, var(--primary-lighter) 0%, var(--subtle-bg) 100%);
+        }
+
+    .pm-report-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+        .pm-report-icon.financial {
+            background-color: rgba(52, 211, 153, 0.1);
+            color: #34d399;
+        }
+
+        .pm-report-icon.property {
+            background-color: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+        }
+
+        .pm-report-icon.tenant {
+            background-color: rgba(251, 146, 60, 0.1);
+            color: #fb923c;
+        }
+
+        .pm-report-icon.custom {
+            background-color: rgba(168, 85, 247, 0.1);
+            color: #a855f7;
+        }
+
+    .pm-report-card:hover .pm-report-icon {
+        transform: scale(1.15) rotate(5deg);
+    }
+
+    .pm-report-content h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: color 0.2s ease;
+    }
+
+    .pm-report-card:hover .pm-report-content h3 {
+        color: var(--primary);
+    }
+
+    .pm-report-content p {
+        margin: 0 0 1rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .pm-report-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+        .pm-report-tag.new {
+            background-color: var(--success-light);
+            color: var(--success);
+        }
+
+    /* Recent Reports Section */
+    .pm-recent-section {
+        background-color: var(--content-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 2rem;
+    }
+
+    .pm-view-all-link {
+        font-size: 0.875rem;
+        color: var(--primary);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+        .pm-view-all-link:hover {
+            color: var(--primary-hover);
+            gap: 0.75rem;
+        }
+
+    .pm-recent-list {
+        padding: 1rem 0;
+    }
+
+    .pm-recent-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
+        transition: background-color 0.2s ease;
+    }
+
+        .pm-recent-item:last-child {
+            border-bottom: none;
+        }
+
+        .pm-recent-item:hover {
+            background-color: var(--subtle-bg);
+        }
+
+    .pm-recent-icon {
+        width: 40px;
+        height: 40px;
+        background-color: var(--primary-light);
+        color: var(--primary);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+
+    .pm-recent-details {
+        flex: 1;
+    }
+
+        .pm-recent-details h4 {
+            margin: 0 0 0.25rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+    .pm-recent-meta {
+        font-size: 0.813rem;
+        color: var(--text-muted);
+    }
+
+    .pm-recent-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .pm-icon-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background-color: transparent;
+        color: var(--text-muted);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .pm-icon-btn:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+    /* Custom Button Styles */
+    .pm-custom-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.125rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        white-space: nowrap;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: visible;
+        z-index: 1;
+    }
+
+        .pm-custom-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+    .pm-custom-btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+        color: white;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .pm-custom-btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+            z-index: -1;
+        }
+
+        .pm-custom-btn-primary:hover::after {
+            transform: translateX(100%);
+        }
+
+    .pm-custom-btn-outline {
+        background-color: transparent;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+        .pm-custom-btn-outline:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+    .pm-custom-btn-with-icon {
+        padding-left: 0.875rem;
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 1200px) {
+        .pm-report-grid
+
+    {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .pm-header-content
+
+    {
+        flex-direction: column;
+        gap: 1.25rem;
+        text-align: center;
+        padding: 1.5rem 1rem;
+    }
+
+    .pm-header-text-content {
+        flex-direction: column;
+    }
+
+    .pm-header-action-panel {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .pm-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pm-filters {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .pm-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pm-report-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .pm-stats
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .pm-recent-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .pm-recent-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    }
+
+    /* Utility Variables */
+    :root {
+        --primary-rgb: 55, 127, 128;
+        --primary: #377f80;
+        --primary-hover: #2d6869;
+        --primary-light: rgba(55, 127, 128, 0.1);
+        --primary-lighter: rgba(55, 127, 128, 0.05);
+        --primary-gradient: linear-gradient(90deg, #377f80 0%, #2d6869 100%);
+        --secondary-rgb: 20, 42, 57;
+        --secondary: #142a39;
+        --secondary-hover: #0e1f2a;
+        --secondary-light: rgba(20, 42, 57, 0.1);
+        --secondary-gradient: linear-gradient(90deg, #142a39 0%, #0e1f2a 100%);
+        --success-rgb: 39, 142, 99;
+        --success: #278e63;
+        --success-hover: #1f7550;
+        --success-light: rgba(39, 142, 99, 0.1);
+        --success-bg: rgba(39, 142, 99, 0.1);
+        --success-border-light: rgba(39, 142, 99, 0.2);
+        --success-gradient: linear-gradient(90deg, #278e63 0%, #1f7550 100%);
+        --warning-rgb: 245, 166, 35;
+        --warning: #f5a623;
+        --warning-hover: #e09612;
+        --warning-light: rgba(245, 166, 35, 0.1);
+        --warning-gradient: linear-gradient(90deg, #f5a623 0%, #e09612 100%);
+        --danger-rgb: 209, 65, 65;
+        --danger: #d14141;
+        --danger-hover: #b63636;
+        --danger-light: rgba(209, 65, 65, 0.1);
+        --danger-bg: rgba(209, 65, 65, 0.1);
+        --danger-border-light: rgba(209, 65, 65, 0.2);
+        --danger-gradient: linear-gradient(90deg, #d14141 0%, #b63636 100%);
+        --info-rgb: 48, 128, 167;
+        --info: #3080a7;
+        --info-hover: #266a8b;
+        --info-light: rgba(48, 128, 167, 0.1);
+        --info-gradient: linear-gradient(90deg, #3080a7 0%, #266a8b 100%);
+          --body-bg: #f4f8f8;
+        --sidebar-bg: #ffffff;
+        --content-bg: #ffffff;
+        --subtle-bg: #f8fafa;
+        --modal-bg: #ffffff;
+        --dropdown-bg: #ffffff;
+        --input-bg: #f8fafa;
+        --text-primary: #142a39;
+        --text-secondary: #3a4f5e;
+        --text-secondary-rgb: 58, 79, 94;
+        --text-muted: #6e7e8a;
+        --text-light: #a6bbca;
+        --text-on-primary: #ffffff;
+        --placeholder-color: #a0adb8;
+        --border-color: rgba(55, 127, 128, 0.15);
+        --border-light: rgba(55, 127, 128, 0.08);
+        --border-divider: #e5eef0;
+        --shadow-xs: 0 1px 2px rgba(20, 42, 57, 0.05);
+        --shadow-sm: 0 2px 4px rgba(20, 42, 57, 0.05);
+        --shadow-md: 0 4px 8px rgba(20, 42, 57, 0.08);
+        --shadow-lg: 0 8px 16px rgba(20, 42, 57, 0.12);
+        --shadow-xl: 0 12px 24px rgba(20, 42, 57, 0.15);
+        --shadow-focus: 0 0 0 3px rgba(55, 127, 128, 0.25);
+    }
+</style>
