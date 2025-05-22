@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using MudBlazor.Services;
 using Roovia;
 using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
+using Roovia.Interfaces;
 using Roovia.Models.UserCompanyModels;
 using Roovia.Security;
+using Roovia.Services;
 using Roovia.Services.General;
 using Syncfusion.Blazor;
 using Syncfusion.Licensing;
@@ -85,6 +88,14 @@ builder.Services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(servicePr
     var options = serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>();
     return new Roovia.Data.DbContextFactory<ApplicationDbContext>(options);
 });
+
+builder.Services.AddScoped<ISupportService>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    return new SupportService(connectionString);
+});
+
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

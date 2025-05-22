@@ -3,18 +3,21 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.EntityFrameworkCore
+@using MudBlazor
 @using Roovia.Data
 @using Roovia.Interfaces
 @using Roovia.Models.BusinessModels
 @using Roovia.Services
 @using Roovia.Services.General
 @using System.Security.Claims
+@using static Roovia.Models.SupportModels
 @inject IUser UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject ToastService ToastService
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject ISupportService SupportService
 @rendermode InteractiveServer
 
 <div class="pm-page">
@@ -153,9 +156,88 @@
     </div>
 </div>
 
+@if (showUserTicketsModal)
+{
+    <div class="pm-modal-backdrop pm-blur-backdrop" @onclick="() => showUserTicketsModal = false"></div>
+    <div class="pm-ticket-modal pm-ticket-modal-lg">
+        <div class="pm-modal-header">
+            <h3><i class="fa-light fa-clipboard-list"></i> My Tickets</h3>
+            <button class="pm-modal-close-btn" @onclick="() => showUserTicketsModal = false">
+                <i class="fa-light fa-times"></i>
+            </button>
+        </div>
+        <div class="pm-modal-body pm-tickets-modal-body">
+            @if (userTickets != null && userTickets.Any())
+            {
+                <div class="pm-ticket-list">
+                    @foreach (var ticket in userTickets)
+                    {
+                        <div class="pm-ticket-card">
+                            <div class="pm-ticket-card-header">
+                                <div class="pm-ticket-number">
+                                    <span class="pm-ticket-label">Ticket #</span> <span class="pm-ticket-value">@ticket.TicketNumber</span>
+                                </div>
+                                <span class="pm-ticket-status pm-status-@ticket.Status.ToLower()">@ticket.Status</span>
+                            </div>
+                            <div class="pm-ticket-card-body">
+                                <div class="pm-ticket-info">
+                                    <div>
+                                        <span class="pm-ticket-label">Subject:</span>
+                                        <span class="pm-ticket-value">@ticket.Subject</span>
+                                    </div>
+                                    <div>
+                                        <span class="pm-ticket-label">Category:</span>
+                                        <span class="pm-ticket-value">@GetCategoryName(ticket.Category)</span>
+                                    </div>
+                                    <div>
+                                        <span class="pm-ticket-label">Created:</span>
+                                        <span class="pm-ticket-value">@ticket.CreatedDate.ToString("g")</span>
+                                    </div>
+                                </div>
+                                <div class="pm-ticket-actions">
+                                    <button class="pm-custom-btn pm-custom-btn-outline pm-ticket-comment-btn" @onclick="() => ToggleCommentBox(ticket.TicketNumber)">
+                                        <i class="fa-light fa-comment-lines"></i> Add Comment
+                                    </button>
+                                </div>
+                            </div>
+                            @if (commentBoxOpenFor == ticket.TicketNumber)
+                            {
+                                <div class="pm-ticket-comment-box">
+                                    <textarea class="pm-form-textarea" rows="3" placeholder="Write your comment..." @bind="newCommentText"></textarea>
+                                    <div class="pm-ticket-comment-actions">
+                                        <button class="pm-custom-btn pm-custom-btn-primary" @onclick="() => SubmitTicketComment(ticket.TicketNumber)">
+                                            <i class="fa-light fa-paper-plane pm-me-2"></i> Submit
+                                        </button>
+                                        <button class="pm-custom-btn pm-custom-btn-outline" @onclick="CloseCommentBox">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pm-empty-state">
+                    <div class="pm-empty-icon">
+                        <i class="fa-light fa-clipboard-list"></i>
+                    </div>
+                    <h3 class="pm-empty-title">No Tickets Found</h3>
+                    <p class="pm-empty-description">You have not submitted any tickets.</p>
+                </div>
+            }
+        </div>
+        <div class="pm-modal-footer">
+            <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => showUserTicketsModal = false">Close</button>
+        </div>
+    </div>
+}
+
 @if (showNewTicketModal)
 {
-    <div class="pm-modal-backdrop" @onclick="() => showNewTicketModal = false"></div>
+    <div class="pm-modal-backdrop pm-blur-backdrop" @onclick="() => showNewTicketModal = false"></div>
     <div class="pm-ticket-modal">
         <div class="pm-modal-header">
             <h3><i class="fa-light fa-ticket"></i> Create New Support Ticket</h3>
@@ -228,6 +310,8 @@
     </div>
 }
 
+
+
 @code {
     // User and Authentication
     private ApplicationUser currentUser;
@@ -240,9 +324,11 @@
     private string selectedCategory = "all";
     private int? expandedFaqId = null;
     private bool showNewTicketModal = false;
+    private bool showUserTicketsModal = false;
 
     // Tickets
     private List<SupportTicket> allTickets = new();
+    private List<SupportTicket> userTickets = new();
     private int activeTickets = 3;
     private int supportHistory = 12;
     private int knowledgeBaseArticles = 42;
@@ -300,56 +386,48 @@
                     Question = "How do I add a new property to the system?",
                     Answer = "To add a new property, navigate to the <strong>Properties</strong> page and click on the <strong>Add Property</strong> button in the top right corner. Fill in the required details and click Save.",
                     Category = "properties",
-                    RelatedLink = "/kb/properties/add-new-property"
                 },
                 new FaqItem {
                     Id = 2,
                     Question = "How do I create a new tenant account?",
                     Answer = "To create a new tenant, go to the <strong>Tenants</strong> page and click on <strong>Add Tenant</strong>. Fill in the tenant's personal details, contact information, and assign them to a property.",
                     Category = "tenants",
-                    RelatedLink = "/kb/tenants/add-new-tenant"
                 },
                 new FaqItem {
                     Id = 3,
                     Question = "How can I generate financial reports?",
                     Answer = "Navigate to the <strong>Reports</strong> section and select <strong>Financial Reports</strong>. From there, you can choose the type of report, date range, and properties to include.",
                     Category = "financials",
-                    RelatedLink = "/kb/financial/generate-reports"
                 },
                 new FaqItem {
                     Id = 4,
                     Question = "How do I reset my password?",
                     Answer = "Click on the <strong>Forgot Password</strong> link on the login page. Enter your email address and follow the instructions sent to your email to reset your password.",
                     Category = "account",
-                    RelatedLink = "/kb/account/reset-password"
                 },
                 new FaqItem {
                     Id = 5,
                     Question = "Can I customize the dashboard?",
                     Answer = "Yes, you can customize your dashboard by clicking on the <strong>Customize</strong> button in the top-right corner of the dashboard. You can add, remove, or rearrange widgets based on your preferences.",
                     Category = "account",
-                    RelatedLink = "/kb/account/customize-dashboard"
                 },
                 new FaqItem {
                     Id = 6,
                     Question = "How do I process rent payments?",
                     Answer = "Go to the <strong>Payments</strong> section, select the property and tenant, then click on <strong>Record Payment</strong>. Enter the payment details, method, and date, then save the transaction.",
                     Category = "financials",
-                    RelatedLink = "/kb/financial/process-payments"
                 },
                 new FaqItem {
                     Id = 7,
                     Question = "What browser is best for using this system?",
                     Answer = "Our system works best with modern browsers such as Chrome, Firefox, Edge, and Safari. For optimal performance, we recommend keeping your browser updated to the latest version.",
                     Category = "technical",
-                    RelatedLink = "/kb/technical/supported-browsers"
                 },
                 new FaqItem {
                     Id = 8,
                     Question = "How do I archive a property?",
                     Answer = "To archive a property, go to the property details page and click the menu (three dots) in the top-right corner. Select <strong>Archive Property</strong> from the dropdown menu and confirm your action.",
                     Category = "properties",
-                    RelatedLink = "/kb/properties/archive-property"
                 }
             };
 
@@ -441,9 +519,7 @@
             uploadedFiles.Add(new UploadedFile
                 {
                     Name = file.Name,
-                    Size = file.Size,
                     ContentType = file.ContentType,
-                    File = file
                 });
         }
     }
@@ -453,7 +529,7 @@
         uploadedFiles.Remove(file);
     }
 
-    private void SubmitTicket()
+    private async Task SubmitTicket()
     {
         // In a real implementation, you would send the ticket to the server
         // For demo purposes, we'll just show a success message and close the modal
@@ -476,14 +552,36 @@
             return;
         }
 
+        newTicket.CompanyId = currentUser.CompanyId.Value;
+        newTicket.UserId = Guid.Parse(currentUser.Id);
+        newTicket.TicketNumber = Guid.NewGuid().ToString().Substring(0, 6);
+        var ticketCreateResponse = await SupportService.CreateSupportTicketAsync(newTicket);
+        if (ticketCreateResponse.ResponseInfo.Success)
+        {
+            ToastService.ShowSuccess("Ticket created successfully!", "Success");
+        }
+
+
         // Success case
-        ToastService.ShowSuccess("Support ticket submitted successfully. Our team will respond shortly.", "Ticket Created");
         showNewTicketModal = false;
     }
 
-    private void ViewAllTickets()
+    private async Task ViewAllTickets()
     {
-        NavigationManager.NavigateTo("/support/tickets");
+        var allTicketsResponse = await SupportService.GetSupportTicketsByCompanyIdAsync(currentUser.CompanyId.Value);
+        if (allTicketsResponse.ResponseInfo.Success)
+        {
+            allTickets = allTicketsResponse.Response as List<SupportTicket>;
+            userTickets = allTickets.Where(x => x.UserId == Guid.Parse(currentUser.Id)).ToList();
+            showUserTicketsModal = true;
+
+        }
+        else
+        {
+            ToastService.ShowError("Failed to load tickets", "Error");
+            return;
+        }
+
     }
 
     private void ViewActiveTickets()
@@ -501,17 +599,6 @@
         NavigationManager.NavigateTo("/documentation");
     }
 
-    private void ContactSupport()
-    {
-        // Open contact support form or redirect to contact page
-        NavigationManager.NavigateTo("/support/contact");
-    }
-
-    private void StartLiveChat()
-    {
-        // In a real implementation, this would initialize a live chat widget
-        JSRuntime.InvokeVoidAsync("alert", "Live chat feature will be available soon.");
-    }
 
     private void ViewKnowledgeBase()
     {
@@ -536,34 +623,54 @@
         };
     }
 
-    // Model classes
-    public class SupportTicket
+    private string commentBoxOpenFor = null;
+    private string newCommentText = "";
+
+    private void ToggleCommentBox(string ticketNumber)
     {
-        public int Id { get; set; }
-        public string TicketNumber { get; set; }
-        public string Subject { get; set; }
-        public string Description { get; set; }
-        public string Category { get; set; }
-        public string Status { get; set; }
-        public string Priority { get; set; }
-        public DateTime CreatedDate { get; set; }
+        if (commentBoxOpenFor == ticketNumber)
+        {
+            commentBoxOpenFor = null;
+            newCommentText = "";
+        }
+        else
+        {
+            commentBoxOpenFor = ticketNumber;
+            newCommentText = "";
+        }
     }
 
-    public class FaqItem
+    private void CloseCommentBox()
     {
-        public int Id { get; set; }
-        public string Question { get; set; }
-        public string Answer { get; set; }
-        public string Category { get; set; }
-        public string RelatedLink { get; set; }
+        commentBoxOpenFor = null;
+        newCommentText = "";
     }
 
-    public class UploadedFile
+    private async Task SubmitTicketComment(string ticketNumber)
     {
-        public string Name { get; set; }
-        public long Size { get; set; }
-        public string ContentType { get; set; }
-        public IBrowserFile File { get; set; }
+        if (string.IsNullOrWhiteSpace(newCommentText))
+        {
+            ToastService.ShowError("Please enter a comment.", "Validation Error");
+            return;
+        }
+
+        TicketComment comment = new();
+        comment.TicketId = userTickets.Where(x => x.TicketNumber == ticketNumber).FirstOrDefault().Id;
+        comment.UserId = Guid.Parse(currentUser.Id);
+        comment.Comment = newCommentText;
+        comment.CreatedDate = DateTime.Now;
+        var ticketCommentResponse = await SupportService.CreateTicketCommentAsync(comment);
+        if (ticketCommentResponse.ResponseInfo.Success)
+        {
+            ToastService.ShowSuccess("Comment added successfully.", "Success!");
+        }
+        else
+        {
+            ToastService.ShowError(ticketCommentResponse.ResponseInfo.Message, "Ticket Comment Error!");
+        }
+
+        commentBoxOpenFor = null;
+        newCommentText = "";
     }
 }
 
@@ -577,6 +684,8 @@
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
+
+
 
     /* Category Tabs */
     .pm-category-tabs {
@@ -1253,16 +1362,13 @@
         }
 
     @@keyframes header-pattern-slide {
-        0%
+        0% {
+            background-position: 0 0;
+        }
 
-    {
-        background-position: 0 0;
-    }
-
-    100% {
-        background-position: 70px 70px;
-    }
-
+        100% {
+            background-position: 70px 70px;
+        }
     }
 
     .admin-header-content {
@@ -1301,16 +1407,13 @@
     }
 
     @@keyframes icon-float {
-        0%, 100%
+        0%, 100% {
+            transform: translateY(0);
+        }
 
-    {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-8px);
-    }
-
+        50% {
+            transform: translateY(-8px);
+        }
     }
 
     .header-icon:hover {
@@ -1390,4 +1493,168 @@
             background-color: var(--subtle-bg);
             color: var(--text-primary);
         }
+
+    .pm-blur-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(30, 41, 59, 0.25);
+        backdrop-filter: blur(6px);
+        z-index: 150;
+        transition: backdrop-filter 0.2s;
+    }
+
+    .pm-ticket-modal-lg {
+        max-width: 800px;
+    }
+
+    .pm-tickets-modal-body {
+        background: var(--input-bg);
+        padding: 2rem 1.5rem;
+    }
+
+    .pm-ticket-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .pm-ticket-card {
+        background: var(--content-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 10px;
+        box-shadow: var(--shadow-xs);
+        padding: 1.25rem 1.5rem;
+        transition: box-shadow 0.2s;
+        position: relative;
+    }
+
+        .pm-ticket-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+    .pm-ticket-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .pm-ticket-number {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .pm-ticket-label {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+        font-weight: 500;
+        margin-right: 0.25rem;
+    }
+
+    .pm-ticket-value {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .pm-ticket-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        background: var(--primary-lighter);
+        color: var(--primary);
+        text-transform: capitalize;
+    }
+
+    .pm-status-new {
+        background: var(--primary-lighter);
+        color: var(--primary);
+    }
+
+    .pm-status-open {
+        background: var(--info-light);
+        color: var(--info);
+    }
+
+    .pm-status-closed {
+        background: var(--success-light);
+        color: var(--success);
+    }
+
+    .pm-status-pending {
+        background: var(--warning-light);
+        color: var(--warning);
+    }
+
+    .pm-ticket-card-body {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .pm-ticket-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        min-width: 220px;
+    }
+
+    .pm-ticket-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+
+    .pm-ticket-comment-btn {
+        font-size: 0.92rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .pm-ticket-comment-box {
+        margin-top: 1rem;
+        background: var(--subtle-bg);
+        border-radius: 8px;
+        padding: 1rem;
+        border: 1px solid var(--border-light);
+        animation: pm-fade-in 0.2s;
+    }
+
+    .pm-ticket-comment-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    @@keyframes pm-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@media (max-width: 600px) {
+        .pm-ticket-card-body {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .pm-ticket-info {
+            min-width: 0;
+        }
+    }
 </style>
