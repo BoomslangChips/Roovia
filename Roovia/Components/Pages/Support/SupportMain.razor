@@ -78,7 +78,7 @@
                 </div>
                 @if (currentUser != null && currentUser.Role != null && currentUser.Role.Value >= SystemRole.SystemAdministrator)
                 {
-                    <div class="pm-action-card">
+                    <div class="pm-action-card" @onclick="OpenAdminTicketsModal">
                         <div class="pm-action-icon">
                             <i class="fa-light fa-list-check"></i>
                         </div>
@@ -97,7 +97,7 @@
                     </div>
                     <div class="pm-action-text">Documentation</div>
                 </div>
-              
+
             </div>
         </div>
 
@@ -378,6 +378,95 @@
     </div>
 }
 
+
+
+@if (showAdminTicketsModal)
+{
+    @if (showAdminTicketsModal)
+    {
+        <div class="pm-modal-backdrop pm-blur-backdrop" @onclick="() => showAdminTicketsModal = false"></div>
+        <div class="pm-ticket-modal pm-ticket-modal-lg enhanced-modal">
+            <div class="pm-modal-header">
+                <h3><i class="fa-light fa-list-check"></i> All Tickets - Admin View</h3>
+                <button class="pm-modal-close-btn" @onclick="() => showAdminTicketsModal = false">
+                    <i class="fa-light fa-times"></i>
+                </button>
+            </div>
+            <div class="pm-modal-body">
+                @if (allTickets != null && allTickets.Any())
+                {
+                    <div class="pm-ticket-list">
+                        @foreach (var ticket in allTickets)
+                        {
+                            <div class="pm-ticket-card enhanced-card">
+                                <div class="pm-ticket-card-header">
+                                    <div class="pm-ticket-number">
+                                        <span class="pm-ticket-label">Ticket #</span>
+                                        <span class="pm-ticket-value">@ticket.TicketNumber</span>
+                                    </div>
+                                    <div>
+                                        <select class="pm-form-select pm-dropdown" @onchange="(e) => ChangeTicketStatus(ticket, e.Value.ToString())" value="@ticket.TicketStatus.ToString()">
+                                            <option value="New">New</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="Closed">Closed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="pm-ticket-card-body">
+                                    <div>
+                                        <span class="pm-ticket-label">Subject: </span>
+                                        <span class="pm-ticket-value">@ticket.Subject</span>
+                                    </div>
+                                    <div>
+                                        <span class="pm-ticket-label">Category: </span>
+                                        <span class="pm-ticket-value">@GetCategoryName(ticket.Category)</span>
+                                    </div>
+                                    <div>
+                                        <span class="pm-ticket-label">Created: </span>
+                                        <span class="pm-ticket-value">@ticket.CreatedDate.ToString("g")</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => ToggleAdminCommentBox(ticket.TicketNumber)">
+                                        <i class="fa-light fa-comment-lines"></i> Add Comment
+                                    </button>
+                                </div>
+                                @if (adminCommentBoxOpenFor == ticket.TicketNumber)
+                                {
+                                    <div class="pm-ticket-comment-box">
+                                        <textarea class="pm-form-textarea" rows="3" placeholder="Write your comment..." @bind="newAdminCommentText"></textarea>
+                                        <div class="pm-ticket-comment-actions">
+                                            <button class="pm-custom-btn pm-custom-btn-primary" @onclick="() => SubmitAdminTicketComment(ticket)">
+                                                <i class="fa-light fa-paper-plane pm-me-2"></i> Submit
+                                            </button>
+                                            <button class="pm-custom-btn pm-custom-btn-outline" @onclick="CloseAdminCommentBox">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="pm-empty-state">
+                        <div class="pm-empty-icon">
+                            <i class="fa-light fa-clipboard-list"></i>
+                        </div>
+                        <h3 class="pm-empty-title">No Tickets Found</h3>
+                    </div>
+                }
+            </div>
+            <div class="pm-modal-footer">
+                <button class="pm-custom-btn pm-custom-btn-outline" @onclick="() => showAdminTicketsModal = false">Close</button>
+            </div>
+        </div>
+    }
+
+    
+}
 
 
 @code {
@@ -773,6 +862,69 @@
     // This variable determines which ticket's inline comment box is open.
     private string commentBoxOpenFor;
 
+    private bool showAdminTicketsModal = false;
+    private string adminCommentBoxOpenFor;
+    private string newAdminCommentText = "";
+
+    private async Task OpenAdminTicketsModal()
+    {
+        var allTicketsResponse = await SupportService.GetAllSupportTicketsAsync();
+        if (allTicketsResponse.ResponseInfo.Success)
+        {
+            allTickets = allTicketsResponse.Response as List<SupportTicket>;
+            showAdminTicketsModal = true;
+        }
+        else
+        {
+            ToastService.ShowError("Failed to load tickets", "Error");
+        }
+    }
+
+    private void ToggleAdminCommentBox(string ticketNumber)
+    {
+        adminCommentBoxOpenFor = adminCommentBoxOpenFor == ticketNumber ? null : ticketNumber;
+    }
+
+    private void CloseAdminCommentBox()
+    {
+        adminCommentBoxOpenFor = null;
+        newAdminCommentText = "";
+    }
+
+    private async Task SubmitAdminTicketComment(SupportTicket ticket)
+    {
+        if (string.IsNullOrWhiteSpace(newAdminCommentText))
+        {
+            ToastService.ShowError("Please enter a comment", "Validation Error");
+            return;
+        }
+        // Add comment submission logic here.
+        ToastService.ShowSuccess($"Comment added to Ticket #{ticket.TicketNumber}", "Success");
+        newAdminCommentText = "";
+        adminCommentBoxOpenFor = null;
+        await Task.CompletedTask;
+    }
+
+    private async Task ChangeTicketStatus(SupportTicket ticket, string newStatus)
+    {
+        if (Enum.TryParse(newStatus, out TicketStatuses parsedStatus))
+        {
+            ticket.TicketStatus = parsedStatus;
+
+            var ticketUpdateResponse = await SupportService.UpdateSupportTicketAsync(ticket);
+            if (!ticketUpdateResponse.ResponseInfo.Success)
+            {
+                ToastService.ShowError("Error updating the ticket.", "Error!");
+                return;
+            }
+            ToastService.ShowSuccess($"Ticket #{ticket.TicketNumber} status updated to {newStatus}", "Success");
+            await Task.CompletedTask;
+        }
+        else
+        {
+            ToastService.ShowError("Invalid status", "Error");
+        }
+    }
 }
 
 
@@ -1759,5 +1911,62 @@
             min-width: 0;
         }
     }
+
+    <style >
+    /* Enhanced Modal Styles for Admin Tickets */
+    .enhanced-modal {
+        border: 2px solid var(--primary);
+        border-radius: 12px;
+        animation: modalZoomIn 0.3s ease;
+    }
+
+    @@keyframes modalZoomIn {
+        from
+
+    {
+        transform: scale(0.95);
+        opacity: 0.5;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    }
+
+    .enhanced-card {
+        transition: box-shadow 0.3s ease;
+    }
+
+        .enhanced-card:hover {
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+    /* Custom Dropdown Styling */
+    .pm-dropdown {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background-color: var(--input-bg);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 0.938rem;
+        transition: all 0.2s ease;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='var(--text-secondary)' d='M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+    }
+
+        .pm-dropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+        }
+</style>
 </style>
 

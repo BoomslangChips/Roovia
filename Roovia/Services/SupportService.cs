@@ -21,8 +21,8 @@ namespace Roovia.Services
             try
             {
                 using var connection = new SqlConnection(_connectionString);
-                var sql = @"INSERT INTO Support_SupportTickets (TicketNumber, Subject, Description, Category, Status, Priority, CreatedDate, UserId, CompanyId)
-                                        VALUES (@TicketNumber, @Subject, @Description, @Category, @Status, @Priority, @CreatedDate, @UserId, @CompanyId);
+                var sql = @"INSERT INTO Support_SupportTickets (TicketNumber, Subject, Description, Category, TicketStatus, Priority, CreatedDate, UserId, CompanyId)
+                                        VALUES (@TicketNumber, @Subject, @Description, @Category, @TicketStatus, @Priority, @CreatedDate, @UserId, @CompanyId);
                                         SELECT CAST(SCOPE_IDENTITY() as int);";
                 var id = await connection.QuerySingleAsync<int>(sql, ticket);
                 ticket.Id = id;
@@ -43,7 +43,7 @@ namespace Roovia.Services
             try
             {
                 using var connection = new SqlConnection(_connectionString);
-                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, Status, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets WHERE Id = @Id";
+                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, TicketStatus, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets WHERE Id = @Id";
                 var ticket = await connection.QuerySingleOrDefaultAsync<SupportTicket>(sql, new { Id = id });
                 response.Response = ticket;
                 response.ResponseInfo.Success = ticket != null;
@@ -64,7 +64,7 @@ namespace Roovia.Services
             try
             {
                 using var connection = new SqlConnection(_connectionString);
-                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, Status, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets";
+                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, TicketStatus, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets";
                 var tickets = await connection.QueryAsync<SupportTicket>(sql);
                 response.Response = tickets.ToList();
                 response.ResponseInfo.Success = true;
@@ -89,7 +89,7 @@ namespace Roovia.Services
                                         Subject = @Subject,
                                         Description = @Description,
                                         Category = @Category,
-                                        Status = @Status,
+                                        TicketStatus = @Status,
                                         Priority = @Priority,
                                         CreatedDate = @CreatedDate,
                                         UserId = @UserId,
@@ -466,7 +466,7 @@ namespace Roovia.Services
             try
             {
                 using var connection = new SqlConnection(_connectionString);
-                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, Status, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets WHERE CompanyId = @CompanyId";
+                var sql = "SELECT Id, TicketNumber, Subject, Description, Category, TicketStatus, Priority, CreatedDate, UserId, CompanyId FROM Support_SupportTickets WHERE CompanyId = @CompanyId";
                 var tickets = await connection.QueryAsync<SupportTicket>(sql, new { CompanyId = companyId });
                 response.Response = tickets.ToList();
                 response.ResponseInfo.Success = true;
