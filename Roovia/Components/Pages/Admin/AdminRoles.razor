@@ -5,7 +5,7 @@
 @using Roovia.Security
 @using Roovia.Services
 @using Roovia.Services.General
-@attribute [Authorize(Policy = "GlobalAdminOnly")]
+@attribute [Authorize(Policy = AuthorizationPolicies.GlobalAdminPolicy)]
 @rendermode InteractiveServer
 @inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager

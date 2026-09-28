@@ -637,7 +637,7 @@
     {
         <UserDetailsModal UserId="@selectedUserId"
                           OnClose="() => showUserDetailsModal = false"
-                          OnEdit="() => { showUserDetailsModal = false; ShowUserEditModal(selectedUserId); }" />
+                          OnEdit="async () => { showUserDetailsModal = false; await ShowUserEditModal(selectedUserId); }" />
     }
 
     @* User Roles Modal *@
@@ -1151,6 +1151,12 @@
 
     private async Task<bool> HasPermission(string permission)
     {
+        // The current user loads after first render; until then nothing is permitted
+        if (currentUser is null)
+        {
+            return false;
+        }
+
         return await PermissionService.UserHasPermission(currentUser.Id, permission);
     }
 
@@ -1367,7 +1373,7 @@
     }
 
     // User Management Methods
-    private async void ShowUserEditModal(string? userId = null)
+    private async Task ShowUserEditModal(string? userId = null)
     {
         // If editing an existing user, check permissions
         if (!string.IsNullOrEmpty(userId))
@@ -1400,7 +1406,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ShowAddUserToBranchModal(int branchId)
+    private async Task ShowAddUserToBranchModal(int branchId)
     {
         // Check if the user has permission to add users to this branch
         var branch = allBranches.FirstOrDefault(b => b.Id == branchId);
@@ -1434,7 +1440,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ShowUserDetailsModal(string userId)
+    private async Task ShowUserDetailsModal(string userId)
     {
         // Everyone with access to the users page can view details
         selectedUserId = userId;
@@ -1442,7 +1448,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ShowUserRolesModal(string userId)
+    private async Task ShowUserRolesModal(string userId)
     {
         var userToEdit = users.FirstOrDefault(u => u.Id == userId);
         if (userToEdit != null && !CanEditUser(userToEdit))
@@ -1456,7 +1462,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ShowUserPermissionsModal(string userId)
+    private async Task ShowUserPermissionsModal(string userId)
     {
         var userToEdit = users.FirstOrDefault(u => u.Id == userId);
         if (userToEdit != null && !CanEditUser(userToEdit))
@@ -1476,7 +1482,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ShowResetPasswordModal(string userId)
+    private async Task ShowResetPasswordModal(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return;
 
@@ -1492,7 +1498,7 @@
         await InvokeAsync(() => this.StateHasChanged());
     }
 
-    private async void ConfirmToggleUserStatus(ApplicationUser user)
+    private async Task ConfirmToggleUserStatus(ApplicationUser user)
     {
         if (!CanEditUser(user))
         {
@@ -1575,57 +1581,57 @@
     }
 
     // Event handlers for UserCard
-    private async void HandleUserEdit(string userId)
+    private async Task HandleUserEdit(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
-            ShowUserEditModal(userId);
+            await ShowUserEditModal(userId);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private async void HandleUserRoles(string userId)
+    private async Task HandleUserRoles(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
-            ShowUserRolesModal(userId);
+            await ShowUserRolesModal(userId);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private async void HandleUserPermissions(string userId)
+    private async Task HandleUserPermissions(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
-            ShowUserPermissionsModal(userId);
+            await ShowUserPermissionsModal(userId);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private async void HandleUserResetPassword(string userId)
+    private async Task HandleUserResetPassword(string userId)
     {
         var user = users.FirstOrDefault(u => u.Id == userId);
         if (user != null && CanEditUser(user))
         {
-            ShowResetPasswordModal(userId);
+            await ShowResetPasswordModal(userId);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
-    private async void HandleUserStatusToggle(ApplicationUser user)
+    private async Task HandleUserStatusToggle(ApplicationUser user)
     {
         if (CanEditUser(user))
         {
-            ConfirmToggleUserStatus(user);
+            await ConfirmToggleUserStatus(user);
             await InvokeAsync(() => this.StateHasChanged());
         }
     }
 
     // Company Management Methods
-    private async void ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
+    private async Task ShowCompanyEditModal(int companyId = 0, bool viewOnly = false)
     {
         // Only System Admin can create/edit companies
         if (currentUser?.Role != SystemRole.SystemAdministrator)
@@ -1715,7 +1721,7 @@
     }
 
     // Branch Management Methods
-    private async void ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
+    private async Task ShowBranchEditModal(int branchId = 0, bool viewOnly = false)
     {
         // Check permissions based on role
         if (await HasPermission("settings.users") == false)
@@ -1768,7 +1774,7 @@
         }
     }
 
-    private async void ShowCreateBranchModal(int companyId)
+    private async Task ShowCreateBranchModal(int companyId)
     {
         // Verify the company ID is valid for the current user's permissions
         if (currentUser?.Role == SystemRole.CompanyAdministrator &&

@@ -273,7 +273,9 @@
         ToastService.OnClearAll += ClearAll;
     }
 
-    private void ShowToast(ToastMessage toast)
+    // ToastService events can fire from timer threads, so every change to _toasts is marshalled
+    // onto the renderer's dispatcher; touching it off-thread corrupts the list and kills the circuit.
+    private void ShowToast(ToastMessage toast) => _ = InvokeAsync(() =>
     {
         // Add the new toast to the list
         _toasts.Add(toast);
@@ -289,31 +291,31 @@
         }
 
         StateHasChanged();
-    }
+    });
 
-    private async void HideToast(Guid id)
+    private void HideToast(Guid id) => _ = InvokeAsync(async () =>
     {
         var toast = _toasts.FirstOrDefault(t => t.Id == id);
         if (toast != null)
         {
             // First mark as hiding to trigger animation
             toast.IsVisible = false;
-            await InvokeAsync(() => StateHasChanged());
+            StateHasChanged();
 
             // Wait for animation to complete
             await Task.Delay(300);
 
             // Then remove from list
             _toasts.Remove(toast);
-            await InvokeAsync(() => StateHasChanged());
+            StateHasChanged();
         }
-    }
+    });
 
-    private void ClearAll()
+    private void ClearAll() => _ = InvokeAsync(() =>
     {
         _toasts.Clear();
         StateHasChanged();
-    }
+    });
 
     public void Dispose()
     {

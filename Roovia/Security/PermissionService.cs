@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Roovia.Data;
 using Roovia.Interfaces;
 using Roovia.Models.BusinessHelperModels;
+using Roovia.Models.ConnectivityConfigModels;
 using Roovia.Models.UserCompanyModels;
 
 namespace Roovia.Security
@@ -10,9 +12,16 @@ namespace Roovia.Security
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-        public PermissionService(IDbContextFactory<ApplicationDbContext> contextFactory)
+        // Effective permission sets per user, shared by every check in this scope (one HTTP request or one circuit).
+        // The nav menu and grid rows each run a permission check, so without this a single page made hundreds of round trips.
+        private readonly TimeSpan _snapshotLifetime;
+        private readonly object _snapshotLock = new();
+        private readonly Dictionary<string, (Task<HashSet<string>?> Load, DateTime ExpiresUtc)> _snapshots = new();
+
+        public PermissionService(IDbContextFactory<ApplicationDbContext> contextFactory, IOptions<PermissionCacheOptions> cacheOptions)
         {
             _contextFactory = contextFactory;
+            _snapshotLifetime = TimeSpan.FromSeconds(Math.Max(0, cacheOptions.Value.SnapshotLifetimeSeconds));
         }
 
         #region Permission Operations
@@ -1141,64 +1150,89 @@ namespace Roovia.Security
 
         public async Task<bool> UserHasPermission(string userId, string permissionName)
         {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(permissionName))
+            {
+                return false;
+            }
+
+            var permissions = await GetEffectivePermissionSetAsync(userId);
+            return permissions?.Contains(permissionName) ?? false;
+        }
+
+        private Task<HashSet<string>?> GetEffectivePermissionSetAsync(string userId)
+        {
+            if (_snapshotLifetime <= TimeSpan.Zero)
+            {
+                return LoadEffectivePermissionSetAsync(userId);
+            }
+
+            lock (_snapshotLock)
+            {
+                // Concurrent callers share the same in-flight load; a failed load (null) is never reused
+                if (_snapshots.TryGetValue(userId, out var snapshot) &&
+                    snapshot.ExpiresUtc > DateTime.UtcNow &&
+                    !(snapshot.Load.IsCompleted && snapshot.Load.Result is null))
+                {
+                    return snapshot.Load;
+                }
+
+                var load = LoadEffectivePermissionSetAsync(userId);
+                _snapshots[userId] = (load, DateTime.UtcNow + _snapshotLifetime);
+                return load;
+            }
+        }
+
+        /// <summary>
+        /// Loads every permission the user effectively holds, with the same rules a single check applies:
+        /// only active permissions; an explicit user override wins; otherwise any active role assignment
+        /// whose role has the permission (active role-permission link) grants it.
+        /// Returns null when the database could not be reached.
+        /// </summary>
+        private async Task<HashSet<string>?> LoadEffectivePermissionSetAsync(string userId)
+        {
             try
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
 
-                // First get the permission using projection to avoid loading the entire entity
-                var permission = await context.Permissions
-                    .AsNoTracking()
-                    .Where(p => p.SystemName == permissionName && p.IsActive)
-                    .Select(p => new { p.Id })
-                    .FirstOrDefaultAsync();
-
-                if (permission == null)
-                {
-                    // Permission doesn't exist or is not active
-                    return false;
-                }
-
-                // Check for user override using projection
-                var userOverride = await context.UserPermissionOverrides
-                    .AsNoTracking()
-                    .Where(upo => upo.UserId == userId && upo.PermissionId == permission.Id)
-                    .Select(upo => (bool?)upo.IsGranted)
-                    .FirstOrDefaultAsync();
-
-                if (userOverride.HasValue)
-                {
-                    // If there's an explicit override, respect it
-                    return userOverride.Value;
-                }
-
-                // Get user roles
-                var userRoleIds = await context.UserRoleAssignments
-                    .AsNoTracking()
+                var activeRoleIds = context.UserRoleAssignments
                     .Where(ur => ur.UserId == userId && ur.IsActive)
-                    .Select(ur => ur.RoleId)
+                    .Select(ur => ur.RoleId);
+
+                var fromRoles = await context.RolePermissions
+                    .AsNoTracking()
+                    .Where(rp => rp.IsActive && rp.Permission!.IsActive && activeRoleIds.Contains(rp.RoleId))
+                    .Select(rp => rp.Permission!.SystemName!)
+                    .Distinct()
                     .ToListAsync();
 
-                if (!userRoleIds.Any())
+                var overrides = await context.UserPermissionOverrides
+                    .AsNoTracking()
+                    .Where(upo => upo.UserId == userId && upo.Permission!.IsActive)
+                    .OrderBy(upo => upo.Id)
+                    .Select(upo => new { SystemName = upo.Permission!.SystemName!, upo.IsGranted })
+                    .ToListAsync();
+
+                var permissions = new HashSet<string>(fromRoles, StringComparer.OrdinalIgnoreCase);
+
+                // The first override per permission decides, whatever the roles say
+                foreach (var permissionOverride in overrides.DistinctBy(o => o.SystemName, StringComparer.OrdinalIgnoreCase))
                 {
-                    return false;
+                    if (permissionOverride.IsGranted)
+                    {
+                        permissions.Add(permissionOverride.SystemName);
+                    }
+                    else
+                    {
+                        permissions.Remove(permissionOverride.SystemName);
+                    }
                 }
 
-                // Check if any role has the specified permission
-                // Use projection and avoid navigation properties
-                var hasPermission = await context.RolePermissions
-                    .AsNoTracking()
-                    .Where(rp => userRoleIds.Contains(rp.RoleId) &&
-                               rp.PermissionId == permission.Id &&
-                               rp.IsActive)
-                    .AnyAsync();
-
-                return hasPermission;
+                return permissions;
             }
             catch (Exception)
             {
-                // Log the exception if you have a logger
-                // _logger?.LogError(ex, "Error checking permission {Permission} for user {UserId}", permissionName, userId);
-                return false;
+                // Treated as "no permission", matching the previous per-check behaviour
+                return null;
             }
         }
 

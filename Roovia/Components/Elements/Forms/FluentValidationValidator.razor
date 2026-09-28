@@ -249,7 +249,13 @@
         return errors;
     }
 
-    private Type GetValidatorType(Type modelType)
+    // Scanning every loaded assembly runs on the circuit thread and used to happen on every field change,
+    // so each model's validator type is resolved once and reused
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Type> ValidatorTypeCache = new();
+
+    private Type GetValidatorType(Type modelType) => ValidatorTypeCache.GetOrAdd(modelType, FindValidatorType);
+
+    private static Type FindValidatorType(Type modelType)
     {
         // Try to find a validator for the model type
         // The convention is that validators are named [ModelName]Validator

@@ -1,0 +1,71 @@
+@using Microsoft.Extensions.Options
+@using Roovia.Models.ConnectivityConfigModels
+@inject IJSRuntime JS
+@inject IOptions<SyncfusionOptions> SyncfusionOptions
+
+@* Syncfusion's script (~4.5 MB) and theme (~3.5 MB) are only needed by the few components that use it,
+   so they are fetched the first time one of those components is shown instead of on every page load. *@
+
+@if (assetsReady)
+{
+    @ChildContent
+}
+else if (loadFailed)
+{
+    <div class="roovia-deferred-assets roovia-deferred-assets-error" role="alert">
+        <i class="fal fa-exclamation-triangle" aria-hidden="true"></i>
+        <span>This control couldn't be loaded. Check your connection and try again.</span>
+        <button type="button" class="roovia-system-button" @onclick="RetryAsync">Retry</button>
+    </div>
+}
+else
+{
+    <div class="roovia-deferred-assets" role="status">
+        <div class="roovia-app-loading-spinner" aria-hidden="true"></div>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool assetsReady;
+    private bool loadFailed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAssetsAsync();
+        }
+    }
+
+    private async Task RetryAsync()
+    {
+        loadFailed = false;
+        await LoadAssetsAsync();
+    }
+
+    private async Task LoadAssetsAsync()
+    {
+        var options = SyncfusionOptions.Value;
+
+        try
+        {
+            await JS.InvokeVoidAsync("rooviaAssets.load", ResolveAsset(options.ScriptPath), ResolveAsset(options.ThemePath));
+            assetsReady = true;
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, so there is nothing left to render
+            return;
+        }
+        catch (JSException)
+        {
+            loadFailed = true;
+        }
+
+        StateHasChanged();
+    }
+
+    private string? ResolveAsset(string? path) => string.IsNullOrWhiteSpace(path) ? null : Assets[path];
+}
