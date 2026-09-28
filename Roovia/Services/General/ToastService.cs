@@ -1,4 +1,5 @@
-﻿using Timer = System.Timers.Timer;
+﻿using System.Collections.Concurrent;
+using Timer = System.Timers.Timer;
 
 namespace Roovia.Services.General
 {
@@ -61,7 +62,8 @@ namespace Roovia.Services.General
 
         public event Action OnClearAll;
 
-        private Dictionary<Guid, Timer> _timers = new Dictionary<Guid, Timer>();
+        // Timers elapse on thread-pool threads, so the map is touched concurrently
+        private readonly ConcurrentDictionary<Guid, Timer> _timers = new ConcurrentDictionary<Guid, Timer>();
 
         // Show a toast with auto-generated title based on type
         public void Show(string message, ToastType type = ToastType.Info, int durationSeconds = 5, bool autoHide = true)
@@ -129,10 +131,7 @@ namespace Roovia.Services.General
         {
             OnHide?.Invoke(id);
 
-            if (_timers.ContainsKey(id))
-            {
-                StopTimer(id);
-            }
+            StopTimer(id);
         }
 
         // Clear all toasts
@@ -140,12 +139,11 @@ namespace Roovia.Services.General
         {
             OnClearAll?.Invoke();
 
+            // Keys is a snapshot, so removing while iterating is safe
             foreach (var id in _timers.Keys)
             {
                 StopTimer(id);
             }
-
-            _timers.Clear();
         }
 
         // Start a timer for auto-hiding
@@ -162,11 +160,10 @@ namespace Roovia.Services.General
         // Stop a specific timer
         private void StopTimer(Guid id)
         {
-            if (_timers.TryGetValue(id, out var timer))
+            if (_timers.TryRemove(id, out var timer))
             {
                 timer.Stop();
                 timer.Dispose();
-                _timers.Remove(id);
             }
         }
 
@@ -179,13 +176,10 @@ namespace Roovia.Services.General
         // Dispose method to clean up timers
         public void Dispose()
         {
-            foreach (var timer in _timers.Values)
+            foreach (var id in _timers.Keys)
             {
-                timer.Stop();
-                timer.Dispose();
+                StopTimer(id);
             }
-
-            _timers.Clear();
         }
     }
 }

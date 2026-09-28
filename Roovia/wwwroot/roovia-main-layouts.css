@@ -537,6 +537,235 @@
     cursor: pointer;
 }
 
+/* ====== System Buttons (reconnect / error panels) ====== */
+.roovia-system-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background-color: var(--content-bg);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+    .roovia-system-button:hover {
+        background-color: var(--subtle-bg);
+        color: var(--text-primary);
+    }
+
+    .roovia-system-button:focus-visible {
+        outline: none;
+        box-shadow: var(--shadow-focus);
+    }
+
+.roovia-system-button-primary {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    color: var(--text-on-primary);
+}
+
+    .roovia-system-button-primary:hover {
+        border-color: var(--primary-hover);
+        background-color: var(--primary-hover);
+        color: var(--text-on-primary);
+    }
+
+/* ====== App Loading (shown until the interactive app renders) ====== */
+.roovia-app-loading {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-fixed);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    background-color: var(--body-bg);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+    /* Hidden as soon as the app renders anything after it */
+    .roovia-app-loading:has(~ :not(script, #components-reconnect-modal, #blazor-error-ui)) {
+        display: none;
+    }
+
+.roovia-app-loading-spinner,
+.roovia-reconnect-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid var(--primary-light);
+    border-top-color: var(--primary);
+    border-radius: var(--border-radius-pill);
+    animation: roovia-spin 0.8s linear infinite;
+}
+
+@keyframes roovia-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ====== Reconnect Modal (classes toggled by blazor.web.js) ====== */
+.roovia-reconnect {
+    --reconnect-reveal-delay: 1s;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-toast);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-4);
+    background-color: var(--overlay-bg);
+}
+
+    .roovia-reconnect.components-reconnect-show,
+    .roovia-reconnect.components-reconnect-failed,
+    .roovia-reconnect.components-reconnect-rejected {
+        display: flex;
+        animation: roovia-reconnect-fade-in var(--transition-normal) ease-out both;
+    }
+
+    /* Short blips reconnect before the overlay becomes visible */
+    .roovia-reconnect.components-reconnect-show {
+        animation-delay: var(--reconnect-reveal-delay);
+    }
+
+@keyframes roovia-reconnect-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.roovia-reconnect-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-3);
+    width: 420px;
+    max-width: 100%;
+    padding: var(--spacing-8) var(--spacing-6);
+    border-radius: var(--border-radius-lg);
+    background-color: var(--modal-bg);
+    box-shadow: var(--shadow-xl);
+    text-align: center;
+}
+
+.roovia-reconnect-icon {
+    display: none;
+    color: var(--danger);
+    font-size: var(--font-size-3xl);
+}
+
+.roovia-reconnect-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.roovia-reconnect-message {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.roovia-reconnect-attempt {
+    display: block;
+    margin-top: var(--spacing-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.roovia-reconnect-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-2);
+}
+
+.roovia-reconnect-state-retrying,
+.roovia-reconnect-state-failed,
+.roovia-reconnect-state-rejected {
+    display: none;
+}
+
+.components-reconnect-show .roovia-reconnect-state-retrying,
+.components-reconnect-failed .roovia-reconnect-state-failed,
+.components-reconnect-rejected .roovia-reconnect-state-rejected {
+    display: inline;
+}
+
+.components-reconnect-failed .roovia-system-button.roovia-reconnect-state-failed {
+    display: inline-flex;
+}
+
+.components-reconnect-failed .roovia-reconnect-spinner,
+.components-reconnect-rejected .roovia-reconnect-spinner {
+    display: none;
+}
+
+.components-reconnect-failed .roovia-reconnect-icon {
+    display: block;
+}
+
+/* ====== Deferred third-party assets (SyncfusionAssetGate) ====== */
+.roovia-deferred-assets {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    min-height: 6rem;
+    padding: var(--spacing-4);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.roovia-deferred-assets-error i {
+    color: var(--danger);
+}
+
+/* ====== Page Error (ErrorBoundary in MainLayout) ====== */
+.roovia-page-error {
+    display: flex;
+    gap: var(--spacing-4);
+    margin: var(--spacing-6) 0;
+    padding: var(--spacing-6);
+    border-left: 4px solid var(--danger);
+    border-radius: var(--border-radius-lg);
+    background-color: var(--content-bg);
+    box-shadow: var(--shadow-md);
+}
+
+.roovia-page-error-icon {
+    flex-shrink: 0;
+    color: var(--danger);
+    font-size: var(--font-size-2xl);
+}
+
+.roovia-page-error-title {
+    margin-bottom: var(--spacing-2);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.roovia-page-error-message {
+    margin: 0 0 var(--spacing-4);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
 /* ====== Sidebar Footer & Toggle Button ====== */
 .roovia-sidebar-footer {
     padding: 0px;

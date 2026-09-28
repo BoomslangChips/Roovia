@@ -2358,7 +2358,8 @@
             var buffer = new byte[imageFile.Size];
             using (var stream = imageFile.OpenReadStream())
             {
-                await stream.ReadAsync(buffer);
+                // The file arrives in chunks over the connection; a single ReadAsync only returns the first one
+                await stream.ReadExactlyAsync(buffer);
             }
             
             previewImageData = $"data:{logoFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
@@ -2397,7 +2398,8 @@
             var buffer = new byte[logoFile.Size];
             using (var stream = logoFile.OpenReadStream(maxFileSize))
             {
-                await stream.ReadAsync(buffer);
+                // The file arrives in chunks over the connection; a single ReadAsync only returns the first one
+                await stream.ReadExactlyAsync(buffer);
             }
 
             // Resize the image for consistent dimensions

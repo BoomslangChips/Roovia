@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using Roovia.Components;
 using Roovia.Components.Account;
 using Roovia.Data;
 using Roovia.Interfaces;
+using Roovia.Models.ConnectivityConfigModels;
 using Roovia.Models.UserCompanyModels;
 using Roovia.Security;
 using Roovia.Services;
@@ -40,9 +42,16 @@ builder.Services.Configure<IISServerOptions>(options =>
 
 builder.Services.AddMemoryCache();
 
+// Live connection (SignalR circuit) tuning - values come from the Connectivity section of appsettings.json
+builder.Services.Configure<ConnectivityOptions>(builder.Configuration.GetSection(ConnectivityOptions.SectionName));
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options => builder.Configuration.GetSection(ConnectivityOptions.CircuitSectionName).Bind(options))
+    .AddHubOptions(options => builder.Configuration.GetSection(ConnectivityOptions.HubSectionName).Bind(options));
+
+// Logs dropped connections that recover or expire, so connection problems show up in the server logs
+builder.Services.AddScoped<CircuitHandler, CircuitConnectionLogger>();
 
 // Configure FormOptions for larger file uploads
 builder.Services.Configure<FormOptions>(options =>
@@ -64,14 +73,37 @@ builder.Services.AddAuthentication(options =>
 })
     .AddIdentityCookies();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var databaseOptions = builder.Configuration.GetSection(DatabaseResilienceOptions.SectionName).Get<DatabaseResilienceOptions>() ?? new DatabaseResilienceOptions();
+var connectionString = SqlConnectionTuning.Apply(
+    builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found."),
+    databaseOptions);
+
+builder.Services.Configure<PermissionCacheOptions>(builder.Configuration.GetSection(PermissionCacheOptions.SectionName));
 
 // FIXED: Configure DbContext and DbContextFactory with proper lifetimes
 // First, configure the DbContextOptions as singleton
 builder.Services.AddSingleton<DbContextOptions<ApplicationDbContext>>(serviceProvider =>
 {
     var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-    optionsBuilder.UseSqlServer(connectionString);
+    optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+    {
+        // The database is remote, so ride out transient network failures instead of failing the page
+        if (databaseOptions.MaxRetryCount > 0)
+        {
+            sqlOptions.ExecutionStrategy(dependencies => new ResilientSqlServerExecutionStrategy(
+                dependencies,
+                databaseOptions.MaxRetryCount,
+                TimeSpan.FromSeconds(databaseOptions.MaxRetryDelaySeconds)));
+        }
+
+        if (databaseOptions.CommandTimeoutSeconds > 0)
+        {
+            sqlOptions.CommandTimeout(databaseOptions.CommandTimeoutSeconds);
+        }
+    });
+
+    // Route EF Core warnings/errors into the application's logging
+    optionsBuilder.UseLoggerFactory(serviceProvider.GetRequiredService<ILoggerFactory>());
     return optionsBuilder.Options;
 });
 
@@ -89,12 +121,7 @@ builder.Services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(servicePr
     return new Roovia.Data.DbContextFactory<ApplicationDbContext>(options);
 });
 
-builder.Services.AddScoped<ISupportService>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("DefaultConnection");
-    return new SupportService(connectionString);
-});
+builder.Services.AddScoped<ISupportService>(_ => new SupportService(connectionString));
 
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -162,7 +189,13 @@ builder.Services.AddScoped<IAuthorizationHandler, GlobalAdminHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 
-SyncfusionLicenseProvider.RegisterLicense("Mzg2OTg4OEAzMjM5MmUzMDJlMzAzYjMyMzkzYkZOcU9vNHZKdjZNQ1BwNWtybTQyQ215cUJVUVl6YXdLYmcreUkzdkJ2UXc9");
+var syncfusionSection = builder.Configuration.GetSection(SyncfusionOptions.SectionName);
+builder.Services.Configure<SyncfusionOptions>(syncfusionSection);
+var syncfusionLicenseKey = syncfusionSection.Get<SyncfusionOptions>()?.LicenseKey;
+if (!string.IsNullOrWhiteSpace(syncfusionLicenseKey))
+{
+    SyncfusionLicenseProvider.RegisterLicense(syncfusionLicenseKey);
+}
 builder.Services.AddSyncfusionBlazor();
 
 
@@ -206,9 +239,12 @@ if (!string.IsNullOrEmpty(cdnStoragePath) && Directory.Exists(cdnStoragePath))
 }
 
 app.UseHttpsRedirection();
+// Fallback for files added to wwwroot after the build; build-time assets are served by MapStaticAssets below
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+// Pre-compressed (gzip/brotli), fingerprinted and cache-friendly static assets
+app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -1,4 +1,4 @@
-﻿@using Roovia.Components.Account.Shared
+@using Roovia.Components.Account.Shared
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
@@ -8,4 +8,12 @@
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        @if (RendererInfo.IsInteractive)
+        {
+            @* Identity pages ([ExcludeFromInteractiveRouting]) are not in the interactive route table and need
+               HttpContext (cookies), so leave the circuit and let the server render the address. *@
+            <ForceFullPageLoad />
+        }
+    </NotFound>
 </Router>

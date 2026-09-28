@@ -1137,14 +1137,16 @@
             </div>
 
             <div class="cd-upload-area @(logoFile != null ? "cd-has-file" : "")">
-                <SfUploader ID="LogoUploader"
-                            AllowedExtensions=".jpg, .jpeg, .png, .gif"
-                            MaxFileSize="5242880"
-                            AllowMultiple="false"
-                            ShowFileList="true"
-                            AutoUpload="false">
-                    <UploaderEvents ValueChange="OnLogoFileSelected"></UploaderEvents>
-                </SfUploader>
+                <SyncfusionAssetGate>
+                    <SfUploader ID="LogoUploader"
+                                AllowedExtensions=".jpg, .jpeg, .png, .gif"
+                                MaxFileSize="5242880"
+                                AllowMultiple="false"
+                                ShowFileList="true"
+                                AutoUpload="false">
+                        <UploaderEvents ValueChange="OnLogoFileSelected"></UploaderEvents>
+                    </SfUploader>
+                </SyncfusionAssetGate>
 
                 @if (previewImageData != null)
                 {
@@ -1795,9 +1797,10 @@
 
             // Create a buffer for the resized image
             resizedImageData = new byte[resizedFile.Size];
-            using (var stream = resizedFile.OpenReadStream())
+            using (var stream = resizedFile.OpenReadStream(maxFileSize))
             {
-                await stream.ReadAsync(resizedImageData);
+                // The file arrives in chunks over the connection; a single ReadAsync only returns the first one
+                await stream.ReadExactlyAsync(resizedImageData);
             }
 
             // Generate a preview image as base64

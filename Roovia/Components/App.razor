@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+@using System.Text.Json
+@using Microsoft.Extensions.Options
+@using Roovia.Models.ConnectivityConfigModels
+@inject IOptions<ConnectivityOptions> Connectivity
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -13,28 +18,98 @@
     <link rel="stylesheet" href="@Assets["roovia-layouts.css"]" />
     <link rel="stylesheet" href="@Assets["auth-shared-styles.css"]" />
 
-
-    <link href="_content/Syncfusion.Blazor.Themes/bootstrap5.css" rel="stylesheet" />
-    <script src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js" type="text/javascript"></script>
-
     <link href="https://fa.finchsoftware.co.za/css/all.min.css" rel="stylesheet" />
-    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    <script src="@Assets["js/roovia-layout.js"]"></script>
+    <HeadOutlet @rendermode="pageRenderMode" />
 </head>
 
 <body>
-    <Routes />
-    <script src="js/cdn-module.js"></script>
-@*     <script src="js/cdnFilePreview.js"></script>
-    <script src="js/cdnHelpers.js"></script>
-    <script src="js/fileUpload.js"></script>
-    <script src="js/fileHelpers.js"></script>
-    <script src="js/chartinterop.js"></script> *@
-    <script src="js/roovia-app.js"></script>
-    <script src="_framework/blazor.web.js"></script>
+    @if (showAppLoader)
+    {
+        <div id="roovia-app-loading" class="roovia-app-loading" role="status" aria-live="polite">
+            <div class="roovia-app-loading-spinner" aria-hidden="true"></div>
+            <span class="roovia-app-loading-text">Loading Roovia…</span>
+        </div>
+    }
 
+    <Routes @rendermode="pageRenderMode" />
+
+    <div id="components-reconnect-modal" class="roovia-reconnect" role="alertdialog" aria-modal="true" aria-labelledby="roovia-reconnect-title" aria-describedby="roovia-reconnect-message">
+        <div class="roovia-reconnect-dialog">
+            <div class="roovia-reconnect-spinner" aria-hidden="true"></div>
+            <i class="fal fa-wifi-slash roovia-reconnect-icon" aria-hidden="true"></i>
+            <h2 id="roovia-reconnect-title" class="roovia-reconnect-title">
+                <span class="roovia-reconnect-state-retrying">Reconnecting…</span>
+                <span class="roovia-reconnect-state-failed">Connection lost</span>
+                <span class="roovia-reconnect-state-rejected">Session expired</span>
+            </h2>
+            <p id="roovia-reconnect-message" class="roovia-reconnect-message">
+                <span class="roovia-reconnect-state-retrying">
+                    The connection to the server dropped. Your work is safe while we restore it.
+                    <span class="roovia-reconnect-attempt">Attempt <span id="components-reconnect-current-attempt"></span>, next try in <span id="components-seconds-to-next-attempt"></span>s.</span>
+                </span>
+                <span class="roovia-reconnect-state-failed">We couldn't reach the server. Check your internet connection. We'll retry as soon as you're back online.</span>
+                <span class="roovia-reconnect-state-rejected">Your session on the server ended. Reloading the page…</span>
+            </p>
+            <div class="roovia-reconnect-actions">
+                <button type="button" class="roovia-system-button roovia-system-button-primary roovia-reconnect-state-failed" data-reconnect-action="retry">
+                    <i class="fal fa-sync-alt" aria-hidden="true"></i>
+                    <span>Retry now</span>
+                </button>
+                <button type="button" class="roovia-system-button" data-reconnect-action="reload">
+                    <i class="fal fa-redo" aria-hidden="true"></i>
+                    <span>Reload page</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        <div class="roovia-alert roovia-alert-danger">
+            <div class="roovia-alert-content">
+                <i class="fal fa-exclamation-triangle"></i>
+                <div>
+                    <div class="roovia-alert-title">An unhandled error has occurred.</div>
+                    <div class="d-flex gap-3 mt-2">
+                        <a href="." class="reload roovia-system-button roovia-system-button-primary">Reload</a>
+                        <span class="dismiss roovia-system-button">Dismiss</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="@Assets["js/roovia-app.js"]"></script>
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="@Assets["js/roovia-connection.js"]" data-options="@clientConnectionJson"></script>
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private static readonly JsonSerializerOptions ClientJsonOptions = new(JsonSerializerDefaults.Web);
+
+    private IComponentRenderMode? pageRenderMode;
+    private bool showAppLoader;
+    private string clientConnectionJson = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var connectivity = Connectivity.Value;
+
+        // Identity pages ([ExcludeFromInteractiveRouting]) need HttpContext, so they stay static SSR.
+        // Everything else runs inside one long-lived circuit: navigating no longer rebuilds the layout,
+        // re-queries the current user and permissions, or tears the circuit down between pages.
+        pageRenderMode = HttpContext.AcceptsInteractiveRouting()
+            ? new InteractiveServerRenderMode(prerender: connectivity.PrerenderPages)
+            : null;
+
+        showAppLoader = pageRenderMode is not null && !connectivity.PrerenderPages;
+        clientConnectionJson = JsonSerializer.Serialize(connectivity.Client, ClientJsonOptions);
+    }
+}
